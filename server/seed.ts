@@ -1,0 +1,104 @@
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
+import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
+import { parse } from "https://deno.land/std@0.224.0/csv/parse.ts";
+import * as path from "https://deno.land/std@0.224.0/path/mod.ts";
+
+const connectionString = Deno.env.get("DATABASE_URL");
+const pool = new pg.Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+
+async function parseCSV(filePath: string) {
+  const text = await Deno.readTextFile(filePath);
+  return parse(text, { skipFirstRow: true });
+}
+
+async function main() {
+  console.log('🌱 Starting database seed...');
+  
+  // Use current working directory to resolve relative paths properly
+  const cwd = Deno.cwd();
+  const dataDir = path.resolve(cwd, '..');
+
+  // 1. Seed Clusters
+  try {
+    const clustersFile = path.join(dataDir, 'clusters.csv');
+    console.log(`Loading ${clustersFile}...`);
+    const clusters = await parseCSV(clustersFile);
+    for (const cluster of clusters) {
+      await prisma.cluster.upsert({
+        where: { cluster_number: parseInt(cluster.cluster_number as string) },
+        update: { name: cluster.name as string },
+        create: {
+          id: parseInt(cluster.id as string),
+          cluster_number: parseInt(cluster.cluster_number as string),
+          name: cluster.name as string,
+        },
+      });
+    }
+    console.log('✅ Clusters seeded.');
+  } catch (e) {
+    console.log(`⚠️ clusters.csv not found or error parsing: ${e}`);
+  }
+
+  // 2. Seed Programs
+  try {
+    const programsFile = path.join(dataDir, 'programs.csv');
+    console.log(`Loading ${programsFile}...`);
+    const programs = await parseCSV(programsFile);
+    for (const program of programs) {
+      await prisma.program.upsert({
+        where: { title: program.title as string },
+        update: { school_level_requirement: program.school_level_requirement as string },
+        create: {
+          id: parseInt(program.id as string),
+          title: program.title as string,
+          school_level_requirement: program.school_level_requirement as string,
+        },
+      });
+    }
+    console.log('✅ Programs seeded.');
+  } catch (e) {
+    console.log(`⚠️ programs.csv not found or error parsing: ${e}`);
+  }
+
+  // 3. Seed Schools
+  try {
+    const schoolsFile = path.join(dataDir, 'schools.csv');
+    console.log(`Loading ${schoolsFile}...`);
+    const schools = await parseCSV(schoolsFile);
+    for (const school of schools) {
+      await prisma.school.upsert({
+        where: { id: parseInt(school.id as string) },
+        update: {
+          name: school.name as string,
+          level: school.level as string,
+          cluster_id: parseInt(school.cluster_id as string),
+        },
+        create: {
+          id: parseInt(school.id as string),
+          name: school.name as string,
+          level: school.level as string,
+          cluster_id: parseInt(school.cluster_id as string),
+        },
+      });
+    }
+    console.log('✅ Schools seeded.');
+  } catch (e) {
+    console.log(`⚠️ schools.csv not found or error parsing: ${e}`);
+  }
+
+  console.log('🥳 Seeding finished.');
+}
+
+main()
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    Deno.exit(1);
+  });

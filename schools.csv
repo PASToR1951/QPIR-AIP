@@ -1,0 +1,106 @@
+id,name,level,cluster_id
+1,Mckinley CES,Elementary,1
+2,FTAMES,Elementary,1
+3,MTVES,Elementary,1
+4,Daniel T. Anog NHS,Secondary,1
+5,P. Zamora ES,Elementary,1
+6,T. Hill ES,Elementary,1
+7,T. Hill NHS,Secondary,1
+8,Bakid ES,Elementary,1
+9,Bakid NHS,Secondary,1
+10,Mabunga ES,Elementary,1
+11,Mabunga NHS,Secondary,1
+12,GSCS,Elementary,2
+13,GNHS-POBLACION,Secondary,2
+14,Buenavista ES,Elementary,3
+15,Agulang ES,Elementary,3
+16,Magsaysay ES,Elementary,3
+17,Malusay ES,Elementary,3
+18,Mandi-i ES,Elementary,3
+19,Nagsaha ES,Elementary,3
+20,Planas ES,Elementary,3
+21,Tominhao ES,Elementary,3
+22,Villegas ES,Elementary,3
+23,Villegas NHS,Secondary,3
+24,Buenavista NHS,Secondary,3
+25,Magsaysay NHS ,Secondary,3
+26,Planas NHS,Secondary,3
+27,Hinogpayan ES,Elementary,4
+28,Balogo ES,Elementary,4
+29,Banwague ES,Elementary,4
+30,Banwague NHS,Secondary,4
+31,Dadiangao ES,Elementary,4
+32,Hinakpan ES,Elementary,4
+33,Hinakpan NHS,Secondary,4
+34,Kapudlusan ES,Elementary,4
+35,Linantuyan ES,Elementary,4
+36,Luz ES,Elementary,4
+37,Plagatasanon ES,Elementary,4
+38,Taloto ES,Elementary,4
+39,Balogo NHS,Secondary,4
+40,GNAS,Secondary,4
+41,Linantuyan NHS,Secondary,4
+42,Calamba CES,Elementary,5
+43,Calamba NHS,Secondary,5
+44,Antibalas ES,Elementary,5
+45,Bonbon ES,Elementary,5
+46,Humayhumay ES,Elementary,5
+47,Imelda ES,Elementary,5
+48,Lag-asan ES,Elementary,5
+49,Lip-o ES,Elementary,5
+50,Sandayao ES,Elementary,5
+51,Sandayao NHS,Secondary,5
+52,Lip-o NHS,Secondary,5
+53,Basak CES,Elementary,6
+54,Binobohan ES,Elementary,6
+55,Bulado ES,Elementary,6
+56,Laos ES,Elementary,6
+57,Maculos ES,Elementary,6
+58,Matu-og ES,Elementary,6
+59,Magkanaway ES,Elementary,6
+60,Binobohan NHS,Secondary,6
+61,Maculos NHS,Secondary,6
+62,DPVMES,Elementary,7
+63,Hilaitan ES,Elementary,7
+64,Busay ES,Elementary,7
+65,Cabal-asan ES,Elementary,7
+66,PSLMES,Elementary,7
+67,GNHS-Hilaitan (JHS),Secondary,7
+68,GSVS NHS,Secondary,7
+69,Maniak ES,Elementary,7
+70,JBES,Elementary,7
+71,Calabaclabacan CES,Elementary,8
+72,Benil-iwan ES,Elementary,8
+73,Bongao ES,Elementary,8
+74,Budlasan ES,Elementary,8
+75,Panagtugas ES,Elementary,8
+76,Trinidad ES,Elementary,8
+77,Trinidad NHS,Secondary,8
+78,Calupaan ES,Elementary,8
+79,Maximina LTHS,Secondary,8
+80,VCES,Elementary,9
+81,Banban ES,Elementary,9
+82,Don Esperidion VES,Elementary,9
+83,Don Julian DVVMES,Elementary,9
+84,Guba ES,Elementary,9
+85,Malangsa ES,Elementary,9
+86,Mampayao ES (Malangsa Ext.),Elementary,9
+87,Molobolo ES,Elementary,9
+88,Puan ES,Elementary,9
+89,Tabon ES,Elementary,9
+90,Guba NHS,Secondary,9
+91,VNHS (JHS),Secondary,9
+92,Don Vicente Lopez SMES,Elementary,10
+93,Bairan ES,Elementary,10
+94,Cabulihan ES,Elementary,10
+95,DAPMES,Elementary,10
+96,Macapso ES,Elementary,10
+97,Maglahos ES,Elementary,10
+98,Paliran ES,Elementary,10
+99,Pinucauan ES,Elementary,10
+100,Putian ES,Elementary,10
+101,Tolotolo  ES,Elementary,10
+102,Ulay ES,Elementary,10
+103,Pinucauan NHS,Secondary,10
+104,Rafaela R.Labang NHS,Secondary,10
+105,Tagbino NHS (SHS),Secondary,10

@@ -1,0 +1,18 @@
+{
+  "nodeModulesDir": "manual",
+  "tasks": {
+    "start": "deno run --allow-net --allow-env --allow-read server.ts",
+    "dev": "deno run --watch --allow-net --allow-env --allow-read server.ts",
+    "seed": "deno run -A --env seed.ts"
+  },
+  "imports": {
+    "@prisma/config": "npm:@prisma/config@^7.4.2",
+    "hono": "npm:hono@^4.0.0",
+    "@prisma/client": "npm:@prisma/client@^7.4.2",
+    "bcrypt": "https://deno.land/x/bcrypt@v0.4.1/mod.ts"
+  },
+  "allowScripts": {
+    "allow": [],
+    "deny": ["npm:@prisma/engines@7.4.2", "npm:prisma@7.4.2"]
+  }
+}

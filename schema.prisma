@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["deno"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Cluster {
+  id             Int      @id @default(autoincrement())
+  cluster_number Int      @unique
+  name           String
+  
+  // Relations
+  schools        School[]
+}
+
+model School {
+  id         Int      @id @default(autoincrement())
+  name       String
+  level      String   // "Elementary", "Secondary", "Both"
+  cluster_id Int
+  
+  // Relations
+  cluster    Cluster  @relation(fields: [cluster_id], references: [id], onDelete: Cascade)
+  aips       AIP[]
+  user       User?
+  restricted_programs Program[] @relation("RestrictedPrograms")
+}
+
+
+model Program {
+  id                       Int    @id @default(autoincrement())
+  title                    String @unique
+  school_level_requirement String // "Elementary", "Secondary", "Both", "Select Schools"
+  
+  // Relations
+  aips                     AIP[]
+  personnel                User[] @relation("UserPrograms")
+  restricted_schools       School[] @relation("RestrictedPrograms")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  role      String    // "School" or "Division Personnel"
+  name      String?   
+  
+  // Relation to School (For School Role Users)
+  school_id Int?      @unique
+  school    School?   @relation(fields: [school_id], references: [id])
+
+  // Relation to Programs (For Division Personnel Users)
+  programs  Program[] @relation("UserPrograms")
+
+  created_at DateTime @default(now())
+}
+
+
+model AIP {
+  id                  Int      @id @default(autoincrement())
+  school_id           Int
+  program_id          Int
+  year                Int      // e.g., 2026
+  pillar              String   // Strategic Direction
+  sip_title           String   // School Improvement Project title
+  project_coordinator String
+  objectives          String   // Text field
+  indicators          String   // OVI (Text field)
+  annual_target       String   // Text field
+  created_at          DateTime @default(now())
+
+  // Relations
+  school              School         @relation(fields: [school_id], references: [id], onDelete: Cascade)
+  program             Program        @relation(fields: [program_id], references: [id])
+  activities          AIPActivity[]
+  pirs                PIR[]
+
+  @@unique([school_id, program_id, year]) // Prevent duplicate AIPs for same school/program/year scenario
+}
+
+model AIPActivity {
+  id                    Int      @id @default(autoincrement())
+  aip_id                Int
+  phase                 String   // "Planning", "Implementation", "Monitoring and Evaluation"
+  activity_name         String
+  implementation_period String
+  persons_involved      String
+  outputs               String
+  budget_amount         Decimal  @default(0.0)
+  budget_source         String
+
+  // Relations
+  aip                   AIP                @relation(fields: [aip_id], references: [id], onDelete: Cascade)
+  pir_reviews           PIRActivityReview[]
+}
+
+model PIR {
+  id            Int      @id @default(autoincrement())
+  aip_id        Int
+  quarter       String   // "1st Quarter CY 2026", etc.
+  program_owner String
+  total_budget  Decimal  @default(0.0)
+  fund_source   String
+  created_at    DateTime @default(now())
+
+  // Relations
+  aip           AIP                 @relation(fields: [aip_id], references: [id], onDelete: Cascade)
+  activity_reviews PIRActivityReview[]
+  factors       PIRFactor[]
+
+  @@unique([aip_id, quarter]) // Ensures only one PIR per quarter for a specific AIP
+}
+
+model PIRActivityReview {
+  id                     Int      @id @default(autoincrement())
+  pir_id                 Int
+  aip_activity_id        Int
+  physical_target        Decimal  @default(0.0)
+  financial_target       Decimal  @default(0.0)
+  physical_accomplished  Decimal  @default(0.0)
+  financial_accomplished Decimal  @default(0.0)
+  actions_to_address_gap String?
+
+  // Relations
+  pir                    PIR         @relation(fields: [pir_id], references: [id], onDelete: Cascade)
+  aip_activity           AIPActivity @relation(fields: [aip_activity_id], references: [id], onDelete: Cascade)
+
+  @@unique([pir_id, aip_activity_id]) // Ensure an activity is reviewed only once per PIR
+}
+
+model PIRFactor {
+  id                  Int    @id @default(autoincrement())
+  pir_id              Int
+  factor_type         String // "Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"
+  facilitating_factors String
+  hindering_factors   String
+
+  // Relations
+  pir                 PIR    @relation(fields: [pir_id], references: [id], onDelete: Cascade)
+
+  @@unique([pir_id, factor_type]) // Only one record per factor type per PIR
+}

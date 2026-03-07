@@ -1,0 +1,14 @@
+{
+  "name": "server",
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.4.2",
+    "@prisma/client": "^7.4.2",
+    "@types/jsonwebtoken": "^9.0.10",
+    "hono": "^4.11.4",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.4.2"
+  }
+}
