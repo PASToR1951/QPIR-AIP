@@ -20,7 +20,7 @@ async function main() {
   
   // Use current working directory to resolve relative paths properly
   const cwd = Deno.cwd();
-  const dataDir = path.resolve(cwd, '..');
+  const dataDir = path.resolve(cwd, '..', 'data');
 
   // 1. Seed Clusters
   try {

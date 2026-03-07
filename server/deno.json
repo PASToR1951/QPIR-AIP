@@ -3,7 +3,7 @@
   "tasks": {
     "start": "deno run --env --allow-net --allow-env --allow-read server.ts",
     "dev": "deno run --watch --env --allow-net --allow-env --allow-read server.ts",
-    "seed": "deno run -A --env seed.ts"
+    "seed": "deno run -A --env scripts/seed.ts"
   },
   "imports": {
     "@prisma/config": "npm:@prisma/config@^7.4.2",
