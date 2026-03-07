@@ -34,52 +34,9 @@ const SCHOOL_LIST = [
 
 const FACTOR_TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
 
-// Modern UI Components (Static)
-const Input = ({ label, className = "", ...props }) => (
-    <div className="flex flex-col gap-1.5 w-full group">
-        {label && <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none print:hidden group-focus-within:text-blue-600 transition-colors">{label}</label>}
-        <div className="relative">
-            <input 
-                className={`relative w-full bg-white border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all rounded-xl px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:placeholder-transparent print:text-black shadow-sm ${className}`}
-                {...props}
-            />
-        </div>
-    </div>
-);
-
-const Select = ({ label, options, className = "", ...props }) => (
-    <div className="flex flex-col gap-1.5 w-full relative group">
-        {label && <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none print:hidden group-focus-within:text-blue-600 transition-colors">{label}</label>}
-        <div className="relative">
-            <select 
-                className={`relative w-full bg-white border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all rounded-xl px-4 py-3 text-sm font-medium text-slate-800 outline-none cursor-pointer appearance-none shadow-sm print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:appearance-none print:text-black ${className}`}
-                {...props}
-            >
-                {props.placeholder && <option value="" disabled>{props.placeholder}</option>}
-                {options.map(opt => <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>)}
-            </select>
-            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors print:hidden">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-            </div>
-        </div>
-    </div>
-);
-
-const TextareaAuto = ({ className = "", ...props }) => {
-    const handleInput = (e) => {
-        e.target.style.height = 'auto';
-        e.target.style.height = `${e.target.scrollHeight}px`;
-        if (props.onChange) props.onChange(e);
-    };
-    return (
-        <textarea 
-            rows={1}
-            onInput={handleInput}
-            className={`w-full outline-none resize-none overflow-hidden placeholder:text-slate-400 bg-transparent ${className}`}
-            {...props}
-        />
-    );
-};
+import { Input } from './components/ui/Input';
+import { Select } from './components/ui/Select';
+import { TextareaAuto } from './components/ui/TextareaAuto';
 
 export default function App() {
     // App Mode State: 'splash', 'wizard', or 'full'
@@ -395,12 +352,12 @@ export default function App() {
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                <Select label="Program Name" placeholder="Select Program" options={PROGRAM_LIST} value={program} onChange={(e) => setProgram(e.target.value)} />
-                                <Select label="School" placeholder="Select School" options={SCHOOL_LIST} value={school} onChange={(e) => setSchool(e.target.value)} />
-                                <Input label="Program Owner" placeholder="Name of owner" value={owner} onChange={(e) => setOwner(e.target.value)} />
+                                <Select theme="blue" label="Program Name" placeholder="Select Program" options={PROGRAM_LIST} value={program} onChange={(e) => setProgram(e.target.value)} />
+                                <Select theme="blue" label="School" placeholder="Select School" options={SCHOOL_LIST} value={school} onChange={(e) => setSchool(e.target.value)} />
+                                <Input theme="blue" label="Program Owner" placeholder="Name of owner" value={owner} onChange={(e) => setOwner(e.target.value)} />
                                 <div className="grid grid-cols-2 gap-4">
-                                    <Input label="Budget" placeholder="₱ 0.00" inputMode="decimal" value={displayBudget} onFocus={() => setIsBudgetFocused(true)} onBlur={() => setIsBudgetFocused(false)} onChange={(e) => setRawBudget(e.target.value.replace(/[^0-9.]/g, ''))} />
-                                    <Select label="Fund Source" placeholder="Select Source" options={["MOOE", "SARO"]} value={fundSource} onChange={(e) => setFundSource(e.target.value)} />
+                                    <Input theme="blue" label="Budget" placeholder="₱ 0.00" inputMode="decimal" value={displayBudget} onFocus={() => setIsBudgetFocused(true)} onBlur={() => setIsBudgetFocused(false)} onChange={(e) => setRawBudget(e.target.value.replace(/[^0-9.]/g, ''))} />
+                                    <Select theme="blue" label="Fund Source" placeholder="Select Source" options={["MOOE", "SARO"]} value={fundSource} onChange={(e) => setFundSource(e.target.value)} />
                                 </div>
                             </div>
                         </div>

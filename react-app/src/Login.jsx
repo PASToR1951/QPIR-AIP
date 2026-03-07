@@ -3,25 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import anime from 'animejs';
 import { AlertCircle, Loader2, ArrowRight, Eye, EyeOff, MapPin, Mail, Facebook, Phone } from 'lucide-react';
-
-// Reusable Aceternity-style Input Component
-const Input = ({ label, className = "", endIcon, ...props }) => (
-    <div className="flex flex-col gap-1.5 w-full group text-left">
-        {label && <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none group-focus-within:text-indigo-600 transition-colors">{label}</label>}
-        <div className="relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-200 to-purple-200 rounded-xl blur opacity-0 group-focus-within:opacity-50 transition duration-500"></div>
-            <input 
-                className={`relative w-full bg-[#fafafa] border border-slate-200 focus:border-transparent focus:ring-2 focus:ring-indigo-500/20 transition-all rounded-xl px-4 py-3 ${endIcon ? 'pr-11' : ''} text-sm text-slate-800 outline-none placeholder:text-slate-400 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)] ${className}`}
-                {...props}
-            />
-            {endIcon && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 transition-colors z-10">
-                    {endIcon}
-                </div>
-            )}
-        </div>
-    </div>
-);
+import { Input } from './components/ui/Input';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -147,6 +129,7 @@ export default function Login() {
             
             <div className="space-y-5">
               <Input
+                theme="indigo"
                 label="Email Address"
                 id="email-address"
                 name="email"
@@ -159,6 +142,7 @@ export default function Login() {
               />
               
               <Input
+                theme="indigo"
                 label="Password"
                 id="password"
                 name="password"

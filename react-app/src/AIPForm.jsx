@@ -15,54 +15,9 @@ const PROGRAM_LIST = [
 // The official AIP Phases derived from the template
 const PHASES = ["Planning", "Implementation", "Monitoring and Evaluation"];
 
-// Aceternity UI Light Mode Components
-const Input = ({ label, className = "", ...props }) => (
-    <div className="flex flex-col gap-1.5 w-full group">
-        {label && <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none print:hidden group-focus-within:text-emerald-600 transition-colors">{label}</label>}
-        <div className="relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-200 to-teal-200 rounded-xl blur opacity-0 group-focus-within:opacity-50 transition duration-500 print:hidden"></div>
-            <input 
-                className={`relative w-full bg-white border border-slate-200 focus:border-transparent focus:ring-2 focus:ring-emerald-500/20 transition-all rounded-xl px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:placeholder-transparent print:text-black shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)] ${className}`}
-                {...props}
-            />
-        </div>
-    </div>
-);
-
-const Select = ({ label, options, className = "", ...props }) => (
-    <div className="flex flex-col gap-1.5 w-full relative group">
-        {label && <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none print:hidden group-focus-within:text-emerald-600 transition-colors">{label}</label>}
-        <div className="relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-200 to-teal-200 rounded-xl blur opacity-0 group-focus-within:opacity-50 transition duration-500 print:hidden"></div>
-            <select 
-                className={`relative w-full bg-white border border-slate-200 focus:border-transparent focus:ring-2 focus:ring-emerald-500/20 transition-all rounded-xl px-4 py-3 text-sm font-medium text-slate-800 outline-none cursor-pointer appearance-none shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)] print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:appearance-none print:text-black ${className}`}
-                {...props}
-            >
-                {props.placeholder && <option value="" disabled>{props.placeholder}</option>}
-                {options.map(opt => <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>)}
-            </select>
-            <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors print:hidden">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-            </div>
-        </div>
-    </div>
-);
-
-const TextareaAuto = ({ className = "", ...props }) => {
-    const handleInput = (e) => {
-        e.target.style.height = 'auto';
-        e.target.style.height = `${e.target.scrollHeight}px`;
-        if (props.onChange) props.onChange(e);
-    };
-    return (
-        <textarea 
-            rows={1}
-            onInput={handleInput}
-            className={`w-full outline-none resize-none overflow-hidden placeholder:text-slate-400 bg-transparent ${className}`}
-            {...props}
-        />
-    );
-};
+import { Input } from './components/ui/Input';
+import { Select } from './components/ui/Select';
+import { TextareaAuto } from './components/ui/TextareaAuto';
 
 export default function App() {
     // App Mode State: 'splash', 'wizard', or 'full'
@@ -349,10 +304,10 @@ export default function App() {
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                <Input label="Pillar / Strategic Direction" placeholder="Enter Strategic Direction..." value={pillar} onChange={(e) => setPillar(e.target.value)} />
-                                <Select label="DepEd Program Aligned" placeholder="Select Program Alignment" options={PROGRAM_LIST} value={depedProgram} onChange={(e) => setDepedProgram(e.target.value)} />
-                                <Input label="School Improvement Project / Title" placeholder="Enter SIP Title..." value={sipTitle} onChange={(e) => setSipTitle(e.target.value)} />
-                                <Input label="Project Coordinator" placeholder="Name of Coordinator..." value={projectCoord} onChange={(e) => setProjectCoord(e.target.value)} />
+                                <Input theme="emerald" label="Pillar / Strategic Direction" placeholder="Enter Strategic Direction..." value={pillar} onChange={(e) => setPillar(e.target.value)} />
+                                <Select theme="emerald" label="DepEd Program Aligned" placeholder="Select Program Alignment" options={PROGRAM_LIST} value={depedProgram} onChange={(e) => setDepedProgram(e.target.value)} />
+                                <Input theme="emerald" label="School Improvement Project / Title" placeholder="Enter SIP Title..." value={sipTitle} onChange={(e) => setSipTitle(e.target.value)} />
+                                <Input theme="emerald" label="Project Coordinator" placeholder="Name of Coordinator..." value={projectCoord} onChange={(e) => setProjectCoord(e.target.value)} />
                             </div>
                         </div>
 
@@ -487,13 +442,13 @@ export default function App() {
 
                                                 <div className="p-6 md:p-8 flex flex-col gap-6">
                                                     <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-6">
-                                                        <Select 
+                                                        <Select theme="emerald" 
                                                             label="Phase / Category" 
                                                             options={PHASES} 
                                                             value={act.phase} 
                                                             onChange={(e) => handleActivityChange(act.id, 'phase', e.target.value)} 
                                                         />
-                                                        <Input 
+                                                        <Input theme="emerald" 
                                                             label="Activity Name" 
                                                             placeholder="Describe the activity..." 
                                                             value={act.name} 
@@ -502,13 +457,13 @@ export default function App() {
                                                     </div>
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <Input 
+                                                        <Input theme="emerald" 
                                                             label="Implementation Period" 
                                                             placeholder="e.g. Jan - March" 
                                                             value={act.period} 
                                                             onChange={(e) => handleActivityChange(act.id, 'period', e.target.value)} 
                                                         />
-                                                        <Input 
+                                                        <Input theme="emerald" 
                                                             label="Persons Involved" 
                                                             placeholder="Teachers, Staff..." 
                                                             value={act.persons} 
