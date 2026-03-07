@@ -1,8 +1,8 @@
 {
   "nodeModulesDir": "manual",
   "tasks": {
-    "start": "deno run --allow-net --allow-env --allow-read server.ts",
-    "dev": "deno run --watch --allow-net --allow-env --allow-read server.ts",
+    "start": "deno run --env --allow-net --allow-env --allow-read server.ts",
+    "dev": "deno run --watch --env --allow-net --allow-env --allow-read server.ts",
     "seed": "deno run -A --env seed.ts"
   },
   "imports": {
