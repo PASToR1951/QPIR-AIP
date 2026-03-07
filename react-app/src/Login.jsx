@@ -64,8 +64,8 @@ export default function Login() {
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 rounded-full blur-[100px] pointer-events-none z-0"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/30 rounded-full blur-[100px] pointer-events-none z-0"></div>
 
-      <div className="relative z-30 container mx-auto px-6 flex flex-col items-center">
-        <div className="bg-white/90 border border-slate-200 rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 backdrop-blur-md">
+      <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center min-h-screen py-12 pb-24">
+        <div className="bg-white/90 border border-slate-200 rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 backdrop-blur-md mb-8">
           
           <div className="mb-8 flex justify-center items-center gap-6">
             <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-[84px] w-auto drop-shadow-sm" />
@@ -134,6 +134,23 @@ export default function Login() {
           </form>
         </div>
       </div>
+
+      {/* Full-width Footer Bar */}
+      <footer className="absolute bottom-0 w-full bg-white/80 backdrop-blur-md border-t border-slate-200 py-4 z-40">
+        <div className="container mx-auto px-6 flex flex-col sm:flex-row items-center justify-between text-slate-500 text-xs font-medium gap-4 sm:gap-2">
+          <div className="flex items-center gap-3">
+            <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 w-auto opacity-80" />
+            <img src="/Division_Logo.webp" alt="Division Logo" className="h-8 w-auto opacity-80" />
+            <div className="hidden sm:block h-6 w-px bg-slate-300 mx-2"></div>
+            <div>
+              <span className="font-bold text-slate-700">Department of Education</span> • Negros Island Region • Division of Guihulngan City
+            </div>
+          </div>
+          <div className="text-slate-400">
+            © {new Date().getFullYear()} All rights reserved.
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
