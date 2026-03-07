@@ -26,8 +26,11 @@ function Dashboard() {
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm print:hidden">
         <div className="container mx-auto px-4 flex justify-between items-center h-16 max-w-5xl">
           <div className="flex items-center gap-3">
-            <img src="/DepEd-emblem.svg" alt="DepEd" className="h-8 w-auto" />
-            <div className="font-bold text-lg text-slate-800 tracking-tight">QPIR-AIP Portal</div>
+            <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-10 w-auto" />
+            <img src="/Division_Logo.webp" alt="Division Logo" className="h-10 w-auto" />
+            <div className="w-px h-6 bg-slate-200 ml-1 mr-1"></div>
+            <img src="/DepEd-emblem.svg" alt="Department of Education Logo" className="h-6 w-auto opacity-90 hidden sm:block" />
+            <div className="font-extrabold text-lg text-slate-800 tracking-tight ml-1">QPIR-AIP Portal</div>
           </div>
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex flex-col items-end">
