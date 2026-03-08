@@ -423,7 +423,7 @@ function Dashboard() {
         {/* Support Section */}
         <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 mb-12 text-center md:text-left relative overflow-hidden group">
           <div
-            className="absolute inset-0 opacity-[0.03] pointer-events-none transition-opacity duration-700 group-hover:opacity-[0.08] mix-blend-overlay grayscale"
+            className="absolute inset-0 opacity-[0.15] pointer-events-none transition-opacity duration-700 group-hover:opacity-[0.25] grayscale"
             style={{
               backgroundImage: `url('/SDO_Facade.webp')`,
               backgroundSize: 'cover',
