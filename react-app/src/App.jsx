@@ -22,6 +22,7 @@ import Login from './Login';
 import AIPForm from './AIPForm';
 import PIRForm from './PIRForm';
 import NotFound from './NotFound';
+import ErrorPage from './ErrorPage';
 import { DashboardHeader } from './components/ui/DashboardHeader';
 
 // Simple Protected Route component
@@ -375,6 +376,10 @@ function App() {
             </ProtectedRoute>
           } 
         />
+
+        {/* Error Pages */}
+        <Route path="/403" element={<ErrorPage type="403" />} />
+        <Route path="/500" element={<ErrorPage type="500" />} />
 
         {/* Catch-all 404 Route */}
         <Route path="*" element={<NotFound />} />
