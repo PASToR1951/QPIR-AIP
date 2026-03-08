@@ -193,57 +193,60 @@ export default function Login() {
 
       {/* Optimized Pilled Mobile Footer */}
       <footer className="md:absolute md:bottom-0 w-full z-40 p-4 md:p-0">
-        <div className="container mx-auto max-w-6xl md:bg-[#fafafa]/90 md:backdrop-blur-md md:border-t md:border-slate-200 py-6 md:py-8 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-[2rem] md:rounded-none shadow-xl shadow-slate-200/50 md:shadow-none">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 text-slate-500 text-xs px-6">
+        <div className="container mx-auto max-w-6xl md:bg-[#fafafa]/90 md:backdrop-blur-md md:border-t md:border-slate-200 py-8 md:py-8 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-[2.5rem] md:rounded-none shadow-xl shadow-slate-200/50 md:shadow-none">
+          <div className="grid grid-cols-1 md:grid-cols-2 items-center md:items-start gap-8 md:gap-y-6 text-slate-500 text-xs px-6">
             
-            {/* Branding & Seals */}
-            <div className="flex flex-col items-center md:items-start gap-3 md:gap-4">
-              <div className="flex items-center gap-3 md:gap-4">
-                <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-8 md:h-10 w-auto opacity-90" />
+            {/* 1. Logos - Mobile: 1st, Desktop: Col 1 Top */}
+            <div className="flex items-center justify-center md:justify-start gap-3 md:gap-4 order-1">
+              <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-8 md:h-10 w-auto opacity-90" />
+              </a>
+              <div className="h-6 md:h-8 w-px bg-slate-300"></div>
+              <div className="flex items-center gap-2 md:gap-3">
+                <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 md:h-10 w-auto drop-shadow-sm" />
                 </a>
-                <div className="h-6 md:h-8 w-px bg-slate-300"></div>
-                <div className="flex items-center gap-2 md:gap-3">
-                  <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 md:h-10 w-auto drop-shadow-sm" />
-                  </a>
-                  <a href="https://depednir.net/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                    <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-8 md:h-10 w-auto drop-shadow-sm" />
-                  </a>
-                  <a href="https://depedguihulngan.ph/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                    <img src="/Division_Logo.webp" alt="Division Logo" className="h-8 md:h-10 w-auto drop-shadow-sm" />
-                  </a>
-                </div>
-              </div>
-              <div className="text-slate-400 font-bold text-center md:text-left tracking-tight">
-                © {new Date().getFullYear()} DepEd Division of Guihulngan City. <br className="md:hidden"/> All rights reserved.
+                <a href="https://depednir.net/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-8 md:h-10 w-auto drop-shadow-sm" />
+                </a>
+                <a href="https://depedguihulngan.ph/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
+                  <img src="/Division_Logo.webp" alt="Division Logo" className="h-8 md:h-10 w-auto drop-shadow-sm" />
+                </a>
               </div>
             </div>
 
-            {/* Contact & Support */}
-            <div className="flex flex-col items-center md:items-end gap-3">
-              <div className="flex items-center gap-4">
-                <span className="font-extrabold text-slate-600 uppercase tracking-widest text-[10px]">Portal Support</span>
-                <div className="flex items-center gap-3">
-                  <a href="mailto:guihulngan.city@deped.gov.ph" className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all">
-                    <Mail size={16} />
-                  </a>
-                  <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center hover:text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition-all">
-                    <Facebook size={16} />
-                  </a>
-                </div>
+            {/* 2. Social Media Pilled Buttons - Mobile: 2nd, Desktop: Col 2 Top */}
+            <div className="flex items-center justify-center md:justify-end gap-3 order-2">
+              <a href="mailto:guihulngan.city@deped.gov.ph" className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
+                <Mail size={14} />
+                <span>Email Us</span>
+              </a>
+              <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
+                <Facebook size={14} />
+                <span>Facebook</span>
+              </a>
+            </div>
+
+            {/* 3. Address & Contact Numbers - Mobile: 3rd, Desktop: Col 2 Bottom */}
+            <div className="flex flex-col items-center md:items-end gap-1 order-3 md:order-4 text-[10px] text-slate-400 font-medium">
+              <div className="flex items-center gap-1.5 text-center md:text-right">
+                <MapPin size={12} className="shrink-0 text-slate-300" />
+                <span>Osmeña Avenue, City of Guihulngan, Negros Oriental</span>
               </div>
-              <div className="flex flex-col items-center md:items-end gap-1 text-[10px] text-slate-400 font-medium">
-                <div className="flex items-center gap-1.5 text-center md:text-right">
-                  <MapPin size={12} className="shrink-0 text-slate-300" />
-                  <span>Osmeña Avenue, City of Guihulngan, Negros Oriental</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-center md:text-right">
-                  <Phone size={12} className="shrink-0 text-slate-300" />
-                  <span>(035) 410-4069 • 0956-964-7346</span>
-                </div>
+              <div className="flex items-center gap-1.5 text-center md:text-right">
+                <Phone size={12} className="shrink-0 text-slate-300" />
+                <span>(035) 410-4069 • 0956-964-7346</span>
               </div>
             </div>
+
+            {/* 4. Copyright - Mobile: 4th, Desktop: Col 1 Bottom */}
+            <div className="text-slate-400 font-bold text-center md:text-left tracking-tight order-4 md:order-3">
+              © {new Date().getFullYear()} DepEd Division of Guihulngan City. <br className="md:hidden"/> All rights reserved.
+            </div>
+
+          </div>
+        </div>
+      </footer>
 
           </div>
         </div>
