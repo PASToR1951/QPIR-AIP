@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Home, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, theme = "indigo" }) => {
+export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, theme = "indigo" }) => {
     const navigate = useNavigate();
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
@@ -52,20 +52,27 @@ export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, t
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {lastSavedTime && !isSaved && (
+                        <span className="text-[10px] text-slate-500 font-medium hidden md:block">
+                            Last saved: {lastSavedTime}
+                        </span>
+                    )}
                     <AnimatePresence mode="wait">
                         {isSaved ? (
                             <motion.div
+                                key="saved"
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-emerald-50 text-emerald-600 border border-emerald-100`}
                             >
                                 <CheckCircle size={16} strokeWidth={3} />
-                                <span className="hidden sm:inline">Draft Saved</span>
+                                <span className="hidden sm:inline">Saved {lastSavedTime}</span>
                                 <span className="sm:hidden">Saved</span>
                             </motion.div>
                         ) : onSave ? (
                             <motion.button 
+                                key="save-btn"
                                 onClick={onSave}
                                 disabled={isSaving}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white text-xs font-bold transition-all active:scale-95 shadow-lg disabled:opacity-70 disabled:cursor-wait ${btnClasses[theme]}`}

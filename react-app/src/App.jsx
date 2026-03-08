@@ -47,19 +47,22 @@ const PIRRouteGuard = ({ children }) => {
     const checkStatus = async () => {
       if (user?.school_id) {
         try {
-          const apiHost = window.location.hostname;
-          const response = await axios.get(`http://${apiHost}:3001/api/schools/${user.school_id}/aip-status`);
+          const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`);
           const dbExists = response.data.hasAIP;
 
           if (dbExists) {
             setAipStatus('review');
             setHasAIP(true);
           } else {
-            // Check local storage for draft
-            const localDraft = localStorage.getItem('aip_draft');
-            if (localDraft) {
-              setAipStatus('draft');
-            } else {
+            // Check for draft via API
+            try {
+              const draftRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`);
+              if (draftRes.data.hasDraft) {
+                setAipStatus('draft');
+              } else {
+                setAipStatus('none');
+              }
+            } catch (e) {
               setAipStatus('none');
             }
             setHasAIP(false);
@@ -91,7 +94,7 @@ const PIRRouteGuard = ({ children }) => {
     );
   }
 
-  if (!hasAIP) {
+  if (!hasAIP && localStorage.getItem('dev_pir_unlocked') !== 'true') {
     // Redirect to dashboard if AIP is not completed
     return <Navigate to="/" replace />;
   }
@@ -110,18 +113,21 @@ function Dashboard() {
     const fetchStatus = async () => {
       if (user?.school_id) {
         try {
-          const apiHost = window.location.hostname;
-          const response = await axios.get(`http://${apiHost}:3001/api/schools/${user.school_id}/aip-status`);
+          const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`);
           const dbExists = response.data.hasAIP;
 
           if (dbExists) {
             setAipStatus('review');
             setHasAIP(true);
           } else {
-            const localDraft = localStorage.getItem('aip_draft');
-            if (localDraft) {
-              setAipStatus('draft');
-            } else {
+            try {
+              const draftRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`);
+              if (draftRes.data.hasDraft) {
+                setAipStatus('draft');
+              } else {
+                setAipStatus('none');
+              }
+            } catch (e) {
               setAipStatus('none');
             }
             setHasAIP(false);
@@ -175,7 +181,7 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative select-none">
       {/* Subtle Background Asset Overlay */}
       <div
         className="absolute inset-x-0 top-0 h-[60vh] z-0 opacity-[0.03] pointer-events-none"
@@ -205,8 +211,10 @@ function Dashboard() {
             ></div>
 
             <div className="relative z-10 flex flex-col h-full">
-              <div className="flex items-center gap-3 mb-6">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Summary</span>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Summary</span>
+                </div>
               </div>
 
               <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-2">
@@ -219,16 +227,21 @@ function Dashboard() {
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-auto">
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 group/item hover:border-pink-200 transition-colors">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${aipStatus === 'review' ? 'bg-emerald-100 text-emerald-600' :
-                      aipStatus === 'draft' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'
+                <div className={`border p-4 rounded-2xl flex items-center gap-4 group/item transition-all ${aipStatus === 'review' ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200 hover:shadow-sm' :
+                    aipStatus === 'draft' ? 'bg-blue-50/50 border-blue-100 hover:border-blue-200 hover:shadow-sm' :
+                      'bg-slate-50 border-slate-100 hover:border-pink-200 hover:shadow-sm'
+                  }`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${aipStatus === 'review' ? 'bg-emerald-100 text-emerald-600 group-hover/item:bg-emerald-200' :
+                      aipStatus === 'draft' ? 'bg-blue-100 text-blue-600 group-hover/item:bg-blue-200' :
+                        'bg-slate-200 text-slate-400 group-hover/item:bg-pink-100 group-hover/item:text-pink-600'
                     }`}>
                     <FileText size={20} strokeWidth={2.5} />
                   </div>
                   <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Annual Plan (AIP)</div>
-                    <div className={`text-sm font-black ${aipStatus === 'review' ? 'text-emerald-700' :
-                        aipStatus === 'draft' ? 'text-blue-700' : 'text-pink-700'
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight group-hover/item:text-slate-500 transition-colors">Annual Implementation Plan</div>
+                    <div className={`text-sm font-black transition-colors ${aipStatus === 'review' ? 'text-emerald-700 group-hover/item:text-emerald-800' :
+                        aipStatus === 'draft' ? 'text-blue-700 group-hover/item:text-blue-800' :
+                          'text-slate-500 group-hover/item:text-pink-700'
                       }`}>
                       {aipStatus === 'review' ? 'Awaiting Review' :
                         aipStatus === 'draft' ? 'Draft in Progress' : 'No Submission Found'}
@@ -304,32 +317,58 @@ function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* AIP Card */}
-          <Link to="/aip" className="group block bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:border-pink-200 transition-all duration-500 active:scale-[0.98] overflow-hidden">
+          <Link to="/aip" className={`group block bg-white rounded-[2rem] border-2 shadow-sm hover:shadow-2xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 hover:border-pink-200`}>
             <div className="p-10">
-              <div className="w-16 h-16 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 group-hover:bg-pink-600 group-hover:text-white shadow-lg shadow-pink-100 group-hover:shadow-pink-200 border border-pink-100">
-                <FileText size={32} strokeWidth={2.5} />
+              <div className="flex justify-between items-start mb-8">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-lg border bg-pink-50 text-pink-600 border-pink-100 shadow-pink-100 group-hover:bg-pink-600 group-hover:text-white group-hover:shadow-pink-200`}>
+                  <FileText size={32} strokeWidth={2.5} />
+                </div>
+                {aipStatus === 'review' && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 shadow-sm">
+                    Submitted
+                  </div>
+                )}
+                {aipStatus === 'draft' && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-100 text-pink-700 text-[10px] font-black uppercase tracking-widest border border-pink-200 shadow-sm">
+                    In Progress
+                  </div>
+                )}
               </div>
-              <h3 className="text-3xl font-black tracking-tight text-slate-900 mb-4 group-hover:text-pink-600 transition-colors">AIP Form</h3>
+              <h3 className={`text-3xl font-black tracking-tight text-slate-900 mb-4 transition-colors group-hover:text-pink-600`}>AIP Form</h3>
               <p className="font-medium text-slate-500 leading-relaxed text-base">
                 Annual Implementation Plan <br />
                 <span className="text-slate-400 text-sm">Strategic objectives & activity planning</span>
               </p>
             </div>
-            <div className="bg-slate-50 border-t border-slate-100 px-10 py-5 flex items-center justify-between group-hover:bg-pink-600 transition-colors">
-              <span className="text-sm font-bold text-pink-600 group-hover:text-white transition-colors">Launch Module</span>
-              <ArrowRight size={20} strokeWidth={3} className="text-pink-500 transform group-hover:translate-x-2 transition-transform group-hover:text-white" />
+            <div className={`bg-slate-50 border-t border-slate-100 px-10 py-5 flex items-center justify-between transition-colors group-hover:bg-pink-600`}>
+              <span className={`text-sm font-bold transition-colors group-hover:text-white text-pink-600`}>
+                {aipStatus === 'review' ? 'View Submission' : aipStatus === 'draft' ? 'Continue Plan' : 'Launch Module'}
+              </span>
+              <ArrowRight size={20} strokeWidth={3} className={`transform group-hover:translate-x-2 transition-transform group-hover:text-white text-pink-500`} />
             </div>
           </Link>
 
           {/* PIR Card */}
-          {hasAIP ? (
-            <Link to="/pir" className="group block bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:border-blue-200 transition-all duration-500 active:scale-[0.98] overflow-hidden">
-              <div className="p-10">
+          {hasAIP || localStorage.getItem('dev_pir_unlocked') === 'true' ? (
+            <div className="relative group block bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:border-blue-200 transition-all duration-500 overflow-hidden">
+              {import.meta.env.DEV && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    localStorage.removeItem('dev_pir_unlocked');
+                    window.location.reload();
+                  }}
+                  className="absolute top-4 right-4 z-20 text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                >
+                  Dev: Lock PIR
+                </button>
+              )}
+              <Link to="/pir" className="block p-10 h-full w-full active:scale-[0.98] transition-transform">
                 <div className="flex justify-between items-start mb-8">
                   <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500 group-hover:bg-blue-600 group-hover:text-white shadow-lg shadow-blue-100 group-hover:shadow-blue-200 border border-blue-100">
                     <BarChart3 size={32} strokeWidth={2.5} />
                   </div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest border border-blue-200 shadow-sm">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest border border-blue-200 shadow-sm mt-8 sm:mt-0">
                     <Unlock size={10} strokeWidth={3} />
                     Unlocked
                   </div>
@@ -339,20 +378,31 @@ function Dashboard() {
                   Program Implementation Review <br />
                   <span className="text-slate-400 text-sm">Physical & financial accomplishments</span>
                 </p>
-              </div>
-              <div className="bg-slate-50 border-t border-slate-100 px-10 py-5 flex items-center justify-between group-hover:bg-blue-600 transition-colors">
+              </Link>
+              <Link to="/pir" className="block bg-slate-50 border-t border-slate-100 px-10 py-5 flex items-center justify-between group-hover:bg-blue-600 transition-colors">
                 <span className="text-sm font-bold text-blue-600 group-hover:text-white transition-colors">Launch Module</span>
                 <ArrowRight size={20} strokeWidth={3} className="text-blue-500 transform group-hover:translate-x-2 transition-transform group-hover:text-white" />
-              </div>
-            </Link>
+              </Link>
+            </div>
           ) : (
-            <div className="block bg-white rounded-[2rem] border-2 border-dashed border-slate-200 relative overflow-hidden grayscale opacity-70 cursor-not-allowed">
-              <div className="p-10">
+            <div className="block bg-white rounded-[2rem] border-2 border-dashed border-slate-200 relative overflow-hidden grayscale opacity-70">
+              {import.meta.env.DEV && (
+                <button
+                  onClick={() => {
+                    localStorage.setItem('dev_pir_unlocked', 'true');
+                    window.location.reload();
+                  }}
+                  className="absolute top-4 right-4 z-20 text-[10px] font-bold px-2 py-1 rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors"
+                >
+                  Dev: Unlock PIR
+                </button>
+              )}
+              <div className="p-10 cursor-not-allowed">
                 <div className="flex justify-between items-start mb-8">
                   <div className="w-16 h-16 bg-slate-100 text-slate-300 rounded-2xl flex items-center justify-center border border-slate-200">
                     <BarChart3 size={32} strokeWidth={2.5} />
                   </div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-200">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-200 mt-8 sm:mt-0">
                     <Lock size={10} strokeWidth={3} />
                     Locked
                   </div>
@@ -371,12 +421,20 @@ function Dashboard() {
         </div>
 
         {/* Support Section */}
-        <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 mb-12 text-center md:text-left">
-          <div className="max-w-md">
+        <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 mb-12 text-center md:text-left relative overflow-hidden group">
+          <div
+            className="absolute inset-0 opacity-[0.03] pointer-events-none transition-opacity duration-700 group-hover:opacity-[0.08] mix-blend-overlay grayscale"
+            style={{
+              backgroundImage: `url('/SDO_Facade.webp')`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          ></div>
+          <div className="max-w-md relative z-10">
             <h3 className="text-2xl font-black mb-2 tracking-tight">Need assistance?</h3>
             <p className="text-slate-400 text-sm font-medium">Our technical support team is available during office hours to help you with any issues regarding the portal.</p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto relative z-10">
             <a href="#" className="px-6 py-3 bg-white text-slate-900 font-black rounded-2xl text-sm hover:bg-slate-200 transition-colors active:scale-95 shadow-lg shadow-white/5 text-center">
               User Manual
             </a>
