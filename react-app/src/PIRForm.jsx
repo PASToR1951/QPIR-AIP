@@ -14,6 +14,9 @@ import { DocumentPreviewModal } from './components/ui/DocumentPreviewModal';
 import { PIRDocument } from './components/docs/PIRDocument';
 
 export default function App() {
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
     const [isMobile, setIsMobile] = useState(false);
@@ -34,10 +37,9 @@ export default function App() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const apiHost = window.location.hostname;
                 const [programsRes, schoolsRes] = await Promise.all([
-                    axios.get(`http://${apiHost}:3001/api/programs`),
-                    axios.get(`http://${apiHost}:3001/api/schools`)
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs`),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/schools`)
                 ]);
                 setProgramList(programsRes.data.map(p => p.title).sort());
                 setSchoolList(schoolsRes.data.map(s => s.name).sort());
@@ -60,6 +62,7 @@ export default function App() {
     // Save Status State
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
+    const [lastSavedTime, setLastSavedTime] = useState(null);
 
     // Modal State
     const [modal, setModal] = useState({
@@ -125,56 +128,87 @@ export default function App() {
     // Draft State Tracking for ViewModeSelector
     const [hasDraft, setHasDraft] = useState(false);
     const [draftInfo, setDraftInfo] = useState(null);
+    const [loadedDraftData, setLoadedDraftData] = useState(null);
+
+    // API - Check for Draft on mount
+    useEffect(() => {
+        const fetchDraft = async () => {
+            if (user?.id) {
+                try {
+                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/PIR/${user.id}`);
+                    if (res.data.hasDraft) {
+                        setDraftInfo({ lastSaved: res.data.lastSaved });
+                        setHasDraft(true);
+                        setLoadedDraftData(res.data.draftData);
+                    }
+                } catch (e) {
+                    console.error("Failed to read draft info:", e);
+                }
+            }
+        };
+        fetchDraft();
+    }, [user?.id]);
 
     // Handlers
     const handleSelectMode = (mode) => {
-        if (hasDraft) {
-            const savedDraft = localStorage.getItem('pir_draft');
-            if (savedDraft) {
-                try {
-                    const draft = JSON.parse(savedDraft);
-                    setProgram(draft.program || "");
-                    setSchool(draft.school || "");
-                    setOwner(draft.owner || "");
-                    setFundSource(draft.fundSource || "");
-                    setRawBudget(draft.rawBudget || "");
-                    if (draft.activities) setActivities(draft.activities);
-                    if (draft.factors) setFactors(draft.factors);
-                } catch (e) {
-                    console.error("Failed to load draft:", e);
-                }
+        if (hasDraft && loadedDraftData) {
+            try {
+                const draft = loadedDraftData;
+                setProgram(draft.program || "");
+                setSchool(draft.school || "");
+                setOwner(draft.owner || "");
+                setFundSource(draft.fundSource || "");
+                setRawBudget(draft.rawBudget || "");
+                if (draft.activities) setActivities(draft.activities);
+                if (draft.factors) setFactors(draft.factors);
+            } catch (e) {
+                console.error("Failed to load draft:", e);
             }
         }
         setAppMode(mode);
     };
 
+    const hasInputtedData = () => {
+        return program || school || owner || fundSource || rawBudget || 
+               activities.some(a => a.name || a.physTarget || a.finTarget || a.physAcc || a.finAcc || a.actions) ||
+               Object.values(factors).some(f => f.facilitating || f.hindering);
+    };
+
     const handleBack = () => {
         if (appMode === 'splash') {
-            setModal({
-                isOpen: true,
-                type: 'warning',
-                title: 'Exit to Dashboard?',
-                message: 'Any unsaved changes will be lost. Are you sure you want to leave?',
-                confirmText: 'Yes, Exit',
-                onConfirm: () => window.location.href = '/'
-            });
+            window.location.href = '/';
         } else {
+            if (hasInputtedData()) {
+                handleSaveForLater();
+            }
             setAppMode('splash');
         }
     };
 
     const handleHome = () => {
-        setModal({
-            isOpen: true,
-            type: 'warning',
-            title: 'Return to Home?',
-            message: 'Any unsaved changes will be lost. Are you sure you want to return to the dashboard?',
-            confirmText: 'Yes, Home',
-            onConfirm: () => window.location.href = '/'
-        });
+        if (hasInputtedData()) {
+            handleSaveForLater();
+        }
+        window.location.href = '/';
     };
 
-    const handleSaveForLater = () => {
+    const fillDevData = () => {
+        setProgram(programList[0] || "Alternative Learning System (ALS)");
+        setSchool(schoolList[0] || "Guihulngan National High School");
+        setOwner("Jane Doe");
+        setFundSource("MOOE");
+        setRawBudget("250000");
+        setActivities([
+            { id: crypto.randomUUID(), name: "Conduct Q1 Training", physTarget: "50", finTarget: "125000", physAcc: "45", finAcc: "120000", actions: "Reschedule remaining participants to Q2" },
+            { id: crypto.randomUUID(), name: "Procure Learning Materials", physTarget: "500", finTarget: "125000", physAcc: "500", finAcc: "125000", actions: "Completed successfully" }
+        ]);
+        const devFactors = { ...initialFactors };
+        devFactors["Technical"] = { facilitating: "Strong local internet connectivity", hindering: "Occasional power interruptions" };
+        devFactors["Institutional"] = { facilitating: "Supportive LGU", hindering: "" };
+        setFactors(devFactors);
+    };
+
+    const handleSaveForLater = async () => {
         setIsSaving(true);
         const draft = {
             program,
@@ -186,19 +220,24 @@ export default function App() {
             factors,
             lastSaved: new Date().toISOString()
         };
-        localStorage.setItem('pir_draft', JSON.stringify(draft));
+
+        try {
+            if (user?.id) {
+                await axios.post(`${import.meta.env.VITE_API_URL}/api/drafts`, {
+                    user_id: user.id,
+                    form_type: 'PIR',
+                    draft_data: draft
+                });
+            }
+        } catch (e) {
+            console.error("Failed to save draft:", e);
+        }
 
         setTimeout(() => {
             setIsSaving(false);
             setIsSaved(true);
-            setModal({
-                isOpen: true,
-                type: 'success',
-                title: 'Draft Saved',
-                message: 'Your progress has been saved locally. You can resume later.',
-                confirmText: 'Got it',
-                onConfirm: () => { }
-            });
+            const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setLastSavedTime(timeString);
             setTimeout(() => setIsSaved(false), 3000);
         }, 800);
     };
@@ -285,8 +324,7 @@ export default function App() {
 
     const handleConfirmSubmit = async () => {
         try {
-            const apiHost = window.location.hostname;
-            await axios.post(`http://${apiHost}:3001/api/pirs`, {
+            await axios.post(`${import.meta.env.VITE_API_URL}/api/pirs`, {
                 school_name: school,
                 program_title: program,
                 quarter: quarterString,
@@ -298,7 +336,13 @@ export default function App() {
             });
 
             setIsSubmitted(true);
-            localStorage.removeItem('pir_draft');
+            if (user?.id) {
+                try {
+                    await axios.delete(`${import.meta.env.VITE_API_URL}/api/drafts/PIR/${user.id}`);
+                } catch (e) {
+                    console.error("Failed to delete draft:", e);
+                }
+            }
             setModal({
                 isOpen: true,
                 type: 'success',
@@ -353,6 +397,7 @@ export default function App() {
                 onHome={handleHome}
                 isSaving={isSaving}
                 isSaved={isSaved}
+                lastSavedTime={lastSavedTime}
                 theme="blue"
             />
 
@@ -412,10 +457,19 @@ export default function App() {
 
                 <div className="bg-white border border-slate-200 rounded-[2.5rem] p-6 md:p-12 shadow-xl relative">
 
-                    {/* View Mode Toggle (Desktop Only) */}
+                    {/* View Mode & Dev Toggles (Desktop Only) */}
                     {!isMobile && (
-                        <div className="absolute top-6 right-8 z-20">
+                        <div className="absolute top-6 right-8 z-20 flex items-center gap-3">
                             <button
+                                type="button"
+                                onClick={fillDevData}
+                                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full shadow-sm transition-colors flex items-center gap-1.5"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                Fill Dev Data
+                            </button>
+                            <button
+                                type="button"
                                 onClick={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
                                 className="text-xs font-semibold text-slate-500 hover:text-blue-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm transition-colors flex items-center gap-1.5"
                             >

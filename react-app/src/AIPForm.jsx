@@ -15,6 +15,9 @@ import { DocumentPreviewModal } from './components/ui/DocumentPreviewModal';
 import { AIPDocument } from './components/docs/AIPDocument';
 
 export default function App() {
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
     const [isMobile, setIsMobile] = useState(false);
@@ -32,6 +35,7 @@ export default function App() {
     // Save Status State
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
+    const [lastSavedTime, setLastSavedTime] = useState(null);
 
     // Modal State
     const [modal, setModal] = useState({
@@ -70,8 +74,7 @@ export default function App() {
     useEffect(() => {
         const fetchPrograms = async () => {
             try {
-                const apiHost = window.location.hostname;
-                const response = await axios.get(`http://${apiHost}:3001/api/programs`);
+                const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/programs`);
                 setProgramList(response.data.map(p => p.title).sort());
             } catch (error) {
                 console.error("Failed to fetch programs:", error);
@@ -80,70 +83,71 @@ export default function App() {
         fetchPrograms();
     }, []);
 
-    // Local Storage - Check for Draft on mount
+    const [loadedDraftData, setLoadedDraftData] = useState(null);
+
+    // API - Check for Draft on mount
     useEffect(() => {
-        const savedDraft = localStorage.getItem('aip_draft');
-        if (savedDraft) {
-            try {
-                const draft = JSON.parse(savedDraft);
-                setDraftInfo({ lastSaved: draft.lastSaved });
-                setHasDraft(true);
-            } catch (e) {
-                console.error("Failed to read draft info:", e);
+        const fetchDraft = async () => {
+            if (user?.id) {
+                try {
+                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`);
+                    if (res.data.hasDraft) {
+                        setDraftInfo({ lastSaved: res.data.lastSaved });
+                        setHasDraft(true);
+                        setLoadedDraftData(res.data.draftData);
+                    }
+                } catch (e) {
+                    console.error("Failed to read draft info:", e);
+                }
             }
-        }
-    }, []);
+        };
+        fetchDraft();
+    }, [user?.id]);
 
     // Load Draft Data when a mode is chosen (if draft exists)
     const handleSelectMode = (mode) => {
-        if (hasDraft) {
-            const savedDraft = localStorage.getItem('aip_draft');
-            if (savedDraft) {
-                try {
-                    const draft = JSON.parse(savedDraft);
-                    setPillar(draft.pillar || "");
-                    setDepedProgram(draft.depedProgram || "");
-                    setSipTitle(draft.sipTitle || "");
-                    setProjectCoord(draft.projectCoord || "");
-                    setObjectives(draft.objectives || "");
-                    setIndicators(draft.indicators || "");
-                    setAnnualTarget(draft.annualTarget || "");
-                    if (draft.activities) setActivities(draft.activities);
-                } catch (e) {
-                    console.error("Failed to load draft:", e);
-                }
+        if (hasDraft && loadedDraftData) {
+            try {
+                const draft = loadedDraftData;
+                setPillar(draft.pillar || "");
+                setDepedProgram(draft.depedProgram || "");
+                setSipTitle(draft.sipTitle || "");
+                setProjectCoord(draft.projectCoord || "");
+                setObjectives(draft.objectives || "");
+                setIndicators(draft.indicators || "");
+                setAnnualTarget(draft.annualTarget || "");
+                if (draft.activities) setActivities(draft.activities);
+            } catch (e) {
+                console.error("Failed to load draft:", e);
             }
         }
         setAppMode(mode);
     };
 
+    const hasInputtedData = () => {
+        return pillar || depedProgram || sipTitle || projectCoord || objectives || indicators || annualTarget || 
+               activities.some(a => a.name || a.period || a.persons || a.outputs || a.budgetAmount || a.budgetSource);
+    };
+
     const handleBack = () => {
         if (appMode === 'splash') {
-            setModal({
-                isOpen: true,
-                type: 'warning',
-                title: 'Exit to Dashboard?',
-                message: 'Any unsaved changes will be lost. Are you sure you want to leave?',
-                confirmText: 'Yes, Exit',
-                onConfirm: () => window.location.href = '/'
-            });
+            window.location.href = '/';
         } else {
+            if (hasInputtedData()) {
+                handleSaveForLater();
+            }
             setAppMode('splash');
         }
     };
 
     const handleHome = () => {
-        setModal({
-            isOpen: true,
-            type: 'warning',
-            title: 'Return to Home?',
-            message: 'Any unsaved changes will be lost. Are you sure you want to return to the dashboard?',
-            confirmText: 'Yes, Home',
-            onConfirm: () => window.location.href = '/'
-        });
+        if (hasInputtedData()) {
+            handleSaveForLater();
+        }
+        window.location.href = '/';
     };
 
-    const handleSaveForLater = () => {
+    const handleSaveForLater = async () => {
         setIsSaving(true);
         const draft = {
             pillar,
@@ -156,19 +160,24 @@ export default function App() {
             activities,
             lastSaved: new Date().toISOString()
         };
-        localStorage.setItem('aip_draft', JSON.stringify(draft));
+
+        try {
+            if (user?.id) {
+                await axios.post(`${import.meta.env.VITE_API_URL}/api/drafts`, {
+                    user_id: user.id,
+                    form_type: 'AIP',
+                    draft_data: draft
+                });
+            }
+        } catch (e) {
+            console.error("Failed to save draft:", e);
+        }
 
         setTimeout(() => {
             setIsSaving(false);
             setIsSaved(true);
-            setModal({
-                isOpen: true,
-                type: 'success',
-                title: 'Draft Saved',
-                message: 'Your progress has been saved locally. You can resume later.',
-                confirmText: 'Got it',
-                onConfirm: () => { }
-            });
+            const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setLastSavedTime(timeString);
             setTimeout(() => setIsSaved(false), 3000);
         }, 800);
     };
@@ -265,8 +274,7 @@ export default function App() {
         }
 
         try {
-            const apiHost = window.location.hostname;
-            await axios.post(`http://${apiHost}:3001/api/aips`, {
+            await axios.post(`${import.meta.env.VITE_API_URL}/api/aips`, {
                 school_id: user.school_id,
                 program_title: depedProgram,
                 year: currentYear,
@@ -280,7 +288,13 @@ export default function App() {
             });
 
             setIsSubmitted(true);
-            localStorage.removeItem('aip_draft');
+            if (user?.id) {
+                try {
+                    await axios.delete(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`);
+                } catch (e) {
+                    console.error("Failed to delete draft:", e);
+                }
+            }
             setModal({
                 isOpen: true,
                 type: 'success',
@@ -335,6 +349,7 @@ export default function App() {
                 onHome={handleHome}
                 isSaving={isSaving}
                 isSaved={isSaved}
+                lastSavedTime={lastSavedTime}
                 theme="pink"
             />
 
