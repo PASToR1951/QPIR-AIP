@@ -11,9 +11,15 @@ export const Select = React.forwardRef(({ label, options, className, theme = "de
             select: "bg-white focus:border-transparent focus:ring-emerald-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
             iconHover: "group-focus-within:text-emerald-500"
         },
+        pink: {
+            labelFocus: "group-focus-within:text-pink-600",
+            gradient: "from-pink-200 to-rose-200",
+            select: "bg-white focus:border-transparent focus:ring-pink-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
+            iconHover: "group-focus-within:text-pink-500"
+        },
         blue: {
             labelFocus: "group-focus-within:text-blue-600",
-            gradient: null, 
+            gradient: null,
             select: "bg-white focus:border-blue-400 focus:ring-blue-500/20 shadow-sm",
             iconHover: "group-focus-within:text-blue-500"
         },

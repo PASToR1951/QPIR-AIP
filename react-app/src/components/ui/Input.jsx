@@ -20,6 +20,11 @@ export const Input = React.forwardRef(({ label, className, endIcon, theme = "def
             gradient: "from-emerald-200 to-teal-200",
             input: "bg-white focus:border-transparent focus:ring-emerald-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)] print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:placeholder-transparent print:text-black",
         },
+        pink: {
+            labelFocus: "group-focus-within:text-pink-600",
+            gradient: "from-pink-200 to-rose-200",
+            input: "bg-white focus:border-transparent focus:ring-pink-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)] print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:placeholder-transparent print:text-black",
+        },
         blue: {
             labelFocus: "group-focus-within:text-blue-600",
             gradient: null, // No gradient blur for PIR

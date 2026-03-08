@@ -10,12 +10,14 @@ export const FormHeader = ({ title, onSave, theme = "indigo" }) => {
     const themeClasses = {
         indigo: "text-indigo-600 bg-indigo-50 border-indigo-100",
         emerald: "text-emerald-600 bg-emerald-50 border-emerald-100",
+        pink: "text-pink-600 bg-pink-50 border-pink-100",
         blue: "text-blue-600 bg-blue-50 border-blue-100",
     };
 
     const btnClasses = {
         indigo: "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200",
         emerald: "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200",
+        pink: "bg-pink-600 hover:bg-pink-700 shadow-pink-200",
         blue: "bg-blue-600 hover:bg-blue-700 shadow-blue-200",
     };
 

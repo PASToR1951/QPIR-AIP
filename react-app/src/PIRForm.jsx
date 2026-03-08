@@ -39,6 +39,7 @@ import { Select } from './components/ui/Select';
 import { TextareaAuto } from './components/ui/TextareaAuto';
 import { FormHeader } from './components/ui/FormHeader';
 import { FormBoxHeader } from './components/ui/FormBoxHeader';
+import { ViewModeSelector } from './components/ui/ViewModeSelector';
 
 export default function App() {
     // App Mode State: 'splash', 'wizard', or 'full'
@@ -111,6 +112,10 @@ export default function App() {
     }, {});
     const [factors, setFactors] = useState(initialFactors);
 
+    // Draft State Tracking for ViewModeSelector
+    const [hasDraft, setHasDraft] = useState(false);
+    const [draftInfo, setDraftInfo] = useState(null);
+
     // Handlers
     const handleSaveForLater = () => {
         const draft = {
@@ -127,26 +132,41 @@ export default function App() {
         alert("Draft saved successfully to local storage!");
     };
 
-    // Local Storage - Load Draft
+    // Local Storage - Check for Draft on mount
     useEffect(() => {
         const savedDraft = localStorage.getItem('pir_draft');
         if (savedDraft) {
             try {
                 const draft = JSON.parse(savedDraft);
-                setProgram(draft.program || "");
-                setSchool(draft.school || "");
-                setOwner(draft.owner || "");
-                setFundSource(draft.fundSource || "");
-                setRawBudget(draft.rawBudget || "");
-                if (draft.activities) setActivities(draft.activities);
-                if (draft.factors) setFactors(draft.factors);
-                // If there's a draft, skip splash
-                setAppMode('wizard');
+                setDraftInfo({ lastSaved: draft.lastSaved });
+                setHasDraft(true);
             } catch (e) {
-                console.error("Failed to load draft:", e);
+                console.error("Failed to read draft info:", e);
             }
         }
     }, []);
+
+    // Load Draft Data when a mode is chosen (if draft exists)
+    const handleSelectMode = (mode) => {
+        if (hasDraft) {
+            const savedDraft = localStorage.getItem('pir_draft');
+            if (savedDraft) {
+                try {
+                    const draft = JSON.parse(savedDraft);
+                    setProgram(draft.program || "");
+                    setSchool(draft.school || "");
+                    setOwner(draft.owner || "");
+                    setFundSource(draft.fundSource || "");
+                    setRawBudget(draft.rawBudget || "");
+                    if (draft.activities) setActivities(draft.activities);
+                    if (draft.factors) setFactors(draft.factors);
+                } catch (e) {
+                    console.error("Failed to load draft:", e);
+                }
+            }
+        }
+        setAppMode(mode);
+    };
 
     const handleAddActivity = () => {
         const newId = crypto.randomUUID();
@@ -215,74 +235,21 @@ export default function App() {
     };
 
     // ==========================================
-    // RENDER SPLASH SCREEN
+    // RENDER SPLASH SCREEN (View Mode Selector)
     // ==========================================
     if (appMode === 'splash') {
         return (
-            <div className="bg-slate-50 min-h-screen flex flex-col font-sans relative overflow-hidden">
+            <>
                 <FormHeader title="PIR: Quarterly Performance Review" onSave={handleSaveForLater} theme="blue" />
-                
-                <div className="flex-1 flex items-center justify-center relative">
-                    {/* Aceternity Grid Background */}
-                <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0"></div>
-                {/* Glowing Orbs */}
-                <div className="relative z-10 container mx-auto px-6 flex flex-col items-center">
-                    <div className="bg-white/90 border border-slate-200 rounded-[2rem] p-8 md:p-14 shadow-xl text-center max-w-2xl w-full mx-auto ring-1 ring-slate-900/5">
-                        <div className="inline-flex items-center justify-center p-3 bg-blue-50 rounded-2xl mb-6 shadow-inner">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                        </div>
-                        
-                        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tighter text-slate-900 pb-2 mb-3">
-                            Quarterly Performance Review
-                        </h1>
-                        <p className="text-slate-500 font-medium mb-10 text-sm md:text-base px-4">
-                            Division Monitoring Evaluation and Adjustment
-                            {!isMobile && <span className="block mt-2 font-normal text-slate-400">Choose how you would like to complete your evaluation.</span>}
-                        </p>
-
-                        {isMobile ? (
-                            <button 
-                                onClick={() => setAppMode('wizard')} 
-                                className="w-full inline-flex h-14 items-center justify-center rounded-2xl bg-blue-600 px-8 font-bold text-white shadow-md hover:bg-blue-700 transition-colors active:scale-95 gap-3"
-                            >
-                                Start Review
-                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                            </button>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <button 
-                                    onClick={() => setAppMode('wizard')} 
-                                    className="group relative flex flex-col items-center justify-center overflow-hidden rounded-2xl bg-white border-2 border-blue-200 p-6 shadow-sm hover:shadow-md hover:border-blue-400 hover:bg-blue-50/50 transition-all active:scale-95 text-center gap-3"
-                                >
-                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center transition-transform">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-800">Step-by-Step Wizard</h3>
-                                        <p className="text-xs text-slate-500 font-medium mt-1">Guided, focused sections</p>
-                                    </div>
-                                </button>
-                                
-                                <button 
-                                    onClick={() => setAppMode('full')} 
-                                    className="group relative flex flex-col items-center justify-center overflow-hidden rounded-2xl bg-white border border-slate-200 p-6 shadow-sm hover:shadow-md hover:border-slate-300 hover:bg-slate-50 transition-all active:scale-95 text-center gap-3"
-                                >
-                                    <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center transition-transform">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></svg>
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-800">Full Form View</h3>
-                                        <p className="text-xs text-slate-500 font-medium mt-1">Classic paper layout</p>
-                                    </div>
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-}
+                <ViewModeSelector
+                    onSelectMode={handleSelectMode}
+                    hasDraft={hasDraft}
+                    draftInfo={draftInfo}
+                    theme="blue"
+                />
+            </>
+        );
+    }
 
     // ==========================================
     // RENDER MAIN APPLICATION
