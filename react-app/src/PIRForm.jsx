@@ -63,6 +63,10 @@ export default function App() {
     const [isAddingActivity, setIsAddingActivity] = useState(false);
     const [activityToDelete, setActivityToDelete] = useState(null);
 
+    // Save Status State
+    const [isSaving, setIsSaving] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
+
     // Form State
     const [program, setProgram] = useState("");
     const [school, setSchool] = useState("");
@@ -117,36 +121,6 @@ export default function App() {
     const [draftInfo, setDraftInfo] = useState(null);
 
     // Handlers
-    const handleSaveForLater = () => {
-        const draft = {
-            program,
-            school,
-            owner,
-            fundSource,
-            rawBudget,
-            activities,
-            factors,
-            lastSaved: new Date().toISOString()
-        };
-        localStorage.setItem('pir_draft', JSON.stringify(draft));
-        alert("Draft saved successfully to local storage!");
-    };
-
-    // Local Storage - Check for Draft on mount
-    useEffect(() => {
-        const savedDraft = localStorage.getItem('pir_draft');
-        if (savedDraft) {
-            try {
-                const draft = JSON.parse(savedDraft);
-                setDraftInfo({ lastSaved: draft.lastSaved });
-                setHasDraft(true);
-            } catch (e) {
-                console.error("Failed to read draft info:", e);
-            }
-        }
-    }, []);
-
-    // Load Draft Data when a mode is chosen (if draft exists)
     const handleSelectMode = (mode) => {
         if (hasDraft) {
             const savedDraft = localStorage.getItem('pir_draft');
@@ -167,6 +141,51 @@ export default function App() {
         }
         setAppMode(mode);
     };
+
+    const handleBack = () => {
+        if (appMode === 'splash') {
+            if (window.confirm("Return to Dashboard? Any unsaved changes will be lost.")) {
+                window.location.href = '/';
+            }
+        } else {
+            setAppMode('splash');
+        }
+    };
+
+    const handleSaveForLater = () => {
+        setIsSaving(true);
+        const draft = {
+            program,
+            school,
+            owner,
+            fundSource,
+            rawBudget,
+            activities,
+            factors,
+            lastSaved: new Date().toISOString()
+        };
+        localStorage.setItem('pir_draft', JSON.stringify(draft));
+
+        setTimeout(() => {
+            setIsSaving(false);
+            setIsSaved(true);
+            setTimeout(() => setIsSaved(false), 3000);
+        }, 800);
+    };
+
+    // Local Storage - Check for Draft on mount
+    useEffect(() => {
+        const savedDraft = localStorage.getItem('pir_draft');
+        if (savedDraft) {
+            try {
+                const draft = JSON.parse(savedDraft);
+                setDraftInfo({ lastSaved: draft.lastSaved });
+                setHasDraft(true);
+            } catch (e) {
+                console.error("Failed to read draft info:", e);
+            }
+        }
+    }, []);
 
     const handleAddActivity = () => {
         const newId = crypto.randomUUID();
@@ -240,7 +259,14 @@ export default function App() {
     if (appMode === 'splash') {
         return (
             <>
-                <FormHeader title="Quarterly Performance Review" onSave={handleSaveForLater} theme="blue" />
+                <FormHeader 
+                    title="Quarterly Performance Review" 
+                    onSave={handleSaveForLater} 
+                    onBack={handleBack}
+                    isSaving={isSaving}
+                    isSaved={isSaved}
+                    theme="blue" 
+                />
                 <ViewModeSelector
                     onSelectMode={handleSelectMode}
                     hasDraft={hasDraft}
@@ -256,7 +282,14 @@ export default function App() {
     // ==========================================
     return (
         <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative print:py-0 print:bg-white print:text-black">
-            <FormHeader title="Quarterly Performance Review" onSave={handleSaveForLater} theme="blue" />
+            <FormHeader 
+                title="Quarterly Performance Review" 
+                onSave={handleSaveForLater} 
+                onBack={handleBack}
+                isSaving={isSaving}
+                isSaved={isSaved}
+                theme="blue" 
+            />
             
             {/* Aceternity Grid Background with Radial Mask */}
             <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden"></div>

@@ -35,6 +35,10 @@ export default function App() {
     const [isAddingActivity, setIsAddingActivity] = useState(false);
     const [activityToDelete, setActivityToDelete] = useState(null);
 
+    // Save Status State
+    const [isSaving, setIsSaving] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
+
     // Form State: Profile & Goals
     const [pillar, setPillar] = useState("");
     const [depedProgram, setDepedProgram] = useState("");
@@ -93,7 +97,18 @@ export default function App() {
         setAppMode(mode);
     };
 
+    const handleBack = () => {
+        if (appMode === 'splash') {
+            if (window.confirm("Return to Dashboard? Any unsaved changes will be lost.")) {
+                window.location.href = '/';
+            }
+        } else {
+            setAppMode('splash');
+        }
+    };
+
     const handleSaveForLater = () => {
+        setIsSaving(true);
         const draft = {
             pillar,
             depedProgram,
@@ -106,7 +121,12 @@ export default function App() {
             lastSaved: new Date().toISOString()
         };
         localStorage.setItem('aip_draft', JSON.stringify(draft));
-        alert("Draft saved successfully to local storage!");
+        
+        setTimeout(() => {
+            setIsSaving(false);
+            setIsSaved(true);
+            setTimeout(() => setIsSaved(false), 3000);
+        }, 800);
     };
 
     const [expandedActivityId, setExpandedActivityId] = useState(activities[0].id);
@@ -193,7 +213,14 @@ export default function App() {
     if (appMode === 'splash') {
         return (
             <>
-                <FormHeader title="Annual Implementation Plan" onSave={handleSaveForLater} theme="pink" />
+                <FormHeader 
+                    title="Annual Implementation Plan" 
+                    onSave={handleSaveForLater} 
+                    onBack={handleBack}
+                    isSaving={isSaving}
+                    isSaved={isSaved}
+                    theme="pink" 
+                />
                 <ViewModeSelector
                     onSelectMode={handleSelectMode}
                     hasDraft={hasDraft}
@@ -209,7 +236,14 @@ export default function App() {
     // ==========================================
     return (
         <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative print:py-0 print:bg-white print:text-black">
-            <FormHeader title="Annual Implementation Plan" onSave={handleSaveForLater} theme="pink" />
+            <FormHeader 
+                title="Annual Implementation Plan" 
+                onSave={handleSaveForLater} 
+                onBack={handleBack}
+                isSaving={isSaving}
+                isSaved={isSaved}
+                theme="pink" 
+            />
 
             {/* Aceternity Grid Background */}
             <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden"></div>
