@@ -95,7 +95,7 @@ export default function Login() {
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen flex items-center justify-center relative overflow-hidden font-sans">
+    <div className="bg-slate-50 min-h-screen flex flex-col items-center justify-center relative overflow-y-auto font-sans">
       {/* Background Image */}
       <div
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-20"
@@ -109,7 +109,7 @@ export default function Login() {
       <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 rounded-full blur-[100px] pointer-events-none z-0"></div>
       <div ref={orb2Ref} className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/30 rounded-full blur-[100px] pointer-events-none z-0"></div>
 
-      <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center min-h-[100dvh] py-12 md:pb-32">
+      <div className="relative z-30 container mx-auto px-6 flex-1 flex flex-col items-center justify-center py-12 md:pb-32 w-full">
         <div ref={cardRef} className="bg-[#fafafa]/90 border border-slate-200 rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 backdrop-blur-md mb-8 opacity-0">
 
           <div className="mb-8 flex justify-center items-center gap-6">
