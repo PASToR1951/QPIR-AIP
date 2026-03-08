@@ -24,6 +24,7 @@ import PIRForm from './PIRForm';
 import NotFound from './NotFound';
 import ErrorPage from './ErrorPage';
 import { DashboardHeader } from './components/ui/DashboardHeader';
+import Footer from './components/ui/Footer';
 
 // Simple Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -37,6 +38,7 @@ const ProtectedRoute = ({ children }) => {
 // PIR Route Guard - Checks if AIP is completed before allowing access
 const PIRRouteGuard = ({ children }) => {
   const [hasAIP, setHasAIP] = useState(null); // null means loading
+  const [aipStatus, setAipStatus] = useState('none'); // none, draft, review, approved
   const [isLoading, setIsLoading] = useState(true);
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
@@ -45,17 +47,34 @@ const PIRRouteGuard = ({ children }) => {
     const checkStatus = async () => {
       if (user?.school_id) {
         try {
-          const response = await axios.get(`http://localhost:3001/api/schools/${user.school_id}/aip-status`);
-          setHasAIP(response.data.hasAIP);
+          const apiHost = window.location.hostname;
+          const response = await axios.get(`http://${apiHost}:3001/api/schools/${user.school_id}/aip-status`);
+          const dbExists = response.data.hasAIP;
+          
+          if (dbExists) {
+            setAipStatus('review');
+            setHasAIP(true);
+          } else {
+            // Check local storage for draft
+            const localDraft = localStorage.getItem('aip_draft');
+            if (localDraft) {
+              setAipStatus('draft');
+            } else {
+              setAipStatus('none');
+            }
+            setHasAIP(false);
+          }
         } catch (error) {
           console.error('Failed to verify AIP status:', error);
           setHasAIP(false);
+          setAipStatus('none');
         } finally {
           setIsLoading(false);
         }
       } else {
         setIsLoading(false);
         setHasAIP(false);
+        setAipStatus('none');
       }
     };
     checkStatus();
@@ -85,19 +104,36 @@ function Dashboard() {
   const user = userStr ? JSON.parse(userStr) : null;
   
   const [hasAIP, setHasAIP] = useState(false);
+  const [aipStatus, setAipStatus] = useState('none');
 
   useEffect(() => {
     const fetchStatus = async () => {
       if (user?.school_id) {
         try {
-          const response = await axios.get(`http://localhost:3001/api/schools/${user.school_id}/aip-status`);
-          setHasAIP(response.data.hasAIP);
+          const apiHost = window.location.hostname;
+          const response = await axios.get(`http://${apiHost}:3001/api/schools/${user.school_id}/aip-status`);
+          const dbExists = response.data.hasAIP;
+          
+          if (dbExists) {
+            setAipStatus('review');
+            setHasAIP(true);
+          } else {
+            const localDraft = localStorage.getItem('aip_draft');
+            if (localDraft) {
+              setAipStatus('draft');
+            } else {
+              setAipStatus('none');
+            }
+            setHasAIP(false);
+          }
         } catch (error) {
           console.error('Failed to fetch AIP status:', error);
+          setHasAIP(false);
+          setAipStatus('none');
         }
       }
     };
-    fetchStatus();
+fetchStatus();
   }, [user?.school_id]);
   
   // Countdown Logic
@@ -157,15 +193,19 @@ function Dashboard() {
         {/* Welcome Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div className="lg:col-span-2 relative bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-10 shadow-sm overflow-hidden group">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-pink-50 rounded-full -mr-20 -mt-20 blur-3xl opacity-50"></div>
-                <div className="absolute bottom-0 right-0 w-48 h-48 opacity-[0.05] pointer-events-none translate-x-12 translate-y-12 rotate-[-15deg]">
-                    <img src="/transparency-seal.webp" alt="" className="w-full h-auto" />
-                </div>
+                {/* Card Background Facade */}
+                <div 
+                    className="absolute inset-0 opacity-70 grayscale pointer-events-none transition-all duration-700 group-hover:opacity-85 group-hover:grayscale-0"
+                    style={{ 
+                        backgroundImage: `url('/SDO_Facade.webp')`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        maskImage: 'radial-gradient(circle at top right, black, transparent 80%)'
+                    }}
+                ></div>
                 
                 <div className="relative z-10 flex flex-col h-full">
                     <div className="flex items-center gap-3 mb-6">
-                        <img src="/DepEd NIR Logo.webp" alt="NIR" className="h-6 w-auto opacity-40 grayscale group-hover:grayscale-0 transition-all" />
-                        <span className="w-px h-3 bg-slate-200"></span>
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Summary</span>
                     </div>
 
@@ -180,12 +220,21 @@ function Dashboard() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-auto">
                         <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 group/item hover:border-pink-200 transition-colors">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${hasAIP ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-600'}`}>
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                                aipStatus === 'review' ? 'bg-emerald-100 text-emerald-600' : 
+                                aipStatus === 'draft' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'
+                            }`}>
                                 <FileText size={20} strokeWidth={2.5} />
                             </div>
                             <div>
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">AIP Status</div>
-                                <div className="text-sm font-black text-slate-800">{hasAIP ? 'Completed' : 'Action Required'}</div>
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Annual Plan (AIP)</div>
+                                <div className={`text-sm font-black ${
+                                    aipStatus === 'review' ? 'text-emerald-700' : 
+                                    aipStatus === 'draft' ? 'text-blue-700' : 'text-pink-700'
+                                }`}>
+                                    {aipStatus === 'review' ? 'Awaiting Review' : 
+                                     aipStatus === 'draft' ? 'Draft in Progress' : 'No Submission Found'}
+                                </div>
                             </div>
                         </div>
                         <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 group/item hover:border-blue-200 transition-colors">
@@ -324,21 +373,23 @@ function Dashboard() {
         </div>
 
         {/* Support Section */}
-        <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8">
+        <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 mb-12 text-center md:text-left">
             <div className="max-w-md">
                 <h3 className="text-2xl font-black mb-2 tracking-tight">Need assistance?</h3>
                 <p className="text-slate-400 text-sm font-medium">Our technical support team is available during office hours to help you with any issues regarding the portal.</p>
             </div>
-            <div className="flex gap-4">
-                <a href="#" className="px-6 py-3 bg-white text-slate-900 font-black rounded-2xl text-sm hover:bg-slate-200 transition-colors active:scale-95 shadow-lg shadow-white/5">
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                <a href="#" className="px-6 py-3 bg-white text-slate-900 font-black rounded-2xl text-sm hover:bg-slate-200 transition-colors active:scale-95 shadow-lg shadow-white/5 text-center">
                     User Manual
                 </a>
-                <a href="#" className="px-6 py-3 bg-slate-800 text-white font-black rounded-2xl text-sm hover:bg-slate-700 transition-colors active:scale-95 border border-slate-700">
+                <a href="#" className="px-6 py-3 bg-slate-800 text-white font-black rounded-2xl text-sm hover:bg-slate-700 transition-colors active:scale-95 border border-slate-700 text-center">
                     Contact Helpdesk
                 </a>
             </div>
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }
