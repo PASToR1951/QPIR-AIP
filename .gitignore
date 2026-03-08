@@ -1,0 +1,6 @@
+start.sh
+*.pid
+node_modules/
+.env
+dist/
+build/
