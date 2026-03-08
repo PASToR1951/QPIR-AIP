@@ -8,4 +8,8 @@
   body {
     @apply font-sans antialiased text-slate-900;
   }
+
+  button, a, select, [role="button"], input[type="button"], input[type="submit"], input[type="reset"] {
+    @apply cursor-pointer;
+  }
 }
