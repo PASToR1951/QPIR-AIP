@@ -21,6 +21,7 @@ import {
 import Login from './Login';
 import AIPForm from './AIPForm';
 import PIRForm from './PIRForm';
+import NotFound from './NotFound';
 import { DashboardHeader } from './components/ui/DashboardHeader';
 
 // Simple Protected Route component
@@ -29,6 +30,52 @@ const ProtectedRoute = ({ children }) => {
   if (!token) {
     return <Navigate to="/login" replace />;
   }
+  return children;
+};
+
+// PIR Route Guard - Checks if AIP is completed before allowing access
+const PIRRouteGuard = ({ children }) => {
+  const [hasAIP, setHasAIP] = useState(null); // null means loading
+  const [isLoading, setIsLoading] = useState(true);
+  const userStr = localStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (user?.school_id) {
+        try {
+          const response = await axios.get(`http://localhost:3001/api/schools/${user.school_id}/aip-status`);
+          setHasAIP(response.data.hasAIP);
+        } catch (error) {
+          console.error('Failed to verify AIP status:', error);
+          setHasAIP(false);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setIsLoading(false);
+        setHasAIP(false);
+      }
+    };
+    checkStatus();
+  }, [user?.school_id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-bold animate-pulse uppercase tracking-widest text-xs">Verifying Prerequisites...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasAIP) {
+    // Redirect to dashboard if AIP is not completed
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 };
 
@@ -91,18 +138,33 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative">
+      {/* Subtle Background Asset Overlay */}
+      <div 
+        className="absolute inset-x-0 top-0 h-[60vh] z-0 opacity-[0.03] pointer-events-none"
+        style={{ 
+          backgroundImage: `url('/SDO_Facade.webp')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center 20%',
+          maskImage: 'linear-gradient(to bottom, black, transparent)'
+        }}
+      ></div>
+
       <DashboardHeader user={user} onLogout={handleLogout} />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto mt-6 px-4 pb-12">
+      <main className="flex-1 w-full max-w-6xl mx-auto mt-6 px-4 pb-12 relative z-10">
         {/* Welcome Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div className="lg:col-span-2 relative bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-10 shadow-sm overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-pink-50 rounded-full -mr-20 -mt-20 blur-3xl opacity-50"></div>
+                <div className="absolute bottom-0 right-0 w-48 h-48 opacity-[0.05] pointer-events-none translate-x-12 translate-y-12 rotate-[-15deg]">
+                    <img src="/transparency-seal.webp" alt="" className="w-full h-auto" />
+                </div>
                 
                 <div className="relative z-10 flex flex-col h-full">
-                    <div className="flex items-center gap-2 mb-6">
-                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <div className="flex items-center gap-3 mb-6">
+                        <img src="/DepEd NIR Logo.webp" alt="NIR" className="h-6 w-auto opacity-40 grayscale group-hover:grayscale-0 transition-all" />
+                        <span className="w-px h-3 bg-slate-200"></span>
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Summary</span>
                     </div>
 
@@ -307,10 +369,15 @@ function App() {
           path="/pir" 
           element={
             <ProtectedRoute>
-              <PIRForm />
+              <PIRRouteGuard>
+                <PIRForm />
+              </PIRRouteGuard>
             </ProtectedRoute>
           } 
         />
+
+        {/* Catch-all 404 Route */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );

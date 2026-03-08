@@ -22,6 +22,8 @@ import { FormHeader } from './components/ui/FormHeader';
 import { FormBoxHeader } from './components/ui/FormBoxHeader';
 import { ViewModeSelector } from './components/ui/ViewModeSelector';
 import { ConfirmationModal } from './components/ui/ConfirmationModal';
+import { DocumentPreviewModal } from './components/ui/DocumentPreviewModal';
+import { AIPDocument } from './components/docs/AIPDocument';
 
 export default function App() {
     // App Mode State: 'splash', 'wizard', or 'full'
@@ -29,12 +31,13 @@ export default function App() {
     const [isMobile, setIsMobile] = useState(false);
     const currentYear = new Date().getFullYear();
 
-    // UI Wizard State
+    // UI State
     const [currentStep, setCurrentStep] = useState(1);
-    const totalSteps = 4;
+    const totalSteps = 6;
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isAddingActivity, setIsAddingActivity] = useState(false);
     const [activityToDelete, setActivityToDelete] = useState(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     // Save Status State
     const [isSaving, setIsSaving] = useState(false);
@@ -293,6 +296,24 @@ export default function App() {
                 theme="pink" 
             />
 
+            <DocumentPreviewModal 
+                isOpen={isPreviewOpen} 
+                onClose={() => setIsPreviewOpen(false)}
+                title="AIP Document Preview"
+                subtitle="Annual Implementation Plan Cycle 2026"
+            >
+                <AIPDocument 
+                    pillar={pillar}
+                    depedProgram={depedProgram}
+                    sipTitle={sipTitle}
+                    projectCoord={projectCoord}
+                    objectives={objectives}
+                    indicators={indicators}
+                    annualTarget={annualTarget}
+                    activities={activities}
+                />
+            </DocumentPreviewModal>
+
             {/* Aceternity Grid Background */}
             <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden"></div>
 
@@ -367,9 +388,11 @@ export default function App() {
                                 { num: 1, label: "Alignment" },
                                 { num: 2, label: "Targets" },
                                 { num: 3, label: "Action Plan" },
-                                { num: 4, label: "Review" }
+                                { num: 4, label: "M&E" },
+                                { num: 5, label: "Signatures" },
+                                { num: 6, label: "Finalize" }
                             ].map((step) => (
-                                <div key={step.num} className="flex flex-col items-center gap-3 relative z-10 w-1/4">
+                                <div key={step.num} className="flex flex-col items-center gap-2 relative z-10 w-1/6">
                                     <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs transition-colors ${
                                         currentStep === step.num ? 'bg-pink-600 text-white shadow-md ring-4 ring-pink-100' :
                                         currentStep > step.num ? 'bg-pink-600 text-white ring-2 ring-white' : 'bg-white text-slate-400 border-2 border-slate-200'
@@ -446,15 +469,19 @@ export default function App() {
                         {/* -------------------------------------------------------- */}
                         {/* SECTION 3: ACTION PLAN & BUDGET */}
                         {/* -------------------------------------------------------- */}
-                        <div className={`${(appMode === 'full' || currentStep === 3) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-500' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
+                        <div className={`${(appMode === 'full' || currentStep === 3 || currentStep === 4) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-500' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
                             <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-4">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2.5 bg-pink-50 text-pink-600 border border-pink-100 rounded-xl">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-bold text-slate-800 tracking-tight">Action Plan & Budget</h2>
-                                        {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">Group activities by Planning, Implementation, and M&E.</p>}
+                                        <h2 className="text-xl font-bold text-slate-800 tracking-tight">
+                                            {appMode === 'wizard' && currentStep === 3 ? "Action Plan (Phase 1 & 2)" : "Monitoring & Evaluation (Phase 3)"}
+                                        </h2>
+                                        {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">
+                                            {currentStep === 3 ? "Define Planning and Implementation activities." : "Define Monitoring and Evaluation activities."}
+                                        </p>}
                                     </div>
                                 </div>
                             </div>
@@ -462,12 +489,13 @@ export default function App() {
                             {/* WIZARD MODE: Activity Cards View */}
                             {appMode === 'wizard' && (
                                 <div className="space-y-4">
-                                    {PHASES.map((phase, pIdx) => {
+                                    {(currentStep === 3 ? PHASES.slice(0, 2) : PHASES.slice(2)).map((phase, pIdx) => {
                                         const phaseActivities = activities.filter(a => a.phase === phase);
+                                        const actualIndex = currentStep === 3 ? pIdx + 1 : 3;
                                         return (
                                             <div key={phase} className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
                                                 <h3 className="text-sm font-bold text-pink-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-pink-100 text-pink-700 text-xs">{pIdx + 1}</span>
+                                                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-pink-100 text-pink-700 text-xs">{actualIndex}</span>
                                                     {phase}
                                                 </h3>
                                                 {phaseActivities.length === 0 ? (
@@ -478,7 +506,7 @@ export default function App() {
                                                             <div key={act.id} className={`bg-white border rounded-xl p-4 transition-all ${expandedActivityId === act.id ? 'border-pink-300 shadow-md ring-2 ring-pink-100' : 'border-slate-200 hover:border-slate-300'}`}>
                                                                 <div className="flex items-start justify-between mb-3">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="font-bold text-slate-400 text-xs">{pIdx + 1}.{aIdx + 1}</span>
+                                                                        <span className="font-bold text-slate-400 text-xs">{actualIndex}.{aIdx + 1}</span>
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => setExpandedActivityId(expandedActivityId === act.id ? null : act.id)}
@@ -625,20 +653,23 @@ export default function App() {
                         </div>
 
                         {/* -------------------------------------------------------- */}
-                        {/* SECTION 4: SIGNATURES */}
+                        {/* SECTION 5: SIGNATURES */}
                         {/* -------------------------------------------------------- */}
-                        <div className={`${(appMode === 'full' || currentStep === 4) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-500' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
-                            <div className="mb-8 flex items-center gap-3 border-b border-slate-200 pb-4">
-                                <div className="p-2.5 bg-pink-50 text-pink-600 border border-pink-100 rounded-xl">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path><path d="m9 12 2 2 4-4"></path></svg>
+                        {(appMode === 'full' || currentStep === 5) && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 bg-pink-50 text-pink-600 border border-pink-100 rounded-xl">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Signatures</h2>
+                                            {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">Finalize with necessary approvals.</p>}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-slate-800 tracking-tight">Finalize Document</h2>
-                                    {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">Review and prepare for submission.</p>}
-                                </div>
-                            </div>
 
-                            <div className="bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-sm mb-2 relative overflow-hidden">
+                                <div className="bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-sm mb-2 relative overflow-hidden">
                                 <svg className="absolute inset-0 h-full w-full opacity-30 stroke-slate-200 mask-image:linear-gradient(to_bottom,transparent,black)" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="diagonal-lines" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="20" strokeWidth="2"></line></pattern></defs><rect width="100%" height="100%" fill="url(#diagonal-lines)"></rect></svg>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 relative z-10">
@@ -655,7 +686,46 @@ export default function App() {
                                 </div>
                             </div>
                         </div>
+                        )}
 
+                        {/* -------------------------------------------------------- */}
+                        {/* SECTION 6: FINAL REVIEW & SUBMIT */}
+                        {/* -------------------------------------------------------- */}
+                        {(appMode === 'full' || currentStep === 6) && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {appMode === 'wizard' && (
+                                    <div className="bg-white p-8 md:p-12 rounded-[2.5rem] border-2 border-slate-100 shadow-sm mb-12 flex flex-col items-center justify-center text-center group relative overflow-hidden transition-all hover:border-pink-200">
+                                        <div className="absolute inset-0 bg-pink-50/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                        <div className="w-16 h-16 bg-pink-50 rounded-2xl flex items-center justify-center mb-6 text-pink-600 border border-pink-100 group-hover:scale-110 transition-transform">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                        </div>
+                                        <h3 className="text-xl font-black text-slate-800 mb-2">Final Document Review</h3>
+                                        <p className="text-sm text-slate-500 font-medium mb-8 max-w-sm">You've completed all sections. Review the generated layout below to ensure everything is correct before final submission.</p>
+
+                                        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsPreviewOpen(true)}
+                                                className="px-8 py-4 bg-pink-600 text-white font-bold rounded-2xl shadow-lg shadow-pink-200 hover:bg-pink-700 active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                                Preview Document
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={handleConfirmSubmit}
+                                                disabled={isSubmitted}
+                                                className="px-8 py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-lg shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                                {isSubmitted ? "Submitted" : "Confirm & Submit"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* ======================================================== */}
@@ -673,7 +743,7 @@ export default function App() {
                                 Back
                             </button>
 
-                            {currentStep < totalSteps ? (
+                            {currentStep < totalSteps && (
                                 <button
                                     type="button"
                                     onClick={nextStep}
@@ -682,168 +752,40 @@ export default function App() {
                                     Continue
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                                 </button>
-                            ) : (
+                            )}
+                        </div>
+                    )}
+                                    {/* FINAL ACTION BUTTONS (Below Full Form Only) */}
+                    {appMode === 'full' && (
+                        <div className="print:hidden mt-12 bg-white border border-slate-200 rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
+                            <h3 className="text-slate-800 font-bold text-xl mb-6">Ready to finalize your plan?</h3>
+
+                            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPreviewOpen(true)}
+                                    className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-white border-2 border-slate-200 px-8 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors active:scale-95 w-full sm:w-auto shadow-sm"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    Preview Layout
+                                </button>
+
                                 <button
                                     type="button"
                                     onClick={handleConfirmSubmit}
                                     disabled={isSubmitted}
-                                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-pink-600 hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:scale-95 shadow-md"
+                                    className="inline-flex h-14 items-center justify-center rounded-2xl bg-pink-600 px-8 py-1 text-sm font-bold text-white transition-colors gap-3 hover:bg-pink-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-md"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                                    {isSubmitted ? "Submitted" : "Submit AIP"}
+                                    {isSubmitted ? "Submitted" : "Confirm & Submit"}
                                 </button>
-                            )}
+                            </div>
                         </div>
                     )}
-
                 </form>
             </div>
         </div>
 
-            {/* ========================================= */}
-            {/* PRINT LAYOUT & ON-SCREEN DOCUMENT PREVIEW */}
-            {/* ========================================= */}
-            <div className="print:block print:p-0 print:shadow-none print:m-0 print:bg-transparent container mx-auto max-w-[210mm] bg-white text-black shadow-md border border-slate-200 p-8 md:p-12 mb-12 relative">
-
-                {/* Print Header */}
-                <FormBoxHeader
-                    title="Annual Implementation Plan"
-                    badge={`CY ${currentYear}`}
-                />
-
-                {/* Print Section: Profile & Goals */}
-                <div className="mb-6 relative group rounded-xl p-4 -mx-4 transition-colors print:hover:bg-transparent print:p-0 print:mx-0 print:rounded-none print-reset">
-                    <div className="text-[12px] space-y-1">
-                        <div className="flex border-b border-dotted border-black pb-1">
-                            <span className="font-bold w-[25%]">Pillar/Strategic Direction:</span>
-                            <span className="w-[75%]">{pillar || "\u00A0"}</span>
-                        </div>
-                        <div className="flex border-b border-dotted border-black pb-1">
-                            <span className="font-bold w-[25%]">DepEd Program Aligned:</span>
-                            <span className="w-[75%]">{depedProgram || "\u00A0"}</span>
-                        </div>
-                        <div className="flex border-b border-dotted border-black pb-1">
-                            <span className="font-bold w-[25%]">School Improvement Project/Title:</span>
-                            <span className="w-[45%]">{sipTitle || "\u00A0"}</span>
-                            <span className="font-bold w-[10%]">Project Coord:</span>
-                            <span className="w-[20%]">{projectCoord || "\u00A0"}</span>
-                        </div>
-
-                        <div className="pt-2">
-                            <div className="flex border-b border-dotted border-black pb-1">
-                                <span className="font-bold w-[25%] align-top">Objective/s:</span>
-                                <span className="w-[75%] whitespace-pre-wrap">{objectives || "\u00A0"}</span>
-                            </div>
-                            <div className="flex border-b border-dotted border-black pb-1">
-                                <span className="font-bold w-[25%] align-top">Performance Indicator/s (OVI):</span>
-                                <span className="w-[45%] whitespace-pre-wrap">{indicators || "\u00A0"}</span>
-                                <span className="font-bold w-[10%] align-top">Annual Target:</span>
-                                <span className="w-[20%] whitespace-pre-wrap">{annualTarget || "\u00A0"}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Print Section: Activities */}
-                <div className="mb-4 relative group rounded-xl p-4 -mx-4 transition-colors print:hover:bg-transparent print:p-0 print:mx-0 print:rounded-none print-reset">
-                    <div className="pb-2">
-                        <table className="w-full border-collapse text-[11px] border border-black table-fixed">
-                            <thead>
-                                <tr className="text-center font-bold bg-slate-100 print:bg-transparent">
-                                    <th rowSpan="2" className="border border-black p-2 w-[35%]">Activities to be Conducted</th>
-                                    <th rowSpan="2" className="border border-black p-2 w-[15%]">Implementation Period</th>
-                                    <th rowSpan="2" className="border border-black p-2 w-[15%]">Persons Involved</th>
-                                    <th rowSpan="2" className="border border-black p-2 w-[15%]">Outputs</th>
-                                    <th colSpan="2" className="border border-black p-1 w-[20%]">Budgetary Requirement</th>
-                                </tr>
-                                <tr className="text-center font-bold bg-slate-100 print:bg-transparent">
-                                    <th className="border border-black p-1">Amount</th>
-                                    <th className="border border-black p-1">Source</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {PHASES.map((phase, pIdx) => {
-                                    const phaseActivities = activities.filter(a => a.phase === phase);
-                                    return (
-                                        <React.Fragment key={phase}>
-                                            <tr className="bg-slate-50 print:bg-transparent font-bold">
-                                                <td colSpan="6" className="border border-black p-1 px-2">{pIdx + 1}. {phase}</td>
-                                            </tr>
-                                            {phaseActivities.map((act, aIdx) => (
-                                                <tr key={act.id}>
-                                                    <td className="border border-black p-2 align-top break-words">
-                                                        <div className="flex gap-1.5 items-start">
-                                                            <span className="font-semibold shrink-0">{pIdx + 1}.{aIdx + 1}</span>
-                                                            <span>{act.name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="border border-black p-2 align-top text-center">{act.period}</td>
-                                                    <td className="border border-black p-2 align-top text-center">{act.persons}</td>
-                                                    <td className="border border-black p-2 align-top text-center">{act.outputs}</td>
-                                                    <td className="border border-black p-2 align-top text-right font-mono">{act.budgetAmount ? formatCurrency(act.budgetAmount) : ''}</td>
-                                                    <td className="border border-black p-2 align-top text-center">{act.budgetSource}</td>
-                                                </tr>
-                                            ))}
-                                        </React.Fragment>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Print Signatures */}
-                <div className="page-break-inside-avoid relative group rounded-xl p-4 -mx-4 transition-colors print:hover:bg-transparent print:p-0 print:mx-0 print:rounded-none mt-4 mb-4 print-reset">
-                    <div className="grid grid-cols-2 gap-16 mt-8">
-                        <div className="text-center">
-                            <p className="text-sm text-left mb-8 font-medium">Prepared by:</p>
-                            <div className="border-b border-black font-bold uppercase text-sm pb-1 min-h-[24px]">
-                                {projectCoord}
-                            </div>
-                            <p className="text-xs mt-1 font-medium">Project Coordinator</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-sm text-left mb-8 font-medium">Noted:</p>
-                            <div className="border-b border-black font-bold uppercase text-sm pb-1 min-h-[24px]">
-                                DR. ENRIQUE Q. RETES, EdD
-                            </div>
-                            <p className="text-xs mt-1 font-medium">Chief Education Supervisor</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ========================================= */}
-            {/* FINAL ACTION BUTTONS (Below Preview/Full Form) */}
-            {/* ========================================= */}
-            <div className="print:hidden container mx-auto max-w-[210mm] bg-white border border-slate-200 rounded-[2rem] p-8 mb-16 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
-                {isSubmitted ? (
-                    <div className="mb-6 px-6 py-4 bg-pink-50 border border-pink-200 text-pink-700 rounded-2xl font-bold flex items-center gap-3 shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        AIP Successfully Saved to Database!
-                    </div>
-                ) : (
-                    <h3 className="text-slate-800 font-bold text-xl mb-6">Ready to finalize your plan?</h3>
-                )}
-
-                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-
-                    <button
-                        type="button"
-                        onClick={handleConfirmSubmit}
-                        disabled={isSubmitted}
-                        className="inline-flex h-14 items-center justify-center rounded-2xl bg-pink-600 px-8 py-1 text-sm font-bold text-white transition-colors gap-3 hover:bg-pink-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-md"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                        {isSubmitted ? "Submitted" : "Confirm & Submit"}
-                    </button>
-
-                    <button type="button" onClick={() => window.print()} className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-white border-2 border-slate-200 px-8 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-4 focus:ring-slate-200 transition-colors active:scale-95 w-full sm:w-auto shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                        Print PDF
-                    </button>
-                </div>
-            </div>
         </div>
     );
 }
