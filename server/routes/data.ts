@@ -40,4 +40,23 @@ dataRoutes.get('/programs', async (c) => {
   }
 });
 
+// GET AIP status for a school
+dataRoutes.get('/schools/:id/aip-status', async (c) => {
+  const school_id = parseInt(c.req.param('id'));
+  const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+
+  try {
+    const aipCount = await prisma.aIP.count({
+      where: {
+        school_id,
+        year
+      }
+    });
+    return c.json({ hasAIP: aipCount > 0, count: aipCount });
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to fetch AIP status' }, 500);
+  }
+});
+
 export default dataRoutes;

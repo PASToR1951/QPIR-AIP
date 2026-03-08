@@ -57,14 +57,17 @@ export default function Login() {
     setError('');
     setIsLoading(true);
 
+    // Auto-append domain if not present
+    const finalEmail = email.includes('@') ? email : `${email}@deped.gov.ph`;
+
     try {
       const response = await axios.post('http://localhost:3001/api/auth/login', {
-        email,
+        email: finalEmail,
         password,
       });
 
       const { token, user } = response.data;
-      
+
       // Store token and user data
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
@@ -93,25 +96,25 @@ export default function Login() {
   return (
     <div className="bg-slate-50 min-h-screen flex items-center justify-center relative overflow-hidden font-sans">
       {/* Background Image */}
-      <div 
+      <div
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-20"
         style={{ backgroundImage: `url('/SDO_Facade.webp')` }}
       ></div>
 
       {/* Aceternity Grid Background overlay */}
       <div className="absolute inset-0 bg-slate-900/10 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-10"></div>
-      
+
       {/* Glowing Orbs (Animated with Anime.js) */}
       <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 rounded-full blur-[100px] pointer-events-none z-0"></div>
       <div ref={orb2Ref} className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/30 rounded-full blur-[100px] pointer-events-none z-0"></div>
 
       <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center min-h-screen py-12 pb-32">
         <div ref={cardRef} className="bg-[#fafafa]/90 border border-slate-200 rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 backdrop-blur-md mb-8 opacity-0">
-          
+
           <div className="mb-8 flex justify-center items-center gap-6">
             <img src="/Division_Logo.webp" alt="Division Logo" className="h-20 w-auto drop-shadow-sm" />
           </div>
-          
+
           <h2 className="text-3xl font-extrabold tracking-tighter text-slate-900 pb-2">
             QPIR-AIP System
           </h2>
@@ -126,21 +129,22 @@ export default function Login() {
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-5">
               <Input
                 theme="indigo"
                 label="Email Address"
                 id="email-address"
                 name="email"
-                type="email"
+                type="text"
                 autoComplete="email"
                 required
-                placeholder="e.g. 120233@deped.gov.ph"
+                placeholder="email@deped.gov.ph"
+                className="lowercase"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value.toLowerCase())}
               />
-              
+
               <Input
                 theme="indigo"
                 label="Password"
@@ -211,18 +215,18 @@ export default function Login() {
               © {new Date().getFullYear()} All rights reserved. DepEd Guihulngan City Division.
             </div>
           </div>
-          
+
           <div className="flex flex-col items-center md:items-end gap-2.5 text-slate-400 font-medium">
             <div className="flex items-center gap-8 mt-2 md:mt-0">
-               <span className="font-semibold text-slate-600">Contact Us:</span>
-               <div className="flex items-center gap-4">
-                 <a href="mailto:guihulngan.city@deped.gov.ph" className="hover:text-indigo-600 transition-colors" title="guihulngan.city@deped.gov.ph">
-                   <Mail size={16} />
-                 </a>
-                 <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition-colors" title="Facebook Page">
-                   <Facebook size={16} />
-                 </a>
-               </div>
+              <span className="font-semibold text-slate-600">Contact Us:</span>
+              <div className="flex items-center gap-4">
+                <a href="mailto:guihulngan.city@deped.gov.ph" className="hover:text-indigo-600 transition-colors" title="guihulngan.city@deped.gov.ph">
+                  <Mail size={16} />
+                </a>
+                <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition-colors" title="Facebook Page">
+                  <Facebook size={16} />
+                </a>
+              </div>
             </div>
             <div className="flex flex-col items-center md:items-end gap-1.5">
               <div className="flex items-center gap-1.5">

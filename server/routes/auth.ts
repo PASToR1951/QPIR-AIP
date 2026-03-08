@@ -36,7 +36,10 @@ authRoutes.post('/login', async (c) => {
   const { email, password } = body;
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ 
+      where: { email },
+      include: { school: true }
+    });
     if (!user) {
       return c.json({ error: 'Invalid credentials' }, 401);
     }
@@ -47,7 +50,7 @@ authRoutes.post('/login', async (c) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, school_id: user.school_id },
+      { id: user.id, email: user.email, role: user.role, school_id: user.school_id, school_name: user.school?.name, name: user.name },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -55,7 +58,14 @@ authRoutes.post('/login', async (c) => {
     return c.json({ 
       message: 'Login successful', 
       token,
-      user: { id: user.id, email: user.email, role: user.role, school_id: user.school_id } 
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role, 
+        school_id: user.school_id, 
+        school_name: user.school?.name, 
+        name: user.name 
+      } 
     });
   } catch (error) {
     console.error(error);

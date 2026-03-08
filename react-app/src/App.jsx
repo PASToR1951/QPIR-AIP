@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import axios from 'axios';
 import { 
   LogOut, 
   LayoutDashboard, 
@@ -20,6 +21,7 @@ import {
 import Login from './Login';
 import AIPForm from './AIPForm';
 import PIRForm from './PIRForm';
+import { DashboardHeader } from './components/ui/DashboardHeader';
 
 // Simple Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -34,8 +36,21 @@ function Dashboard() {
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
   
-  // Mock state: In a real app, these would come from an API
   const [hasAIP, setHasAIP] = useState(false);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      if (user?.school_id) {
+        try {
+          const response = await axios.get(`http://localhost:3001/api/schools/${user.school_id}/aip-status`);
+          setHasAIP(response.data.hasAIP);
+        } catch (error) {
+          console.error('Failed to fetch AIP status:', error);
+        }
+      }
+    };
+    fetchStatus();
+  }, [user?.school_id]);
   
   // Countdown Logic
   const calculateDaysLeft = (targetDate) => {
@@ -50,7 +65,7 @@ function Dashboard() {
 
   // Mock data for relevant information
   const stats = [
-    { label: 'Active Programs', value: '12', icon: <Layers className="w-6 h-6 text-indigo-500" />, color: 'indigo' },
+    { label: 'Active Programs', value: '12', icon: <Layers className="w-6 h-6 text-pink-500" />, color: 'pink' },
     { label: 'AIP Completion', value: hasAIP ? '100%' : '0%', icon: <CheckCircle2 className="w-6 h-6 text-emerald-500" />, color: 'emerald' },
     { label: 'PIR Submitted', value: '0/4', icon: <BarChart3 className="w-6 h-6 text-amber-500" />, color: 'amber' },
     { 
@@ -69,85 +84,72 @@ function Dashboard() {
     { name: 'Q4', status: 'Locked', deadline: 'Dec 31, 2026', current: false },
   ];
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm print:hidden">
-        <div className="container mx-auto px-4 flex justify-between items-center h-16 max-w-6xl">
-          <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-slate-50 rounded-xl border border-slate-100">
-                <img src="/DepEd-emblem.webp" alt="DepEd Logo" className="h-8 w-auto" />
-            </div>
-            <div className="flex flex-col">
-                <div className="font-extrabold text-base text-slate-900 tracking-tight leading-none uppercase">Guihulngan City</div>
-                <div className="text-[10px] font-bold text-indigo-600 tracking-[0.2em] uppercase mt-1">QPIR-AIP Portal</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="hidden md:flex flex-col items-end mr-2 text-right">
-                <span className="text-sm font-black text-slate-900 leading-none">
-                  {user?.name || user?.school?.name || user?.email}
-                </span>
-                <span className="text-[10px] uppercase tracking-wider text-indigo-600 font-extrabold mt-1.5 px-2 py-0.5 bg-indigo-50 rounded-full border border-indigo-100/50">
-                  {user?.role === 'School' ? 'School Account' : user?.role}
-                </span>
-            </div>
-            <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
-            <button 
-              onClick={() => {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/login';
-              }}
-              className="group flex items-center gap-2 text-sm text-slate-600 hover:text-red-600 font-bold px-3 py-2 rounded-xl transition-all active:scale-95"
-            >
-              <div className="w-8 h-8 rounded-lg bg-slate-100 group-hover:bg-red-50 flex items-center justify-center transition-colors">
-                <LogOut size={16} strokeWidth={2.5} />
-              </div>
-              <span className="hidden sm:inline">Logout</span>
-            </button>
-          </div>
-        </div>
-      </nav>
+      <DashboardHeader user={user} onLogout={handleLogout} />
 
       <main className="flex-1 w-full max-w-6xl mx-auto mt-6 px-4 pb-12">
         {/* Welcome Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div className="lg:col-span-2 relative bg-indigo-600 rounded-[2.5rem] p-8 md:p-10 shadow-xl shadow-indigo-200 overflow-hidden text-white group">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl group-hover:bg-white/20 transition-all duration-700"></div>
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-400/20 rounded-full -ml-10 -mb-10 blur-2xl"></div>
+            <div className="lg:col-span-2 relative bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-10 shadow-sm overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-pink-50 rounded-full -mr-20 -mt-20 blur-3xl opacity-50"></div>
                 
-                <div className="relative z-10 flex flex-col h-full justify-between">
-                    <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold mb-6 border border-white/20 uppercase tracking-widest">
-                            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-                            Portal Active
-                        </div>
-                        <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-4 leading-tight">
-                            Ready to plan <br/> your impact?
-                        </h1>
-                        <p className="text-indigo-100 font-medium max-w-md text-sm md:text-lg leading-relaxed opacity-90">
-                           Streamlining School Improvement Projects and Implementation Reviews for a better DepEd future.
-                        </p>
+                <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex items-center gap-2 mb-6">
+                        <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Summary</span>
                     </div>
-                </div>
-                
-                <div className="absolute right-8 bottom-8 hidden md:block opacity-10 group-hover:opacity-20 transition-opacity duration-500 transform group-hover:scale-110">
-                    <LayoutDashboard size={120} />
+
+                    <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-2">
+                        Welcome back, <br/>
+                        <span className="text-pink-600">{user?.school_name || user?.name || 'User'}</span>
+                    </h1>
+                    
+                    <p className="text-slate-500 font-medium max-w-md text-sm md:text-base leading-relaxed mb-8">
+                        You are currently managing the planning and review cycle for <span className="text-slate-900 font-bold">FY 2026</span>. 
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-auto">
+                        <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 group/item hover:border-pink-200 transition-colors">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${hasAIP ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-600'}`}>
+                                <FileText size={20} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">AIP Status</div>
+                                <div className="text-sm font-black text-slate-800">{hasAIP ? 'Completed' : 'Action Required'}</div>
+                            </div>
+                        </div>
+                        <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 group/item hover:border-blue-200 transition-colors">
+                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                                <BarChart3 size={20} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Current Review</div>
+                                <div className="text-sm font-black text-slate-800">Q1 In Progress</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm flex flex-col justify-between group overflow-hidden relative">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"></div>
                 <div>
                    <div className="flex justify-between items-center mb-6">
                         <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">Quarterly Progress</h3>
-                        <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">FY 2026</span>
+                        <span className="text-xs font-black text-pink-600 bg-pink-50 px-2 py-0.5 rounded-md">FY 2026</span>
                    </div>
                    <div className="space-y-4">
                         {quarters.map((q) => (
-                            <div key={q.name} className={`flex items-center justify-between p-3 rounded-2xl border ${q.current ? 'bg-indigo-50 border-indigo-100' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
+                            <div key={q.name} className={`flex items-center justify-between p-3 rounded-2xl border ${q.current ? 'bg-pink-50 border-pink-100' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black ${q.current ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black ${q.current ? 'bg-pink-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
                                         {q.name}
                                     </div>
                                     <div>
@@ -155,7 +157,7 @@ function Dashboard() {
                                         <div className="text-[10px] text-slate-400 font-medium">Due {q.deadline}</div>
                                     </div>
                                 </div>
-                                {q.current && <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-ping"></div>}
+                                {q.current && <div className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-ping"></div>}
                             </div>
                         ))}
                    </div>
@@ -188,57 +190,49 @@ function Dashboard() {
                 Main Modules
                 <span className="w-8 h-px bg-slate-200"></span>
             </h2>
-            
-            {/* Toggle just for demonstration purposes */}
-            <button 
-                onClick={() => setHasAIP(!hasAIP)}
-                className="text-[10px] font-bold text-slate-400 hover:text-indigo-600 transition-colors uppercase tracking-tight"
-            >
-                [Dev Toggle AIP]
-            </button>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* AIP Card */}
-          <Link to="/aip" className="group block bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:border-indigo-200 transition-all duration-500 active:scale-[0.98] overflow-hidden">
+          <Link to="/aip" className="group block bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:border-pink-200 transition-all duration-500 active:scale-[0.98] overflow-hidden">
             <div className="p-10">
-                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 group-hover:bg-indigo-600 group-hover:text-white shadow-lg shadow-indigo-100 group-hover:shadow-indigo-200 border border-indigo-100">
+                <div className="w-16 h-16 bg-pink-50 text-pink-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform duration-500 group-hover:bg-pink-600 group-hover:text-white shadow-lg shadow-pink-100 group-hover:shadow-pink-200 border border-pink-100">
                     <FileText size={32} strokeWidth={2.5} />
                 </div>
-                <h3 className="text-3xl font-black tracking-tight text-slate-900 mb-4 group-hover:text-indigo-600 transition-colors">AIP Form</h3>
+                <h3 className="text-3xl font-black tracking-tight text-slate-900 mb-4 group-hover:text-pink-600 transition-colors">AIP Form</h3>
                 <p className="font-medium text-slate-500 leading-relaxed text-base">
                   Annual Implementation Plan <br/>
                   <span className="text-slate-400 text-sm">Strategic objectives & activity planning</span>
                 </p>
             </div>
-            <div className="bg-slate-50 border-t border-slate-100 px-10 py-5 flex items-center justify-between group-hover:bg-indigo-600 transition-colors">
-                <span className="text-sm font-bold text-indigo-600 group-hover:text-white transition-colors">Launch Module</span>
-                <ArrowRight size={20} strokeWidth={3} className="text-indigo-500 transform group-hover:translate-x-2 transition-transform group-hover:text-white" />
+            <div className="bg-slate-50 border-t border-slate-100 px-10 py-5 flex items-center justify-between group-hover:bg-pink-600 transition-colors">
+                <span className="text-sm font-bold text-pink-600 group-hover:text-white transition-colors">Launch Module</span>
+                <ArrowRight size={20} strokeWidth={3} className="text-pink-500 transform group-hover:translate-x-2 transition-transform group-hover:text-white" />
             </div>
           </Link>
           
           {/* PIR Card */}
           {hasAIP ? (
-            <Link to="/pir" className="group block bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:border-emerald-200 transition-all duration-500 active:scale-[0.98] overflow-hidden">
+            <Link to="/pir" className="group block bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:border-blue-200 transition-all duration-500 active:scale-[0.98] overflow-hidden">
                 <div className="p-10">
                     <div className="flex justify-between items-start mb-8">
-                        <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500 group-hover:bg-emerald-600 group-hover:text-white shadow-lg shadow-emerald-100 group-hover:shadow-emerald-200 border border-emerald-100">
+                        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500 group-hover:bg-blue-600 group-hover:text-white shadow-lg shadow-blue-100 group-hover:shadow-blue-200 border border-blue-100">
                             <BarChart3 size={32} strokeWidth={2.5} />
                         </div>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 shadow-sm">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest border border-blue-200 shadow-sm">
                             <Unlock size={10} strokeWidth={3} />
                             Unlocked
                         </div>
                     </div>
-                    <h3 className="text-3xl font-black tracking-tight text-slate-900 mb-4 group-hover:text-emerald-600 transition-colors">PIR Form</h3>
+                    <h3 className="text-3xl font-black tracking-tight text-slate-900 mb-4 group-hover:text-blue-600 transition-colors">PIR Form</h3>
                     <p className="font-medium text-slate-500 leading-relaxed text-base">
                       Program Implementation Review <br/>
                       <span className="text-slate-400 text-sm">Physical & financial accomplishments</span>
                     </p>
                 </div>
-                <div className="bg-slate-50 border-t border-slate-100 px-10 py-5 flex items-center justify-between group-hover:bg-emerald-600 transition-colors">
-                    <span className="text-sm font-bold text-emerald-600 group-hover:text-white transition-colors">Launch Module</span>
-                    <ArrowRight size={20} strokeWidth={3} className="text-emerald-500 transform group-hover:translate-x-2 transition-transform group-hover:text-white" />
+                <div className="bg-slate-50 border-t border-slate-100 px-10 py-5 flex items-center justify-between group-hover:bg-blue-600 transition-colors">
+                    <span className="text-sm font-bold text-blue-600 group-hover:text-white transition-colors">Launch Module</span>
+                    <ArrowRight size={20} strokeWidth={3} className="text-blue-500 transform group-hover:translate-x-2 transition-transform group-hover:text-white" />
                 </div>
             </Link>
           ) : (
