@@ -5,13 +5,17 @@ export const DashboardHeader = ({ user, onLogout }) => {
     return (
         <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm print:hidden">
             <div className="container mx-auto px-4 flex justify-between items-center h-16 max-w-6xl">
-                <div className="flex items-center gap-3">
-                    <div className="p-1.5 bg-slate-50 rounded-xl border border-slate-100">
-                        <img src="/DepEd-emblem.webp" alt="DepEd Logo" className="h-8 w-auto" />
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-9 w-auto drop-shadow-sm" />
+                        <img src="/Division_Logo.webp" alt="Division Logo" className="h-9 w-auto drop-shadow-sm" />
                     </div>
+                    <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
                     <div className="flex flex-col">
-                        <div className="font-extrabold text-base text-slate-900 tracking-tight leading-none uppercase">DepEd Division of <br className="sm:hidden"/> Guihulngan City</div>
-                        <div className="text-[10px] font-bold text-pink-600 tracking-[0.2em] uppercase mt-1">QPIR-AIP Portal</div>
+                        <div className="font-black text-slate-900 tracking-tighter leading-none uppercase text-xs md:text-sm">
+                            DepEd Division of <br className="sm:hidden"/> Guihulngan City
+                        </div>
+                        <div className="text-[9px] font-black text-blue-600 tracking-[0.2em] uppercase mt-0.5">QPIR-AIP Portal</div>
                     </div>
                 </div>
                 <div className="flex items-center gap-4">

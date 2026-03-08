@@ -66,7 +66,6 @@ export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, t
                             </motion.div>
                         ) : onSave ? (
                             <motion.button 
-                                layout
                                 onClick={onSave}
                                 disabled={isSaving}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white text-xs font-bold transition-all active:scale-95 shadow-lg disabled:opacity-70 disabled:cursor-wait ${btnClasses[theme]}`}
