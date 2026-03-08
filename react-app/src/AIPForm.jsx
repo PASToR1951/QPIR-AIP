@@ -193,7 +193,7 @@ export default function App() {
     if (appMode === 'splash') {
         return (
             <>
-                <FormHeader title="AIP: Annual Implementation Plan" onSave={handleSaveForLater} theme="pink" />
+                <FormHeader title="Annual Implementation Plan" onSave={handleSaveForLater} theme="pink" />
                 <ViewModeSelector
                     onSelectMode={handleSelectMode}
                     hasDraft={hasDraft}
@@ -208,8 +208,8 @@ export default function App() {
     // RENDER MAIN APPLICATION
     // ==========================================
     return (
-        <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative overflow-hidden print:py-0 print:bg-white print:text-black">
-            <FormHeader title="AIP: Annual Implementation Plan" onSave={handleSaveForLater} theme="pink" />
+        <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative print:py-0 print:bg-white print:text-black">
+            <FormHeader title="Annual Implementation Plan" onSave={handleSaveForLater} theme="pink" />
 
             {/* Aceternity Grid Background */}
             <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden"></div>
@@ -242,10 +242,12 @@ export default function App() {
                 )}
 
                 {/* HEADER */}
-                <FormBoxHeader
-                    title="Annual Implementation Plan"
-                    badge={`CY ${currentYear}`}
-                />
+                {(appMode === 'full' || currentStep === 4) && (
+                    <FormBoxHeader
+                        title="Annual Implementation Plan"
+                        badge={`CY ${currentYear}`}
+                    />
+                )}
 
                 {/* ============================================================== */}
                 {/* WIZARD MODE: STEPPER */}
