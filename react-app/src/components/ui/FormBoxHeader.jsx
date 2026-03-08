@@ -1,6 +1,31 @@
 import React from 'react';
 
-export const FormBoxHeader = ({ title, subtitle, badge }) => {
+export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
+    if (compact) {
+        return (
+            <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50/50 rounded-2xl border border-slate-100 select-none mb-10">
+                <div className="flex items-center gap-4 shrink-0">
+                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-12 w-auto" />
+                    <img src="/Division_Logo.webp" alt="Division Logo" className="h-10 w-auto" />
+                </div>
+                <div className="h-10 w-px bg-slate-200 hidden md:block"></div>
+                <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
+                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-tight">
+                        Republic of the Philippines • Department of Education
+                    </div>
+                    <h1 className="text-xl font-black text-slate-900 tracking-tight mt-0.5 uppercase">
+                        {title}
+                    </h1>
+                </div>
+                {badge && (
+                    <div className="shrink-0 px-3 py-1 rounded-full text-[10px] font-black bg-white text-slate-600 border border-slate-200 shadow-sm uppercase tracking-tighter">
+                        {badge}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col items-center justify-center mb-10 select-none text-center">
             <div className="flex justify-center items-center gap-6 mb-6">
