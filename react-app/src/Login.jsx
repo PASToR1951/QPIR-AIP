@@ -247,10 +247,6 @@ export default function Login() {
           </div>
         </div>
       </footer>
-
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
