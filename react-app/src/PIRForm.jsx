@@ -312,11 +312,7 @@ export default function App() {
             <>
                 <FormHeader 
                     title="Quarterly Performance Review" 
-                    onSave={handleSaveForLater} 
                     onBack={handleBack}
-                    onHome={handleHome}
-                    isSaving={isSaving}
-                    isSaved={isSaved}
                     theme="blue" 
                 />
                 <ViewModeSelector
