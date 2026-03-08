@@ -303,32 +303,45 @@ export default function App() {
             `}</style>
             
             {/* MAIN CONTAINER */}
-            <div className="container mx-auto max-w-5xl bg-white border border-slate-200 rounded-[2rem] p-6 md:p-12 shadow-xl print:hidden mb-12 relative z-10 mt-8">
+            <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0">
                 
-                {/* View Mode Toggle (Desktop Only) */}
-                {!isMobile && (
-                    <div className="absolute top-6 right-8 z-20">
-                        <button 
-                            onClick={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
-                            className="text-xs font-semibold text-slate-500 hover:text-blue-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm transition-colors flex items-center gap-1.5"
-                        >
-                            {appMode === 'wizard' ? (
-                                <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></svg> Switch to Full View</>
-                            ) : (
-                                <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg> Switch to Wizard</>
-                            )}
-                        </button>
+                {/* Independent Header Card (Wizard View) */}
+                {appMode === 'wizard' && (
+                    <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-md mb-6">
+                        <FormBoxHeader 
+                            title="Quarterly Performance Review"
+                            badge={quarterString}
+                            compact={true}
+                        />
                     </div>
                 )}
 
-                {/* HEADER */}
-                {(appMode === 'full' || currentStep === 4) && (
-                    <FormBoxHeader 
-                        title="Quarterly Performance Review"
-                        subtitle="Division Monitoring Evaluation and Adjustment"
-                        badge={quarterString}
-                    />
-                )}
+                <div className="bg-white border border-slate-200 rounded-[2.5rem] p-6 md:p-12 shadow-xl relative">
+                    
+                    {/* View Mode Toggle (Desktop Only) */}
+                    {!isMobile && (
+                        <div className="absolute top-6 right-8 z-20">
+                            <button 
+                                onClick={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
+                                className="text-xs font-semibold text-slate-500 hover:text-blue-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm transition-colors flex items-center gap-1.5"
+                            >
+                                {appMode === 'wizard' ? (
+                                    <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></svg> Switch to Full View</>
+                                ) : (
+                                    <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg> Switch to Wizard</>
+                                )}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* FULL VIEW HEADER */}
+                    {appMode === 'full' && (
+                        <FormBoxHeader 
+                            title="Quarterly Performance Review"
+                            subtitle="Division Monitoring Evaluation and Adjustment"
+                            badge={quarterString}
+                        />
+                    )}
                 {/* ============================================================== */}
                 {/* WIZARD MODE: STEPPER & CARDS */}
                 {/* ============================================================== */}
