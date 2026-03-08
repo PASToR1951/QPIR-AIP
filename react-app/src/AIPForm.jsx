@@ -265,11 +265,7 @@ export default function App() {
             <>
                 <FormHeader 
                     title="Annual Implementation Plan" 
-                    onSave={handleSaveForLater} 
                     onBack={handleBack}
-                    onHome={handleHome}
-                    isSaving={isSaving}
-                    isSaved={isSaved}
                     theme="pink" 
                 />
                 <ViewModeSelector
