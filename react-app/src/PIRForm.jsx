@@ -41,6 +41,8 @@ import { FormHeader } from './components/ui/FormHeader';
 import { FormBoxHeader } from './components/ui/FormBoxHeader';
 import { ViewModeSelector } from './components/ui/ViewModeSelector';
 import { ConfirmationModal } from './components/ui/ConfirmationModal';
+import { DocumentPreviewModal } from './components/ui/DocumentPreviewModal';
+import { PIRDocument } from './components/docs/PIRDocument';
 
 export default function App() {
     // App Mode State: 'splash', 'wizard', or 'full'
@@ -56,13 +58,14 @@ export default function App() {
         return `4th Quarter CY ${year}`;
     });
 
-    // UI Wizard State
+    // UI State
     const [currentStep, setCurrentStep] = useState(1);
-    const totalSteps = 4;
+    const totalSteps = 6;
     const [activeFactorTab, setActiveFactorTab] = useState(FACTOR_TYPES[0]);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isAddingActivity, setIsAddingActivity] = useState(false);
     const [activityToDelete, setActivityToDelete] = useState(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     // Save Status State
     const [isSaving, setIsSaving] = useState(false);
@@ -339,6 +342,24 @@ export default function App() {
                 isSaved={isSaved}
                 theme="blue" 
             />
+
+            <DocumentPreviewModal 
+                isOpen={isPreviewOpen} 
+                onClose={() => setIsPreviewOpen(false)}
+                title="PIR Document Preview"
+                subtitle="Quarterly Program Implementation Review"
+            >
+                <PIRDocument 
+                    quarter={quarterString}
+                    program={program}
+                    school={school}
+                    owner={owner}
+                    budget={rawBudget}
+                    fundSource={fundSource}
+                    activities={activities}
+                    factors={factors}
+                />
+            </DocumentPreviewModal>
             
             {/* Aceternity Grid Background with Radial Mask */}
             <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden"></div>
@@ -413,11 +434,13 @@ export default function App() {
                             </div>
                             {[
                                 { num: 1, label: "Profile" },
-                                { num: 2, label: "Activities" },
-                                { num: 3, label: "Factors" },
-                                { num: 4, label: "Review" }
+                                { num: 2, label: "Financials" },
+                                { num: 3, label: "M&E Progress" },
+                                { num: 4, label: "Factors" },
+                                { num: 5, label: "Signatures" },
+                                { num: 6, label: "Finalize" }
                             ].map((step) => (
-                                <div key={step.num} className="flex flex-col items-center gap-3 relative z-10 w-1/4">
+                                <div key={step.num} className="flex flex-col items-center gap-2 relative z-10 w-1/6">
                                     <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs transition-colors ${
                                         currentStep === step.num ? 'bg-blue-600 text-white shadow-md ring-4 ring-blue-100' : 
                                         currentStep > step.num ? 'bg-blue-600 text-white ring-2 ring-white' : 'bg-white text-slate-400 border-2 border-slate-200'
@@ -452,22 +475,46 @@ export default function App() {
                                     {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">Define the fundamental details of the program being evaluated.</p>}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                                 <Select theme="blue" label="Program Name" placeholder="Select Program" options={PROGRAM_LIST} value={program} onChange={(e) => setProgram(e.target.value)} />
                                 <Select theme="blue" label="School" placeholder="Select School" options={SCHOOL_LIST} value={school} onChange={(e) => setSchool(e.target.value)} />
                                 <Input theme="blue" label="Program Owner" placeholder="Name of owner" value={owner} onChange={(e) => setOwner(e.target.value)} />
-                                <div className="grid grid-cols-2 gap-4">
+                                
+                                {appMode === 'full' && (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <Input theme="blue" label="Budget" placeholder="₱ 0.00" inputMode="decimal" value={displayBudget} onFocus={() => setIsBudgetFocused(true)} onBlur={() => setIsBudgetFocused(false)} onChange={(e) => setRawBudget(e.target.value.replace(/[^0-9.]/g, ''))} />
+                                        <Select theme="blue" label="Fund Source" placeholder="Select Source" options={["MOOE", "SARO"]} value={fundSource} onChange={(e) => setFundSource(e.target.value)} />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* -------------------------------------------------------- */}
+                        {/* SECTION 2: FINANCIAL INFORMATION (Wizard Step 2 Only) */}
+                        {/* -------------------------------------------------------- */}
+                        {appMode === 'wizard' && currentStep === 2 && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="mb-8 flex items-center gap-3 border-b border-slate-200 pb-4">
+                                    <div className="p-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-slate-800 tracking-tight">Financial Information</h2>
+                                        <p className="text-sm text-slate-500 font-medium mt-0.5">Specify the budget and funding source for the program.</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
                                     <Input theme="blue" label="Budget" placeholder="₱ 0.00" inputMode="decimal" value={displayBudget} onFocus={() => setIsBudgetFocused(true)} onBlur={() => setIsBudgetFocused(false)} onChange={(e) => setRawBudget(e.target.value.replace(/[^0-9.]/g, ''))} />
                                     <Select theme="blue" label="Fund Source" placeholder="Select Source" options={["MOOE", "SARO"]} value={fundSource} onChange={(e) => setFundSource(e.target.value)} />
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* -------------------------------------------------------- */}
                         {/* WIZARD ONLY: ACTIVITY CARDS (Step 2) */}
                         {/* -------------------------------------------------------- */}
                         {appMode === 'wizard' && (
-                            <div className={`${currentStep === 2 ? 'block' : 'hidden'}`}>
+                            <div className={`${currentStep === 3 ? 'block' : 'hidden'}`}>
                                 <div className="mb-8 flex items-center justify-between border-b border-slate-200 pb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2.5 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl">
@@ -755,62 +802,59 @@ export default function App() {
                         )}
 
                         {/* -------------------------------------------------------- */}
-                        {/* WIZARD ONLY: FACTORS TABS (Step 3) */}
+                        {/* WIZARD ONLY: FACTORS (Steps 3 and 4) */}
                         {/* -------------------------------------------------------- */}
-                        {appMode === 'wizard' && (
-                            <div className={`${currentStep === 3 ? 'block' : 'hidden'}`}>
-                                <div className="mb-8 flex items-center gap-3 border-b border-slate-200 pb-4">
-                                    <div className="p-2.5 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/></svg>
-                                    </div>
-                                    <div>
-                                        <h2 className="text-xl font-bold text-slate-800 tracking-tight">Facilitating & Hindering Factors</h2>
-                                        <p className="text-sm text-slate-500 font-medium mt-0.5">Select a category to detail internal and external factors.</p>
+                        {appMode === 'wizard' && currentStep === 4 && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="mb-8 flex items-center justify-between border-b border-slate-200 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20"/><path d="m17 5-5-3-5 3"/><path d="m17 19-5 3-5-3"/><path d="M2 12h20"/><path d="m5 7-3 5 3 5"/><path d="m19 7 3 5-3 5"/></svg>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Implementation Factors</h2>
+                                            <p className="text-sm text-slate-500 font-medium mt-0.5">
+                                                Identify Institutional, Technical, Infrastructure, Learning Resources, Environmental, and other factors.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                                 
-                                <div className="flex gap-2 overflow-x-auto pb-4 mb-2 no-scrollbar">
-                                    {FACTOR_TYPES.map(type => (
-                                        <button
-                                            key={type}
-                                            type="button"
-                                            onClick={() => setActiveFactorTab(type)}
-                                            className={`whitespace-nowrap px-6 py-2.5 rounded-full text-sm font-bold transition-colors border ${
-                                                activeFactorTab === type
-                                                ? 'bg-slate-800 text-white border-slate-800 shadow-md'
-                                                : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-800 shadow-sm'
-                                            }`}
-                                        >
-                                            {type}
-                                        </button>
+                                <div className="space-y-6">
+                                    {FACTOR_TYPES.map((type) => (
+                                        <div key={type} className="bg-slate-50 border border-slate-200 rounded-3xl p-6 md:p-8">
+                                            <h4 className="text-xs font-black text-blue-600 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                                                <span className="w-8 h-px bg-blue-200"></span>
+                                                {type} Factors
+                                            </h4>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest px-1">Facilitating</label>
+                                                    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all">
+                                                        <TextareaAuto 
+                                                            className="w-full text-sm font-medium text-slate-700 bg-transparent outline-none min-h-[80px]"
+                                                            placeholder={`What helped in ${type.toLowerCase()} aspect?`}
+                                                            value={factors[type].facilitating}
+                                                            onChange={(e) => handleFactorChange(type, 'facilitating', e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-bold text-rose-600 uppercase tracking-widest px-1">Hindering</label>
+                                                    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm focus-within:ring-2 focus-within:ring-rose-500/20 focus-within:border-rose-500 transition-all">
+                                                        <TextareaAuto 
+                                                            className="w-full text-sm font-medium text-slate-700 bg-transparent outline-none min-h-[80px]"
+                                                            placeholder={`What were the challenges in ${type.toLowerCase()}?`}
+                                                            value={factors[type].hindering}
+                                                            onChange={(e) => handleFactorChange(type, 'hindering', e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     ))}
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
-                                    <div className="flex flex-col gap-4 relative z-10">
-                                        <label className="text-xs font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-2">
-                                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
-                                            Facilitating Factors
-                                        </label>
-                                        <TextareaAuto 
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 text-sm font-medium text-slate-700 focus:bg-white focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50 transition-colors min-h-[160px]"
-                                            placeholder={`Enter positive factors for ${activeFactorTab}...`}
-                                            value={factors[activeFactorTab].facilitating}
-                                            onChange={(e) => handleFactorChange(activeFactorTab, 'facilitating', e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="flex flex-col gap-4 relative z-10">
-                                        <label className="text-xs font-bold text-rose-600 uppercase tracking-widest flex items-center gap-2">
-                                            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
-                                            Hindering Factors
-                                        </label>
-                                        <TextareaAuto 
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-5 text-sm font-medium text-slate-700 focus:bg-white focus:border-rose-300 focus:ring-4 focus:ring-rose-50 transition-colors min-h-[160px]"
-                                            placeholder={`Enter challenges for ${activeFactorTab}...`}
-                                            value={factors[activeFactorTab].hindering}
-                                            onChange={(e) => handleFactorChange(activeFactorTab, 'hindering', e.target.value)}
-                                        />
-                                    </div>
                                 </div>
                             </div>
                         )}
@@ -864,18 +908,20 @@ export default function App() {
                         {/* -------------------------------------------------------- */}
                         {/* SECTION 4: SIGNATURES (Shared) */}
                         {/* -------------------------------------------------------- */}
-                        <div className={`${(appMode === 'full' || currentStep === 4) ? 'block' : 'hidden'}`}>
-                            <div className="mb-8 flex items-center gap-3 border-b border-slate-200 pb-4">
-                                <div className="p-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path><path d="m9 12 2 2 4-4"></path></svg>
+                        <div className={`${(appMode === 'full' || currentStep === 5) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-500' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
+                             <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Signatures</h2>
+                                            {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">Finalize with necessary approvals.</p>}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-slate-800 tracking-tight">Finalize Document</h2>
-                                    {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">Review signatures and submit. Scroll down to preview the printable layout.</p>}
-                                </div>
-                            </div>
-
-                            <div className="bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-sm mb-2">
+                             
+                             <div className="bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-sm mb-2 relative">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 relative z-10">
                                     <div className="flex flex-col">
                                         <p className="text-xs text-left mb-8 select-none text-slate-500 font-bold uppercase tracking-widest">Prepared by</p>
@@ -891,9 +937,47 @@ export default function App() {
                             </div>
                         </div>
 
+                        {/* -------------------------------------------------------- */}
+                        {/* SECTION 6: FINAL REVIEW & SUBMIT */}
+                        {/* -------------------------------------------------------- */}
+                        {(appMode === 'full' || currentStep === 6) && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6">
+                                {appMode === 'wizard' && (
+                                    <div className="bg-white p-8 md:p-12 rounded-[2.5rem] border-2 border-slate-100 shadow-sm mb-12 flex flex-col items-center justify-center text-center group relative overflow-hidden transition-all hover:border-blue-200">
+                                        <div className="absolute inset-0 bg-blue-50/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6 text-blue-600 border border-blue-100 group-hover:scale-110 transition-transform">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                        </div>
+                                        <h3 className="text-xl font-black text-slate-800 mb-2">Final Review</h3>
+                                        <p className="text-sm text-slate-500 font-medium mb-8 max-w-sm">Please review the generated document preview below before final submission.</p>
+
+                                        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsPreviewOpen(true)}
+                                                className="px-8 py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                                Preview Document
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={handleConfirmSubmit}
+                                                disabled={isSubmitted}
+                                                className="px-8 py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-lg shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                                {isSubmitted ? "Submitted" : "Confirm & Submit"}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* WIZARD NAVIGATION BUTTONS */}
+                    {/* Navigation Buttons for Wizard Mode */}
                     {appMode === 'wizard' && (
                         <div className="mt-12 pt-6 border-t border-slate-200 flex justify-between items-center">
                             <button 
@@ -912,243 +996,50 @@ export default function App() {
                             
                             {currentStep < totalSteps && (
                                 <div className="flex items-center gap-3">
-                                    {currentStep === 3 && FACTOR_TYPES.indexOf(activeFactorTab) < FACTOR_TYPES.length - 1 && (
-                                        <button 
-                                            type="button" 
-                                            onClick={nextStep}
-                                            className="text-sm font-medium text-slate-400 hover:text-slate-600 px-3 transition-colors hidden sm:block"
-                                        >
-                                            Skip to Review
-                                        </button>
-                                    )}
-                                    
                                     <button 
                                         type="button" 
-                                        onClick={() => {
-                                            if (currentStep === 3 && FACTOR_TYPES.indexOf(activeFactorTab) < FACTOR_TYPES.length - 1) {
-                                                setActiveFactorTab(FACTOR_TYPES[FACTOR_TYPES.indexOf(activeFactorTab) + 1]);
-                                            } else {
-                                                nextStep();
-                                            }
-                                        }}
+                                        onClick={nextStep}
                                         className="group relative inline-flex h-12 items-center justify-center rounded-xl bg-slate-900 px-8 font-bold text-white shadow-md transition-colors active:scale-95 hover:bg-slate-800 gap-2"
                                     >
-                                        {currentStep === 3 && FACTOR_TYPES.indexOf(activeFactorTab) < FACTOR_TYPES.length - 1 
-                                            ? "Next Category" 
-                                            : "Continue"}
+                                        Continue
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-1"><polyline points="9 18 15 12 9 6"></polyline></svg>
                                     </button>
                                 </div>
                             )}
                         </div>
                     )}
+
+                    {/* FINAL ACTION BUTTONS (Below Full Form Only) */}
+                    {appMode === 'full' && (
+                        <div className="mt-12 bg-white border border-slate-200 rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
+                            <h3 className="text-slate-800 font-bold text-xl mb-6">Ready to finalize your review?</h3>
+
+                            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPreviewOpen(true)}
+                                    className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-white border-2 border-slate-200 px-8 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors active:scale-95 w-full sm:w-auto shadow-sm"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    Preview Layout
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmSubmit}
+                                    disabled={isSubmitted}
+                                    className="inline-flex h-14 items-center justify-center rounded-2xl bg-blue-600 px-8 py-1 text-sm font-bold text-white transition-colors gap-3 hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-md"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                    {isSubmitted ? "Submitted" : "Confirm & Submit"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </form>
             </div>
         </div>
-
-            {/* ========================================= */}
-            {/* PRINT LAYOUT & ON-SCREEN DOCUMENT PREVIEW */}
-            {/* ========================================= */}
-            <div className={`print:block print:p-0 print:shadow-none print:m-0 print:bg-transparent ${appMode === 'wizard' && currentStep === 4 ? 'block container mx-auto max-w-[210mm] bg-white text-black shadow-md border border-slate-200 p-8 md:p-12 mb-12 relative' : 'hidden'} ${appMode === 'full' ? 'print:block hidden' : ''}`}>
-                
-                {/* Print Header */}
-                <FormBoxHeader 
-                    title="Quarterly Performance Review"
-                    subtitle="Division Monitoring Evaluation and Adjustment"
-                    badge={quarterString}
-                />
-
-                {/* Print Section A */}
-                <div 
-                    onClick={() => editSection(1)} 
-                    className={`mb-4 relative group rounded-xl p-4 -mx-4 transition-colors print:hover:bg-transparent print:p-0 print:mx-0 print:rounded-none print-reset ${appMode === 'wizard' ? 'cursor-pointer hover:bg-slate-50' : ''}`}
-                >
-                    {appMode === 'wizard' && (
-                        <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-md print:hidden flex items-center gap-1.5 z-10 pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                            Edit Section
-                        </div>
-                    )}
-                    <div className="border-b-2 border-black pb-4">
-                        <h2 className="font-bold text-base mb-3 uppercase tracking-wide">A. Program Profile</h2>
-                        <div className="grid grid-cols-2 gap-x-12 gap-y-4 text-sm">
-                            <div className="flex border-b border-black pb-1">
-                                <span className="font-bold w-1/3">Program:</span>
-                                <span className="w-2/3">{program || "\u00A0"}</span>
-                            </div>
-                            <div className="flex border-b border-black pb-1">
-                                <span className="font-bold w-1/3">School:</span>
-                                <span className="w-2/3">{school || "\u00A0"}</span>
-                            </div>
-                            <div className="flex border-b border-black pb-1">
-                                <span className="font-bold w-1/3">Owner:</span>
-                                <span className="w-2/3">{owner || "\u00A0"}</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="flex border-b border-black pb-1">
-                                    <span className="font-bold w-1/2">Budget:</span>
-                                    <span className="w-1/2">{formatCurrency(rawBudget) || "\u00A0"}</span>
-                                </div>
-                                <div className="flex border-b border-black pb-1">
-                                    <span className="font-bold w-1/2">Source:</span>
-                                    <span className="w-1/2">{fundSource || "\u00A0"}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Print Section C */}
-                <div 
-                    onClick={() => editSection(2)} 
-                    className={`mb-4 relative group rounded-xl p-4 -mx-4 transition-colors print:hover:bg-transparent print:p-0 print:mx-0 print:rounded-none print-reset ${appMode === 'wizard' ? 'cursor-pointer hover:bg-slate-50' : ''}`}
-                >
-                    {appMode === 'wizard' && (
-                        <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-md print:hidden flex items-center gap-1.5 z-10 pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                            Edit Section
-                        </div>
-                    )}
-                    <div className="pb-2">
-                        <h2 className="font-bold text-base mb-2 uppercase tracking-wide">C. Quarterly Monitoring Evaluation & Adjustment</h2>
-                        <table className="w-full border-collapse text-[11px] border border-black table-fixed">
-                            <thead>
-                                <tr className="text-center font-bold bg-slate-100 print:bg-transparent">
-                                    <th rowSpan="2" className="border border-black p-2 w-[22%]">Activity</th>
-                                    <th colSpan="2" className="border border-black p-1">Target</th>
-                                    <th colSpan="2" className="border border-black p-1">Accomplished</th>
-                                    <th colSpan="2" className="border border-black p-1">Gap (%)</th>
-                                    <th rowSpan="2" className="border border-black p-2 w-[22%]">Actions</th>
-                                </tr>
-                                <tr className="text-center font-bold bg-slate-100 print:bg-transparent">
-                                    <th className="border border-black p-1 w-[8%]">Phys</th>
-                                    <th className="border border-black p-1 w-[8%]">Fin</th>
-                                    <th className="border border-black p-1 w-[8%]">Phys</th>
-                                    <th className="border border-black p-1 w-[8%]">Fin</th>
-                                    <th className="border border-black p-1 w-[8%]">Phys</th>
-                                    <th className="border border-black p-1 w-[8%]">Fin</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {activities.map((act) => {
-                                    const physGap = calculateGap(act.physTarget, act.physAcc);
-                                    const finGap = calculateGap(act.finTarget, act.finAcc);
-                                    return (
-                                        <tr key={act.id}>
-                                            <td className="border border-black p-2 whitespace-pre-wrap align-top">{act.name}</td>
-                                            <td className="border border-black p-1 text-center align-top">{act.physTarget}</td>
-                                            <td className="border border-black p-1 text-center align-top">{act.finTarget}</td>
-                                            <td className="border border-black p-1 text-center align-top">{act.physAcc}</td>
-                                            <td className="border border-black p-1 text-center align-top">{act.finAcc}</td>
-                                            <td className="border border-black p-1 text-center font-bold align-top" style={{ color: physGap < 0 ? 'red' : 'inherit' }}>{physGap.toFixed(2)}%</td>
-                                            <td className="border border-black p-1 text-center font-bold align-top" style={{ color: finGap < 0 ? 'red' : 'inherit' }}>{finGap.toFixed(2)}%</td>
-                                            <td className="border border-black p-2 whitespace-pre-wrap align-top">{act.actions}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Print Section D */}
-                <div 
-                    onClick={() => editSection(3)} 
-                    className={`mb-4 page-break-inside-avoid relative group rounded-xl p-4 -mx-4 transition-colors print:hover:bg-transparent print:p-0 print:mx-0 print:rounded-none print-reset ${appMode === 'wizard' ? 'cursor-pointer hover:bg-slate-50' : ''}`}
-                >
-                    {appMode === 'wizard' && (
-                        <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-md print:hidden flex items-center gap-1.5 z-10 pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                            Edit Section
-                        </div>
-                    )}
-                    <div>
-                        <h2 className="font-bold text-base mb-2 uppercase tracking-wide">D. Facilitating and Hindering Factors</h2>
-                        <div className="border border-black text-xs">
-                            <div className="grid grid-cols-2 font-bold text-center border-b border-black bg-slate-100 print:bg-transparent">
-                                <div className="p-2 border-r border-black">Facilitating Factors</div>
-                                <div className="p-2">Hindering Factors</div>
-                            </div>
-                            {FACTOR_TYPES.map((type, idx) => (
-                                <div key={type} className={`grid grid-cols-2 ${idx !== FACTOR_TYPES.length - 1 ? 'border-b border-black' : ''}`}>
-                                    <div className="p-2 border-r border-black relative pt-5 min-h-[40px]">
-                                        <span className="text-[9px] font-bold uppercase text-slate-500 absolute top-1 left-2 tracking-widest print:text-black">{type}</span>
-                                        <div className="whitespace-pre-wrap leading-tight">{factors[type].facilitating}</div>
-                                    </div>
-                                    <div className="p-2 relative pt-5 min-h-[40px]">
-                                        <span className="text-[9px] font-bold uppercase text-slate-500 absolute top-1 left-2 tracking-widest print:text-black">{type}</span>
-                                        <div className="whitespace-pre-wrap leading-tight">{factors[type].hindering}</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Print Signatures */}
-                <div 
-                    onClick={() => editSection(4)} 
-                    className={`page-break-inside-avoid relative group rounded-xl p-4 -mx-4 transition-colors print:hover:bg-transparent print:p-0 print:mx-0 print:rounded-none mt-4 mb-4 print-reset ${appMode === 'wizard' ? 'cursor-pointer hover:bg-slate-50' : ''}`}
-                >
-                    {appMode === 'wizard' && (
-                        <div className="absolute right-4 top-4 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow-md print:hidden flex items-center gap-1.5 z-10 pointer-events-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                            Edit Section
-                        </div>
-                    )}
-                    <div className="grid grid-cols-2 gap-16 mt-8">
-                        <div className="text-center">
-                            <p className="text-sm text-left mb-8 font-medium">Prepared by:</p>
-                            <div className="border-b border-black font-bold uppercase text-sm pb-1 min-h-[24px]">
-                                {owner}
-                            </div>
-                            <p className="text-xs mt-1 font-medium">Program Owner</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-sm text-left mb-8 font-medium">Noted:</p>
-                            <div className="border-b border-black font-bold uppercase text-sm pb-1 min-h-[24px]">
-                                DR. ENRIQUE Q. RETES, EdD
-                            </div>
-                            <p className="text-xs mt-1 font-medium">Chief Education Supervisor</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ========================================= */}
-            {/* FINAL ACTION BUTTONS (Below Preview/Full Form) */}
-            {/* ========================================= */}
-            {(appMode === 'full' || currentStep === 4) && (
-                <div className="print:hidden container mx-auto max-w-[210mm] bg-white border border-slate-200 rounded-[2rem] p-8 mb-16 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
-                    {isSubmitted ? (
-                        <div className="mb-6 px-6 py-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl font-bold flex items-center gap-3 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                            Document Successfully Saved to Database!
-                        </div>
-                    ) : (
-                        <h3 className="text-slate-800 font-bold text-xl mb-6">Ready to finalize your document?</h3>
-                    )}
-                    
-                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                        
-                        <button 
-                            type="button" 
-                            onClick={handleConfirmSubmit} 
-                            disabled={isSubmitted} 
-                            className="inline-flex h-14 items-center justify-center rounded-2xl bg-slate-900 px-8 py-1 text-sm font-bold text-white transition-colors gap-3 hover:bg-slate-800 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-md"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                            {isSubmitted ? "Submitted" : "Confirm & Submit"}
-                        </button>
-                        
-                        <button type="button" onClick={() => window.print()} className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-white border-2 border-slate-200 px-8 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 focus:outline-none focus:ring-4 focus:ring-slate-200 transition-colors active:scale-95 w-full sm:w-auto shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                            Print PDF
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
+    </div>
     );
 }
 
