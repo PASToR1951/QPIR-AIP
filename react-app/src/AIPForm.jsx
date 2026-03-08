@@ -18,6 +18,8 @@ const PHASES = ["Planning", "Implementation", "Monitoring and Evaluation"];
 import { Input } from './components/ui/Input';
 import { Select } from './components/ui/Select';
 import { TextareaAuto } from './components/ui/TextareaAuto';
+import { FormHeader } from './components/ui/FormHeader';
+import { FormBoxHeader } from './components/ui/FormBoxHeader';
 
 export default function App() {
     // App Mode State: 'splash', 'wizard', or 'full'
@@ -48,6 +50,45 @@ export default function App() {
         { id: crypto.randomUUID(), phase: "Implementation", name: "", period: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" },
         { id: crypto.randomUUID(), phase: "Monitoring and Evaluation", name: "", period: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }
     ]);
+
+    // Local Storage - Load Draft
+    useEffect(() => {
+        const savedDraft = localStorage.getItem('aip_draft');
+        if (savedDraft) {
+            try {
+                const draft = JSON.parse(savedDraft);
+                setPillar(draft.pillar || "");
+                setDepedProgram(draft.depedProgram || "");
+                setSipTitle(draft.sipTitle || "");
+                setProjectCoord(draft.projectCoord || "");
+                setObjectives(draft.objectives || "");
+                setIndicators(draft.indicators || "");
+                setAnnualTarget(draft.annualTarget || "");
+                if (draft.activities) setActivities(draft.activities);
+                // If there's a draft, skip splash
+                setAppMode('wizard');
+            } catch (e) {
+                console.error("Failed to load draft:", e);
+            }
+        }
+    }, []);
+
+    const handleSaveForLater = () => {
+        const draft = {
+            pillar,
+            depedProgram,
+            sipTitle,
+            projectCoord,
+            objectives,
+            indicators,
+            annualTarget,
+            activities,
+            lastSaved: new Date().toISOString()
+        };
+        localStorage.setItem('aip_draft', JSON.stringify(draft));
+        alert("Draft saved successfully to local storage!");
+    };
+    
     const [expandedActivityId, setExpandedActivityId] = useState(activities[0].id);
 
     // Resize Listener
@@ -131,8 +172,11 @@ export default function App() {
     // ==========================================
     if (appMode === 'splash') {
         return (
-            <div className="bg-slate-50 min-h-screen flex items-center justify-center relative overflow-hidden font-sans">
-                {/* Aceternity Grid Background */}
+            <div className="bg-slate-50 min-h-screen flex flex-col font-sans relative overflow-hidden">
+                <FormHeader title="AIP: Annual Implementation Plan" onSave={handleSaveForLater} theme="emerald" />
+                
+                <div className="flex-1 flex items-center justify-center relative">
+                    {/* Aceternity Grid Background */}
                 <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0"></div>
                 {/* Glowing Orbs */}
                 <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-400/20 rounded-full blur-[100px] pointer-events-none"></div>
@@ -192,14 +236,16 @@ export default function App() {
                     </div>
                 </div>
             </div>
-        );
-    }
+        </div>
+    );
+}
 
     // ==========================================
     // RENDER MAIN APPLICATION
     // ==========================================
     return (
-        <div className="bg-slate-50 min-h-screen py-4 md:py-12 text-slate-800 font-sans relative overflow-hidden print:py-0 print:bg-white print:text-black">
+        <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative overflow-hidden print:py-0 print:bg-white print:text-black">
+            <FormHeader title="AIP: Annual Implementation Plan" onSave={handleSaveForLater} theme="emerald" />
             
             {/* Aceternity Grid Background */}
             <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden"></div>
@@ -213,7 +259,7 @@ export default function App() {
             `}</style>
             
             {/* MAIN CONTAINER */}
-            <div className="container mx-auto max-w-5xl bg-white border border-slate-200 rounded-[2rem] p-6 md:p-12 shadow-xl print:hidden mb-12 relative z-10">
+            <div className="container mx-auto max-w-5xl bg-white border border-slate-200 rounded-[2rem] p-6 md:p-12 shadow-xl print:hidden mb-12 relative z-10 mt-8">
                 
                 {/* View Mode Toggle (Desktop Only) */}
                 {!isMobile && (
@@ -232,26 +278,10 @@ export default function App() {
                 )}
 
                 {/* HEADER */}
-                <div className="flex flex-col items-center justify-center mb-10 select-none text-center">
-                    <div className="flex justify-center items-center gap-6 mb-6">
-                        <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-24 w-auto" />
-                        <img src="/Division_Logo.webp" alt="Division Logo" className="h-20 w-auto" />
-                    </div>
-                    <div className="text-[11px] space-y-1 text-slate-500 font-bold uppercase tracking-[0.2em]">
-                        <p>Republic of the Philippines</p>
-                        <p className="text-slate-700">Department of Education</p>
-                        <p>Negros Island Region</p>
-                        <p>Division of Guihulngan City</p>
-                    </div>
-                    <div className="mt-8 flex flex-col items-center">
-                        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tighter text-slate-900 pb-1 text-center">
-                            Annual Implementation Plan
-                        </h1>
-                        <div className="mt-4 inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 border border-emerald-100 shadow-sm relative overflow-hidden">
-                            <span>CY {currentYear}</span>
-                        </div>
-                    </div>
-                </div>
+                <FormBoxHeader 
+                    title="Annual Implementation Plan" 
+                    badge={`CY ${currentYear}`} 
+                />
 
                 {/* ============================================================== */}
                 {/* WIZARD MODE: STEPPER & CARDS */}
