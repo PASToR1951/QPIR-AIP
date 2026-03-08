@@ -14,7 +14,7 @@ export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
                         Republic of the Philippines • Department of Education
                     </div>
                     <div className="text-[10px] font-black text-slate-900 uppercase tracking-tight mt-0.5">
-                        Region VII, Central Visayas
+                        Negros Island Region
                     </div>
                     <div className="text-[10px] font-black text-blue-600 uppercase tracking-tight">
                         Division of Guihulngan City
@@ -40,7 +40,7 @@ export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
                     <div className="text-[11px] space-y-0.5 text-slate-500 font-bold uppercase tracking-[0.25em] leading-tight">
                         <p>Republic of the Philippines</p>
                         <p className="text-slate-900 font-extrabold text-[12px] tracking-[0.3em]">Department of Education</p>
-                        <p>Region VII, Central Visayas</p>
+                        <p>Negros Island Region</p>
                         <p className="text-blue-600 tracking-[0.15em]">Schools Division of Guihulngan City</p>
                     </div>
                 </div>
