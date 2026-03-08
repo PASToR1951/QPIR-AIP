@@ -952,16 +952,11 @@ export default function App() {
             <div className={`print:block print:p-0 print:shadow-none print:m-0 print:bg-transparent ${appMode === 'wizard' && currentStep === 4 ? 'block container mx-auto max-w-[210mm] bg-white text-black shadow-md border border-slate-200 p-8 md:p-12 mb-12 relative' : 'hidden'} ${appMode === 'full' ? 'print:block hidden' : ''}`}>
                 
                 {/* Print Header */}
-                <div className="text-center mb-8 font-serif print-reset">
-                    <p className="text-sm">Republic of the Philippines</p>
-                    <p className="text-sm font-bold">Department of Education</p>
-                    <p className="text-sm">NEGROS ISLAND REGION</p>
-                    <p className="text-sm">Division of Guihulngan City</p>
-                    <br/>
-                    <h1 className="text-lg font-bold uppercase underline decoration-2 underline-offset-4 tracking-wide">Quarterly Performance Implementation Review (QPIR)</h1>
-                    <p className="text-sm mt-1 italic">Quarterly Division Monitoring Evaluation and Adjustment</p>
-                    <p className="text-base font-bold mt-2">{quarterString}</p>
-                </div>
+                <FormBoxHeader 
+                    title="Quarterly Performance Review"
+                    subtitle="Division Monitoring Evaluation and Adjustment"
+                    badge={quarterString}
+                />
 
                 {/* Print Section A */}
                 <div 

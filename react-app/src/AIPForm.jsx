@@ -706,9 +706,10 @@ export default function App() {
             <div className="print:block print:p-0 print:shadow-none print:m-0 print:bg-transparent container mx-auto max-w-[210mm] bg-white text-black shadow-md border border-slate-200 p-8 md:p-12 mb-12 relative">
 
                 {/* Print Header */}
-                <div className="text-center mb-8 font-serif print-reset">
-                    <h1 className="text-lg font-bold uppercase underline decoration-2 underline-offset-4 tracking-wide">ANNUAL IMPLEMENTATION PLAN FOR {currentYear}</h1>
-                </div>
+                <FormBoxHeader
+                    title="Annual Implementation Plan"
+                    badge={`CY ${currentYear}`}
+                />
 
                 {/* Print Section: Profile & Goals */}
                 <div className="mb-6 relative group rounded-xl p-4 -mx-4 transition-colors print:hover:bg-transparent print:p-0 print:mx-0 print:rounded-none print-reset">
