@@ -54,9 +54,8 @@ dataRoutes.get('/schools/:id/aip-status', async (c) => {
     });
     return c.json({ hasAIP: aipCount > 0, count: aipCount });
   } catch (error) {
-    // Fallback to mock data if database is not available
-    console.warn('Database unavailable, using mock data:', error);
-    return c.json({ hasAIP: false, count: 0 });
+    console.error(error);
+    return c.json({ error: 'Failed to fetch AIP status' }, 500);
   }
 });
 
