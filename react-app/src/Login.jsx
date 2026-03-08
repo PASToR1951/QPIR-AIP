@@ -61,8 +61,7 @@ export default function Login() {
     const finalEmail = email.includes('@') ? email : `${email}@deped.gov.ph`;
 
     try {
-      const apiHost = window.location.hostname;
-      const response = await axios.post(`http://${apiHost}:3001/api/auth/login`, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         email: finalEmail,
         password,
       });
@@ -192,57 +191,52 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Optimized Pilled Mobile Footer */}
-      <footer className="md:absolute md:bottom-0 w-full z-40 p-4 md:p-0">
-        <div className="container mx-auto max-w-6xl md:bg-[#fafafa]/90 md:backdrop-blur-md md:border-t md:border-slate-200 py-8 md:py-8 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-[2.5rem] md:rounded-none shadow-xl shadow-slate-200/50 md:shadow-none">
-          <div className="grid grid-cols-1 md:grid-cols-2 items-center md:items-start gap-8 md:gap-y-6 text-slate-500 text-xs px-6">
+      {/* Pill Style Footer */}
+      <footer className="md:absolute md:bottom-6 w-full z-40 p-4">
+        <div className="container mx-auto max-w-6xl bg-white/90 backdrop-blur-xl border border-slate-200 rounded-[2.5rem] md:rounded-full shadow-xl shadow-slate-200/50 py-6 md:py-3 px-6 md:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 text-slate-500 text-xs">
 
-            {/* 1. Logos - Mobile: 1st, Desktop: Col 1 Top */}
-            <div className="flex items-center justify-center md:justify-start gap-3 md:gap-4 order-1">
-              <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-8 md:h-10 w-auto opacity-90" />
+            {/* 1. Logos */}
+            <div className="flex items-center justify-center gap-3 md:gap-4 group/logos">
+              <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
+                <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-8 md:h-10 w-auto opacity-80 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300" />
               </a>
               <div className="h-6 md:h-8 w-px bg-slate-300"></div>
               <div className="flex items-center gap-2 md:gap-3">
-                <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 md:h-10 w-auto drop-shadow-sm" />
+                <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
+                  <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 md:h-10 w-auto drop-shadow-sm grayscale hover:grayscale-0 transition-all duration-300" />
                 </a>
-                <a href="https://depednir.net/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-8 md:h-10 w-auto drop-shadow-sm" />
+                <a href="https://depednir.net/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
+                  <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-8 md:h-10 w-auto drop-shadow-sm grayscale hover:grayscale-0 transition-all duration-300" />
                 </a>
-                <a href="https://depedguihulngan.ph/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
-                  <img src="/Division_Logo.webp" alt="Division Logo" className="h-8 md:h-10 w-auto drop-shadow-sm" />
+                <a href="https://depedguihulngan.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
+                  <img src="/Division_Logo.webp" alt="Division Logo" className="h-8 md:h-10 w-auto drop-shadow-sm grayscale hover:grayscale-0 transition-all duration-300" />
                 </a>
               </div>
             </div>
 
-            {/* 2. Social Media Pilled Buttons - Mobile: 2nd, Desktop: Col 2 Top */}
-            <div className="flex items-center justify-center md:justify-end gap-3 order-2">
+            {/* 2. Middle Info (Address & Copyright) */}
+            <div className="flex flex-col items-center gap-1 text-[10px] text-slate-400 font-medium text-center">
+              <div className="flex flex-wrap justify-center items-center gap-2">
+                <span className="flex items-center gap-1"><MapPin size={10} className="text-slate-300" /> Osmeña Avenue, City of Guihulngan, Negros Oriental</span>
+                <span className="hidden lg:inline text-slate-300">•</span>
+                <span className="flex items-center gap-1"><Phone size={10} className="text-slate-300" /> (035) 410-4069 • (035) 410-4066 • 0956-964-7346</span>
+              </div>
+              <div className="text-slate-400 font-normal tracking-tight text-[9px]">
+                © {new Date().getFullYear()} DepEd Division of Guihulngan City. All rights reserved.
+              </div>
+            </div>
+
+            {/* 3. Social Media Pilled Buttons */}
+            <div className="flex items-center justify-center gap-3">
               <a href="mailto:guihulngan.city@deped.gov.ph" className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
                 <Mail size={14} />
-                <span>Email Us</span>
+                <span className="hidden lg:inline">Email Us</span>
               </a>
               <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
                 <Facebook size={14} />
-                <span>Facebook</span>
+                <span className="hidden lg:inline">Facebook</span>
               </a>
-            </div>
-
-            {/* 3. Address & Contact Numbers - Mobile: 3rd, Desktop: Col 2 Bottom */}
-            <div className="flex flex-col items-center md:items-end gap-1 order-3 md:order-4 text-[10px] text-slate-400 font-medium">
-              <div className="flex items-center gap-1.5 text-center md:text-right">
-                <MapPin size={12} className="shrink-0 text-slate-300" />
-                <span>Osmeña Avenue, City of Guihulngan, Negros Oriental</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-center md:text-right">
-                <Phone size={12} className="shrink-0 text-slate-300" />
-                <span>(035) 410-4069 • 0956-964-7346</span>
-              </div>
-            </div>
-
-            {/* 4. Copyright - Mobile: 4th, Desktop: Col 1 Bottom */}
-            <div className="text-slate-400 font-normal text-center md:text-left tracking-tight order-4 md:order-3 text-[9px]">
-              © {new Date().getFullYear()} DepEd Division of Guihulngan City. <br className="md:hidden" /> All rights reserved.
             </div>
 
           </div>
