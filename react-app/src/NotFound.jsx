@@ -4,26 +4,29 @@ import { Home, ArrowLeft, AlertCircle } from 'lucide-react';
 
 const NotFound = () => {
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-pink-50/30 flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans text-slate-900">
       {/* SDO Facade Background Overlay */}
       <div 
-        className="absolute inset-0 z-0 opacity-50 pointer-events-none"
+        className="absolute inset-0 z-0 opacity-40 pointer-events-none"
         style={{ 
           backgroundImage: `url('/SDO_Facade.webp')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          filter: 'grayscale(100%)'
+          filter: 'grayscale(100%) brightness(1.2) contrast(0.8)'
         }}
       ></div>
+      
+      {/* Pink Tint Layer */}
+      <div className="absolute inset-0 bg-pink-600/10 mix-blend-multiply pointer-events-none z-[1]"></div>
 
       {/* Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none z-0"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#fce7f3_1px,transparent_1px),linear-gradient(to_bottom,#fce7f3_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none z-[2]"></div>
 
       <div className="relative z-10 flex flex-col items-center text-center max-w-2xl px-4">
         {/* Animated Icon Container */}
         <div className="relative mb-12 group">
-          <div className="absolute -inset-8 bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 animate-spin-slow"></div>
-          <div className="relative bg-white border border-slate-200 w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-blue-200/50 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+          <div className="absolute -inset-8 bg-gradient-to-r from-pink-500 via-purple-500 to-pink-400 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-500 animate-spin-slow"></div>
+          <div className="relative bg-white border border-pink-100 w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-pink-200/50 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
              <div className="flex flex-col items-center">
                 <img src="/Division_Logo.webp" alt="Division Logo" className="h-20 md:h-24 w-auto transform group-hover:scale-110 transition-transform duration-700 animate-bounce-slow" />
                 <div className="absolute -top-2 -right-2 bg-pink-600 text-white p-1.5 rounded-xl shadow-lg animate-bounce" style={{ animationDelay: '0.5s' }}>
@@ -35,12 +38,12 @@ const NotFound = () => {
 
         {/* Error Code & Message */}
         <div className="space-y-4 mb-12">
-            <h1 className="text-[10rem] md:text-[14rem] font-black leading-none tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-slate-900 via-slate-700 to-slate-400 select-none opacity-10 absolute left-1/2 -translate-x-1/2 -top-16 -z-10">404</h1>
-            <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight">
-                Lost in <span className="text-blue-600">Space?</span>
+            <h1 className="text-[10rem] md:text-[14rem] font-black leading-none tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-slate-900 via-slate-700 to-slate-400 select-none opacity-5 absolute left-1/2 -translate-x-1/2 -top-20 -z-10">404</h1>
+            <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
+                Resource <span className="text-pink-600 uppercase">Not Available</span>
             </h2>
-            <p className="text-slate-500 text-lg md:text-xl font-medium max-w-md mx-auto leading-relaxed">
-                The page you are looking for has been moved, evaporated, or never existed in the first place.
+            <p className="text-slate-500 text-lg font-bold max-w-md mx-auto leading-relaxed uppercase tracking-tighter">
+                The page you are trying to access is unavailable or has been relocated within the system.
             </p>
         </div>
 
