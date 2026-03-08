@@ -196,7 +196,7 @@ export default function Login() {
       <footer className="md:absolute md:bottom-0 w-full z-40 p-4 md:p-0">
         <div className="container mx-auto max-w-6xl md:bg-[#fafafa]/90 md:backdrop-blur-md md:border-t md:border-slate-200 py-8 md:py-8 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-[2.5rem] md:rounded-none shadow-xl shadow-slate-200/50 md:shadow-none">
           <div className="grid grid-cols-1 md:grid-cols-2 items-center md:items-start gap-8 md:gap-y-6 text-slate-500 text-xs px-6">
-            
+
             {/* 1. Logos - Mobile: 1st, Desktop: Col 1 Top */}
             <div className="flex items-center justify-center md:justify-start gap-3 md:gap-4 order-1">
               <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="hover:opacity-80 transition-opacity">
@@ -242,7 +242,7 @@ export default function Login() {
 
             {/* 4. Copyright - Mobile: 4th, Desktop: Col 1 Bottom */}
             <div className="text-slate-400 font-normal text-center md:text-left tracking-tight order-4 md:order-3 text-[9px]">
-              © {new Date().getFullYear()} DepEd Division of Guihulngan City. <br className="md:hidden"/> All rights reserved.
+              © {new Date().getFullYear()} DepEd Division of Guihulngan City. <br className="md:hidden" /> All rights reserved.
             </div>
 
           </div>
