@@ -240,7 +240,7 @@ export default function App() {
     if (appMode === 'splash') {
         return (
             <>
-                <FormHeader title="PIR: Quarterly Performance Review" onSave={handleSaveForLater} theme="blue" />
+                <FormHeader title="Quarterly Performance Review" onSave={handleSaveForLater} theme="blue" />
                 <ViewModeSelector
                     onSelectMode={handleSelectMode}
                     hasDraft={hasDraft}
@@ -255,8 +255,8 @@ export default function App() {
     // RENDER MAIN APPLICATION
     // ==========================================
     return (
-        <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative overflow-hidden print:py-0 print:bg-white print:text-black">
-            <FormHeader title="PIR: Quarterly Performance Review" onSave={handleSaveForLater} theme="blue" />
+        <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative print:py-0 print:bg-white print:text-black">
+            <FormHeader title="Quarterly Performance Review" onSave={handleSaveForLater} theme="blue" />
             
             {/* Aceternity Grid Background with Radial Mask */}
             <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden"></div>
@@ -289,12 +289,13 @@ export default function App() {
                 )}
 
                 {/* HEADER */}
-                <FormBoxHeader 
-                    title="Quarterly Performance Review" 
-                    subtitle="Division Monitoring Evaluation and Adjustment"
-                    badge={quarterString} 
-                />
-
+                {(appMode === 'full' || currentStep === 4) && (
+                    <FormBoxHeader 
+                        title="Quarterly Performance Review"
+                        subtitle="Division Monitoring Evaluation and Adjustment"
+                        badge={quarterString}
+                    />
+                )}
                 {/* ============================================================== */}
                 {/* WIZARD MODE: STEPPER & CARDS */}
                 {/* ============================================================== */}
