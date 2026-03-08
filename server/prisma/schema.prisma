@@ -18,6 +18,8 @@ model Cluster {
   
   // Relations
   schools        School[]
+
+  @@map("clusters")
 }
 
 model School {
@@ -31,6 +33,8 @@ model School {
   aips       AIP[]
   user       User?
   restricted_programs Program[] @relation("RestrictedPrograms")
+
+  @@map("schools")
 }
 
 
@@ -43,6 +47,8 @@ model Program {
   aips                     AIP[]
   personnel                User[] @relation("UserPrograms")
   restricted_schools       School[] @relation("RestrictedPrograms")
+
+  @@map("programs")
 }
 
 model User {
