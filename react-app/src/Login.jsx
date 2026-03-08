@@ -241,7 +241,7 @@ export default function Login() {
             </div>
 
             {/* 4. Copyright - Mobile: 4th, Desktop: Col 1 Bottom */}
-            <div className="text-slate-400 font-bold text-center md:text-left tracking-tight order-4 md:order-3">
+            <div className="text-slate-400 font-medium text-center md:text-left tracking-tight order-4 md:order-3 text-[10px]">
               © {new Date().getFullYear()} DepEd Division of Guihulngan City. <br className="md:hidden"/> All rights reserved.
             </div>
 
