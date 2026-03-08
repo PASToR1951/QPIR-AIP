@@ -65,9 +65,23 @@ model User {
   // Relation to Programs (For Division Personnel Users)
   programs  Program[] @relation("UserPrograms")
 
+  // Drafts
+  drafts    Draft[]
+
   created_at DateTime @default(now())
 }
 
+model Draft {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  form_type  String   // "AIP" or "PIR"
+  file_path  String   // Path to the JSON file
+  updated_at DateTime @updatedAt @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, form_type])
+}
 
 model AIP {
   id                  Int      @id @default(autoincrement())
