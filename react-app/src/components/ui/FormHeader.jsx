@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Home, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export const FormHeader = ({ title, onSave, onBack, isSaving, isSaved, theme = "indigo" }) => {
+export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, theme = "indigo" }) => {
     const navigate = useNavigate();
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
@@ -88,11 +88,7 @@ export const FormHeader = ({ title, onSave, onBack, isSaving, isSaved, theme = "
                     <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block"></div>
 
                     <button 
-                        onClick={() => {
-                            if (window.confirm("Return to Home? Any unsaved changes will be lost.")) {
-                                navigate('/');
-                            }
-                        }}
+                        onClick={onHome}
                         className="p-2 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-xl transition-colors hidden sm:flex"
                         title="Home Dashboard"
                     >

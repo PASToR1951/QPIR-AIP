@@ -40,6 +40,7 @@ import { TextareaAuto } from './components/ui/TextareaAuto';
 import { FormHeader } from './components/ui/FormHeader';
 import { FormBoxHeader } from './components/ui/FormBoxHeader';
 import { ViewModeSelector } from './components/ui/ViewModeSelector';
+import { ConfirmationModal } from './components/ui/ConfirmationModal';
 
 export default function App() {
     // App Mode State: 'splash', 'wizard', or 'full'
@@ -66,6 +67,18 @@ export default function App() {
     // Save Status State
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
+
+    // Modal State
+    const [modal, setModal] = useState({ 
+        isOpen: false, 
+        type: 'warning', 
+        title: '', 
+        message: '', 
+        confirmText: 'Confirm', 
+        onConfirm: () => {} 
+    });
+
+    const closeModal = () => setModal(prev => ({ ...prev, isOpen: false }));
 
     // Form State
     const [program, setProgram] = useState("");
@@ -144,12 +157,28 @@ export default function App() {
 
     const handleBack = () => {
         if (appMode === 'splash') {
-            if (window.confirm("Return to Dashboard? Any unsaved changes will be lost.")) {
-                window.location.href = '/';
-            }
+            setModal({
+                isOpen: true,
+                type: 'warning',
+                title: 'Exit to Dashboard?',
+                message: 'Any unsaved changes will be lost. Are you sure you want to leave?',
+                confirmText: 'Yes, Exit',
+                onConfirm: () => window.location.href = '/'
+            });
         } else {
             setAppMode('splash');
         }
+    };
+
+    const handleHome = () => {
+        setModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Return to Home?',
+            message: 'Any unsaved changes will be lost. Are you sure you want to return to the dashboard?',
+            confirmText: 'Yes, Home',
+            onConfirm: () => window.location.href = '/'
+        });
     };
 
     const handleSaveForLater = () => {
@@ -169,6 +198,14 @@ export default function App() {
         setTimeout(() => {
             setIsSaving(false);
             setIsSaved(true);
+            setModal({
+                isOpen: true,
+                type: 'success',
+                title: 'Draft Saved',
+                message: 'Your progress has been saved locally. You can resume later.',
+                confirmText: 'Got it',
+                onConfirm: () => {}
+            });
             setTimeout(() => setIsSaved(false), 3000);
         }, 800);
     };
@@ -210,7 +247,14 @@ export default function App() {
         const hasData = [row.name, row.physTarget, row.finTarget, row.physAcc, row.finAcc, row.actions].some(val => String(val).trim() !== '');
         
         if (hasData) {
-            setActivityToDelete(id);
+            setModal({
+                isOpen: true,
+                type: 'warning',
+                title: 'Delete Activity?',
+                message: 'This activity contains data. Are you sure you want to permanently remove it?',
+                confirmText: 'Yes, Delete',
+                onConfirm: () => executeDelete(id)
+            });
         } else {
             executeDelete(id);
         }
@@ -249,7 +293,14 @@ export default function App() {
     const handleConfirmSubmit = () => {
         setIsSubmitted(true);
         setTimeout(() => {
-            alert("Success! The QPIR document has been saved to the database.");
+            setModal({
+                isOpen: true,
+                type: 'success',
+                title: 'Success!',
+                message: 'The QPIR document has been saved to the database.',
+                confirmText: 'Back to Dashboard',
+                onConfirm: () => window.location.href = '/'
+            });
         }, 300);
     };
 
@@ -263,6 +314,7 @@ export default function App() {
                     title="Quarterly Performance Review" 
                     onSave={handleSaveForLater} 
                     onBack={handleBack}
+                    onHome={handleHome}
                     isSaving={isSaving}
                     isSaved={isSaved}
                     theme="blue" 
@@ -286,6 +338,7 @@ export default function App() {
                 title="Quarterly Performance Review" 
                 onSave={handleSaveForLater} 
                 onBack={handleBack}
+                onHome={handleHome}
                 isSaving={isSaving}
                 isSaved={isSaved}
                 theme="blue" 
@@ -302,6 +355,17 @@ export default function App() {
                 }
             `}</style>
             
+            {/* Modal */}
+            <ConfirmationModal 
+                isOpen={modal.isOpen}
+                onClose={closeModal}
+                onConfirm={modal.onConfirm}
+                type={modal.type}
+                title={modal.title}
+                message={modal.message}
+                confirmText={modal.confirmText}
+            />
+
             {/* MAIN CONTAINER */}
             <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0">
                 
@@ -1093,35 +1157,7 @@ export default function App() {
                     </div>
                 </div>
             )}
-
-            {/* ========================================= */}
-            {/* CUSTOM DELETE CONFIRMATION MODAL          */}
-            {/* ========================================= */}
-            {activityToDelete && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
-                    <div className="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-100">
-                        <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-5">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-800 mb-2 tracking-tight">Delete Activity?</h3>
-                        <p className="text-sm text-slate-500 mb-8 leading-relaxed font-medium">This activity card contains data. Are you sure you want to permanently remove it?</p>
-                        <div className="flex gap-3 w-full">
-                            <button 
-                                onClick={() => setActivityToDelete(null)}
-                                className="flex-1 px-4 py-3.5 rounded-xl font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors active:scale-95"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={() => executeDelete(activityToDelete)}
-                                className="flex-1 px-4 py-3.5 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-sm shadow-red-500/20 transition-colors active:scale-95"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
+
