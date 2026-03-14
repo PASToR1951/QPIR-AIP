@@ -16,7 +16,8 @@ import {
   Headset,
   Layers,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Tag
 } from 'lucide-react';
 import Login from './Login';
 import AIPForm from './AIPForm';
