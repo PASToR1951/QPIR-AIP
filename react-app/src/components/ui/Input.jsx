@@ -1,12 +1,13 @@
 import React from 'react';
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { Info, AlertCircle } from 'lucide-react';
 
 export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
-export const Input = React.forwardRef(({ label, className, endIcon, theme = "default", ...props }, ref) => {
+export const Input = React.forwardRef(({ label, className, endIcon, theme = "default", helpText, error, errorMessage, ...props }, ref) => {
     
     // Theme variants mapping
     const themeClasses = {
@@ -42,12 +43,23 @@ export const Input = React.forwardRef(({ label, className, endIcon, theme = "def
     return (
         <div className="flex flex-col gap-1.5 w-full group text-left">
             {label && (
-                <label className={cn(
-                    "text-xs font-semibold text-slate-500 uppercase tracking-widest select-none transition-colors print:hidden",
-                    currentTheme.labelFocus
-                )}>
-                    {label}
-                </label>
+                <div className="flex items-center gap-1.5 print:hidden">
+                    <label className={cn(
+                        "text-xs font-semibold text-slate-500 uppercase tracking-widest select-none transition-colors",
+                        currentTheme.labelFocus
+                    )}>
+                        {label}
+                    </label>
+                    {helpText && (
+                        <div className="relative group/tip">
+                            <Info className="w-3 h-3 text-slate-300 hover:text-slate-500 cursor-help transition-colors" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-slate-800 text-white text-[11px] leading-snug rounded-lg w-52 invisible group-hover/tip:visible opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 pointer-events-none shadow-xl">
+                                {helpText}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+                            </div>
+                        </div>
+                    )}
+                </div>
             )}
             <div className="relative">
                 {currentTheme.gradient && (
@@ -61,9 +73,12 @@ export const Input = React.forwardRef(({ label, className, endIcon, theme = "def
                     className={cn(
                         "relative w-full border border-slate-200 focus:ring-2 transition-all rounded-xl px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400",
                         endIcon && "pr-11",
+                        error && "border-red-400 focus:ring-red-500/20 bg-red-50",
                         currentTheme.input,
                         className
                     )}
+                    aria-invalid={error || undefined}
+                    aria-describedby={errorMessage ? `${props.id || props.name}-error` : undefined}
                     {...props}
                 />
                 {endIcon && (
@@ -72,6 +87,12 @@ export const Input = React.forwardRef(({ label, className, endIcon, theme = "def
                     </div>
                 )}
             </div>
+            {error && errorMessage && (
+                <p id={`${props.id || props.name}-error`} className="flex items-center gap-1 text-[11px] text-red-500 font-medium mt-0.5 print:hidden">
+                    <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                    {errorMessage}
+                </p>
+            )}
         </div>
     );
 });
