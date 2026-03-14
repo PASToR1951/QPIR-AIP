@@ -1,7 +1,8 @@
 import React from 'react';
 import { cn } from './Input'; // Reuse utility
+import { Info } from 'lucide-react';
 
-export const Select = React.forwardRef(({ label, options, className, theme = "default", ...props }, ref) => {
+export const Select = React.forwardRef(({ label, options, className, theme = "default", helpText, ...props }, ref) => {
     
     // Theme variants mapping
     const themeClasses = {
@@ -36,12 +37,23 @@ export const Select = React.forwardRef(({ label, options, className, theme = "de
     return (
         <div className="flex flex-col gap-1.5 w-full relative group text-left">
             {label && (
-                <label className={cn(
-                    "text-xs font-semibold text-slate-500 uppercase tracking-widest select-none transition-colors print:hidden",
-                    currentTheme.labelFocus
-                )}>
-                    {label}
-                </label>
+                <div className="flex items-center gap-1.5 print:hidden">
+                    <label className={cn(
+                        "text-xs font-semibold text-slate-500 uppercase tracking-widest select-none transition-colors",
+                        currentTheme.labelFocus
+                    )}>
+                        {label}
+                    </label>
+                    {helpText && (
+                        <div className="relative group/tip">
+                            <Info className="w-3 h-3 text-slate-300 hover:text-slate-500 cursor-help transition-colors" />
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-slate-800 text-white text-[11px] leading-snug rounded-lg w-52 invisible group-hover/tip:visible opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 pointer-events-none shadow-xl">
+                                {helpText}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+                            </div>
+                        </div>
+                    )}
+                </div>
             )}
             <div className="relative">
                 {currentTheme.gradient && (

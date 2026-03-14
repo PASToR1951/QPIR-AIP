@@ -1,4 +1,34 @@
 @import "tailwindcss";
+
+/* OpenDyslexic — self-hosted from public/fonts */
+@font-face {
+  font-family: "Open Dyslexic";
+  src: url('/fonts/OpenDyslexic-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Open Dyslexic";
+  src: url('/fonts/OpenDyslexic-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Open Dyslexic";
+  src: url('/fonts/OpenDyslexic-Italic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Open Dyslexic";
+  src: url('/fonts/OpenDyslexic-BoldItalic.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
 @plugin "@tailwindcss/typography";
 
 @theme {
@@ -13,4 +43,100 @@
   button, a, select, [role="button"], input[type="button"], input[type="submit"], input[type="reset"] {
     @apply cursor-pointer;
   }
+
+  /* Keyboard navigation — visible focus rings for all interactive elements */
+  :focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+}
+
+/* ============================================================
+   ACCESSIBILITY OVERRIDES
+   Applied as classes on <html> by AccessibilityContext
+   ============================================================ */
+
+/* --- High Contrast --- */
+.a11y-high-contrast body {
+  background-color: #fff !important;
+  color: #000 !important;
+}
+.a11y-high-contrast input,
+.a11y-high-contrast textarea,
+.a11y-high-contrast select {
+  border-color: #000 !important;
+  color: #000 !important;
+  background-color: #fff !important;
+}
+.a11y-high-contrast label {
+  color: #000 !important;
+}
+.a11y-high-contrast .bg-white,
+.a11y-high-contrast .bg-slate-50 {
+  background-color: #fff !important;
+}
+.a11y-high-contrast .text-slate-400,
+.a11y-high-contrast .text-slate-500 {
+  color: #374151 !important;
+}
+.a11y-high-contrast .border-slate-200 {
+  border-color: #6b7280 !important;
+}
+
+/* --- Font Size --- */
+.a11y-font-sm  { font-size: 14px; }
+.a11y-font-lg  { font-size: 18px; }
+.a11y-font-xl  { font-size: 20px; }
+.a11y-font-xxl { font-size: 24px; }
+
+/* --- Reduce Motion --- */
+.a11y-reduce-motion *,
+.a11y-reduce-motion *::before,
+.a11y-reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* --- Dyslexia-Friendly Font --- */
+/* Override the Tailwind CSS variable so every font-sans utility picks it up */
+.a11y-dyslexic {
+  --font-sans: "Open Dyslexic", ui-sans-serif, system-ui, sans-serif;
+}
+/* Also force directly on every element for anything not using var(--font-sans) */
+.a11y-dyslexic * {
+  font-family: "Open Dyslexic", ui-sans-serif, system-ui, sans-serif !important;
+  letter-spacing: 0.01em;
+}
+
+/* --- Line Spacing --- */
+.a11y-spacing-relaxed body,
+.a11y-spacing-relaxed p,
+.a11y-spacing-relaxed li,
+.a11y-spacing-relaxed label,
+.a11y-spacing-relaxed input,
+.a11y-spacing-relaxed textarea {
+  line-height: 1.75 !important;
+}
+
+.a11y-spacing-loose body,
+.a11y-spacing-loose p,
+.a11y-spacing-loose li,
+.a11y-spacing-loose label,
+.a11y-spacing-loose input,
+.a11y-spacing-loose textarea {
+  line-height: 2.1 !important;
+}
+
+/* --- Letter Spacing --- */
+.a11y-letter-wide body,
+.a11y-letter-wide p,
+.a11y-letter-wide label,
+.a11y-letter-wide input,
+.a11y-letter-wide textarea,
+.a11y-letter-wide button,
+.a11y-letter-wide select {
+  letter-spacing: 0.06em !important;
 }

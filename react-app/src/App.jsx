@@ -32,6 +32,7 @@ import { DashboardHeader } from './components/ui/DashboardHeader';
 import Footer from './components/ui/Footer';
 import PageTransition from './components/ui/PageTransition';
 import PageLoader from './components/ui/PageLoader';
+import AccessibilityPanel from './components/ui/AccessibilityPanel';
 
 // Simple Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -503,6 +504,7 @@ function App() {
   return (
     <Router>
       <AnimatedRoutes />
+      <AccessibilityPanel />
     </Router>
   );
 }
