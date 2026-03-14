@@ -1,0 +1,563 @@
+import React, { useState } from 'react';
+import { 
+  Plus, Trash2, Printer, ArrowRight, ArrowLeft, CheckCircle2, 
+  Edit3, Calendar, Hash, BookOpen, Briefcase, User, 
+  Target, FileText, Users, DollarSign, ListTodo
+} from 'lucide-react';
+
+export default function App() {
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 5;
+
+  const OUTCOME_OPTIONS = [
+    "Outcome 1: High Performing Teachers",
+    "Outcome 2: Learners’ Physical and Mental Well-Being Protected",
+    "Outcome 3: Efficient and Supportive Governance Structure",
+    "Outcome 4: Improved Education Quality through Upgraded Curriculum, Modernized Assessment, and Digitally Enabled Schools",
+    "Outcome 5: Empowered Graduates fit for Employment, Entrepreneurship or Higher Education"
+  ];
+
+  const [formData, setFormData] = useState({
+    year: "2026",
+    outcome: "Outcome 1: High Performing Teachers",
+    depEdProgram: "Learning Action Cells (LAC)",
+    projectTitle: "GROW (Guided Reflection and Outcome-based Work through LAC)",
+    projectCoord: "DONNA P. OLILA",
+    objectives: [
+      "To conduct monthly LAC sessions",
+      "To ensure that teachers apply Job-Embedded Learning (JEL) in classroom delivery"
+    ],
+    indicators: [
+      { description: "Percentage of teachers with JEL implementation based on LAC sessions attended", target: "100.00%" },
+      { description: "Percentage of teachers who participated in LAC sessions conducted at least once every quarter", target: "100.00%" }
+    ],
+    activities: [
+      { phase: "Pre-Implementation", description: "Conduct LAC needs assessment and finalize the quarterly LAC implementation plan.", period: "January to December 2026", persons: "School Heads, Teachers, school personnel", outputs: "Approved LAC Implementation Plan", budgetAmount: "", budgetSource: "" },
+      { phase: "Implementation", description: "Conduct quarterly LAC sessions focused on Job-Embedded Learning (JEL) strategies.", period: "January to December 2026", persons: "School Heads, Teachers, school personnel", outputs: "Attendance Sheets of LAC Sessions", budgetAmount: "", budgetSource: "" }
+    ],
+    preparedByName: "DONNA P. OLILA",
+    preparedByTitle: "School Principal I",
+    approvedByName: "DONNA P. OLILA",
+    approvedByTitle: "School Principal I"
+  });
+
+  const handleTextChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleObjectiveChange = (index, value) => {
+    const newObjectives = [...formData.objectives];
+    newObjectives[index] = value;
+    setFormData(prev => ({ ...prev, objectives: newObjectives }));
+  };
+  const addObjective = () => setFormData(prev => ({ ...prev, objectives: [...prev.objectives, ""] }));
+  const removeObjective = (index) => setFormData(prev => ({ ...prev, objectives: prev.objectives.filter((_, i) => i !== index) }));
+
+  const handleIndicatorChange = (index, field, value) => {
+    const newIndicators = [...formData.indicators];
+    newIndicators[index][field] = value;
+    setFormData(prev => ({ ...prev, indicators: newIndicators }));
+  };
+  const addIndicator = () => setFormData(prev => ({ ...prev, indicators: [...prev.indicators, { description: "", target: "" }] }));
+  const removeIndicator = (index) => setFormData(prev => ({ ...prev, indicators: prev.indicators.filter((_, i) => i !== index) }));
+
+  const handleActivityChange = (index, field, value) => {
+    const newActivities = [...formData.activities];
+    newActivities[index][field] = value;
+    setFormData(prev => ({ ...prev, activities: newActivities }));
+  };
+  const addActivity = () => setFormData(prev => ({ 
+    ...prev, 
+    activities: [...prev.activities, { phase: "", description: "", period: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }] 
+  }));
+  const removeActivity = (index) => setFormData(prev => ({ ...prev, activities: prev.activities.filter((_, i) => i !== index) }));
+
+  const nextStep = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+  };
+  const prevStep = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setCurrentStep(prev => Math.max(prev - 1, 1));
+  };
+  const printDocument = () => window.print();
+
+  const steps = [
+    { title: "Project Info", desc: "Basic details" },
+    { title: "Goals", desc: "Objectives & metrics" },
+    { title: "Action Plan", desc: "Activities & budget" },
+    { title: "Signatories", desc: "Approvals" },
+    { title: "Review", desc: "Print document" }
+  ];
+
+  // --- REUSABLE UI COMPONENTS ---
+  const InputField = ({ label, icon: Icon, ...props }) => (
+    <div className="flex flex-col gap-1.5 w-full">
+      <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+        {Icon && <Icon size={16} className="text-blue-500" />} {label}
+      </label>
+      <input 
+        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" 
+        {...props} 
+      />
+    </div>
+  );
+
+  const TextAreaField = ({ label, icon: Icon, ...props }) => (
+    <div className="flex flex-col gap-1.5 w-full">
+      <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+        {Icon && <Icon size={16} className="text-blue-500" />} {label}
+      </label>
+      <textarea 
+        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none resize-y min-h-[80px]" 
+        {...props} 
+      />
+    </div>
+  );
+
+  const SelectField = ({ label, icon: Icon, options, ...props }) => (
+    <div className="flex flex-col gap-1.5 w-full">
+      <label className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+        {Icon && <Icon size={16} className="text-blue-500" />} {label}
+      </label>
+      <div className="relative">
+        <select 
+          className="w-full p-3 pr-10 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none appearance-none cursor-pointer" 
+          {...props} 
+        >
+          <option value="" disabled>Select an option</option>
+          {options.map((opt, idx) => (
+            <option key={idx} value={opt}>{opt}</option>
+          ))}
+        </select>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+    </div>
+  );
+
+  // --- WIZARD STEP RENDERS ---
+
+  const renderStep1 = () => (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">Step 1: Project Information</h2>
+        <p className="text-gray-500 mt-1">Provide the foundational details for your implementation plan.</p>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <InputField label="Implementation Year" icon={Calendar} name="year" value={formData.year} onChange={handleTextChange} placeholder="e.g. 2026" />
+          <SelectField label="Outcome Category" icon={Target} name="outcome" value={formData.outcome} onChange={handleTextChange} options={OUTCOME_OPTIONS} />
+        </div>
+        
+        <InputField label="DepEd Program Aligned" icon={BookOpen} name="depEdProgram" value={formData.depEdProgram} onChange={handleTextChange} placeholder="e.g. Learning Action Cells (LAC)" />
+        <InputField label="School Improvement Project/Title" icon={Briefcase} name="projectTitle" value={formData.projectTitle} onChange={handleTextChange} placeholder="Project Name" />
+        <InputField label="Project Coordinator" icon={User} name="projectCoord" value={formData.projectCoord} onChange={handleTextChange} placeholder="Coordinator's Full Name" />
+      </div>
+    </div>
+  );
+
+  const renderStep2 = () => (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">Step 2: Goals & Metrics</h2>
+        <p className="text-gray-500 mt-1">Define what you want to achieve and how you will measure success.</p>
+      </div>
+      
+      {/* Objectives */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex items-center gap-2 mb-4 border-b pb-4">
+          <Target className="text-blue-500" size={24} />
+          <h3 className="text-lg font-bold text-gray-800">Objectives</h3>
+        </div>
+        
+        <div className="space-y-3">
+          {formData.objectives.map((obj, i) => (
+            <div key={i} className="flex gap-3 items-start bg-gray-50 p-3 rounded-lg border border-gray-200 group transition-all hover:border-blue-300">
+              <div className="mt-3 text-gray-400 font-bold w-6 text-center">{i + 1}.</div>
+              <textarea 
+                rows={2} value={obj} onChange={(e) => handleObjectiveChange(i, e.target.value)} 
+                className="w-full bg-transparent p-2 focus:bg-white border border-transparent focus:border-blue-500 rounded outline-none resize-none transition-all" 
+                placeholder={`Enter objective ${i + 1}...`} 
+              />
+              <button onClick={() => removeObjective(i)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors mt-1" title="Delete Objective">
+                <Trash2 size={20} />
+              </button>
+            </div>
+          ))}
+          
+          <button onClick={addObjective} className="w-full py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-semibold hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2">
+            <Plus size={20} /> Add Another Objective
+          </button>
+        </div>
+      </div>
+
+      {/* Indicators */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex items-center gap-2 mb-4 border-b pb-4">
+          <FileText className="text-blue-500" size={24} />
+          <h3 className="text-lg font-bold text-gray-800">Performance Indicators (OVI)</h3>
+        </div>
+
+        <div className="space-y-4">
+          {formData.indicators.map((ind, i) => (
+            <div key={i} className="flex flex-col md:flex-row gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200 group transition-all hover:border-blue-300 relative">
+              <div className="absolute -left-3 -top-3 bg-gray-200 text-gray-600 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white shadow-sm">
+                {i + 1}
+              </div>
+              <div className="flex-grow">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Indicator Description</label>
+                <textarea 
+                  rows={2} value={ind.description} onChange={(e) => handleIndicatorChange(i, 'description', e.target.value)} 
+                  className="w-full bg-white p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none" 
+                  placeholder="e.g. Percentage of teachers..." 
+                />
+              </div>
+              <div className="w-full md:w-48 shrink-0">
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Annual Target</label>
+                <input 
+                  type="text" value={ind.target} onChange={(e) => handleIndicatorChange(i, 'target', e.target.value)} 
+                  className="w-full bg-white p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" 
+                  placeholder="e.g. 100%" 
+                />
+              </div>
+              <div className="flex items-end pb-1">
+                 <button onClick={() => removeIndicator(i)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors w-full md:w-auto flex justify-center border border-transparent hover:border-red-200">
+                  <Trash2 size={20} />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button onClick={addIndicator} className="w-full py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 font-semibold hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all flex items-center justify-center gap-2">
+            <Plus size={20} /> Add Another Indicator
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">Step 3: Action Plan</h2>
+        <p className="text-gray-500 mt-1">Break down your project into specific, actionable activities.</p>
+      </div>
+
+      <div className="space-y-6">
+        {formData.activities.map((act, i) => (
+          <div key={i} className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden group">
+            <div className="bg-slate-50 border-b border-gray-200 px-4 py-3 flex justify-between items-center">
+              <div className="flex items-center gap-2 font-bold text-gray-700">
+                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center text-xs">
+                  {i + 1}
+                </div>
+                Activity Details
+              </div>
+              <button onClick={() => removeActivity(i)} className="text-red-500 flex items-center gap-1 text-sm font-semibold hover:bg-red-50 px-2 py-1 rounded transition-colors">
+                <Trash2 size={16} /> Remove
+              </button>
+            </div>
+            
+            <div className="p-5 space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <InputField label="Phase / Category" icon={ListTodo} value={act.phase} onChange={(e) => handleActivityChange(i, 'phase', e.target.value)} placeholder="e.g. Pre-Implementation" />
+                <InputField label="Implementation Period" icon={Calendar} value={act.period} onChange={(e) => handleActivityChange(i, 'period', e.target.value)} placeholder="e.g. Jan - Mar 2026" />
+              </div>
+
+              <TextAreaField label="Activity Description" value={act.description} onChange={(e) => handleActivityChange(i, 'description', e.target.value)} placeholder="What exactly will be done?" />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <TextAreaField label="Persons Involved" icon={Users} value={act.persons} onChange={(e) => handleActivityChange(i, 'persons', e.target.value)} placeholder="e.g. School Heads, Teachers" />
+                <TextAreaField label="Expected Outputs" icon={FileText} value={act.outputs} onChange={(e) => handleActivityChange(i, 'outputs', e.target.value)} placeholder="e.g. Attendance Sheets" />
+              </div>
+
+              <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 mt-2">
+                <h4 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-1.5"><DollarSign size={16} /> Budgetary Requirements</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <InputField label="Amount" value={act.budgetAmount} onChange={(e) => handleActivityChange(i, 'budgetAmount', e.target.value)} placeholder="₱0.00 or leave blank" />
+                  <InputField label="Source of Funds" value={act.budgetSource} onChange={(e) => handleActivityChange(i, 'budgetSource', e.target.value)} placeholder="e.g. MOOE" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+        
+        <button onClick={addActivity} className="w-full py-5 border-2 border-dashed border-blue-300 rounded-xl text-blue-600 font-bold hover:bg-blue-50 hover:border-blue-500 transition-all flex items-center justify-center gap-2 text-lg shadow-sm">
+          <Plus size={24} /> Add New Activity
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderStep4 = () => (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">Step 4: Signatories</h2>
+        <p className="text-gray-500 mt-1">Specify who is preparing and approving this implementation plan.</p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+          <h3 className="font-bold text-gray-800 mb-5 flex items-center gap-2 text-lg">
+            <User className="text-blue-500" /> Prepared By
+          </h3>
+          <div className="space-y-4">
+            <InputField label="Full Name" name="preparedByName" value={formData.preparedByName} onChange={handleTextChange} placeholder="e.g. JUAN DELA CRUZ" />
+            <InputField label="Title / Position" name="preparedByTitle" value={formData.preparedByTitle} onChange={handleTextChange} placeholder="e.g. Master Teacher I" />
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
+          <h3 className="font-bold text-gray-800 mb-5 flex items-center gap-2 text-lg">
+            <CheckCircle2 className="text-green-500" /> Approved By
+          </h3>
+          <div className="space-y-4">
+            <InputField label="Full Name" name="approvedByName" value={formData.approvedByName} onChange={handleTextChange} placeholder="e.g. MARIA CLARA" />
+            <InputField label="Title / Position" name="approvedByTitle" value={formData.approvedByTitle} onChange={handleTextChange} placeholder="e.g. School Principal I" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // The final document view
+  const renderPreview = () => (
+    <div className="animate-in fade-in zoom-in-95 duration-500 pb-20 print:pb-0">
+      
+      <div className="bg-blue-600 rounded-xl p-6 mb-8 text-white flex flex-col md:flex-row justify-between items-center shadow-lg print:hidden gap-4">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2"><CheckCircle2 /> Document Ready</h2>
+          <p className="text-blue-100 mt-1">Review your generated plan below. You can click on any text in the document to make final live edits before printing.</p>
+        </div>
+        <button onClick={printDocument} className="flex items-center gap-2 bg-white text-blue-700 px-6 py-3 rounded-lg font-bold hover:bg-blue-50 transition-colors shadow-sm whitespace-nowrap">
+          <Printer size={20} /> Print / Save PDF
+        </button>
+      </div>
+
+      <div className="max-w-[1000px] mx-auto bg-[#fffcf0] border border-gray-300 shadow-xl p-8 print:shadow-none print:border-none print:p-0 print:max-w-none print:bg-white text-sm">
+        <h1 className="text-center font-bold text-xl mb-6 flex justify-center items-center gap-2">
+          ANNUAL IMPLEMENTATION PLAN FOR 
+          <input type="text" name="year" value={formData.year} onChange={handleTextChange} className="w-16 text-center font-bold bg-transparent border-b border-dashed border-gray-400 focus:outline-none print:border-none" />
+        </h1>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-y-4 gap-x-2 mb-8 items-start">
+          <div className="font-semibold print:text-black pt-1">Outcome #:</div>
+          <div className="md:col-span-3">
+            <textarea rows={2} name="outcome" value={formData.outcome} onChange={handleTextChange} className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none italic text-blue-900 print:text-black print:border-none resize-none align-top" />
+          </div>
+
+          <div className="font-semibold print:text-black">DepEd Program Aligned:</div>
+          <div className="md:col-span-3">
+            <input type="text" name="depEdProgram" value={formData.depEdProgram} onChange={handleTextChange} className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none italic text-blue-900 print:text-black print:border-none" />
+          </div>
+
+          <div className="font-semibold print:text-black">School Improvement Project/Title:</div>
+          <div className="md:col-span-2">
+            <input type="text" name="projectTitle" value={formData.projectTitle} onChange={handleTextChange} className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none italic text-blue-900 print:text-black print:border-none" />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold whitespace-nowrap print:text-black">Project Coord:</span>
+            <input type="text" name="projectCoord" value={formData.projectCoord} onChange={handleTextChange} className="w-full bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none uppercase text-blue-900 print:text-black print:border-none" />
+          </div>
+
+          <div className="font-semibold pt-1 print:text-black">Objective/s:</div>
+          <div className="md:col-span-3">
+            {formData.objectives.map((obj, index) => (
+              <div key={`obj-${index}`} className="flex items-start gap-2 mb-1">
+                <span className="mt-1">*</span>
+                <textarea rows={1} value={obj} onChange={(e) => handleObjectiveChange(index, e.target.value)} className="w-full resize-none bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none italic text-blue-900 print:text-black print:border-none" />
+              </div>
+            ))}
+          </div>
+
+          <div className="font-semibold pt-1 print:text-black">Performance Indicator/s OVI):</div>
+          <div className="md:col-span-3">
+            {formData.indicators.map((ind, index) => (
+              <div key={`ind-${index}`} className="flex items-start gap-4 mb-2">
+                <div className="flex-grow flex items-start gap-2">
+                  <span className="mt-1">*</span>
+                  <textarea rows={2} value={ind.description} onChange={(e) => handleIndicatorChange(index, 'description', e.target.value)} className="w-full resize-none bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none italic text-blue-900 print:text-black print:border-none" />
+                </div>
+                <div className="w-48 flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-gray-500 print:hidden">Target:</span>
+                  <input type="text" value={ind.target} onChange={(e) => handleIndicatorChange(index, 'target', e.target.value)} className="w-full text-right bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none print:border-none" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="overflow-x-auto border-t border-l border-r border-black mb-2 print:border-black">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="bg-[#fdfaf0] print:bg-transparent text-center border-b border-black">
+                <th className="border-r border-black p-2 font-semibold w-12 align-middle">#</th>
+                <th className="border-r border-black p-2 font-semibold min-w-[250px] align-middle">Activities to be Conducted</th>
+                <th className="border-r border-black p-2 font-semibold w-[150px] align-middle">Implementation Period</th>
+                <th className="border-r border-black p-2 font-semibold w-[150px] align-middle">Persons Involved</th>
+                <th className="border-r border-black p-2 font-semibold w-[150px] align-middle">Outputs</th>
+                <th colSpan="2" className="p-0 border-black font-semibold">
+                  <div className="border-b border-black p-1">Budgetary Requirement</div>
+                  <div className="flex w-full">
+                    <div className="w-1/2 border-r border-black p-1">Amount</div>
+                    <div className="w-1/2 p-1">Source</div>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {formData.activities.map((act, index) => (
+                <tr key={`act-${index}`} className="border-b border-black">
+                  <td className="border-r border-black p-2 text-center align-top">{index + 1}</td>
+                  <td className="border-r border-black p-2 align-top">
+                    <input type="text" value={act.phase} onChange={(e) => handleActivityChange(index, 'phase', e.target.value)} className="w-full font-medium italic bg-transparent focus:outline-none mb-1 text-gray-800 print:text-black" />
+                    <textarea rows={3} value={act.description} onChange={(e) => handleActivityChange(index, 'description', e.target.value)} className="w-full resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-300 print:ring-0" />
+                  </td>
+                  <td className="border-r border-black p-2 align-top text-center">
+                    <textarea rows={3} value={act.period} onChange={(e) => handleActivityChange(index, 'period', e.target.value)} className="w-full h-full text-center resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-300" />
+                  </td>
+                  <td className="border-r border-black p-2 align-top text-center">
+                    <textarea rows={3} value={act.persons} onChange={(e) => handleActivityChange(index, 'persons', e.target.value)} className="w-full h-full text-center resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-300" />
+                  </td>
+                  <td className="border-r border-black p-2 align-top">
+                     <textarea rows={3} value={act.outputs} onChange={(e) => handleActivityChange(index, 'outputs', e.target.value)} className="w-full h-full resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-300" />
+                  </td>
+                  <td className="border-r border-black p-2 align-top w-24">
+                     <textarea rows={3} value={act.budgetAmount} onChange={(e) => handleActivityChange(index, 'budgetAmount', e.target.value)} className="w-full h-full text-right resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-300" />
+                  </td>
+                  <td className="p-2 align-top w-24">
+                     <textarea rows={3} value={act.budgetSource} onChange={(e) => handleActivityChange(index, 'budgetSource', e.target.value)} className="w-full h-full text-center resize-none bg-transparent focus:outline-none focus:ring-1 focus:ring-blue-300" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex justify-between mt-12 mb-8 px-4">
+          <div className="w-1/3">
+            <div className="text-sm mb-6">Prepared by:</div>
+            <div className="flex flex-col">
+              <input type="text" name="preparedByName" value={formData.preparedByName} onChange={handleTextChange} className="font-bold text-center bg-transparent border-b border-black focus:outline-none focus:border-blue-500 print:border-black uppercase" />
+              <input type="text" name="preparedByTitle" value={formData.preparedByTitle} onChange={handleTextChange} className="text-center text-sm bg-transparent border-b border-transparent hover:border-gray-300 focus:outline-none focus:border-blue-500 print:border-transparent" />
+            </div>
+          </div>
+          <div className="w-1/3">
+            <div className="text-sm mb-6 flex items-center justify-center">Approved:</div>
+            <div className="flex flex-col">
+              <input type="text" name="approvedByName" value={formData.approvedByName} onChange={handleTextChange} className="font-bold text-center bg-transparent border-b border-black focus:outline-none focus:border-blue-500 print:border-black uppercase" />
+              <input type="text" name="approvedByTitle" value={formData.approvedByTitle} onChange={handleTextChange} className="text-center text-sm bg-transparent border-b border-transparent hover:border-gray-300 focus:outline-none focus:border-blue-500 print:border-transparent" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-100 font-sans print:bg-white flex flex-col relative pb-24 print:pb-0">
+      
+      {/* Top Navbar / Progress Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50 print:hidden">
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="hidden md:flex items-center justify-between relative">
+            {/* Progress Line Background */}
+            <div className="absolute left-[5%] right-[5%] top-4 h-1 bg-gray-100 -z-10 rounded"></div>
+            {/* Active Progress Line */}
+            <div 
+              className="absolute left-[5%] top-4 h-1 bg-blue-600 -z-10 rounded transition-all duration-500 ease-out" 
+              style={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 90}%` }}
+            ></div>
+
+            {/* Step Indicators */}
+            {steps.map((step, index) => {
+              const stepNum = index + 1;
+              const isActive = stepNum === currentStep;
+              const isCompleted = stepNum < currentStep;
+
+              return (
+                <div key={stepNum} className="flex flex-col items-center group cursor-pointer w-32" onClick={() => {window.scrollTo({top:0}); setCurrentStep(stepNum);}}>
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-[3px] transition-all duration-300 bg-white ${
+                    isActive ? 'border-blue-600 text-blue-600 scale-110 shadow-md' : 
+                    isCompleted ? 'border-blue-600 bg-blue-600 text-white' : 
+                    'border-gray-200 text-gray-400'
+                  }`}>
+                    {isCompleted ? <CheckCircle2 size={18} /> : stepNum}
+                  </div>
+                  <span className={`text-sm mt-2 font-bold transition-colors ${isActive ? 'text-gray-900' : isCompleted ? 'text-gray-700' : 'text-gray-400'}`}>
+                    {step.title}
+                  </span>
+                  <span className={`text-xs text-center transition-colors ${isActive ? 'text-blue-600 font-medium' : 'text-gray-400'}`}>
+                    {step.desc}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          
+          {/* Mobile Progress View */}
+          <div className="md:hidden flex items-center justify-between">
+            <div>
+              <span className="text-xs text-blue-600 font-bold uppercase tracking-wider">Step {currentStep} of {totalSteps}</span>
+              <h2 className="text-lg font-bold text-gray-900">{steps[currentStep - 1].title}</h2>
+            </div>
+            <div className="w-12 h-12 rounded-full border-4 border-gray-100 flex items-center justify-center relative">
+               <svg className="absolute top-0 left-0 w-full h-full transform -rotate-90">
+                <circle cx="24" cy="24" r="22" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-gray-100" />
+                <circle cx="24" cy="24" r="22" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={22 * 2 * Math.PI} strokeDashoffset={(22 * 2 * Math.PI) - (((currentStep) / totalSteps) * (22 * 2 * Math.PI))} className="text-blue-600 transition-all duration-500" />
+              </svg>
+              <span className="text-sm font-bold text-gray-700">{Math.round((currentStep/totalSteps)*100)}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-grow p-4 md:p-8 pt-8 print:p-0">
+        <div className="max-w-4xl mx-auto print:max-w-none">
+          {currentStep === 1 && renderStep1()}
+          {currentStep === 2 && renderStep2()}
+          {currentStep === 3 && renderStep3()}
+          {currentStep === 4 && renderStep4()}
+          {currentStep === 5 && renderPreview()}
+        </div>
+      </div>
+
+      {/* Sticky Bottom Navigation Footer */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40 print:hidden">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <button 
+            onClick={prevStep} 
+            disabled={currentStep === 1}
+            className={`flex items-center gap-2 px-5 py-3 rounded-lg font-bold transition-all ${currentStep === 1 ? 'opacity-0 pointer-events-none' : 'text-gray-600 bg-white border-2 border-gray-200 hover:bg-gray-50 hover:border-gray-300'}`}
+          >
+            <ArrowLeft size={20} /> Back
+          </button>
+
+          {currentStep < totalSteps ? (
+            <button 
+              onClick={nextStep} 
+              className="flex items-center gap-2 px-8 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/30"
+            >
+              Next Step <ArrowRight size={20} />
+            </button>
+          ) : (
+            <button 
+              onClick={() => setCurrentStep(1)} 
+              className="flex items-center gap-2 px-8 py-3 bg-gray-800 text-white rounded-lg font-bold hover:bg-gray-900 transition-colors shadow-lg"
+            >
+              <Edit3 size={20} /> Edit Details
+            </button>
+          )}
+        </div>
+      </div>
+
+    </div>
+  );
+}

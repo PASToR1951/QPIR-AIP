@@ -1,72 +1,59 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Mail, Facebook, MapPin, Phone } from 'lucide-react';
+import { CURRENT_VERSION } from '../../version';
 
 const Footer = () => {
   return (
-    <footer className="bg-transparent mt-auto px-4 pb-8 md:pb-0">
-      <div className="max-w-6xl mx-auto bg-white border border-slate-200 rounded-[3rem] p-8 md:p-12 md:rounded-none md:border-0 md:border-t md:bg-white shadow-xl shadow-slate-200/50 md:shadow-none">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+    <footer className="bg-slate-50 border-t border-slate-200 mt-auto">
+      <div className="max-w-7xl mx-auto px-6 py-12 md:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">
           {/* Column 1: Branding & Logos */}
-          <div className="flex flex-col items-center md:items-start text-center md:text-left">
-            <div className="flex items-center gap-3 mb-6">
-              <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-10 w-auto opacity-80 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300" />
+          <div className="flex flex-col items-center md:items-start text-center md:text-left lg:col-span-2">
+            <div className="flex items-center gap-4 mb-6">
+              <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
+                <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-12 w-auto drop-shadow-sm transition-all duration-300 hover:drop-shadow-md" />
               </a>
-              <div className="h-8 w-px bg-slate-200"></div>
-              <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-10 w-auto drop-shadow-sm grayscale hover:grayscale-0 transition-all duration-300" />
+              <a href="https://depednir.net/" target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
+                <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-12 w-auto drop-shadow-sm transition-all duration-300 hover:drop-shadow-md" />
               </a>
-              <a href="https://depednir.net/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-10 w-auto drop-shadow-sm grayscale hover:grayscale-0 transition-all duration-300" />
-              </a>
-              <a href="https://depedguihulngan.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                <img src="/Division_Logo.webp" alt="Division Logo" className="h-10 w-auto drop-shadow-sm grayscale hover:grayscale-0 transition-all duration-300" />
+              <a href="https://depedguihulngan.ph/" target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
+                <img src="/Division_Logo.webp" alt="Division Logo" className="h-12 w-auto drop-shadow-sm transition-all duration-300 hover:drop-shadow-md" />
               </a>
             </div>
-            <h3 className="font-black text-slate-900 tracking-tighter uppercase text-sm mb-2">
-              DepEd Division of <br/> Guihulngan City
+            <h3 className="font-extrabold text-slate-900 tracking-tight text-lg mb-1">
+              DepEd Division of Guihulngan City
             </h3>
-            <p className="text-xs font-bold text-blue-600 tracking-widest uppercase mb-4">QPIR-AIP Portal</p>
-            <p className="text-slate-400 text-xs font-medium max-w-xs leading-relaxed">
-              Standardizing the Quality Program Implementation and Review process for all schools in the Division of Guihulngan City.
+            <p className="text-sm font-bold text-indigo-600 tracking-wide uppercase mb-3">AIP-PIR Portal</p>
+            <p className="text-slate-500 text-sm leading-relaxed max-w-lg">
+              Tracking of Education Programs: Program Implementation Review System. Standardizing the Quality Program Implementation and Review process for all schools in the Division of Guihulngan City.
             </p>
           </div>
 
-          {/* Column 2: Quick Links */}
+          {/* Column 2: Contact */}
           <div className="flex flex-col items-center md:items-start text-center md:text-left">
-            <h4 className="font-black text-slate-900 text-xs uppercase tracking-widest mb-6">Quick Links</h4>
-            <ul className="space-y-3">
-              <li><a href="/" className="text-slate-500 hover:text-pink-600 text-sm font-bold transition-colors">Dashboard Home</a></li>
-              <li><a href="/aip" className="text-slate-500 hover:text-pink-600 text-sm font-bold transition-colors">AIP Submission</a></li>
-              <li><a href="/pir" className="text-slate-500 hover:text-pink-600 text-sm font-bold transition-colors">Quarterly Review</a></li>
-              <li><a href="#" className="text-slate-500 hover:text-pink-600 text-sm font-bold transition-colors">Privacy Policy</a></li>
-            </ul>
-          </div>
+            <h4 className="font-bold text-slate-900 text-sm uppercase tracking-wider mb-6">Contact Us</h4>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-1 items-center md:items-start">
+                <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
+                  <MapPin size={14} className="text-slate-400" /> Office Address
+                </span>
+                <span className="text-slate-600 text-sm font-medium">Osmeña Avenue, City of Guihulngan, <br className="hidden md:block"/>Negros Oriental</span>
+              </div>
+              <div className="flex flex-col gap-1 items-center md:items-start">
+                <span className="text-xs font-semibold text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
+                  <Phone size={14} className="text-slate-400" /> Phone Numbers
+                </span>
+                <span className="text-slate-600 text-sm font-medium">(035) 410-4069 • (035) 410-4066<br />0956-964-7346</span>
+              </div>
 
-          {/* Column 3: Contact */}
-          <div className="flex flex-col items-center md:items-start text-center md:text-left">
-            <h4 className="font-black text-slate-900 text-xs uppercase tracking-widest mb-6">Connect with us</h4>
-            <div className="space-y-5">
-              <div className="flex flex-col gap-1.5 items-center md:items-start">
-                <span className="text-[10px] uppercase font-black text-slate-400 tracking-tighter flex items-center gap-1.5">
-                  <MapPin size={12} className="text-slate-300" /> Office Address
-                </span>
-                <span className="text-slate-600 text-xs font-bold leading-relaxed max-w-[200px]">Osmeña Avenue, City of Guihulngan, Negros Oriental</span>
-              </div>
-              <div className="flex flex-col gap-1.5 items-center md:items-start">
-                <span className="text-[10px] uppercase font-black text-slate-400 tracking-tighter flex items-center gap-1.5">
-                  <Phone size={12} className="text-slate-300" /> Contact Numbers
-                </span>
-                <span className="text-slate-600 text-xs font-bold">(035) 410-4069 • (035) 410-4066<br/>0956-964-7346</span>
-              </div>
-              
-              <div className="flex items-center gap-3 pt-2">
-                <a href="mailto:guihulngan.city@deped.gov.ph" className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
-                  <Mail size={14} />
-                  <span>Email Us</span>
+              <div className="flex items-center gap-3 pt-4">
+                <a href="mailto:guihulngan.city@deped.gov.ph" className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-all shadow-sm">
+                  <Mail size={16} />
+                  <span>Email</span>
                 </a>
-                <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
-                  <Facebook size={14} />
+                <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-all shadow-sm">
+                  <Facebook size={16} />
                   <span>Facebook</span>
                 </a>
               </div>
@@ -75,12 +62,16 @@ const Footer = () => {
         </div>
 
         {/* Bottom Banner */}
-        <div className="border-t border-slate-100 pt-8 flex flex-col items-center md:flex-row md:justify-between gap-4 text-center">
-          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+        <div className="border-t border-slate-200 pt-8 flex flex-col items-center md:flex-row md:justify-between gap-6 text-center">
+          <p className="text-slate-500 text-sm font-medium">
             © {new Date().getFullYear()} DepEd Division of Guihulngan City. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
-            <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">v1.2.0 Stable Build</span>
+            <Link to="/docs" className="text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors cursor-pointer">Docs</Link>
+            <Link to="/changelog" className="text-xs font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full hover:bg-indigo-100 hover:text-indigo-600 transition-colors cursor-pointer">v{CURRENT_VERSION}</Link>
+            <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
+              <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-12 w-auto drop-shadow-sm" />
+            </a>
           </div>
         </div>
       </div>

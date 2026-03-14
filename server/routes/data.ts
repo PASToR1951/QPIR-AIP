@@ -196,12 +196,15 @@ dataRoutes.post('/aips', async (c) => {
       school_id, 
       program_title, // We'll look up the program_id by title
       year, 
-      pillar, 
+      outcome, 
       sip_title, 
       project_coordinator, 
-      objectives, 
-      indicators, 
-      annual_target,
+      objectives,   // JSON array of strings
+      indicators,   // JSON array of { description, target }
+      prepared_by_name,
+      prepared_by_title,
+      approved_by_name,
+      approved_by_title,
       activities 
     } = body;
 
@@ -219,12 +222,15 @@ dataRoutes.post('/aips', async (c) => {
         school_id: parseInt(school_id),
         program_id: program.id,
         year: parseInt(year),
-        pillar,
+        outcome,
         sip_title,
         project_coordinator,
         objectives,
         indicators,
-        annual_target,
+        prepared_by_name: prepared_by_name || '',
+        prepared_by_title: prepared_by_title || '',
+        approved_by_name: approved_by_name || '',
+        approved_by_title: approved_by_title || '',
         activities: {
           create: activities.map((act: any) => ({
             phase: act.phase,

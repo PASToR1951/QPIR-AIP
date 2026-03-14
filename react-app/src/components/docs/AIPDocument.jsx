@@ -3,14 +3,17 @@ import { FormBoxHeader } from '../ui/FormBoxHeader';
 
 export const AIPDocument = ({ 
     year = new Date().getFullYear(),
-    pillar,
+    outcome,
     depedProgram,
     sipTitle,
     projectCoord,
-    objectives,
-    indicators,
-    annualTarget,
+    objectives = [],
+    indicators = [],
     activities = [],
+    preparedByName,
+    preparedByTitle,
+    approvedByName,
+    approvedByTitle,
     phases = ["Planning", "Implementation", "Monitoring and Evaluation"]
 }) => {
     const formatCurrency = (val) => {
@@ -30,8 +33,8 @@ export const AIPDocument = ({
             <div className="mb-6 relative rounded-xl p-4 -mx-4 print:p-0 print:mx-0">
                 <div className="text-[12px] space-y-1">
                     <div className="flex border-b border-dotted border-black pb-1">
-                        <span className="font-bold w-[25%] uppercase tracking-tight">Pillar/Strategic Direction:</span>
-                        <span className="w-[75%] font-medium">{pillar || "\u00A0"}</span>
+                        <span className="font-bold w-[25%] uppercase tracking-tight">Outcome #:</span>
+                        <span className="w-[75%] font-medium">{outcome || "\u00A0"}</span>
                     </div>
                     <div className="flex border-b border-dotted border-black pb-1">
                         <span className="font-bold w-[25%] uppercase tracking-tight">DepEd Program Aligned:</span>
@@ -47,13 +50,38 @@ export const AIPDocument = ({
                     <div className="pt-2">
                         <div className="flex border-b border-dotted border-black pb-1">
                             <span className="font-bold w-[25%] align-top uppercase tracking-tight">Objective/s:</span>
-                            <span className="w-[75%] whitespace-pre-wrap font-medium">{objectives || "\u00A0"}</span>
+                            <div className="w-[75%] font-medium">
+                                {Array.isArray(objectives) && objectives.length > 0 ? (
+                                    objectives.map((obj, idx) => (
+                                        <div key={idx} className="flex items-start gap-1.5 mb-0.5">
+                                            <span>*</span>
+                                            <span>{obj}</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <span>{"\u00A0"}</span>
+                                )}
+                            </div>
                         </div>
                         <div className="flex border-b border-dotted border-black pb-1">
                             <span className="font-bold w-[25%] align-top uppercase tracking-tight">Indicators (OVI):</span>
-                            <span className="w-[45%] whitespace-pre-wrap font-medium">{indicators || "\u00A0"}</span>
-                            <span className="font-bold w-[10%] align-top uppercase tracking-tight">Target:</span>
-                            <span className="w-[20%] whitespace-pre-wrap font-medium">{annualTarget || "\u00A0"}</span>
+                            <div className="w-[75%] font-medium">
+                                {Array.isArray(indicators) && indicators.length > 0 ? (
+                                    indicators.map((ind, idx) => (
+                                        <div key={idx} className="flex items-start gap-4 mb-1">
+                                            <div className="flex-grow flex items-start gap-1.5">
+                                                <span>*</span>
+                                                <span>{ind.description}</span>
+                                            </div>
+                                            <div className="w-32 shrink-0 text-right font-semibold">
+                                                {ind.target && <span>Target: {ind.target}</span>}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <span>{"\u00A0"}</span>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -117,16 +145,20 @@ export const AIPDocument = ({
                     <div className="text-center">
                         <p className="text-xs text-left mb-10 font-black uppercase tracking-widest">Prepared by:</p>
                         <div className="border-b-2 border-black font-black uppercase text-sm pb-1 min-h-[24px]">
-                            {projectCoord}
+                            {preparedByName}
                         </div>
-                        <p className="text-[10px] mt-1.5 font-bold uppercase tracking-widest text-slate-600">Project Coordinator</p>
+                        <p className="text-[10px] mt-1.5 font-bold uppercase tracking-widest text-slate-600">
+                            {preparedByTitle || "Title / Position"}
+                        </p>
                     </div>
                     <div className="text-center">
-                        <p className="text-xs text-left mb-10 font-black uppercase tracking-widest">Noted:</p>
+                        <p className="text-xs text-left mb-10 font-black uppercase tracking-widest">Approved:</p>
                         <div className="border-b-2 border-black font-black uppercase text-sm pb-1 min-h-[24px]">
-                            DR. ENRIQUE Q. RETES, EdD
+                            {approvedByName}
                         </div>
-                        <p className="text-[10px] mt-1.5 font-bold uppercase tracking-widest text-slate-600">Chief Education Supervisor</p>
+                        <p className="text-[10px] mt-1.5 font-bold uppercase tracking-widest text-slate-600">
+                            {approvedByTitle || "Title / Position"}
+                        </p>
                     </div>
                 </div>
             </div>

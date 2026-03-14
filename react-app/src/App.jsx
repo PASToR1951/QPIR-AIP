@@ -23,6 +23,8 @@ import AIPForm from './AIPForm';
 import PIRForm from './PIRForm';
 import NotFound from './NotFound';
 import ErrorPage from './ErrorPage';
+import Changelog from './components/Changelog';
+import SystemDocs from './components/SystemDocs';
 import { DashboardHeader } from './components/ui/DashboardHeader';
 import Footer from './components/ui/Footer';
 
@@ -205,7 +207,7 @@ function Dashboard() {
               style={{
                 backgroundImage: `url('/SDO_Facade.webp')`,
                 backgroundSize: 'cover',
-                backgroundPosition: 'center',
+                backgroundPosition: 'center 25%',
                 maskImage: 'radial-gradient(circle at top right, black, transparent 80%)'
               }}
             ></div>
@@ -228,20 +230,20 @@ function Dashboard() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-auto">
                 <div className={`border p-4 rounded-2xl flex items-center gap-4 group/item transition-all ${aipStatus === 'review' ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200 hover:shadow-sm' :
-                    aipStatus === 'draft' ? 'bg-blue-50/50 border-blue-100 hover:border-blue-200 hover:shadow-sm' :
-                      'bg-slate-50 border-slate-100 hover:border-pink-200 hover:shadow-sm'
+                  aipStatus === 'draft' ? 'bg-blue-50/50 border-blue-100 hover:border-blue-200 hover:shadow-sm' :
+                    'bg-slate-50 border-slate-100 hover:border-pink-200 hover:shadow-sm'
                   }`}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${aipStatus === 'review' ? 'bg-emerald-100 text-emerald-600 group-hover/item:bg-emerald-200' :
-                      aipStatus === 'draft' ? 'bg-blue-100 text-blue-600 group-hover/item:bg-blue-200' :
-                        'bg-slate-200 text-slate-400 group-hover/item:bg-pink-100 group-hover/item:text-pink-600'
+                    aipStatus === 'draft' ? 'bg-blue-100 text-blue-600 group-hover/item:bg-blue-200' :
+                      'bg-slate-200 text-slate-400 group-hover/item:bg-pink-100 group-hover/item:text-pink-600'
                     }`}>
                     <FileText size={20} strokeWidth={2.5} />
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight group-hover/item:text-slate-500 transition-colors">Annual Implementation Plan</div>
                     <div className={`text-sm font-black transition-colors ${aipStatus === 'review' ? 'text-emerald-700 group-hover/item:text-emerald-800' :
-                        aipStatus === 'draft' ? 'text-blue-700 group-hover/item:text-blue-800' :
-                          'text-slate-500 group-hover/item:text-pink-700'
+                      aipStatus === 'draft' ? 'text-blue-700 group-hover/item:text-blue-800' :
+                        'text-slate-500 group-hover/item:text-pink-700'
                       }`}>
                       {aipStatus === 'review' ? 'Awaiting Review' :
                         aipStatus === 'draft' ? 'Draft in Progress' : 'No Submission Found'}
@@ -427,7 +429,7 @@ function Dashboard() {
             style={{
               backgroundImage: `url('/SDO_Facade.webp')`,
               backgroundSize: 'cover',
-              backgroundPosition: 'center'
+              backgroundPosition: 'center 25%'
             }}
           ></div>
           <div className="max-w-md relative z-10">
@@ -435,12 +437,14 @@ function Dashboard() {
             <p className="text-slate-400 text-sm font-medium">Our technical support team is available during office hours to help you with any issues regarding the portal.</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto relative z-10">
-            <a href="#" className="px-6 py-3 bg-white text-slate-900 font-black rounded-2xl text-sm hover:bg-slate-200 transition-colors active:scale-95 shadow-lg shadow-white/5 text-center">
-              User Manual
-            </a>
-            <a href="#" className="px-6 py-3 bg-slate-800 text-white font-black rounded-2xl text-sm hover:bg-slate-700 transition-colors active:scale-95 border border-slate-700 text-center">
-              Contact Helpdesk
-            </a>
+            <Link to="/docs" className="px-6 py-3 bg-white text-slate-900 font-black rounded-2xl text-sm hover:bg-slate-200 transition-colors active:scale-95 shadow-lg shadow-white/5 text-center flex items-center justify-center gap-2">
+              <BookOpen size={18} strokeWidth={2.5} />
+              System Documentation
+            </Link>
+            <Link to="/changelog" className="px-6 py-3 bg-slate-800 text-white font-black rounded-2xl text-sm hover:bg-slate-700 transition-colors active:scale-95 border border-slate-700 text-center flex items-center justify-center gap-2">
+              <Tag size={18} strokeWidth={2.5} />
+              Version History
+            </Link>
           </div>
         </div>
       </main>
@@ -455,6 +459,8 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/changelog" element={<Changelog />} />
+        <Route path="/docs" element={<SystemDocs />} />
 
         {/* Protected Routes */}
         <Route

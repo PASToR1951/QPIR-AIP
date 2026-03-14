@@ -88,12 +88,15 @@ model AIP {
   school_id           Int
   program_id          Int
   year                Int      // e.g., 2026
-  pillar              String   // Strategic Direction
+  outcome             String   // DepEd Outcome Category
   sip_title           String   // School Improvement Project title
   project_coordinator String
-  objectives          String   // Text field
-  indicators          String   // OVI (Text field)
-  annual_target       String   // Text field
+  objectives          Json     // Array of objective strings
+  indicators          Json     // Array of { description, target } objects
+  prepared_by_name    String   @default("")
+  prepared_by_title   String   @default("")
+  approved_by_name    String   @default("")
+  approved_by_title   String   @default("")
   created_at          DateTime @default(now())
 
   // Relations
