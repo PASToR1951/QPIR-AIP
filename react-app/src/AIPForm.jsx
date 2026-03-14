@@ -4,6 +4,14 @@ import axios from 'axios';
 // The official AIP Phases derived from the template
 const PHASES = ["Planning", "Implementation", "Monitoring and Evaluation"];
 
+const OUTCOME_OPTIONS = [
+    "Outcome 1: High Performing Teachers",
+    "Outcome 2: Learners' Physical and Mental Well-Being Protected",
+    "Outcome 3: Efficient and Supportive Governance Structure",
+    "Outcome 4: Improved Education Quality through Upgraded Curriculum, Modernized Assessment, and Digitally Enabled Schools",
+    "Outcome 5: Empowered Graduates fit for Employment, Entrepreneurship or Higher Education"
+];
+
 import { Input } from './components/ui/Input';
 import { Select } from './components/ui/Select';
 import { TextareaAuto } from './components/ui/TextareaAuto';
@@ -21,7 +29,7 @@ export default function App() {
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
     const [isMobile, setIsMobile] = useState(false);
-    const currentYear = new Date().getFullYear();
+    const [year, setYear] = useState(String(new Date().getFullYear()));
 
     // UI State
     const [currentStep, setCurrentStep] = useState(1);
@@ -50,14 +58,19 @@ export default function App() {
     const closeModal = () => setModal(prev => ({ ...prev, isOpen: false }));
 
     // Form State: Profile & Goals
-    const [pillar, setPillar] = useState("");
+    const [outcome, setOutcome] = useState("");
     const [depedProgram, setDepedProgram] = useState("");
     const [sipTitle, setSipTitle] = useState("");
     const [projectCoord, setProjectCoord] = useState("");
 
-    const [objectives, setObjectives] = useState("");
-    const [indicators, setIndicators] = useState("");
-    const [annualTarget, setAnnualTarget] = useState("");
+    const [objectives, setObjectives] = useState([""]);
+    const [indicators, setIndicators] = useState([{ description: "", target: "" }]);
+
+    // Form State: Signatories
+    const [preparedByName, setPreparedByName] = useState("");
+    const [preparedByTitle, setPreparedByTitle] = useState("");
+    const [approvedByName, setApprovedByName] = useState("");
+    const [approvedByTitle, setApprovedByTitle] = useState("");
 
     // Form State: Activities
     const [activities, setActivities] = useState([
@@ -109,13 +122,17 @@ export default function App() {
         if (hasDraft && loadedDraftData) {
             try {
                 const draft = loadedDraftData;
-                setPillar(draft.pillar || "");
+                setOutcome(draft.outcome || "");
+                setYear(draft.year || String(new Date().getFullYear()));
                 setDepedProgram(draft.depedProgram || "");
                 setSipTitle(draft.sipTitle || "");
                 setProjectCoord(draft.projectCoord || "");
-                setObjectives(draft.objectives || "");
-                setIndicators(draft.indicators || "");
-                setAnnualTarget(draft.annualTarget || "");
+                setObjectives(draft.objectives || [""]);
+                setIndicators(draft.indicators || [{ description: "", target: "" }]);
+                setPreparedByName(draft.preparedByName || "");
+                setPreparedByTitle(draft.preparedByTitle || "");
+                setApprovedByName(draft.approvedByName || "");
+                setApprovedByTitle(draft.approvedByTitle || "");
                 if (draft.activities) setActivities(draft.activities);
             } catch (e) {
                 console.error("Failed to load draft:", e);
@@ -124,8 +141,24 @@ export default function App() {
         setAppMode(mode);
     };
 
+    // Objective handlers
+    const handleObjectiveChange = (index, value) => {
+        setObjectives(prev => prev.map((obj, i) => i === index ? value : obj));
+    };
+    const addObjective = () => setObjectives(prev => [...prev, ""]);
+    const removeObjective = (index) => setObjectives(prev => prev.filter((_, i) => i !== index));
+
+    // Indicator handlers
+    const handleIndicatorChange = (index, field, value) => {
+        setIndicators(prev => prev.map((ind, i) => i === index ? { ...ind, [field]: value } : ind));
+    };
+    const addIndicator = () => setIndicators(prev => [...prev, { description: "", target: "" }]);
+    const removeIndicator = (index) => setIndicators(prev => prev.filter((_, i) => i !== index));
+
     const hasInputtedData = () => {
-        return pillar || depedProgram || sipTitle || projectCoord || objectives || indicators || annualTarget || 
+        return outcome || depedProgram || sipTitle || projectCoord ||
+               objectives.some(o => o.trim()) || indicators.some(i => i.description.trim() || i.target.trim()) ||
+               preparedByName || approvedByName ||
                activities.some(a => a.name || a.period || a.persons || a.outputs || a.budgetAmount || a.budgetSource);
     };
 
@@ -150,13 +183,17 @@ export default function App() {
     const handleSaveForLater = async () => {
         setIsSaving(true);
         const draft = {
-            pillar,
+            outcome,
+            year,
             depedProgram,
             sipTitle,
             projectCoord,
             objectives,
             indicators,
-            annualTarget,
+            preparedByName,
+            preparedByTitle,
+            approvedByName,
+            approvedByTitle,
             activities,
             lastSaved: new Date().toISOString()
         };
@@ -277,13 +314,16 @@ export default function App() {
             await axios.post(`${import.meta.env.VITE_API_URL}/api/aips`, {
                 school_id: user.school_id,
                 program_title: depedProgram,
-                year: currentYear,
-                pillar,
+                year: parseInt(year),
+                outcome,
                 sip_title: sipTitle,
                 project_coordinator: projectCoord,
                 objectives,
                 indicators,
-                annual_target: annualTarget,
+                prepared_by_name: preparedByName,
+                prepared_by_title: preparedByTitle,
+                approved_by_name: approvedByName,
+                approved_by_title: approvedByTitle,
                 activities
             });
 
@@ -357,17 +397,21 @@ export default function App() {
                 isOpen={isPreviewOpen}
                 onClose={() => setIsPreviewOpen(false)}
                 title="AIP Document Preview"
-                subtitle="Annual Implementation Plan Cycle 2026"
+                subtitle={`Annual Implementation Plan Cycle ${year}`}
             >
                 <AIPDocument
-                    pillar={pillar}
+                    year={year}
+                    outcome={outcome}
                     depedProgram={depedProgram}
                     sipTitle={sipTitle}
                     projectCoord={projectCoord}
                     objectives={objectives}
                     indicators={indicators}
-                    annualTarget={annualTarget}
                     activities={activities}
+                    preparedByName={preparedByName}
+                    preparedByTitle={preparedByTitle}
+                    approvedByName={approvedByName}
+                    approvedByTitle={approvedByTitle}
                 />
             </DocumentPreviewModal>
 
@@ -401,7 +445,7 @@ export default function App() {
                     <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-md mb-6">
                         <FormBoxHeader
                             title="Annual Implementation Plan"
-                            badge={`CY ${currentYear}`}
+                            badge={`CY ${year}`}
                             compact={true}
                         />
                     </div>
@@ -429,7 +473,7 @@ export default function App() {
                     {appMode === 'full' && (
                         <FormBoxHeader
                             title="Annual Implementation Plan"
-                            badge={`CY ${currentYear}`}
+                            badge={`CY ${year}`}
                         />
                     )}
                     {/* ============================================================== */}
@@ -484,7 +528,8 @@ export default function App() {
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                    <Input theme="pink" label="Pillar / Strategic Direction" placeholder="Enter Strategic Direction..." value={pillar} onChange={(e) => setPillar(e.target.value)} />
+                                    <Select theme="pink" label="Outcome Category" placeholder="Select Outcome..." options={OUTCOME_OPTIONS} value={outcome} onChange={(e) => setOutcome(e.target.value)} />
+                                    <Input theme="pink" label="Implementation Year" placeholder="e.g. 2026" value={year} onChange={(e) => setYear(e.target.value)} />
                                     <Select theme="pink" label="DepEd Program Aligned" placeholder="Select Program Alignment" options={programList} value={depedProgram} onChange={(e) => setDepedProgram(e.target.value)} />
                                     <Input theme="pink" label="School Improvement Project / Title" placeholder="Enter SIP Title..." value={sipTitle} onChange={(e) => setSipTitle(e.target.value)} />
                                     <Input theme="pink" label="Project Coordinator" placeholder="Name of Coordinator..." value={projectCoord} onChange={(e) => setProjectCoord(e.target.value)} />
@@ -504,19 +549,75 @@ export default function App() {
                                         {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">Establish the objectives and specific performance indicators.</p>}
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 gap-6 bg-slate-50 border border-slate-200 p-6 rounded-2xl">
-                                    <div className="flex flex-col gap-1.5 w-full group">
-                                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none group-focus-within:text-pink-600 transition-colors">Objective/s</label>
-                                        <TextareaAuto className="w-full bg-white border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-xl px-4 py-3 text-sm text-slate-800 shadow-sm min-h-[80px]" placeholder="List primary objectives..." value={objectives} onChange={(e) => setObjectives(e.target.value)} />
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="flex flex-col gap-1.5 w-full group">
-                                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none group-focus-within:text-pink-600 transition-colors">Performance Indicator/s (OVI)</label>
-                                            <TextareaAuto className="w-full bg-white border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-xl px-4 py-3 text-sm text-slate-800 shadow-sm min-h-[60px]" placeholder="Measurable indicators..." value={indicators} onChange={(e) => setIndicators(e.target.value)} />
+                                <div className="space-y-8">
+                                    {/* Objectives - Dynamic List */}
+                                    <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl">
+                                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none mb-3 block">Objective/s</label>
+                                        <div className="space-y-3">
+                                            {objectives.map((obj, i) => (
+                                                <div key={i} className="flex gap-3 items-start bg-white p-3 rounded-xl border border-slate-200 group transition-all hover:border-pink-300">
+                                                    <div className="mt-2.5 text-slate-400 font-bold w-6 text-center text-sm select-none">{i + 1}.</div>
+                                                    <TextareaAuto
+                                                        className="w-full bg-transparent p-2 focus:bg-white border border-transparent focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg text-sm text-slate-800 transition-all"
+                                                        placeholder={`Enter objective ${i + 1}...`}
+                                                        value={obj}
+                                                        onChange={(e) => handleObjectiveChange(i, e.target.value)}
+                                                    />
+                                                    {objectives.length > 1 && (
+                                                        <button type="button" onClick={() => removeObjective(i)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors mt-1" title="Remove Objective">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            <button type="button" onClick={addObjective} className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-semibold hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-all flex items-center justify-center gap-2 text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                                                Add Objective
+                                            </button>
                                         </div>
-                                        <div className="flex flex-col gap-1.5 w-full group">
-                                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none group-focus-within:text-pink-600 transition-colors">Annual Target</label>
-                                            <TextareaAuto className="w-full bg-white border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-xl px-4 py-3 text-sm text-slate-800 shadow-sm min-h-[60px]" placeholder="State your annual target..." value={annualTarget} onChange={(e) => setAnnualTarget(e.target.value)} />
+                                    </div>
+
+                                    {/* Indicators - Dynamic List with Per-Item Targets */}
+                                    <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl">
+                                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none mb-3 block">Performance Indicator/s (OVI)</label>
+                                        <div className="space-y-4">
+                                            {indicators.map((ind, i) => (
+                                                <div key={i} className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl border border-slate-200 group transition-all hover:border-pink-300 relative">
+                                                    <div className="absolute -left-3 -top-3 bg-pink-100 text-pink-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white shadow-sm">
+                                                        {i + 1}
+                                                    </div>
+                                                    <div className="flex-grow">
+                                                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Indicator Description</label>
+                                                        <TextareaAuto
+                                                            className="w-full bg-slate-50 border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg px-3 py-2 text-sm text-slate-800 transition-all"
+                                                            placeholder="e.g. Percentage of teachers..."
+                                                            value={ind.description}
+                                                            onChange={(e) => handleIndicatorChange(i, 'description', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="w-full md:w-48 shrink-0">
+                                                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Annual Target</label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full bg-slate-50 border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg px-3 py-2 text-sm text-slate-800 transition-all outline-none"
+                                                            placeholder="e.g. 100%"
+                                                            value={ind.target}
+                                                            onChange={(e) => handleIndicatorChange(i, 'target', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    {indicators.length > 1 && (
+                                                        <div className="flex items-end pb-1">
+                                                            <button type="button" onClick={() => removeIndicator(i)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Indicator">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            <button type="button" onClick={addIndicator} className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-semibold hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-all flex items-center justify-center gap-2 text-sm">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                                                Add Indicator
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -731,13 +832,13 @@ export default function App() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 relative z-10">
                                             <div className="flex flex-col">
                                                 <p className="text-xs text-left mb-8 select-none text-slate-500 font-bold uppercase tracking-widest">Prepared by</p>
-                                                <input type="text" className="w-full border-b-2 border-slate-200 focus:border-pink-500 transition-colors text-center font-black uppercase text-lg outline-none bg-transparent pb-2 text-slate-800 placeholder:text-slate-300" placeholder="NAME OF COORDINATOR" value={projectCoord} onChange={(e) => setProjectCoord(e.target.value)} />
-                                                <p className="text-xs mt-3 select-none text-slate-500 text-center font-semibold uppercase tracking-widest">Project Coordinator</p>
+                                                <input type="text" className="w-full border-b-2 border-slate-200 focus:border-pink-500 transition-colors text-center font-black uppercase text-lg outline-none bg-transparent pb-2 text-slate-800 placeholder:text-slate-300" placeholder="FULL NAME" value={preparedByName} onChange={(e) => setPreparedByName(e.target.value)} />
+                                                <input type="text" className="w-full border-b border-transparent hover:border-slate-300 focus:border-pink-500 transition-colors text-center text-sm outline-none bg-transparent mt-2 pb-1 text-slate-500 placeholder:text-slate-300" placeholder="Title / Position" value={preparedByTitle} onChange={(e) => setPreparedByTitle(e.target.value)} />
                                             </div>
                                             <div className="flex flex-col">
-                                                <p className="text-xs text-left mb-8 select-none text-slate-500 font-bold uppercase tracking-widest">Noted</p>
-                                                <input type="text" className="w-full border-b-2 border-slate-200 text-center font-black uppercase text-lg pointer-events-none select-none bg-transparent pb-2 text-slate-800" value="DR. ENRIQUE Q. RETES, EdD" readOnly tabIndex={-1} />
-                                                <p className="text-xs mt-3 select-none text-slate-500 text-center font-semibold uppercase tracking-widest">Chief Education Supervisor</p>
+                                                <p className="text-xs text-left mb-8 select-none text-slate-500 font-bold uppercase tracking-widest">Approved</p>
+                                                <input type="text" className="w-full border-b-2 border-slate-200 focus:border-pink-500 transition-colors text-center font-black uppercase text-lg outline-none bg-transparent pb-2 text-slate-800 placeholder:text-slate-300" placeholder="FULL NAME" value={approvedByName} onChange={(e) => setApprovedByName(e.target.value)} />
+                                                <input type="text" className="w-full border-b border-transparent hover:border-slate-300 focus:border-pink-500 transition-colors text-center text-sm outline-none bg-transparent mt-2 pb-1 text-slate-500 placeholder:text-slate-300" placeholder="Title / Position" value={approvedByTitle} onChange={(e) => setApprovedByTitle(e.target.value)} />
                                             </div>
                                         </div>
                                     </div>

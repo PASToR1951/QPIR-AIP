@@ -113,14 +113,14 @@ export default function Login() {
         <div ref={cardRef} className="bg-[#fafafa]/90 border border-slate-200 rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 backdrop-blur-md opacity-0">
 
           <div className="mb-8 flex justify-center items-center gap-6">
-            <img src="/Division_Logo.webp" alt="Division Logo" className="h-20 w-auto drop-shadow-sm" />
+            <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-sm" />
           </div>
 
           <h2 className="text-3xl font-extrabold tracking-tighter text-slate-900 pb-2">
-            QPIR-AIP System
+            AIP-PIR System
           </h2>
           <p className="text-slate-500 font-medium mb-8 text-sm px-4">
-            Sign in to access your dashboard
+            Tracking of Education Programs: Program Implementation Review System.
           </p>
 
           <form className="space-y-6" onSubmit={handleLogin}>
