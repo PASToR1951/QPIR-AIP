@@ -6,3 +6,6 @@ node_modules
 server.log
 
 data/
+
+TODO.md
+sync_to_notion.py
