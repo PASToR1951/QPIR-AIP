@@ -5,8 +5,8 @@ export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
         return (
             <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50/50 rounded-2xl border border-slate-100 select-none mb-4">
                 <div className="flex items-center gap-4 shrink-0">
-                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-16 w-auto drop-shadow-sm" />
-                    <img src="/Division_Logo.webp" alt="Division Logo" className="h-16 w-auto drop-shadow-sm" />
+                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-16 w-auto drop-shadow-sm hidden sm:block" />
+                    <img src="/Division_Logo.webp" alt="Division Logo" className="h-16 w-auto drop-shadow-sm hidden sm:block" />
                 </div>
                 <div className="h-10 w-px bg-slate-200 hidden md:block"></div>
                 <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
@@ -34,17 +34,21 @@ export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
 
     return (
         <div className="flex flex-col items-center justify-center mb-10 select-none text-center relative">
-            <div className="flex justify-center items-center gap-6 mb-6">
-                <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-24 w-auto drop-shadow-md" />
+            <div className="flex justify-center items-center gap-4 md:gap-8 mb-6 w-full max-w-4xl mx-auto">
+                <div className="flex items-center gap-4 shrink-0">
+                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-24 w-auto drop-shadow-md hidden md:block" />
+                </div>
                 <div className="flex flex-col items-center">
-                    <div className="text-[11px] space-y-0.5 text-slate-500 font-bold uppercase tracking-[0.25em] leading-tight">
+                    <div className="text-[10px] md:text-[11px] space-y-0.5 text-slate-500 font-bold uppercase tracking-[0.15em] md:tracking-[0.25em] leading-tight text-center">
                         <p>Republic of the Philippines</p>
-                        <p className="text-slate-900 font-extrabold text-[12px] tracking-[0.3em]">Department of Education</p>
+                        <p className="text-slate-900 font-extrabold text-[11px] md:text-[12px] tracking-[0.2em] md:tracking-[0.3em]">Department of Education</p>
                         <p>Negros Island Region</p>
-                        <p className="text-blue-600 tracking-[0.15em]">Schools Division of Guihulngan City</p>
+                        <p className="text-blue-600 tracking-[0.1em] md:tracking-[0.15em]">Schools Division of Guihulngan City</p>
                     </div>
                 </div>
-                <img src="/Division_Logo.webp" alt="Division Logo" className="h-24 w-auto drop-shadow-md" />
+                <div className="items-center gap-4 shrink-0 hidden md:flex">
+                    <img src="/Division_Logo.webp" alt="Division Logo" className="h-24 w-auto drop-shadow-md" />
+                </div>
             </div>
             
             <div className="w-full max-w-2xl h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-8"></div>

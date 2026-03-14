@@ -1,5 +1,5 @@
 /**
- * QPIR-AIP Version & Changelog Registry
+ * AIP-PIR Version & Changelog Registry
  * ─────────────────────────────────────────────────────────────
  * This file is the single source of truth for the application version
  * and its release history. Add a new entry to the CHANGELOG array
@@ -27,7 +27,7 @@ export const CHANGELOG = [
     date: '2026-03-14',
     title: 'Initial Beta Release',
     description:
-      'First public beta of the QPIR-AIP Portal — the AIP-PIR management system for DepEd Division of Guihulngan City.',
+      'First public beta of the AIP-PIR Portal — the AIP-PIR management system for DepEd Division of Guihulngan City.',
     changes: [
       { type: 'feature', text: 'AIP Form module with multi-phase activity planning (Planning, Implementation, M&E)' },
       { type: 'feature', text: 'PIR Form module with quarterly review workflow gated behind AIP completion' },

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * QPIR-AIP Changelog Generator
+ * AIP-PIR Changelog Generator
  * ──────────────────────────────────────────────
  * Interactive CLI tool to create new version entries in version.js.
  *
@@ -65,7 +65,7 @@ async function main() {
   const rl = createRL();
 
   console.log('\n╔══════════════════════════════════════════╗');
-  console.log('║   📋  QPIR-AIP Changelog Generator      ║');
+  console.log('║   📋  AIP-PIR Changelog Generator      ║');
   console.log('╚══════════════════════════════════════════╝\n');
 
   // Read current version from file

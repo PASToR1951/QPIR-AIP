@@ -9,7 +9,7 @@ app.use('*', cors());
 
 // Root route
 app.get('/', (c) => {
-  return c.text('QPIR-AIP API is running!');
+  return c.text('AIP-PIR API is running!');
 });
 
 // Health check

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { ArrowLeft, Save, Home, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ViewModeToggle } from './ViewModeToggle';
 
-export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, theme = "indigo" }) => {
-    const navigate = useNavigate();
+export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, theme = "indigo", appMode, toggleAppMode }) => {
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
 
@@ -20,13 +19,6 @@ export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, l
         emerald: "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200",
         pink: "bg-pink-600 hover:bg-pink-700 shadow-pink-200",
         blue: "bg-blue-600 hover:bg-blue-700 shadow-blue-200",
-    };
-
-    const loaderColors = {
-        indigo: "#4f46e5",
-        emerald: "#10b981",
-        pink: "#db2777",
-        blue: "#2563eb",
     };
 
     return (
@@ -52,6 +44,8 @@ export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, l
                 </div>
 
                 <div className="flex items-center gap-3">
+                    <ViewModeToggle appMode={appMode} toggleAppMode={toggleAppMode} theme={theme} />
+
                     {lastSavedTime && !isSaved && (
                         <span className="text-[10px] text-slate-500 font-medium hidden md:block">
                             Last saved: {lastSavedTime}

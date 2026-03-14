@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const FACTOR_TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
@@ -14,6 +16,7 @@ import { DocumentPreviewModal } from './components/ui/DocumentPreviewModal';
 import { PIRDocument } from './components/docs/PIRDocument';
 
 export default function App() {
+    const navigate = useNavigate();
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
 
@@ -176,7 +179,7 @@ export default function App() {
 
     const handleBack = () => {
         if (appMode === 'splash') {
-            window.location.href = '/';
+            navigate('/');
         } else {
             if (hasInputtedData()) {
                 handleSaveForLater();
@@ -189,7 +192,7 @@ export default function App() {
         if (hasInputtedData()) {
             handleSaveForLater();
         }
-        window.location.href = '/';
+        navigate('/');
     };
 
     const fillDevData = () => {
@@ -349,7 +352,7 @@ export default function App() {
                 title: 'Success!',
                 message: 'The QPIR document has been saved to the database.',
                 confirmText: 'Back to Dashboard',
-                onConfirm: () => window.location.href = '/'
+                onConfirm: () => navigate('/')
             });
         } catch (error) {
             console.error("Failed to submit PIR:", error);
@@ -365,31 +368,39 @@ export default function App() {
     };
 
     // ==========================================
-    // RENDER SPLASH SCREEN (View Mode Selector)
-    // ==========================================
-    if (appMode === 'splash') {
-        return (
-            <>
-                <FormHeader
-                    title="Quarterly Performance Review"
-                    onBack={handleBack}
-                    theme="blue"
-                />
-                <ViewModeSelector
-                    onSelectMode={handleSelectMode}
-                    hasDraft={hasDraft}
-                    draftInfo={draftInfo}
-                    theme="blue"
-                />
-            </>
-        );
-    }
-
-    // ==========================================
-    // RENDER MAIN APPLICATION
+    // RENDER APPLICATION WITH TRANSITIONS
     // ==========================================
     return (
-        <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative print:py-0 print:bg-white print:text-black">
+        <AnimatePresence mode="wait">
+            {appMode === 'splash' ? (
+                <motion.div
+                    key="splash"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                >
+                    <FormHeader
+                        title="Quarterly Performance Review"
+                        onBack={handleBack}
+                        theme="blue"
+                    />
+                    <ViewModeSelector
+                        onSelectMode={handleSelectMode}
+                        hasDraft={hasDraft}
+                        draftInfo={draftInfo}
+                        theme="blue"
+                    />
+                </motion.div>
+            ) : (
+                <motion.div
+                    key="form"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                >
+                    <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative print:py-0 print:bg-white print:text-black">
             <FormHeader
                 title="Quarterly Performance Review"
                 onSave={handleSaveForLater}
@@ -399,6 +410,8 @@ export default function App() {
                 isSaved={isSaved}
                 lastSavedTime={lastSavedTime}
                 theme="blue"
+                appMode={appMode}
+                toggleAppMode={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
             />
 
             <DocumentPreviewModal
@@ -420,7 +433,16 @@ export default function App() {
             </DocumentPreviewModal>
 
             {/* Aceternity Grid Background with Radial Mask */}
-            <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden"></div>
+            <div className="fixed inset-0 bg-slate-50 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden">
+                <div
+                    className="absolute inset-0 opacity-100 pointer-events-none grayscale mix-blend-multiply"
+                    style={{
+                        backgroundImage: `url('/SDO_Facade.webp')`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center 25%'
+                    }}
+                ></div>
+            </div>
 
             <style>{`
                 @media print {
@@ -429,6 +451,10 @@ export default function App() {
                     .print-reset { background: transparent !important; color: black !important; border-color: black !important; }
                 }
             `}</style>
+
+            {/* Glowing Orbs */}
+            <div className="fixed top-1/4 left-1/4 w-[30rem] h-[30rem] bg-emerald-400/20 rounded-full blur-[120px] pointer-events-none z-0 print:hidden animate-pulse duration-[4000ms]"></div>
+            <div className="fixed bottom-1/4 right-1/4 w-[30rem] h-[30rem] bg-blue-400/20 rounded-full blur-[120px] pointer-events-none z-0 print:hidden animate-pulse duration-[4000ms]" style={{ animationDelay: '2s' }}></div>
 
             {/* Modal */}
             <ConfirmationModal
@@ -442,7 +468,7 @@ export default function App() {
             />
 
             {/* MAIN CONTAINER */}
-            <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0">
+            <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0 animate-in fade-in slide-in-from-bottom-8 duration-700">
 
                 {/* Independent Header Card (Wizard View) */}
                 {appMode === 'wizard' && (
@@ -458,7 +484,7 @@ export default function App() {
                 <div className="bg-white border border-slate-200 rounded-[2.5rem] p-6 md:p-12 shadow-xl relative">
 
                     {/* View Mode & Dev Toggles (Desktop Only) */}
-                    {!isMobile && (
+                    {!isMobile && import.meta.env.DEV && (
                         <div className="absolute top-6 right-8 z-20 flex items-center gap-3">
                             <button
                                 type="button"
@@ -467,17 +493,6 @@ export default function App() {
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                                 Fill Dev Data
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
-                                className="text-xs font-semibold text-slate-500 hover:text-blue-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm transition-colors flex items-center gap-1.5"
-                            >
-                                {appMode === 'wizard' ? (
-                                    <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><line x1="3" x2="21" y1="9" y2="9" /><line x1="9" x2="9" y1="21" y2="9" /></svg> Switch to Full View</>
-                                ) : (
-                                    <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg> Switch to Wizard</>
-                                )}
                             </button>
                         </div>
                     )}
@@ -525,8 +540,15 @@ export default function App() {
                     )}
 
                     <form onSubmit={(e) => e.preventDefault()}>
-
-                        <div className="min-h-[300px]">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={appMode}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.3 }}
+                            >
+                                <div className="min-h-[300px]">
 
                             {/* -------------------------------------------------------- */}
                             {/* SECTION 1: PROFILE (Shared by both Wizard Step 1 and Full Form) */}
@@ -1100,10 +1122,15 @@ export default function App() {
                                 </div>
                             </div>
                         )}
+                        </motion.div>
+                        </AnimatePresence>
                     </form>
                 </div>
             </div>
         </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 }
 
