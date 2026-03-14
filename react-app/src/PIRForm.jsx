@@ -9,6 +9,7 @@ import { Input } from './components/ui/Input';
 import { Select } from './components/ui/Select';
 import { TextareaAuto } from './components/ui/TextareaAuto';
 import { FormHeader } from './components/ui/FormHeader';
+import FormBackground from './components/ui/FormBackground';
 import { FormBoxHeader } from './components/ui/FormBoxHeader';
 import { ViewModeSelector } from './components/ui/ViewModeSelector';
 import { ConfirmationModal } from './components/ui/ConfirmationModal';
@@ -432,18 +433,6 @@ export default function App() {
                 />
             </DocumentPreviewModal>
 
-            {/* Aceternity Grid Background with Radial Mask */}
-            <div className="fixed inset-0 bg-slate-50 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden">
-                <div
-                    className="absolute inset-0 opacity-100 pointer-events-none grayscale mix-blend-multiply"
-                    style={{
-                        backgroundImage: `url('/SDO_Facade.webp')`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center 25%'
-                    }}
-                ></div>
-            </div>
-
             <style>{`
                 @media print {
                     @page { margin: 1cm; }
@@ -452,9 +441,9 @@ export default function App() {
                 }
             `}</style>
 
-            {/* Glowing Orbs */}
-            <div className="fixed top-1/4 left-1/4 w-[30rem] h-[30rem] bg-emerald-400/20 rounded-full blur-[120px] pointer-events-none z-0 print:hidden animate-pulse duration-[4000ms]"></div>
-            <div className="fixed bottom-1/4 right-1/4 w-[30rem] h-[30rem] bg-blue-400/20 rounded-full blur-[120px] pointer-events-none z-0 print:hidden animate-pulse duration-[4000ms]" style={{ animationDelay: '2s' }}></div>
+            {/* Background rendered via portal — outside transform hierarchy */}
+            <FormBackground orb="emerald" />
+
 
             {/* Modal */}
             <ConfirmationModal
@@ -468,7 +457,7 @@ export default function App() {
             />
 
             {/* MAIN CONTAINER */}
-            <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0">
 
                 {/* Independent Header Card (Wizard View) */}
                 {appMode === 'wizard' && (
