@@ -1,4 +1,4 @@
-# QPIR-AIP Technical Design & Auth Plan
+# AIP-PIR Technical Design & Auth Plan
 
 ## Technology Stack (Finalized)
 - **Frontend:** React 19 + Vite + Tailwind CSS v4

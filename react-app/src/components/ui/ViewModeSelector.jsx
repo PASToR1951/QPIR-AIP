@@ -55,11 +55,20 @@ export const ViewModeSelector = ({
     return (
         <div className="bg-slate-50 min-h-screen flex flex-col font-sans relative overflow-hidden">
             {/* Grid Background */}
-            <div className="absolute inset-0 bg-white bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0"></div>
+            <div className="fixed inset-0 bg-slate-50 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0">
+                <div
+                    className="absolute inset-0 opacity-100 pointer-events-none grayscale mix-blend-multiply"
+                    style={{
+                        backgroundImage: `url('/SDO_Facade.webp')`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center 25%'
+                    }}
+                ></div>
+            </div>
             
             {/* Glowing Orbs */}
-            <div className={`absolute top-1/4 left-1/4 w-96 h-96 ${colors.glow} rounded-full blur-[100px] pointer-events-none`}></div>
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-400/20 rounded-full blur-[100px] pointer-events-none"></div>
+            <div className={`fixed top-1/4 left-1/4 w-[30rem] h-[30rem] ${colors.glow} rounded-full blur-[120px] pointer-events-none animate-pulse duration-[4000ms]`}></div>
+            <div className="fixed bottom-1/4 right-1/4 w-[30rem] h-[30rem] bg-blue-400/20 rounded-full blur-[120px] pointer-events-none animate-pulse duration-[4000ms]" style={{ animationDelay: '2s' }}></div>
 
             <div className="relative z-10 container mx-auto px-6 flex flex-col items-center justify-center flex-1">
                 <div className="bg-white/90 border border-slate-200 rounded-[2rem] p-8 md:p-14 shadow-xl text-center max-w-2xl w-full mx-auto ring-1 ring-slate-900/5 animate-in fade-in zoom-in-95 duration-700">

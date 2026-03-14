@@ -63,7 +63,7 @@ const ErrorPage = ({ type = "500", title, message, onRetry }) => {
       <div className="relative z-20 flex flex-col items-center text-center max-w-2xl px-4">
         {/* Branding */}
         <div className="relative mb-10">
-            <img src="/Division_Logo.webp" alt="Division Logo" className="h-28 md:h-36 w-auto drop-shadow-2xl" />
+            <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-28 md:h-36 w-auto drop-shadow-2xl" />
         </div>
 
         {/* Status indicator */}

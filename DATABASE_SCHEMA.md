@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the Database Schema and Entity-Relationship Diagram (ERD) used for the QPIR-AIP web application. 
+This document outlines the Database Schema and Entity-Relationship Diagram (ERD) used for the AIP-PIR web application. 
 
 ## Technology Stack
 

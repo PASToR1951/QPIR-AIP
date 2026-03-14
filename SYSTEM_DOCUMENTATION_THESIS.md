@@ -1,4 +1,4 @@
-# System Documentation: QPIR-AIP
+# System Documentation: AIP-PIR
 ## Stage 1: Introduction & System Architecture
 
 ---
@@ -11,7 +11,7 @@ The Department of Education (DepEd) mandates robust planning and evaluation mech
 Historically, the consolidation and tracking of AIPs and PIRs across the Division of Guihulngan City have relied on fragmented, manual, or decentralized spreadsheet-based systems. These traditional methods are susceptible to data silos, delayed reporting, and difficulties in enforcing strict bureaucratic workflows (e.g., ensuring a school cannot submit a quarterly PIR without first having an approved AIP).
 
 ### 1.2 Objectives of the System
-The **QPIR-AIP Portal** is designed to digitize, standardize, and centralize the planning and review cycle. The specific objectives of this system are:
+The **AIP-PIR Portal** is designed to digitize, standardize, and centralize the planning and review cycle. The specific objectives of this system are:
 1. **Workflow Enforcement:** To programmatically enforce the dependency of the PIR upon the AIP, ensuring structural data integrity.
 2. **Role-Based Access Control (RBAC):** To delineate the privileges of School-level users (data entry and submission) versus Division Personnel (monitoring and evaluation).
 3. **Data Persistence & Draft Management:** To provide stateful form management, allowing users to save drafts and resume work, thereby reducing data loss during lengthy planning sessions.
@@ -57,14 +57,14 @@ Prisma provides a type-safe data access layer. Traditional string-based SQL quer
 * Dahl, R. (2018). *10 Things I Regret About Node.js*. JSConf EU.
 * Mesbah, A., & van Deursen, A. (2007). *Migrating Multi-page Web Applications to Single-page AJAX Interfaces*. 11th European Conference on Software Maintenance and Reengineering (CSMR'07), 181-190.
 
-# System Documentation: QPIR-AIP
+# System Documentation: AIP-PIR
 ## Stage 2: Database Architecture & Data Modeling
 
 ---
 
 ## Chapter 3: Database & Data Modeling
 
-The relational integrity of the QPIR-AIP system is foundational to its ability to accurately track educational programs across multiple organizational levels (Schools and the Division Office). The data layer must enforce complex business rules, such as restricting access to specific programs (e.g., Alternative Learning System) to a subset of authorized schools.
+The relational integrity of the AIP-PIR system is foundational to its ability to accurately track educational programs across multiple organizational levels (Schools and the Division Office). The data layer must enforce complex business rules, such as restricting access to specific programs (e.g., Alternative Learning System) to a subset of authorized schools.
 
 ### 3.1 Entity-Relationship (ER) Architecture
 The database is modeled using a deeply relational approach to eliminate data redundancy and ensure referential integrity. The core entities govern users, their affiliations, and the highly structured forms they submit.
@@ -179,14 +179,14 @@ Rather than relying purely on volatile client-side storage (e.g., `localStorage`
 * Date, C. J. (2019). *Database Design and Relational Theory: Normal Forms and All That Jazz* (2nd ed.). O'Reilly Media.
 * Richardson, L., & Ruby, S. (2008). *RESTful Web Services*. O'Reilly Media.
 
-# System Documentation: QPIR-AIP
+# System Documentation: AIP-PIR
 ## Stage 3: Security & Role-Based Access Control
 
 ---
 
 ## Chapter 4: Authentication & Security Authorization
 
-The security architecture of the QPIR-AIP portal is built around the principles of Least Privilege and Separation of Concerns (Saltzer & Schroeder, 1975). Authorization—determining what an authenticated user is allowed to do—is strictly enforced at both the client layer (via React Router guards) and the server layer (via Deno middleware).
+The security architecture of the AIP-PIR portal is built around the principles of Least Privilege and Separation of Concerns (Saltzer & Schroeder, 1975). Authorization—determining what an authenticated user is allowed to do—is strictly enforced at both the client layer (via React Router guards) and the server layer (via Deno middleware).
 
 ### 4.1 Authentication Mechanism (JWT)
 The system utilizes **JSON Web Tokens (JWT)** for stateless session management. Upon successful credential verification, the Deno backend issues a cryptographically signed JWT to the client.
@@ -217,14 +217,14 @@ While the React application employs Route Guards (e.g., redirecting an unauthent
 * OWASP Foundation. (2021). *OWASP Top 10: Broken Access Control*. Open Web Application Security Project.
 * Saltzer, J. H., & Schroeder, M. D. (1975). *The Protection of Information in Computer Systems*. Proceedings of the IEEE, 63(9), 1278-1308.
 
-# System Documentation: QPIR-AIP
+# System Documentation: AIP-PIR
 ## Stage 4: Core Process Workflows
 
 ---
 
 ## Chapter 5: Process Modeling & System Workflows
 
-The QPIR-AIP portal essentially digitizes a highly structured bureaucratic workflow. The core objective of the system is not merely to capture data, but to mathematically and logically enforce the sequence of the DepEd planning and evaluation cycle.
+The AIP-PIR portal essentially digitizes a highly structured bureaucratic workflow. The core objective of the system is not merely to capture data, but to mathematically and logically enforce the sequence of the DepEd planning and evaluation cycle.
 
 ### 5.1 The AIP-PIR Dependency Model
 The most critical business rule within the Application Programming Interface (API) is the structural dependency of the Program Implementation Review (PIR) upon an approved Annual Implementation Plan (AIP).

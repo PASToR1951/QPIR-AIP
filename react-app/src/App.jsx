@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import {
   LogOut,
@@ -26,8 +27,11 @@ import NotFound from './NotFound';
 import ErrorPage from './ErrorPage';
 import Changelog from './components/Changelog';
 import SystemDocs from './components/SystemDocs';
+import FAQ from './components/FAQ';
 import { DashboardHeader } from './components/ui/DashboardHeader';
 import Footer from './components/ui/Footer';
+import PageTransition from './components/ui/PageTransition';
+import PageLoader from './components/ui/PageLoader';
 
 // Simple Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -87,14 +91,7 @@ const PIRRouteGuard = ({ children }) => {
   }, [user?.school_id]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="text-slate-500 font-bold animate-pulse uppercase tracking-widest text-xs">Verifying Prerequisites...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader message="Verifying Prerequisites..." />;
   }
 
   if (!hasAIP && localStorage.getItem('dev_pir_unlocked') !== 'true') {
@@ -310,50 +307,57 @@ function Dashboard() {
         </div>
 
         {/* Modules Section */}
-        <div className="flex items-center justify-between mb-6 px-2">
-          <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-widest flex items-center gap-2">
-            <span className="w-8 h-px bg-slate-200"></span>
-            Main Modules
-            <span className="w-8 h-px bg-slate-200"></span>
+        <div className="flex items-center justify-between mb-8 px-2 mt-4">
+          <h2 className="text-sm font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-4">
+            Workspace Hub
+            <span className="flex-1 h-px bg-slate-200"></span>
           </h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* AIP Card */}
-          <Link to="/aip" className={`group block bg-white rounded-[2rem] border-2 shadow-sm hover:shadow-2xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 hover:border-pink-200`}>
-            <div className="p-10">
-              <div className="flex justify-between items-start mb-8">
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-lg border bg-pink-50 text-pink-600 border-pink-100 shadow-pink-100 group-hover:bg-pink-600 group-hover:text-white group-hover:shadow-pink-200`}>
+          <Link to="/aip" className="group block bg-white rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 hover:border-pink-200 relative">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-pink-50 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
+            
+            <div className="p-8 md:p-10 relative z-10 flex flex-col h-full">
+              <div className="flex justify-between items-start mb-12">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-md border bg-gradient-to-br from-pink-50 to-pink-100 text-pink-600 border-pink-200 shadow-pink-100/50 group-hover:from-pink-500 group-hover:to-pink-600 group-hover:text-white group-hover:shadow-pink-300">
                   <FileText size={32} strokeWidth={2.5} />
                 </div>
                 {aipStatus === 'review' && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 shadow-sm">
-                    Submitted
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 shadow-sm">
+                    <CheckCircle2 size={12} strokeWidth={3} /> Submitted
                   </div>
                 )}
                 {aipStatus === 'draft' && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-100 text-pink-700 text-[10px] font-black uppercase tracking-widest border border-pink-200 shadow-sm">
-                    In Progress
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-50 text-pink-700 text-[10px] font-black uppercase tracking-widest border border-pink-200 shadow-sm">
+                    <Clock size={12} strokeWidth={3} /> In Progress
                   </div>
                 )}
               </div>
-              <h3 className={`text-3xl font-black tracking-tight text-slate-900 mb-4 transition-colors group-hover:text-pink-600`}>AIP Form</h3>
-              <p className="font-medium text-slate-500 leading-relaxed text-base">
-                Annual Implementation Plan <br />
-                <span className="text-slate-400 text-sm">Strategic objectives & activity planning</span>
-              </p>
-            </div>
-            <div className={`bg-slate-50 border-t border-slate-100 px-10 py-5 flex items-center justify-between transition-colors group-hover:bg-pink-600`}>
-              <span className={`text-sm font-bold transition-colors group-hover:text-white text-pink-600`}>
-                {aipStatus === 'review' ? 'View Submission' : aipStatus === 'draft' ? 'Continue Plan' : 'Launch Module'}
-              </span>
-              <ArrowRight size={20} strokeWidth={3} className={`transform group-hover:translate-x-2 transition-transform group-hover:text-white text-pink-500`} />
+              
+              <div className="mt-auto">
+                <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-3 transition-colors group-hover:text-pink-600">AIP Form</h3>
+                <p className="font-medium text-slate-500 leading-relaxed text-base md:text-lg mb-6">
+                  Annual Implementation Plan <br />
+                  <span className="text-slate-400 text-sm md:text-base font-normal">Plan strategic objectives, target outputs, and allocate budget for the fiscal year.</span>
+                </p>
+
+                <div className="flex items-center gap-3 text-pink-600 font-bold group-hover:translate-x-2 transition-transform duration-300">
+                  <span className="text-sm uppercase tracking-widest">
+                    {aipStatus === 'review' ? 'View Submission' : aipStatus === 'draft' ? 'Continue Plan' : 'Start Planning'}
+                  </span>
+                  <div className="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
+                    <ArrowRight size={16} strokeWidth={3} />
+                  </div>
+                </div>
+              </div>
             </div>
           </Link>
 
           {/* PIR Card */}
           {hasAIP || localStorage.getItem('dev_pir_unlocked') === 'true' ? (
-            <div className="relative group block bg-white rounded-[2rem] border-2 border-slate-100 shadow-sm hover:shadow-2xl hover:border-blue-200 transition-all duration-500 overflow-hidden">
+            <div className="group block bg-white rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 hover:border-blue-200 relative">
               {import.meta.env.DEV && (
                 <button
                   onClick={(e) => {
@@ -366,29 +370,38 @@ function Dashboard() {
                   Dev: Lock PIR
                 </button>
               )}
-              <Link to="/pir" className="block p-10 h-full w-full active:scale-[0.98] transition-transform">
-                <div className="flex justify-between items-start mb-8">
-                  <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500 group-hover:bg-blue-600 group-hover:text-white shadow-lg shadow-blue-100 group-hover:shadow-blue-200 border border-blue-100">
+              <Link to="/pir" className="absolute inset-0 z-10"></Link>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
+
+              <div className="p-8 md:p-10 relative z-0 flex flex-col h-full">
+                <div className="flex justify-between items-start mb-12">
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-md border bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-200 shadow-blue-100/50 group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:shadow-blue-300">
                     <BarChart3 size={32} strokeWidth={2.5} />
                   </div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest border border-blue-200 shadow-sm mt-8 sm:mt-0">
-                    <Unlock size={10} strokeWidth={3} />
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-widest border border-blue-200 shadow-sm mt-8 sm:mt-0">
+                    <Unlock size={12} strokeWidth={3} />
                     Unlocked
                   </div>
                 </div>
-                <h3 className="text-3xl font-black tracking-tight text-slate-900 mb-4 group-hover:text-blue-600 transition-colors">PIR Form</h3>
-                <p className="font-medium text-slate-500 leading-relaxed text-base">
-                  Program Implementation Review <br />
-                  <span className="text-slate-400 text-sm">Physical & financial accomplishments</span>
-                </p>
-              </Link>
-              <Link to="/pir" className="block bg-slate-50 border-t border-slate-100 px-10 py-5 flex items-center justify-between group-hover:bg-blue-600 transition-colors">
-                <span className="text-sm font-bold text-blue-600 group-hover:text-white transition-colors">Launch Module</span>
-                <ArrowRight size={20} strokeWidth={3} className="text-blue-500 transform group-hover:translate-x-2 transition-transform group-hover:text-white" />
-              </Link>
+
+                <div className="mt-auto">
+                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-3 transition-colors group-hover:text-blue-600">PIR Form</h3>
+                  <p className="font-medium text-slate-500 leading-relaxed text-base md:text-lg mb-6">
+                    Program Implementation Review <br />
+                    <span className="text-slate-400 text-sm md:text-base font-normal">Report physical accomplishments and financial utilization per quarter.</span>
+                  </p>
+
+                  <div className="flex items-center gap-3 text-blue-600 font-bold group-hover:translate-x-2 transition-transform duration-300">
+                    <span className="text-sm uppercase tracking-widest">Start Review</span>
+                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                      <ArrowRight size={16} strokeWidth={3} />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="block bg-white rounded-[2rem] border-2 border-dashed border-slate-200 relative overflow-hidden grayscale opacity-70">
+            <div className="block bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-200 relative overflow-hidden group">
               {import.meta.env.DEV && (
                 <button
                   onClick={() => {
@@ -400,54 +413,35 @@ function Dashboard() {
                   Dev: Unlock PIR
                 </button>
               )}
-              <div className="p-10 cursor-not-allowed">
-                <div className="flex justify-between items-start mb-8">
-                  <div className="w-16 h-16 bg-slate-100 text-slate-300 rounded-2xl flex items-center justify-center border border-slate-200">
+              <div className="p-8 md:p-10 flex flex-col h-full opacity-60 grayscale transition-opacity group-hover:opacity-80">
+                <div className="flex justify-between items-start mb-12">
+                  <div className="w-16 h-16 bg-white text-slate-400 rounded-2xl flex items-center justify-center border border-slate-200 shadow-sm">
                     <BarChart3 size={32} strokeWidth={2.5} />
                   </div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-200 mt-8 sm:mt-0">
-                    <Lock size={10} strokeWidth={3} />
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest border border-slate-200 shadow-sm mt-8 sm:mt-0">
+                    <Lock size={12} strokeWidth={3} />
                     Locked
                   </div>
                 </div>
-                <h3 className="text-3xl font-black tracking-tight text-slate-300 mb-4">PIR Form</h3>
-                <p className="font-medium text-slate-300 leading-relaxed text-base">Complete and submit your AIP first to unlock quarterly reviews.</p>
-              </div>
-              <div className="bg-slate-50 border-t border-slate-100 px-10 py-5">
-                <p className="text-xs font-bold text-amber-500 flex items-center gap-2">
-                  <AlertTriangle size={14} strokeWidth={2.5} />
-                  Prerequisite: AIP Submission
-                </p>
+
+                <div className="mt-auto">
+                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-3">PIR Form</h3>
+                  <p className="font-medium text-slate-500 leading-relaxed text-base md:text-lg mb-6">
+                    Program Implementation Review <br />
+                    <span className="text-slate-500 text-sm md:text-base font-normal">Complete and submit your AIP first to unlock quarterly performance reviews.</span>
+                  </p>
+
+                  <div className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm">
+                    <AlertTriangle size={16} strokeWidth={2.5} />
+                    AIP Submission Required
+                  </div>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Support Section */}
-        <div className="bg-slate-900 rounded-[2.5rem] p-8 md:p-10 text-white flex flex-col md:flex-row items-center justify-between gap-8 mb-12 text-center md:text-left relative overflow-hidden group">
-          <div
-            className="absolute inset-0 opacity-[0.15] pointer-events-none transition-opacity duration-700 group-hover:opacity-[0.25] grayscale"
-            style={{
-              backgroundImage: `url('/SDO_Facade.webp')`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center 25%'
-            }}
-          ></div>
-          <div className="max-w-md relative z-10">
-            <h3 className="text-2xl font-black mb-2 tracking-tight">Need assistance?</h3>
-            <p className="text-slate-400 text-sm font-medium">Our technical support team is available during office hours to help you with any issues regarding the portal.</p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto relative z-10">
-            <Link to="/docs" className="px-6 py-3 bg-white text-slate-900 font-black rounded-2xl text-sm hover:bg-slate-200 transition-colors active:scale-95 shadow-lg shadow-white/5 text-center flex items-center justify-center gap-2">
-              <BookOpen size={18} strokeWidth={2.5} />
-              System Documentation
-            </Link>
-            <Link to="/changelog" className="px-6 py-3 bg-slate-800 text-white font-black rounded-2xl text-sm hover:bg-slate-700 transition-colors active:scale-95 border border-slate-700 text-center flex items-center justify-center gap-2">
-              <Tag size={18} strokeWidth={2.5} />
-              Version History
-            </Link>
-          </div>
-        </div>
+
       </main>
 
       <Footer />
@@ -455,20 +449,23 @@ function Dashboard() {
   );
 }
 
-function App() {
+function AnimatedRoutes() {
+  const location = useLocation();
+
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/changelog" element={<Changelog />} />
-        <Route path="/docs" element={<SystemDocs />} />
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+        <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
+        <Route path="/docs" element={<PageTransition><SystemDocs /></PageTransition>} />
+        <Route path="/faq" element={<PageTransition><FAQ /></PageTransition>} />
 
         {/* Protected Routes */}
         <Route
           path="/"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <PageTransition><Dashboard /></PageTransition>
             </ProtectedRoute>
           }
         />
@@ -476,7 +473,7 @@ function App() {
           path="/aip"
           element={
             <ProtectedRoute>
-              <AIPForm />
+              <PageTransition><AIPForm /></PageTransition>
             </ProtectedRoute>
           }
         />
@@ -485,19 +482,27 @@ function App() {
           element={
             <ProtectedRoute>
               <PIRRouteGuard>
-                <PIRForm />
+                <PageTransition><PIRForm /></PageTransition>
               </PIRRouteGuard>
             </ProtectedRoute>
           }
         />
 
         {/* Error Pages */}
-        <Route path="/403" element={<ErrorPage type="403" />} />
-        <Route path="/500" element={<ErrorPage type="500" />} />
+        <Route path="/403" element={<PageTransition><ErrorPage type="403" /></PageTransition>} />
+        <Route path="/500" element={<PageTransition><ErrorPage type="500" /></PageTransition>} />
 
         {/* Catch-all 404 Route */}
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
       </Routes>
+    </AnimatePresence>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AnimatedRoutes />
     </Router>
   );
 }

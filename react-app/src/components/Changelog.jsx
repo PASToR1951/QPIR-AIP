@@ -286,7 +286,7 @@ const Changelog = () => {
                 <BookOpen size={20} className="text-emerald-400" />
               </div>
               <div>
-                <h2 className="text-lg font-black tracking-tight">QPIR-AIP Portal</h2>
+                <h2 className="text-lg font-black tracking-tight">AIP-PIR Portal</h2>
                 <p className="text-slate-400 text-xs font-medium">System Documentation & Release Notes</p>
               </div>
             </div>
