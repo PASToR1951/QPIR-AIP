@@ -19,9 +19,24 @@
  *   import { CURRENT_VERSION, CHANGELOG, getVersion } from './version';
  */
 
-export const CURRENT_VERSION = '1.0.0-beta';
+export const CURRENT_VERSION = '1.0.1-beta';
 
 export const CHANGELOG = [
+  {
+    version: '1.0.1-beta',
+    date: '2026-03-15',
+    title: 'PIR Auto-Population & Division Personnel Foundation',
+    description:
+      'Introduces AIP-to-PIR activity bridging so that implementation periods and activity names are automatically carried into the PIR form. Lays the database groundwork for Division Personnel document ownership.',
+    changes: [
+      { type: 'feature', text: 'PIR form auto-fetches AIP activities on school/program/year selection — activity names and implementation periods are pre-filled as read-only fields' },
+      { type: 'feature', text: 'Implementation Period column added to PIR print document (PIRDocument)' },
+      { type: 'feature', text: 'New GET /api/aips/activities endpoint returns activity list for a given school, program, and year' },
+      { type: 'improvement', text: 'PIR activity matching now uses aip_activity_id directly instead of fragile name-based string fallback' },
+      { type: 'improvement', text: 'Added created_by_user_id tracking field to AIP and PIR schema — required for Division Personnel access isolation (migration pending)' },
+      { type: 'docs', text: 'Division Personnel implementation plan added to TODO.md; DATABASE_SCHEMA.md and SYSTEM_DOCUMENTATION_THESIS.md updated to reflect schema and role changes' },
+    ],
+  },
   {
     version: '1.0.0-beta',
     date: '2026-03-14',
