@@ -26,6 +26,7 @@ export default function App() {
     const [isMobile, setIsMobile] = useState(false);
     const [programList, setProgramList] = useState([]);
     const [schoolList, setSchoolList] = useState([]);
+    const [schoolMap, setSchoolMap] = useState({}); // name -> id lookup
 
     const [quarterString] = useState(() => {
         const date = new Date();
@@ -46,7 +47,9 @@ export default function App() {
                     axios.get(`${import.meta.env.VITE_API_URL}/api/schools`)
                 ]);
                 setProgramList(programsRes.data.map(p => p.title).sort());
-                setSchoolList(schoolsRes.data.map(s => s.name).sort());
+                const schools = schoolsRes.data;
+                setSchoolList(schools.map(s => s.name).sort());
+                setSchoolMap(Object.fromEntries(schools.map(s => [s.name, s.id])));
             } catch (error) {
                 console.error("Failed to fetch data:", error);
             }
@@ -117,8 +120,9 @@ export default function App() {
     const displayBudget = isBudgetFocused ? rawBudget : formatCurrency(rawBudget);
 
     const [activities, setActivities] = useState([
-        { id: crypto.randomUUID(), name: "", physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }
+        { id: crypto.randomUUID(), name: "", implementation_period: "", aip_activity_id: null, fromAIP: false, physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }
     ]);
+    const [isLoadingActivities, setIsLoadingActivities] = useState(false);
 
     // Add state to track which activity card is expanded (for Wizard)
     const [expandedActivityId, setExpandedActivityId] = useState(activities[0].id);
@@ -152,6 +156,45 @@ export default function App() {
         };
         fetchDraft();
     }, [user?.id]);
+
+    // Auto-fetch AIP activities when school and program are both selected
+    useEffect(() => {
+        const schoolId = schoolMap[school];
+        if (!schoolId || !program) return;
+
+        const yearMatch = quarterString.match(/CY (\d{4})/);
+        const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+
+        const fetchAIPActivities = async () => {
+            setIsLoadingActivities(true);
+            try {
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/activities`, {
+                    params: { school_id: schoolId, program_title: program, year }
+                });
+                const aipActivities = res.data.activities;
+                if (aipActivities && aipActivities.length > 0) {
+                    setActivities(aipActivities.map(a => ({
+                        id: crypto.randomUUID(),
+                        name: a.activity_name,
+                        implementation_period: a.implementation_period,
+                        aip_activity_id: a.id,
+                        fromAIP: true,
+                        physTarget: "",
+                        finTarget: "",
+                        physAcc: "",
+                        finAcc: "",
+                        actions: ""
+                    })));
+                }
+            } catch {
+                // No AIP found - keep manual entry mode
+            } finally {
+                setIsLoadingActivities(false);
+            }
+        };
+
+        fetchAIPActivities();
+    }, [school, program, schoolMap, quarterString]);
 
     // Handlers
     const handleSelectMode = (mode) => {
@@ -203,8 +246,8 @@ export default function App() {
         setFundSource("MOOE");
         setRawBudget("250000");
         setActivities([
-            { id: crypto.randomUUID(), name: "Conduct Q1 Training", physTarget: "50", finTarget: "125000", physAcc: "45", finAcc: "120000", actions: "Reschedule remaining participants to Q2" },
-            { id: crypto.randomUUID(), name: "Procure Learning Materials", physTarget: "500", finTarget: "125000", physAcc: "500", finAcc: "125000", actions: "Completed successfully" }
+            { id: crypto.randomUUID(), name: "Conduct Q1 Training", implementation_period: "January to March", aip_activity_id: null, fromAIP: false, physTarget: "50", finTarget: "125000", physAcc: "45", finAcc: "120000", actions: "Reschedule remaining participants to Q2" },
+            { id: crypto.randomUUID(), name: "Procure Learning Materials", implementation_period: "April", aip_activity_id: null, fromAIP: false, physTarget: "500", finTarget: "125000", physAcc: "500", finAcc: "125000", actions: "Completed successfully" }
         ]);
         const devFactors = { ...initialFactors };
         devFactors["Technical"] = { facilitating: "Strong local internet connectivity", hindering: "Occasional power interruptions" };
@@ -262,7 +305,7 @@ export default function App() {
 
     const handleAddActivity = () => {
         const newId = crypto.randomUUID();
-        setActivities([...activities, { id: newId, name: "", physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }]);
+        setActivities([...activities, { id: newId, name: "", implementation_period: "", aip_activity_id: null, fromAIP: false, physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }]);
         setExpandedActivityId(newId);
 
         setIsAddingActivity(true);
@@ -599,9 +642,22 @@ export default function App() {
                                             </div>
                                             <div>
                                                 <h2 className="text-xl font-bold text-slate-800 tracking-tight">Monitoring Evaluation</h2>
-                                                <p className="text-sm text-slate-500 font-medium mt-0.5">Record activities, targets, and actual accomplishments.</p>
+                                                <p className="text-sm text-slate-500 font-medium mt-0.5">
+                                                    {isLoadingActivities
+                                                        ? "Loading activities from AIP..."
+                                                        : activities.some(a => a.fromAIP)
+                                                            ? "Activities loaded from AIP. Fill in targets and accomplishments."
+                                                            : "Record activities, targets, and actual accomplishments."
+                                                    }
+                                                </p>
                                             </div>
                                         </div>
+                                        {activities.some(a => a.fromAIP) && (
+                                            <span className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-full">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                Synced from AIP
+                                            </span>
+                                        )}
                                     </div>
 
                                     <div className="space-y-4">
@@ -627,6 +683,13 @@ export default function App() {
                                                                     {act.name || <span className="text-slate-400 italic font-normal">Untitled Activity...</span>}
                                                                 </span>
                                                                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold text-slate-500 uppercase tracking-widest mt-1">
+                                                                    {act.implementation_period && (
+                                                                        <span className="flex items-center gap-1 whitespace-nowrap text-blue-500 normal-case font-semibold tracking-normal">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                                                            {act.implementation_period}
+                                                                        </span>
+                                                                    )}
+                                                                    {act.implementation_period && <span className="text-slate-300 hidden sm:block">|</span>}
                                                                     <span className="flex items-center gap-1.5 whitespace-nowrap">
                                                                         Physical Gap: <span className={physGap < 0 ? 'text-red-500' : 'text-emerald-500'}>{physGap.toFixed(2)}%</span>
                                                                     </span>
@@ -688,13 +751,27 @@ export default function App() {
 
                                                     <div className="p-6 md:p-8 flex flex-col gap-6">
                                                         <div>
-                                                            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 block">Activity Name / Description</label>
-                                                            <TextareaAuto
-                                                                placeholder="Describe the activity here..."
-                                                                className="w-full text-lg font-semibold text-slate-800 placeholder:text-slate-300 border-b border-transparent focus:border-blue-500 transition-colors py-1"
-                                                                value={act.name}
-                                                                onChange={(e) => handleActivityChange(act.id, 'name', e.target.value)}
-                                                            />
+                                                            <div className="flex items-center justify-between mb-1.5">
+                                                                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Activity Name / Description</label>
+                                                                {act.fromAIP && act.implementation_period && (
+                                                                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-full">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                                                        {act.implementation_period}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {act.fromAIP ? (
+                                                                <p className="text-lg font-semibold text-slate-700 py-1 border-b border-slate-200">
+                                                                    {act.name}
+                                                                </p>
+                                                            ) : (
+                                                                <TextareaAuto
+                                                                    placeholder="Describe the activity here..."
+                                                                    className="w-full text-lg font-semibold text-slate-800 placeholder:text-slate-300 border-b border-transparent focus:border-blue-500 transition-colors py-1"
+                                                                    value={act.name}
+                                                                    onChange={(e) => handleActivityChange(act.id, 'name', e.target.value)}
+                                                                />
+                                                            )}
                                                         </div>
 
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-5 rounded-2xl border border-slate-200">
@@ -797,16 +874,23 @@ export default function App() {
                                             </div>
                                             <div>
                                                 <h2 className="text-xl font-bold text-slate-800 tracking-tight">Monitoring Evaluation & Adjustment</h2>
+                                                {activities.some(a => a.fromAIP) && (
+                                                    <p className="text-xs text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                        Activities and implementation schedule auto-loaded from AIP
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="overflow-visible overflow-x-auto pb-4">
                                         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                                            <table className="w-full min-w-[800px] border-collapse text-sm">
+                                            <table className="w-full min-w-[900px] border-collapse text-sm">
                                                 <thead>
                                                     <tr className="text-center select-none bg-slate-50 border-b border-slate-200">
-                                                        <th rowSpan="2" className="border-r border-slate-200 p-4 w-1/4 text-xs font-bold text-slate-600 uppercase tracking-wider">Activity Name</th>
+                                                        <th rowSpan="2" className="border-r border-slate-200 p-4 w-1/5 text-xs font-bold text-slate-600 uppercase tracking-wider">Activity Name</th>
+                                                        <th rowSpan="2" className="border-r border-slate-200 p-4 w-[130px] text-xs font-bold text-slate-600 uppercase tracking-wider">Implementation Period</th>
                                                         <th colSpan="2" className="border-r border-slate-200 p-2 text-xs font-bold text-slate-600 uppercase tracking-wider">Target</th>
                                                         <th colSpan="2" className="border-r border-slate-200 p-2 text-xs font-bold text-slate-600 uppercase tracking-wider">Accomplishment</th>
                                                         <th colSpan="2" className="border-r border-slate-200 p-2 text-xs font-bold text-slate-600 uppercase tracking-wider">Gap (%)</th>
@@ -831,7 +915,18 @@ export default function App() {
                                                         return (
                                                             <tr key={act.id} className={`group hover:bg-slate-50 transition-colors ${!isLast ? 'border-b border-slate-200' : ''}`}>
                                                                 <td className="border-r border-slate-200 p-3 align-top">
-                                                                    <TextareaAuto placeholder="Describe activity..." className="font-medium text-slate-700 w-full bg-transparent p-1 focus:bg-white border border-transparent focus:border-slate-300 rounded-md" value={act.name} onChange={(e) => handleActivityChange(act.id, 'name', e.target.value)} />
+                                                                    {act.fromAIP ? (
+                                                                        <p className="font-medium text-slate-700 p-1 text-sm">{act.name}</p>
+                                                                    ) : (
+                                                                        <TextareaAuto placeholder="Describe activity..." className="font-medium text-slate-700 w-full bg-transparent p-1 focus:bg-white border border-transparent focus:border-slate-300 rounded-md" value={act.name} onChange={(e) => handleActivityChange(act.id, 'name', e.target.value)} />
+                                                                    )}
+                                                                </td>
+                                                                <td className="border-r border-slate-200 p-3 align-top bg-blue-50/30">
+                                                                    {act.implementation_period ? (
+                                                                        <span className="text-xs font-semibold text-blue-700 leading-relaxed">{act.implementation_period}</span>
+                                                                    ) : (
+                                                                        <TextareaAuto placeholder="e.g. January to March" className="text-xs font-medium text-slate-600 w-full bg-transparent p-1 focus:bg-white border border-transparent focus:border-slate-300 rounded-md" value={act.implementation_period} onChange={(e) => handleActivityChange(act.id, 'implementation_period', e.target.value)} />
+                                                                    )}
                                                                 </td>
                                                                 <td className="border-r border-slate-200 p-1 align-top">
                                                                     <input type="number" inputMode="decimal" className="w-full text-center outline-none font-mono text-sm font-semibold text-slate-700 h-full min-h-[44px] bg-transparent focus:bg-white border border-transparent focus:border-slate-300 rounded-md" value={act.physTarget} onChange={(e) => handleActivityChange(act.id, 'physTarget', e.target.value.replace(/[^0-9.]/g, ''))} />
