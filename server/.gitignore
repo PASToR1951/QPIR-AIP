@@ -1,11 +1,17 @@
-node_modules
-# Keep environment variables out of version control
+# ── Environment variables ─────────────────────────────────────────────────────
 .env
+.env.local
+.env.*.local
 
+# ── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Prisma generated client ───────────────────────────────────────────────────
 /generated/prisma
-server.log
 
+# ── Draft file storage (user data — not source code) ─────────────────────────
 data/
 
-TODO.md
-sync_to_notion.py
+# ── Logs & runtime ────────────────────────────────────────────────────────────
+*.log
+*.pid

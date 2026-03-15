@@ -1,5 +1,4 @@
-# Logs
-logs
+# ── Logs ─────────────────────────────────────────────────────────────────────
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,23 +6,34 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# ── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Build output ──────────────────────────────────────────────────────────────
+dist/
+dist-ssr/
+
+# ── Environment variables ─────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
 *.local
 
-# Editor directories and files
+# ── LLM prompt output ─────────────────────────────────────────────────────────
+docs-update-prompt.txt
+*.prompt.txt
+
+# ── Scripts ───────────────────────────────────────────────────────────────────
+start.sh
+
+# ── OS & editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-#script
-start.sh
-.env
-*.pid
