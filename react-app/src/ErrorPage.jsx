@@ -27,7 +27,7 @@ const ErrorPage = ({ type = "500", title, message, onRetry }) => {
   const config = errorConfigs[type] || errorConfigs["500"];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans text-slate-900 group/screen">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans text-slate-900 group/screen select-none">
       
       {/* 1. Base Gradient Layer */}
       <div className="absolute inset-0 bg-gradient-to-br from-pink-50/50 via-white to-blue-50/50 z-0"></div>
