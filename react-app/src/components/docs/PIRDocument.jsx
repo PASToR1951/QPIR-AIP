@@ -74,25 +74,26 @@ export const PIRDocument = ({
                     <table className="w-full border-collapse text-[9px] border border-black table-fixed font-medium">
                         <thead>
                             <tr className="text-center font-black bg-slate-50 uppercase tracking-tighter print:bg-transparent">
-                                <th rowSpan="2" className="border border-black p-2 w-[22%]">Activity</th>
+                                <th rowSpan="2" className="border border-black p-2 w-[20%]">Activity</th>
+                                <th rowSpan="2" className="border border-black p-2 w-[12%]">Implementation Period</th>
                                 <th colSpan="2" className="border border-black p-1">Target</th>
                                 <th colSpan="2" className="border border-black p-1">Accomplished</th>
                                 <th colSpan="2" className="border border-black p-1">Gap (%)</th>
-                                <th rowSpan="2" className="border border-black p-2 w-[22%]">Actions to Address Gap</th>
+                                <th rowSpan="2" className="border border-black p-2 w-[20%]">Actions to Address Gap</th>
                             </tr>
                             <tr className="text-center font-black bg-slate-50 uppercase tracking-tighter print:bg-transparent">
-                                <th className="border border-black p-1 w-[8%]">Phys</th>
-                                <th className="border border-black p-1 w-[8%]">Fin</th>
-                                <th className="border border-black p-1 w-[8%]">Phys</th>
-                                <th className="border border-black p-1 w-[8%]">Fin</th>
-                                <th className="border border-black p-1 w-[8%]">Phys</th>
-                                <th className="border border-black p-1 w-[8%]">Fin</th>
+                                <th className="border border-black p-1 w-[7%]">Phys</th>
+                                <th className="border border-black p-1 w-[7%]">Fin</th>
+                                <th className="border border-black p-1 w-[7%]">Phys</th>
+                                <th className="border border-black p-1 w-[7%]">Fin</th>
+                                <th className="border border-black p-1 w-[7%]">Phys</th>
+                                <th className="border border-black p-1 w-[7%]">Fin</th>
                             </tr>
                         </thead>
                         <tbody>
                             {activities.length === 0 ? (
                                 <tr>
-                                    <td className="border border-black p-2 italic text-slate-400 text-center" colSpan="8">No activities recorded.</td>
+                                    <td className="border border-black p-2 italic text-slate-400 text-center" colSpan="9">No activities recorded.</td>
                                 </tr>
                             ) : activities.map((act, index) => {
                                 const physGap = calculateGap(act.physTarget, act.physAcc);
@@ -105,6 +106,7 @@ export const PIRDocument = ({
                                                 <span>{act.name}</span>
                                             </div>
                                         </td>
+                                        <td className="border border-black p-2 text-center align-top">{act.implementation_period || '\u00A0'}</td>
                                         <td className="border border-black p-1 text-center align-top font-mono">{act.physTarget}</td>
                                         <td className="border border-black p-1 text-center align-top font-mono">{act.finTarget}</td>
                                         <td className="border border-black p-1 text-center align-top font-mono">{act.physAcc}</td>
