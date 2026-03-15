@@ -274,6 +274,27 @@ Returns programs that the current user has already submitted AIPs for.
 
 ---
 
+### `GET /api/programs/with-pirs` 🔒
+Returns programs for which the current user has at least one submitted PIR. Used to populate the completed-programs list in `ViewModeSelector`.
+
+**Query Params**
+| Param | Type | Default |
+|-------|------|---------|
+| `year` | `number` | Current year |
+
+**Response `200`**
+```json
+[
+  { "id": 1, "title": "Reading Program", "pir_id": 3, "quarter": "1st Quarter CY 2026" }
+]
+```
+
+**Notes**
+- Returns one entry per program+quarter combination (a program with PIRs in Q1 and Q2 will appear twice)
+- Used by the frontend to highlight which programs already have a reviewed quarter
+
+---
+
 ## 6. Drafts
 
 ### `POST /api/drafts`
@@ -455,5 +476,5 @@ Unique constraint: `(year, quarter)`
 
 ---
 
-*Last updated: 2026-03-15 · Dashboard Live Data milestone*
+*Last updated: 2026-03-15 · v1.0.4-beta: GET /api/programs/with-pirs added*
 *🔒 = requires `Authorization: Bearer <token>` header*
