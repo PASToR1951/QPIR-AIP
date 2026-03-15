@@ -52,6 +52,8 @@ const PIRRouteGuard = ({ children }) => {
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
   const isDivisionPersonnel = user?.role === 'Division Personnel';
+  const token = localStorage.getItem('token');
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -63,10 +65,10 @@ const PIRRouteGuard = ({ children }) => {
       try {
         let dbExists = false;
         if (isDivisionPersonnel) {
-          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${user.id}/aip-status`);
+          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${user.id}/aip-status`, { headers: authHeaders });
           dbExists = res.data.hasAIP;
         } else if (user.school_id) {
-          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`);
+          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`, { headers: authHeaders });
           dbExists = res.data.hasAIP;
         }
         setHasAIP(dbExists);
@@ -88,7 +90,7 @@ const PIRRouteGuard = ({ children }) => {
     );
   }
 
-  if (!hasAIP && localStorage.getItem('dev_pir_unlocked') !== 'true') {
+  if (!hasAIP) {
     // Redirect to dashboard if AIP is not completed
     return <Navigate to="/" replace />;
   }
@@ -362,20 +364,8 @@ function Dashboard() {
           </Link>
 
           {/* PIR Card */}
-          {hasAIP || localStorage.getItem('dev_pir_unlocked') === 'true' ? (
+          {hasAIP ? (
             <div className="group block bg-white rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 hover:border-blue-200 relative">
-              {import.meta.env.DEV && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    localStorage.removeItem('dev_pir_unlocked');
-                    window.location.reload();
-                  }}
-                  className="absolute top-4 right-4 z-20 text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
-                >
-                  Dev: Lock PIR
-                </button>
-              )}
               <Link to="/pir" className="absolute inset-0 z-10"></Link>
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
 
@@ -408,17 +398,6 @@ function Dashboard() {
             </div>
           ) : (
             <div className="block bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-200 relative overflow-hidden group">
-              {import.meta.env.DEV && (
-                <button
-                  onClick={() => {
-                    localStorage.setItem('dev_pir_unlocked', 'true');
-                    window.location.reload();
-                  }}
-                  className="absolute top-4 right-4 z-20 text-[10px] font-bold px-2 py-1 rounded-md bg-slate-200 text-slate-700 hover:bg-slate-300 transition-colors"
-                >
-                  Dev: Unlock PIR
-                </button>
-              )}
               <div className="p-8 md:p-10 flex flex-col h-full opacity-60 grayscale transition-opacity group-hover:opacity-80">
                 <div className="flex justify-between items-start mb-12">
                   <div className="w-16 h-16 bg-white text-slate-400 rounded-2xl flex items-center justify-center border border-slate-200 shadow-sm">

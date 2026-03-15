@@ -10,6 +10,7 @@ const pageVariants = {
 export const PageTransition = ({ children }) => {
   return (
     <motion.div
+      className="relative z-10"
       initial="initial"
       animate="animate"
       exit="exit"
