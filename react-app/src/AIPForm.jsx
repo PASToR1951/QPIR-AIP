@@ -48,6 +48,7 @@ export default function App() {
     const [activityToDelete, setActivityToDelete] = useState(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [programList, setProgramList] = useState([]);
+    const [completedPrograms, setCompletedPrograms] = useState([]);
 
     // Save Status State
     const [isSaving, setIsSaving] = useState(false);
@@ -92,15 +93,16 @@ export default function App() {
     const [hasDraft, setHasDraft] = useState(false);
     const [draftInfo, setDraftInfo] = useState(null);
 
-    // Fetch programs filtered by user type via JWT
+    // Fetch programs and completed (submitted) programs in parallel
     useEffect(() => {
         const fetchPrograms = async () => {
             try {
-                const response = await axios.get(
-                    `${import.meta.env.VITE_API_URL}/api/programs`,
-                    { headers: authHeaders }
-                );
-                setProgramList(response.data.map(p => p.title).sort());
+                const [programsRes, completedRes] = await Promise.all([
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { headers: authHeaders }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
+                ]);
+                setProgramList(programsRes.data.map(p => p.title).sort());
+                setCompletedPrograms(completedRes.data.map(p => p.title));
             } catch (error) {
                 console.error("Failed to fetch programs:", error);
             }
@@ -377,6 +379,7 @@ export default function App() {
                         hasDraft={hasDraft}
                         draftInfo={draftInfo}
                         draftProgram={loadedDraftData?.depedProgram || null}
+                        completedPrograms={completedPrograms}
                         theme="pink"
                     />
                 </motion.div>
