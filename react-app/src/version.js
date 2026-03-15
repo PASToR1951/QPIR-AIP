@@ -19,9 +19,26 @@
  *   import { CURRENT_VERSION, CHANGELOG, getVersion } from './version';
  */
 
-export const CURRENT_VERSION = '1.0.2-beta';
+export const CURRENT_VERSION = '1.0.3-beta';
 
 export const CHANGELOG = [
+  {
+    version: '1.0.3-beta',
+    date: '2026-03-15',
+    title: 'Dashboard Live Data, Deadline Model & API Docs',
+    description:
+      'Connects the dashboard to live database-driven stats — all hardcoded values replaced with a single /api/dashboard call. Adds the Deadline model to the schema for admin-overridable per-quarter submission deadlines. Introduces three new API endpoints (GET /api/dashboard, GET /api/deadlines, POST /api/deadlines) and a loading skeleton state on the dashboard. Publishes comprehensive API_DOCS.md covering all REST endpoints.',
+    changes: [
+      { type: 'feature', text: 'Deadline model added to Prisma schema — deadlines table with year, quarter, date, created_at, updated_at fields and @@unique([year, quarter]) constraint' },
+      { type: 'feature', text: 'GET /api/dashboard — aggregated endpoint returning activePrograms, aipCompletion, pirSubmitted, currentQuarter, deadline, and quarters[] for the authenticated user' },
+      { type: 'feature', text: 'GET /api/deadlines?year=YYYY — returns all 4 quarter deadlines with isCustom flag (true if set via DB, false if using default last-day-of-quarter)' },
+      { type: 'feature', text: 'POST /api/deadlines — upsert a deadline for a given year+quarter; intended for the upcoming Admin panel' },
+      { type: 'improvement', text: 'Dashboard (App.jsx) fully migrated from hardcoded stats to live API data — all values fetched from GET /api/dashboard on mount' },
+      { type: 'improvement', text: 'Loading skeleton state added to dashboard while API data is fetching' },
+      { type: 'improvement', text: 'Stat badge hover effect — stat cards now show a collapsed symbol (◈, Q1/Q2/etc, ◷) that expands on hover to reveal full context text' },
+      { type: 'docs', text: 'API_DOCS.md created — comprehensive REST API reference for all endpoints including auth, dashboard, deadlines, schools, programs, drafts, AIP, and PIR' },
+    ],
+  },
   {
     version: '1.0.2-beta',
     date: '2026-03-15',

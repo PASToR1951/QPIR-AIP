@@ -179,3 +179,15 @@ model PIRFactor {
 
   @@unique([pir_id, factor_type]) // Only one record per factor type per PIR
 }
+
+model Deadline {
+  id         Int      @id @default(autoincrement())
+  year       Int      // Fiscal year, e.g. 2026
+  quarter    Int      // 1, 2, 3, or 4
+  date       DateTime // Admin-set deadline (overrides calendar default)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([year, quarter])
+  @@map("deadlines")
+}
