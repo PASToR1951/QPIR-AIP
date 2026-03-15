@@ -19,9 +19,26 @@
  *   import { CURRENT_VERSION, CHANGELOG, getVersion } from './version';
  */
 
-export const CURRENT_VERSION = '1.0.1-beta';
+export const CURRENT_VERSION = '1.0.2-beta';
 
 export const CHANGELOG = [
+  {
+    version: '1.0.2-beta',
+    date: '2026-03-15',
+    title: 'Form Wizard Refactor, School Level Filtering & Doc Logos',
+    description:
+      'Refactors AIPForm and PIRForm into modular wizard-stepper sub-components for maintainability. Adds school-level-aware program filtering so Elementary and Secondary schools only see applicable programs. Updates document headers with complete logo set including NIR and AIP-PIR logos, now fully print-visible.',
+    changes: [
+      { type: 'feature', text: 'AIPForm refactored into wizard stepper with dedicated sub-components: AIPProfileSection, AIPGoalsTargetsSection, AIPActionPlanSection' },
+      { type: 'feature', text: 'PIRForm refactored into wizard stepper with dedicated sub-components: PIRProfileSection, PIRMonitoringEvaluationSection, PIRFactorsSection, PIRFinancialsSection' },
+      { type: 'feature', text: 'New shared UI components: WizardStepper, SectionHeader, SignatureBlock, FinalizeCard' },
+      { type: 'feature', text: 'GET /api/programs now filters programs by school level — Elementary schools see Elementary/Both programs; Secondary schools see Secondary/Both programs' },
+      { type: 'improvement', text: 'Document header (FormBoxHeader) updated to include DepEd NIR Logo and AIP-PIR logo; all logos are now print-visible via print:block/print:flex classes' },
+      { type: 'fix', text: 'Resolved TypeScript inference errors on aip variable in GET /aips/activities and POST /pirs handlers' },
+      { type: 'fix', text: 'User text selection disabled on ErrorPage and NotFound pages via select-none' },
+      { type: 'docs', text: 'SYSTEM_DOCUMENTATION_THESIS.md updated with institutional logo header block and Section 1.3 — The Apir brand identity and cultural context' },
+    ],
+  },
   {
     version: '1.0.1-beta',
     date: '2026-03-15',
