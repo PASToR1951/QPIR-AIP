@@ -56,8 +56,8 @@ model User {
   email     String    @unique
   password  String    // Hashed password
   role      String    // "School" or "Division Personnel"
-  name      String?   
-  
+  name      String?
+
   // Relation to School (For School Role Users)
   school_id Int?      @unique
   school    School?   @relation(fields: [school_id], references: [id])
@@ -67,6 +67,10 @@ model User {
 
   // Drafts
   drafts    Draft[]
+
+  // Documents created by this user (for Division Personnel tracking)
+  aips      AIP[]     @relation("CreatedByUser")
+  pirs      PIR[]     @relation("CreatedByUser")
 
   created_at DateTime @default(now())
 }
@@ -87,6 +91,7 @@ model AIP {
   id                  Int      @id @default(autoincrement())
   school_id           Int
   program_id          Int
+  created_by_user_id  Int
   year                Int      // e.g., 2026
   outcome             String   // DepEd Outcome Category
   sip_title           String   // School Improvement Project title
@@ -102,6 +107,7 @@ model AIP {
   // Relations
   school              School         @relation(fields: [school_id], references: [id], onDelete: Cascade)
   program             Program        @relation(fields: [program_id], references: [id])
+  created_by          User           @relation("CreatedByUser", fields: [created_by_user_id], references: [id], onDelete: Cascade)
   activities          AIPActivity[]
   pirs                PIR[]
 
@@ -125,18 +131,20 @@ model AIPActivity {
 }
 
 model PIR {
-  id            Int      @id @default(autoincrement())
-  aip_id        Int
-  quarter       String   // "1st Quarter CY 2026", etc.
-  program_owner String
-  total_budget  Decimal  @default(0.0)
-  fund_source   String
-  created_at    DateTime @default(now())
+  id                 Int      @id @default(autoincrement())
+  aip_id             Int
+  created_by_user_id Int
+  quarter            String   // "1st Quarter CY 2026", etc.
+  program_owner      String
+  total_budget       Decimal  @default(0.0)
+  fund_source        String
+  created_at         DateTime @default(now())
 
   // Relations
-  aip           AIP                 @relation(fields: [aip_id], references: [id], onDelete: Cascade)
-  activity_reviews PIRActivityReview[]
-  factors       PIRFactor[]
+  aip                AIP                 @relation(fields: [aip_id], references: [id], onDelete: Cascade)
+  created_by         User                @relation("CreatedByUser", fields: [created_by_user_id], references: [id], onDelete: Cascade)
+  activity_reviews   PIRActivityReview[]
+  factors            PIRFactor[]
 
   @@unique([aip_id, quarter]) // Ensures only one PIR per quarter for a specific AIP
 }
