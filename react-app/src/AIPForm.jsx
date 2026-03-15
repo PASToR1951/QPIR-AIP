@@ -3,32 +3,37 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-// The official AIP Phases derived from the template
-const PHASES = ["Planning", "Implementation", "Monitoring and Evaluation"];
-
-const OUTCOME_OPTIONS = [
-    "Outcome 1: High Performing Teachers",
-    "Outcome 2: Learners' Physical and Mental Well-Being Protected",
-    "Outcome 3: Efficient and Supportive Governance Structure",
-    "Outcome 4: Improved Education Quality through Upgraded Curriculum, Modernized Assessment, and Digitally Enabled Schools",
-    "Outcome 5: Empowered Graduates fit for Employment, Entrepreneurship or Higher Education"
-];
 
 import { Input } from './components/ui/Input';
 import { Select } from './components/ui/Select';
 import { TextareaAuto } from './components/ui/TextareaAuto';
 import { FormHeader } from './components/ui/FormHeader';
-import FormBackground from './components/ui/FormBackground';
 import { FormBoxHeader } from './components/ui/FormBoxHeader';
 import { ViewModeSelector } from './components/ui/ViewModeSelector';
 import { ConfirmationModal } from './components/ui/ConfirmationModal';
 import { DocumentPreviewModal } from './components/ui/DocumentPreviewModal';
 import { AIPDocument } from './components/docs/AIPDocument';
+import { useAccessibility } from './context/AccessibilityContext';
+import WizardStepper from './components/ui/WizardStepper';
+import SectionHeader from './components/ui/SectionHeader';
+import SignatureBlock from './components/ui/SignatureBlock';
+import FinalizeCard from './components/ui/FinalizeCard';
+
+import AIPProfileSection from './components/forms/aip/AIPProfileSection';
+import AIPGoalsTargetsSection from './components/forms/aip/AIPGoalsTargetsSection';
+import AIPActionPlanSection from './components/forms/aip/AIPActionPlanSection';
 
 export default function App() {
     const navigate = useNavigate();
+    const { settings } = useAccessibility();
+    const motionProps = settings.reduceMotion
+        ? { initial: false, animate: false, exit: false, transition: { duration: 0 } }
+        : { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -20 }, transition: { duration: 0.15, ease: 'easeOut' } };
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
+    const token = localStorage.getItem('token');
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+    const isDivisionPersonnel = user?.role === 'Division Personnel';
 
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
@@ -87,11 +92,14 @@ export default function App() {
     const [hasDraft, setHasDraft] = useState(false);
     const [draftInfo, setDraftInfo] = useState(null);
 
-    // Fetch programs from API
+    // Fetch programs filtered by user type via JWT
     useEffect(() => {
         const fetchPrograms = async () => {
             try {
-                const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/programs`);
+                const response = await axios.get(
+                    `${import.meta.env.VITE_API_URL}/api/programs`,
+                    { headers: authHeaders }
+                );
                 setProgramList(response.data.map(p => p.title).sort());
             } catch (error) {
                 console.error("Failed to fetch programs:", error);
@@ -121,14 +129,15 @@ export default function App() {
         fetchDraft();
     }, [user?.id]);
 
-    // Load Draft Data when a mode is chosen (if draft exists)
-    const handleSelectMode = (mode) => {
+    // Called when the user picks program + mode in the splash
+    const handleStart = (mode, selectedProgram) => {
+        setDepedProgram(selectedProgram);
         if (hasDraft && loadedDraftData) {
             try {
                 const draft = loadedDraftData;
                 setOutcome(draft.outcome || "");
                 setYear(draft.year || String(new Date().getFullYear()));
-                setDepedProgram(draft.depedProgram || "");
+                // Don't restore program from draft — user already selected it
                 setSipTitle(draft.sipTitle || "");
                 setProjectCoord(draft.projectCoord || "");
                 setObjectives(draft.objectives || [""]);
@@ -301,22 +310,10 @@ export default function App() {
     };
 
     const handleConfirmSubmit = async () => {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (!user.school_id) {
-            setModal({
-                isOpen: true,
-                type: 'warning',
-                title: 'Missing Profile',
-                message: 'Your account is not associated with a school. Please contact the administrator.',
-                confirmText: 'Got it',
-                onConfirm: () => { }
-            });
-            return;
-        }
-
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL}/api/aips`, {
-                school_id: user.school_id,
+            await axios.post(
+              `${import.meta.env.VITE_API_URL}/api/aips`,
+              {
                 program_title: depedProgram,
                 year: parseInt(year),
                 outcome,
@@ -329,7 +326,9 @@ export default function App() {
                 approved_by_name: approvedByName,
                 approved_by_title: approvedByTitle,
                 activities
-            });
+              },
+              { headers: authHeaders }
+            );
 
             setIsSubmitted(true);
             if (user?.id) {
@@ -366,33 +365,23 @@ export default function App() {
     return (
         <AnimatePresence mode="wait">
             {appMode === 'splash' ? (
-                <motion.div
-                    key="splash"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                >
+                <motion.div key="splash" {...motionProps}>
                     <FormHeader
                         title="Annual Implementation Plan"
                         onBack={handleBack}
                         theme="pink"
                     />
                     <ViewModeSelector
-                        onSelectMode={handleSelectMode}
+                        programs={programList}
+                        onStart={handleStart}
                         hasDraft={hasDraft}
                         draftInfo={draftInfo}
+                        draftProgram={loadedDraftData?.depedProgram || null}
                         theme="pink"
                     />
                 </motion.div>
             ) : (
-                <motion.div
-                    key="form"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                >
+                <motion.div key="form" {...motionProps}>
                     <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative print:py-0 print:bg-white print:text-black">
             <FormHeader
                 title="Annual Implementation Plan"
@@ -437,8 +426,6 @@ export default function App() {
                 }
             `}</style>
 
-            {/* Background rendered via portal — outside transform hierarchy */}
-            <FormBackground orb="pink" />
 
 
             {/* Modal */}
@@ -478,34 +465,18 @@ export default function App() {
                     {/* WIZARD MODE: STEPPER */}
                     {/* ============================================================== */}
                     {appMode === 'wizard' && (
-                        <div className="mb-12 pt-6">
-                            <div className="flex justify-between items-center max-w-2xl mx-auto px-4 relative">
-                                <div className="absolute left-[10%] right-[10%] top-[14px] h-[2px] bg-slate-200 -z-0 hidden md:block rounded-full overflow-hidden">
-                                    <div className="h-full bg-pink-500 transition-all duration-300 ease-out" style={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%` }}></div>
-                                </div>
-                                {[
-                                    { num: 1, label: "Alignment" },
-                                    { num: 2, label: "Targets" },
-                                    { num: 3, label: "Action Plan" },
-                                    { num: 4, label: "M&E" },
-                                    { num: 5, label: "Signatures" },
-                                    { num: 6, label: "Finalize" }
-                                ].map((step) => (
-                                    <div key={step.num} className="flex flex-col items-center gap-2 relative z-10 w-1/6">
-                                        <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs transition-colors ${currentStep === step.num ? 'bg-pink-600 text-white shadow-md ring-4 ring-pink-100' :
-                                                currentStep > step.num ? 'bg-pink-600 text-white ring-2 ring-white' : 'bg-white text-slate-400 border-2 border-slate-200'
-                                            }`}>
-                                            {currentStep > step.num ? (
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                            ) : step.num}
-                                        </div>
-                                        <span className={`text-[10px] md:text-xs font-bold uppercase tracking-widest ${currentStep === step.num ? 'text-pink-700' : 'text-slate-400'}`}>
-                                            {step.label}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                        <WizardStepper 
+                            steps={[
+                                { num: 1, label: "Alignment" },
+                                { num: 2, label: "Targets" },
+                                { num: 3, label: "Action Plan" },
+                                { num: 4, label: "M&E" },
+                                { num: 5, label: "Signatures" },
+                                { num: 6, label: "Finalize" }
+                            ]}
+                            currentStep={currentStep}
+                            theme="pink"
+                        />
                     )}
 
                     <form onSubmit={(e) => e.preventDefault()}>
@@ -515,7 +486,7 @@ export default function App() {
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.3 }}
+                                transition={{ duration: 0.15 }}
                             >
                                 <div className="min-h-[300px]">
 
@@ -523,328 +494,90 @@ export default function App() {
                             {/* SECTION 1: PROFILE / ALIGNMENT */}
                             {/* -------------------------------------------------------- */}
                             <div className={`${(appMode === 'full' || currentStep === 1) ? 'block' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
-                                <div className="mb-8 flex items-center gap-3 border-b border-slate-200 pb-4">
-                                    <div className="p-2.5 bg-pink-50 text-pink-600 border border-pink-100 rounded-xl">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                                    </div>
-                                    <div>
-                                        <h2 className="text-xl font-bold text-slate-800 tracking-tight">Strategic Alignment</h2>
-                                        {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">Define the core strategic direction of the project.</p>}
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                    <Select theme="pink" label="Outcome Category" placeholder="Select Outcome..." options={OUTCOME_OPTIONS} value={outcome} onChange={(e) => setOutcome(e.target.value)} />
-                                    <Input theme="pink" label="Implementation Year" placeholder="e.g. 2026" value={year} onChange={(e) => setYear(e.target.value)} />
-                                    <Select theme="pink" label="DepEd Program Aligned" placeholder="Select Program Alignment" options={programList} value={depedProgram} onChange={(e) => setDepedProgram(e.target.value)} />
-                                    <Input theme="pink" label="School Improvement Project / Title" placeholder="Enter SIP Title..." value={sipTitle} onChange={(e) => setSipTitle(e.target.value)} />
-                                    <Input theme="pink" label="Project Coordinator" placeholder="Name of Coordinator..." value={projectCoord} onChange={(e) => setProjectCoord(e.target.value)} />
-                                </div>
+                                <AIPProfileSection 
+                                    appMode={appMode}
+                                    outcome={outcome}
+                                    setOutcome={setOutcome}
+                                    year={year}
+                                    setYear={setYear}
+                                    depedProgram={depedProgram}
+                                    sipTitle={sipTitle}
+                                    setSipTitle={setSipTitle}
+                                    projectCoord={projectCoord}
+                                    setProjectCoord={setProjectCoord}
+                                />
                             </div>
 
                             {/* -------------------------------------------------------- */}
                             {/* SECTION 2: GOALS AND TARGETS */}
                             {/* -------------------------------------------------------- */}
-                            <div className={`${(appMode === 'full' || currentStep === 2) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-500' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
-                                <div className="mb-8 flex items-center gap-3 border-b border-slate-200 pb-4">
-                                    <div className="p-2.5 bg-pink-50 text-pink-600 border border-pink-100 rounded-xl">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /></svg>
-                                    </div>
-                                    <div>
-                                        <h2 className="text-xl font-bold text-slate-800 tracking-tight">Goals & Targets</h2>
-                                        {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">Establish the objectives and specific performance indicators.</p>}
-                                    </div>
-                                </div>
-                                <div className="space-y-8">
-                                    {/* Objectives - Dynamic List */}
-                                    <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl">
-                                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none mb-3 block">Objective/s</label>
-                                        <div className="space-y-3">
-                                            {objectives.map((obj, i) => (
-                                                <div key={i} className="flex gap-3 items-start bg-white p-3 rounded-xl border border-slate-200 group transition-all hover:border-pink-300">
-                                                    <div className="mt-2.5 text-slate-400 font-bold w-6 text-center text-sm select-none">{i + 1}.</div>
-                                                    <TextareaAuto
-                                                        className="w-full bg-transparent p-2 focus:bg-white border border-transparent focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg text-sm text-slate-800 transition-all"
-                                                        placeholder={`Enter objective ${i + 1}...`}
-                                                        value={obj}
-                                                        onChange={(e) => handleObjectiveChange(i, e.target.value)}
-                                                    />
-                                                    {objectives.length > 1 && (
-                                                        <button type="button" onClick={() => removeObjective(i)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors mt-1" title="Remove Objective">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            <button type="button" onClick={addObjective} className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-semibold hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-all flex items-center justify-center gap-2 text-sm">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                                                Add Objective
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Indicators - Dynamic List with Per-Item Targets */}
-                                    <div className="bg-slate-50 border border-slate-200 p-6 rounded-2xl">
-                                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest select-none mb-3 block">Performance Indicator/s (OVI)</label>
-                                        <div className="space-y-4">
-                                            {indicators.map((ind, i) => (
-                                                <div key={i} className="flex flex-col md:flex-row gap-4 bg-white p-4 rounded-xl border border-slate-200 group transition-all hover:border-pink-300 relative">
-                                                    <div className="absolute -left-3 -top-3 bg-pink-100 text-pink-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white shadow-sm">
-                                                        {i + 1}
-                                                    </div>
-                                                    <div className="flex-grow">
-                                                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Indicator Description</label>
-                                                        <TextareaAuto
-                                                            className="w-full bg-slate-50 border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg px-3 py-2 text-sm text-slate-800 transition-all"
-                                                            placeholder="e.g. Percentage of teachers..."
-                                                            value={ind.description}
-                                                            onChange={(e) => handleIndicatorChange(i, 'description', e.target.value)}
-                                                        />
-                                                    </div>
-                                                    <div className="w-full md:w-48 shrink-0">
-                                                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Annual Target</label>
-                                                        <input
-                                                            type="text"
-                                                            className="w-full bg-slate-50 border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg px-3 py-2 text-sm text-slate-800 transition-all outline-none"
-                                                            placeholder="e.g. 100%"
-                                                            value={ind.target}
-                                                            onChange={(e) => handleIndicatorChange(i, 'target', e.target.value)}
-                                                        />
-                                                    </div>
-                                                    {indicators.length > 1 && (
-                                                        <div className="flex items-end pb-1">
-                                                            <button type="button" onClick={() => removeIndicator(i)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Remove Indicator">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            <button type="button" onClick={addIndicator} className="w-full py-3 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 font-semibold hover:border-pink-400 hover:text-pink-600 hover:bg-pink-50 transition-all flex items-center justify-center gap-2 text-sm">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                                                Add Indicator
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div className={`${(appMode === 'full' || currentStep === 2) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
+                                <AIPGoalsTargetsSection 
+                                    appMode={appMode}
+                                    objectives={objectives}
+                                    handleObjectiveChange={handleObjectiveChange}
+                                    addObjective={addObjective}
+                                    removeObjective={removeObjective}
+                                    indicators={indicators}
+                                    handleIndicatorChange={handleIndicatorChange}
+                                    addIndicator={addIndicator}
+                                    removeIndicator={removeIndicator}
+                                />
                             </div>
 
                             {/* -------------------------------------------------------- */}
                             {/* SECTION 3: ACTION PLAN & BUDGET */}
                             {/* -------------------------------------------------------- */}
-                            <div className={`${(appMode === 'full' || currentStep === 3 || currentStep === 4) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-500' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
-                                <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2.5 bg-pink-50 text-pink-600 border border-pink-100 rounded-xl">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                                        </div>
-                                        <div>
-                                            <h2 className="text-xl font-bold text-slate-800 tracking-tight">
-                                                {appMode === 'wizard' && currentStep === 3 ? "Action Plan (Phase 1 & 2)" : "Monitoring & Evaluation (Phase 3)"}
-                                            </h2>
-                                            {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">
-                                                {currentStep === 3 ? "Define Planning and Implementation activities." : "Define Monitoring and Evaluation activities."}
-                                            </p>}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* WIZARD MODE: Activity Cards View */}
-                                {appMode === 'wizard' && (
-                                    <div className="space-y-4">
-                                        {(currentStep === 3 ? PHASES.slice(0, 2) : PHASES.slice(2)).map((phase, pIdx) => {
-                                            const phaseActivities = activities.filter(a => a.phase === phase);
-                                            const actualIndex = currentStep === 3 ? pIdx + 1 : 3;
-                                            return (
-                                                <div key={phase} className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-                                                    <h3 className="text-sm font-bold text-pink-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-pink-100 text-pink-700 text-xs">{actualIndex}</span>
-                                                        {phase}
-                                                    </h3>
-                                                    {phaseActivities.length === 0 ? (
-                                                        <p className="text-sm text-slate-400 italic pl-8">No activities yet. Click "Add Activity" below.</p>
-                                                    ) : (
-                                                        <div className="space-y-3">
-                                                            {phaseActivities.map((act, aIdx) => (
-                                                                <div key={act.id} className={`bg-white border rounded-xl p-4 transition-all ${expandedActivityId === act.id ? 'border-pink-300 shadow-md ring-2 ring-pink-100' : 'border-slate-200 hover:border-slate-300'}`}>
-                                                                    <div className="flex items-start justify-between mb-3">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="font-bold text-slate-400 text-xs">{actualIndex}.{aIdx + 1}</span>
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => setExpandedActivityId(expandedActivityId === act.id ? null : act.id)}
-                                                                                className="text-sm font-semibold text-slate-700 hover:text-pink-600 transition-colors text-left"
-                                                                            >
-                                                                                {act.name || "Untitled Activity"}
-                                                                            </button>
-                                                                        </div>
-                                                                        {activities.length > 1 && (
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleRemoveActivity(act.id)}
-                                                                                className="text-slate-400 hover:text-red-500 transition-colors"
-                                                                                title="Delete Activity"
-                                                                            >
-                                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                    {expandedActivityId === act.id && (
-                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
-                                                                            <div>
-                                                                                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Implementation Period</label>
-                                                                                <TextareaAuto placeholder="e.g. Jan-Mar" className="w-full bg-white border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800" value={act.period} onChange={(e) => handleActivityChange(act.id, 'period', e.target.value)} />
-                                                                            </div>
-                                                                            <div>
-                                                                                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Persons Involved</label>
-                                                                                <TextareaAuto placeholder="e.g. Teachers" className="w-full bg-white border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800" value={act.persons} onChange={(e) => handleActivityChange(act.id, 'persons', e.target.value)} />
-                                                                            </div>
-                                                                            <div className="md:col-span-2">
-                                                                                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Outputs</label>
-                                                                                <TextareaAuto placeholder="Expected output" className="w-full bg-white border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800" value={act.outputs} onChange={(e) => handleActivityChange(act.id, 'outputs', e.target.value)} />
-                                                                            </div>
-                                                                            <div>
-                                                                                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Amount</label>
-                                                                                <input type="text" inputMode="decimal" className="w-full bg-white border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800 font-mono" placeholder="₱ 0.00" value={act.budgetAmount} onChange={(e) => handleActivityChange(act.id, 'budgetAmount', e.target.value.replace(/[^0-9.]/g, ''))} />
-                                                                            </div>
-                                                                            <div>
-                                                                                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Source</label>
-                                                                                <input type="text" className="w-full bg-white border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800" placeholder="Budget source" value={act.budgetSource} onChange={(e) => handleActivityChange(act.id, 'budgetSource', e.target.value)} />
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleAddActivityPhase(phase)}
-                                                        className="mt-3 text-xs font-bold text-pink-600 hover:text-pink-800 bg-pink-50 hover:bg-pink-100 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 origin-left"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                                        Add Activity to {phase}
-                                                    </button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-
-                                {/* FULL MODE: Table View */}
-                                {appMode === 'full' && (
-                                    <div className="overflow-visible overflow-x-auto pb-4">
-                                        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden min-w-[1000px]">
-                                            <table className="w-full border-collapse text-sm">
-                                                <thead>
-                                                    <tr className="text-left select-none bg-slate-50 border-b border-slate-200">
-                                                        <th rowSpan="2" className="border-r border-slate-200 p-3 w-[30%] text-xs font-bold text-slate-600 uppercase tracking-wider">Activities to be Conducted</th>
-                                                        <th rowSpan="2" className="border-r border-slate-200 p-3 w-[15%] text-xs font-bold text-slate-600 uppercase tracking-wider">Implementation Period</th>
-                                                        <th rowSpan="2" className="border-r border-slate-200 p-3 w-[15%] text-xs font-bold text-slate-600 uppercase tracking-wider">Persons Involved</th>
-                                                        <th rowSpan="2" className="border-r border-slate-200 p-3 w-[15%] text-xs font-bold text-slate-600 uppercase tracking-wider">Outputs</th>
-                                                        <th colSpan="2" className="border-r border-slate-200 p-3 w-[20%] text-xs font-bold text-slate-600 uppercase tracking-wider text-center">Budgetary Requirement</th>
-                                                        <th rowSpan="2" className="border-none w-10"></th>
-                                                    </tr>
-                                                    <tr className="text-center select-none bg-white border-b border-slate-200">
-                                                        <th className="border-r border-slate-200 p-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest bg-slate-50/50">Amount</th>
-                                                        <th className="border-r border-slate-200 p-2 text-[10px] font-semibold text-slate-400 uppercase tracking-widest bg-slate-50/50">Source</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="bg-white">
-                                                    {PHASES.map((phase, pIdx) => {
-                                                        const phaseActivities = activities.filter(a => a.phase === phase);
-                                                        return (
-                                                            <React.Fragment key={phase}>
-                                                                {/* Phase Header Row */}
-                                                                <tr className="bg-pink-50/50 border-b border-slate-200">
-                                                                    <td colSpan="7" className="p-3 font-bold text-pink-800 text-xs uppercase tracking-wider">
-                                                                        {pIdx + 1}. {phase}
-                                                                    </td>
-                                                                </tr>
-
-                                                                {/* Activity Rows for this Phase */}
-                                                                {phaseActivities.map((act, aIdx) => (
-                                                                    <tr key={act.id} className="group hover:bg-slate-50 transition-colors border-b border-slate-100">
-                                                                        <td className="border-r border-slate-200 p-2 align-top">
-                                                                            <div className="flex gap-2 items-start w-full">
-                                                                                <span className="font-bold text-slate-400 text-xs mt-1.5 shrink-0 select-none">{pIdx + 1}.{aIdx + 1}</span>
-                                                                                <TextareaAuto placeholder="Describe activity..." className="font-medium text-slate-700 w-full bg-transparent p-1 focus:bg-white border border-transparent focus:border-slate-300 rounded" value={act.name} onChange={(e) => handleActivityChange(act.id, 'name', e.target.value)} />
-                                                                            </div>
-                                                                        </td>
-                                                                        <td className="border-r border-slate-200 p-2 align-top">
-                                                                            <TextareaAuto placeholder="e.g. Jan-Mar" className="font-medium text-slate-700 w-full bg-transparent p-1 text-center focus:bg-white border border-transparent focus:border-slate-300 rounded" value={act.period} onChange={(e) => handleActivityChange(act.id, 'period', e.target.value)} />
-                                                                        </td>
-                                                                        <td className="border-r border-slate-200 p-2 align-top">
-                                                                            <TextareaAuto placeholder="e.g. Teachers" className="font-medium text-slate-700 w-full bg-transparent p-1 text-center focus:bg-white border border-transparent focus:border-slate-300 rounded" value={act.persons} onChange={(e) => handleActivityChange(act.id, 'persons', e.target.value)} />
-                                                                        </td>
-                                                                        <td className="border-r border-slate-200 p-2 align-top">
-                                                                            <TextareaAuto placeholder="Expected output" className="font-medium text-slate-700 w-full bg-transparent p-1 text-center focus:bg-white border border-transparent focus:border-slate-300 rounded" value={act.outputs} onChange={(e) => handleActivityChange(act.id, 'outputs', e.target.value)} />
-                                                                        </td>
-                                                                        <td className="border-r border-slate-200 p-2 align-top bg-slate-50/30">
-                                                                            <input type="text" inputMode="decimal" className="w-full text-center outline-none font-mono text-sm font-semibold text-slate-700 bg-transparent focus:bg-white border border-transparent focus:border-slate-300 rounded p-1" placeholder="0" value={act.budgetAmount} onChange={(e) => handleActivityChange(act.id, 'budgetAmount', e.target.value.replace(/[^0-9.]/g, ''))} />
-                                                                        </td>
-                                                                        <td className="border-r border-slate-200 p-2 align-top bg-slate-50/30">
-                                                                            <input type="text" className="w-full text-center outline-none text-sm font-medium text-slate-700 bg-transparent focus:bg-white border border-transparent focus:border-slate-300 rounded p-1" placeholder="Source" value={act.budgetSource} onChange={(e) => handleActivityChange(act.id, 'budgetSource', e.target.value)} />
-                                                                        </td>
-                                                                        <td className="border-none p-0 w-0 relative bg-white">
-                                                                            {activities.length > 1 && (
-                                                                                <button type="button" onClick={() => handleRemoveActivity(act.id)} className="absolute -right-12 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 shadow-sm hover:border-red-200 hover:text-red-500 hover:bg-red-50 focus:outline-none transition-colors z-10 opacity-0 group-hover:opacity-100" title="Delete Row">
-                                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                                                                                </button>
-                                                                            )}
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-
-                                                                {/* Add Activity Button explicitly for this Phase */}
-                                                                <tr className="border-b-2 border-slate-200 bg-white group transition-colors">
-                                                                    <td colSpan="7" className="p-2">
-                                                                        <button type="button" onClick={() => handleAddActivityPhase(phase)} className="text-[11px] font-bold text-pink-600 hover:text-pink-800 bg-pink-50 hover:bg-pink-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 origin-left">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                                                                            Add Activity to {phase}
-                                                                        </button>
-                                                                    </td>
-                                                                </tr>
-                                                            </React.Fragment>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                )}
+                            <div className={`${(appMode === 'full' || currentStep === 3 || currentStep === 4) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
+                                <AIPActionPlanSection 
+                                    appMode={appMode}
+                                    currentStep={currentStep}
+                                    activities={activities}
+                                    expandedActivityId={expandedActivityId}
+                                    setExpandedActivityId={setExpandedActivityId}
+                                    handleActivityChange={handleActivityChange}
+                                    handleRemoveActivity={handleRemoveActivity}
+                                    handleAddActivityPhase={handleAddActivityPhase}
+                                />
                             </div>
 
                             {/* -------------------------------------------------------- */}
                             {/* SECTION 5: SIGNATURES */}
                             {/* -------------------------------------------------------- */}
                             {(appMode === 'full' || currentStep === 5) && (
-                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                    <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2.5 bg-pink-50 text-pink-600 border border-pink-100 rounded-xl">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                                            </div>
-                                            <div>
-                                                <h2 className="text-xl font-bold text-slate-800 tracking-tight">Signatures</h2>
-                                                {appMode === 'wizard' && <p className="text-sm text-slate-500 font-medium mt-0.5">Finalize with necessary approvals.</p>}
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-200">
+                                    <SectionHeader 
+                                        icon={<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>}
+                                        title="Signatures"
+                                        subtitle="Finalize with necessary approvals."
+                                        theme="pink"
+                                        appMode={appMode}
+                                    />
 
                                     <div className="bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-sm mb-2 relative overflow-hidden">
                                         <svg className="absolute inset-0 h-full w-full opacity-30 stroke-slate-200 mask-image:linear-gradient(to_bottom,transparent,black)" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="diagonal-lines" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="20" strokeWidth="2"></line></pattern></defs><rect width="100%" height="100%" fill="url(#diagonal-lines)"></rect></svg>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 relative z-10">
-                                            <div className="flex flex-col">
-                                                <p className="text-xs text-left mb-8 select-none text-slate-500 font-bold uppercase tracking-widest">Prepared by</p>
-                                                <input type="text" className="w-full border-b-2 border-slate-200 focus:border-pink-500 transition-colors text-center font-black uppercase text-lg outline-none bg-transparent pb-2 text-slate-800 placeholder:text-slate-300" placeholder="FULL NAME" value={preparedByName} onChange={(e) => setPreparedByName(e.target.value)} />
-                                                <input type="text" className="w-full border-b border-transparent hover:border-slate-300 focus:border-pink-500 transition-colors text-center text-sm outline-none bg-transparent mt-2 pb-1 text-slate-500 placeholder:text-slate-300" placeholder="Title / Position" value={preparedByTitle} onChange={(e) => setPreparedByTitle(e.target.value)} />
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <p className="text-xs text-left mb-8 select-none text-slate-500 font-bold uppercase tracking-widest">Approved</p>
-                                                <input type="text" className="w-full border-b-2 border-slate-200 focus:border-pink-500 transition-colors text-center font-black uppercase text-lg outline-none bg-transparent pb-2 text-slate-800 placeholder:text-slate-300" placeholder="FULL NAME" value={approvedByName} onChange={(e) => setApprovedByName(e.target.value)} />
-                                                <input type="text" className="w-full border-b border-transparent hover:border-slate-300 focus:border-pink-500 transition-colors text-center text-sm outline-none bg-transparent mt-2 pb-1 text-slate-500 placeholder:text-slate-300" placeholder="Title / Position" value={approvedByTitle} onChange={(e) => setApprovedByTitle(e.target.value)} />
-                                            </div>
+                                            <SignatureBlock 
+                                                label="Prepared by" 
+                                                name={preparedByName} 
+                                                title={preparedByTitle} 
+                                                onNameChange={setPreparedByName} 
+                                                onTitleChange={setPreparedByTitle} 
+                                                namePlaceholder="FULL NAME" 
+                                                titlePlaceholder="Title / Position" 
+                                                theme="pink" 
+                                            />
+                                            <SignatureBlock 
+                                                label="Approved" 
+                                                name={approvedByName} 
+                                                title={approvedByTitle} 
+                                                onNameChange={setApprovedByName} 
+                                                onTitleChange={setApprovedByTitle} 
+                                                namePlaceholder="FULL NAME" 
+                                                titlePlaceholder="Title / Position" 
+                                                theme="pink" 
+                                            />
                                         </div>
                                     </div>
                                 </div>
@@ -854,37 +587,14 @@ export default function App() {
                             {/* SECTION 6: FINAL REVIEW & SUBMIT */}
                             {/* -------------------------------------------------------- */}
                             {(appMode === 'full' || currentStep === 6) && (
-                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-200">
                                     {appMode === 'wizard' && (
-                                        <div className="bg-white p-8 md:p-12 rounded-[2.5rem] border-2 border-slate-100 shadow-sm mb-12 flex flex-col items-center justify-center text-center group relative overflow-hidden transition-all hover:border-pink-200">
-                                            <div className="absolute inset-0 bg-pink-50/30 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                            <div className="w-16 h-16 bg-pink-50 rounded-2xl flex items-center justify-center mb-6 text-pink-600 border border-pink-100 group-hover:scale-110 transition-transform">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                                            </div>
-                                            <h3 className="text-xl font-black text-slate-800 mb-2">Final Document Review</h3>
-                                            <p className="text-sm text-slate-500 font-medium mb-8 max-w-sm">You've completed all sections. Review the generated layout below to ensure everything is correct before final submission.</p>
-
-                                            <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsPreviewOpen(true)}
-                                                    className="px-8 py-4 bg-pink-600 text-white font-bold rounded-2xl shadow-lg shadow-pink-200 hover:bg-pink-700 active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                                    Preview Document
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={handleConfirmSubmit}
-                                                    disabled={isSubmitted}
-                                                    className="px-8 py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-lg shadow-slate-200 hover:bg-slate-800 active:scale-95 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                                                    {isSubmitted ? "Submitted" : "Confirm & Submit"}
-                                                </button>
-                                            </div>
-                                        </div>
+                                        <FinalizeCard 
+                                            isSubmitted={isSubmitted} 
+                                            onSubmit={handleConfirmSubmit} 
+                                            onPreview={() => setIsPreviewOpen(true)}
+                                            theme="pink" 
+                                        />
                                     )}
                                 </div>
                             )}

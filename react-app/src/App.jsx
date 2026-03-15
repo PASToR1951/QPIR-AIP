@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, MotionConfig } from 'framer-motion';
+import { useAccessibility } from './context/AccessibilityContext';
 import axios from 'axios';
 import {
   LogOut,
@@ -32,6 +33,7 @@ import { DashboardHeader } from './components/ui/DashboardHeader';
 import Footer from './components/ui/Footer';
 import PageTransition from './components/ui/PageTransition';
 import PageLoader from './components/ui/PageLoader';
+import FormBackground from './components/ui/FormBackground';
 import AccessibilityPanel from './components/ui/AccessibilityPanel';
 
 // Simple Protected Route component
@@ -45,54 +47,45 @@ const ProtectedRoute = ({ children }) => {
 
 // PIR Route Guard - Checks if AIP is completed before allowing access
 const PIRRouteGuard = ({ children }) => {
-  const [hasAIP, setHasAIP] = useState(null); // null means loading
-  const [aipStatus, setAipStatus] = useState('none'); // none, draft, review, approved
+  const [hasAIP, setHasAIP] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
+  const isDivisionPersonnel = user?.role === 'Division Personnel';
 
   useEffect(() => {
     const checkStatus = async () => {
-      if (user?.school_id) {
-        try {
-          const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`);
-          const dbExists = response.data.hasAIP;
-
-          if (dbExists) {
-            setAipStatus('review');
-            setHasAIP(true);
-          } else {
-            // Check for draft via API
-            try {
-              const draftRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`);
-              if (draftRes.data.hasDraft) {
-                setAipStatus('draft');
-              } else {
-                setAipStatus('none');
-              }
-            } catch (e) {
-              setAipStatus('none');
-            }
-            setHasAIP(false);
-          }
-        } catch (error) {
-          console.error('Failed to verify AIP status:', error);
-          setHasAIP(false);
-          setAipStatus('none');
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
+      if (!user?.id) {
         setIsLoading(false);
         setHasAIP(false);
-        setAipStatus('none');
+        return;
+      }
+      try {
+        let dbExists = false;
+        if (isDivisionPersonnel) {
+          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${user.id}/aip-status`);
+          dbExists = res.data.hasAIP;
+        } else if (user.school_id) {
+          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`);
+          dbExists = res.data.hasAIP;
+        }
+        setHasAIP(dbExists);
+      } catch (error) {
+        console.error('Failed to verify AIP status:', error);
+        setHasAIP(false);
+      } finally {
+        setIsLoading(false);
       }
     };
     checkStatus();
-  }, [user?.school_id]);
+  }, [user?.id]);
 
   if (isLoading) {
-    return <PageLoader message="Verifying Prerequisites..." />;
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-50 z-50">
+        <div className="w-6 h-6 rounded-full border-2 border-slate-300 border-t-blue-500 animate-spin" />
+      </div>
+    );
   }
 
   if (!hasAIP && localStorage.getItem('dev_pir_unlocked') !== 'true') {
@@ -106,48 +99,48 @@ const PIRRouteGuard = ({ children }) => {
 function Dashboard() {
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
+  const isDivisionPersonnel = user?.role === 'Division Personnel';
 
   const [hasAIP, setHasAIP] = useState(false);
   const [aipStatus, setAipStatus] = useState('none');
 
   useEffect(() => {
     const fetchStatus = async () => {
-      if (user?.school_id) {
-        try {
-          const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`);
-          const dbExists = response.data.hasAIP;
-
-          if (dbExists) {
-            setAipStatus('review');
-            setHasAIP(true);
-          } else {
-            try {
-              const draftRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`);
-              if (draftRes.data.hasDraft) {
-                setAipStatus('draft');
-              } else {
-                setAipStatus('none');
-              }
-            } catch (e) {
-              setAipStatus('none');
-            }
-            setHasAIP(false);
-          }
-        } catch (error) {
-          console.error('Failed to fetch AIP status:', error);
-          setHasAIP(false);
-          setAipStatus('none');
+      if (!user?.id) return;
+      try {
+        let dbExists = false;
+        if (isDivisionPersonnel) {
+          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${user.id}/aip-status`);
+          dbExists = res.data.hasAIP;
+        } else if (user.school_id) {
+          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`);
+          dbExists = res.data.hasAIP;
         }
+
+        if (dbExists) {
+          setAipStatus('review');
+          setHasAIP(true);
+        } else {
+          try {
+            const draftRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`);
+            setAipStatus(draftRes.data.hasDraft ? 'draft' : 'none');
+          } catch (e) {
+            setAipStatus('none');
+          }
+          setHasAIP(false);
+        }
+      } catch (error) {
+        console.error('Failed to fetch AIP status:', error);
+        setAipStatus('none');
       }
     };
     fetchStatus();
-  }, [user?.school_id]);
+  }, [user?.id]);
 
   // Countdown Logic
   const calculateDaysLeft = (targetDate) => {
     const deadline = new Date(targetDate);
-    // Using the current system time provided: March 7, 2026
-    const now = new Date('2026-03-07T20:34:40');
+    const now = new Date();
     const difference = deadline.getTime() - now.getTime();
     return Math.max(0, Math.ceil(difference / (1000 * 60 * 60 * 24)));
   };
@@ -452,60 +445,70 @@ function Dashboard() {
 
 function AnimatedRoutes() {
   const location = useLocation();
+  const formOrb = location.pathname === '/pir' ? 'blue' : 'pink';
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
-        <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
-        <Route path="/docs" element={<PageTransition><SystemDocs /></PageTransition>} />
-        <Route path="/faq" element={<PageTransition><FAQ /></PageTransition>} />
+    <>
+      {['/aip', '/pir'].includes(location.pathname) && (
+        <FormBackground orb={formOrb} />
+      )}
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+          <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
+          <Route path="/docs" element={<PageTransition><SystemDocs /></PageTransition>} />
+          <Route path="/faq" element={<PageTransition><FAQ /></PageTransition>} />
 
-        {/* Protected Routes */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <PageTransition><Dashboard /></PageTransition>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/aip"
-          element={
-            <ProtectedRoute>
-              <PageTransition><AIPForm /></PageTransition>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pir"
-          element={
-            <ProtectedRoute>
-              <PIRRouteGuard>
-                <PageTransition><PIRForm /></PageTransition>
-              </PIRRouteGuard>
-            </ProtectedRoute>
-          }
-        />
+          {/* Protected Routes */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <PageTransition><Dashboard /></PageTransition>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/aip"
+            element={
+              <ProtectedRoute>
+                <PageTransition><AIPForm /></PageTransition>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pir"
+            element={
+              <ProtectedRoute>
+                <PIRRouteGuard>
+                  <PageTransition><PIRForm /></PageTransition>
+                </PIRRouteGuard>
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Error Pages */}
-        <Route path="/403" element={<PageTransition><ErrorPage type="403" /></PageTransition>} />
-        <Route path="/500" element={<PageTransition><ErrorPage type="500" /></PageTransition>} />
+          {/* Error Pages */}
+          <Route path="/403" element={<PageTransition><ErrorPage type="403" /></PageTransition>} />
+          <Route path="/500" element={<PageTransition><ErrorPage type="500" /></PageTransition>} />
 
-        {/* Catch-all 404 Route */}
-        <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-      </Routes>
-    </AnimatePresence>
+          {/* Catch-all 404 Route */}
+          <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
+        </Routes>
+      </AnimatePresence>
+    </>
   );
 }
 
 function App() {
+  const { settings } = useAccessibility();
+
   return (
-    <Router>
-      <AnimatedRoutes />
-      <AccessibilityPanel />
-    </Router>
+    <MotionConfig reducedMotion={settings.reduceMotion ? 'always' : 'never'}>
+      <Router>
+        <AnimatedRoutes />
+        <AccessibilityPanel />
+      </Router>
+    </MotionConfig>
   );
 }
 
