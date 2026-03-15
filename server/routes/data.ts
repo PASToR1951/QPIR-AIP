@@ -188,6 +188,52 @@ dataRoutes.get('/schools/:id/aip-status', async (c) => {
   }
 });
 
+// GET AIP activities for PIR pre-population (by school_id, program_title, year)
+dataRoutes.get('/aips/activities', async (c) => {
+  try {
+    const school_id = parseInt(c.req.query('school_id') || '0');
+    const program_title = c.req.query('program_title') || '';
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+
+    if (!school_id || !program_title) {
+      return c.json({ error: 'school_id and program_title are required' }, 400);
+    }
+
+    const program = await prisma.program.findUnique({
+      where: { title: program_title }
+    });
+
+    if (!program) {
+      return c.json({ error: `Program '${program_title}' not found` }, 404);
+    }
+
+    const aip = await prisma.aIP.findUnique({
+      where: {
+        school_id_program_id_year: { school_id, program_id: program.id, year }
+      },
+      include: { activities: true }
+    });
+
+    if (!aip) {
+      return c.json({ error: 'No AIP found for this school, program, and year' }, 404);
+    }
+
+    return c.json({
+      aip_id: aip.id,
+      activities: aip.activities.map(a => ({
+        id: a.id,
+        activity_name: a.activity_name,
+        implementation_period: a.implementation_period,
+        phase: a.phase,
+        budget_amount: a.budget_amount
+      }))
+    });
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to fetch AIP activities' }, 500);
+  }
+});
+
 // POST a new AIP
 dataRoutes.post('/aips', async (c) => {
   try {
@@ -326,10 +372,12 @@ dataRoutes.post('/pirs', async (c) => {
         },
         activity_reviews: {
           create: activity_reviews.map((rev: any) => {
-            // Find the AIP activity by name
-            const aipActivity = aip.activities.find(a => a.activity_name === rev.name);
+            // Use aip_activity_id directly if provided, otherwise fall back to name matching
+            const aipActivityId = rev.aip_activity_id
+              ? parseInt(rev.aip_activity_id)
+              : aip.activities.find(a => a.activity_name === rev.name)?.id || aip.activities[0].id;
             return {
-              aip_activity_id: aipActivity?.id || aip.activities[0].id, // Fallback if name mismatch
+              aip_activity_id: aipActivityId,
               physical_target: parseFloat(rev.physTarget || 0),
               financial_target: parseFloat(rev.finTarget || 0),
               physical_accomplished: parseFloat(rev.physAcc || 0),
