@@ -117,7 +117,7 @@ export default function App() {
         const fetchDraft = async () => {
             if (user?.id) {
                 try {
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`);
+                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`, { headers: authHeaders });
                     if (res.data.hasDraft) {
                         setDraftInfo({ lastSaved: res.data.lastSaved });
                         setHasDraft(true);
@@ -132,14 +132,41 @@ export default function App() {
     }, [user?.id]);
 
     // Called when the user picks program + mode in the splash
-    const handleStart = (mode, selectedProgram) => {
+    const handleStart = async (mode, selectedProgram) => {
         setDepedProgram(selectedProgram);
+
+        if (mode === 'readonly') {
+            try {
+                const year = new Date().getFullYear();
+                const res = await axios.get(
+                    `${import.meta.env.VITE_API_URL}/api/aips`,
+                    { params: { program_title: selectedProgram, year }, headers: authHeaders }
+                );
+                const d = res.data;
+                setYear(String(d.year));
+                setOutcome(d.outcome || "");
+                setSipTitle(d.sipTitle || "");
+                setProjectCoord(d.projectCoord || "");
+                setObjectives(d.objectives || []);
+                setIndicators(d.indicators || []);
+                setPreparedByName(d.preparedByName || "");
+                setPreparedByTitle(d.preparedByTitle || "");
+                setApprovedByName(d.approvedByName || "");
+                setApprovedByTitle(d.approvedByTitle || "");
+                if (d.activities) setActivities(d.activities);
+            } catch (e) {
+                console.error("Failed to load submitted AIP:", e);
+                return; // stay on splash if fetch fails
+            }
+            setAppMode('readonly');
+            return;
+        }
+
         if (hasDraft && loadedDraftData) {
             try {
                 const draft = loadedDraftData;
                 setOutcome(draft.outcome || "");
                 setYear(draft.year || String(new Date().getFullYear()));
-                // Don't restore program from draft — user already selected it
                 setSipTitle(draft.sipTitle || "");
                 setProjectCoord(draft.projectCoord || "");
                 setObjectives(draft.objectives || [""]);
@@ -234,7 +261,7 @@ export default function App() {
         }, 800);
     };
 
-    const [expandedActivityId, setExpandedActivityId] = useState(activities[0].id);
+    const [expandedActivityId, setExpandedActivityId] = useState(activities[0]?.id ?? null);
 
     // Resize Listener
     useEffect(() => {
@@ -365,6 +392,7 @@ export default function App() {
     // RENDER APPLICATION WITH TRANSITIONS
     // ==========================================
     return (
+        <div className="min-h-screen bg-slate-50">
         <AnimatePresence mode="wait">
             {appMode === 'splash' ? (
                 <motion.div key="splash" {...motionProps}>
@@ -382,6 +410,49 @@ export default function App() {
                         completedPrograms={completedPrograms}
                         theme="pink"
                     />
+                </motion.div>
+            ) : appMode === 'readonly' ? (
+                <motion.div key="readonly" {...motionProps}>
+                    <FormHeader title="Annual Implementation Plan" onBack={() => setAppMode('splash')} theme="pink" />
+                    <div className="bg-slate-50 min-h-screen font-sans print:bg-white">
+                        {/* Lock banner */}
+                        <div className="max-w-5xl mx-auto px-4 pt-8 pb-4 print:hidden">
+                            <div className="flex items-center gap-3 px-5 py-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 shrink-0">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                <span className="text-sm font-bold text-emerald-800 flex-1">This form has been submitted and is read-only.</span>
+                                <button
+                                    onClick={() => window.print()}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+                                    </svg>
+                                    Print / Save PDF
+                                </button>
+                            </div>
+                        </div>
+                        {/* Document */}
+                        <div className="max-w-5xl mx-auto px-4 pb-12">
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 print:shadow-none print:border-none print:p-0 print:rounded-none">
+                                <AIPDocument
+                                    year={year}
+                                    outcome={outcome}
+                                    depedProgram={depedProgram}
+                                    sipTitle={sipTitle}
+                                    projectCoord={projectCoord}
+                                    objectives={objectives}
+                                    indicators={indicators}
+                                    activities={activities}
+                                    preparedByName={preparedByName}
+                                    preparedByTitle={preparedByTitle}
+                                    approvedByName={approvedByName}
+                                    approvedByTitle={approvedByTitle}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </motion.div>
             ) : (
                 <motion.div key="form" {...motionProps}>
@@ -667,5 +738,6 @@ export default function App() {
                 </motion.div>
             )}
         </AnimatePresence>
+        </div>
     );
 }
