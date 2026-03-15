@@ -15,14 +15,31 @@ import React, { useState, useEffect } from 'react';
  *   theme             "pink" | "blue"
  */
 export const ViewModeSelector = ({
-    programs = [],
+    programs: rawPrograms = [],
     onStart,
     hasDraft = false,
     draftInfo = null,
-    draftProgram = null,
-    completedPrograms = [],
+    draftProgram: rawDraftProgram = null,
+    completedPrograms: rawCompletedPrograms = [],
     theme = "pink",
 }) => {
+    // ── SIMULATION: demo data shown when no real programs are passed ──────────
+    const _DEMO = {
+        programs: [
+            'Alternative Learning System (ALS)',
+            'Senior High School (SHS) Program',
+            'Kindergarten Education Program',
+            'Special Education (SPED)',
+            'Basic Education Research Fund (BERF)',
+        ],
+        draftProgram: 'Senior High School (SHS) Program',
+        completedPrograms: ['Alternative Learning System (ALS)', 'Basic Education Research Fund (BERF)'],
+    };
+    const _isDemo = rawPrograms.length === 0;
+    const programs         = _isDemo ? _DEMO.programs          : rawPrograms;
+    const draftProgram     = _isDemo ? _DEMO.draftProgram      : rawDraftProgram;
+    const completedPrograms = _isDemo ? _DEMO.completedPrograms : rawCompletedPrograms;
+    // ─────────────────────────────────────────────────────────────────────────
     const [stage, setStage] = useState('program');
     const [selected, setSelected] = useState(null);
     const [search, setSearch] = useState('');
@@ -36,7 +53,9 @@ export const ViewModeSelector = ({
             accent: "text-pink-600",
             selectedBadge: "bg-pink-50 text-pink-700 border-pink-200 ring-1 ring-pink-100",
             searchFocus: "focus:ring-pink-200 focus:border-pink-300",
-            rowPendingHover: "hover:border-l-pink-300 hover:bg-pink-50/30",
+            rowPendingHover: "hover:border-l-pink-400 hover:bg-pink-100/60",
+            rowPendingHoverText: "group-hover:text-pink-900",
+            cardPendingHover: "hover:border-pink-300 hover:bg-pink-50/70 hover:shadow-pink-100/40",
             modeBorder: "hover:border-pink-200 hover:shadow-pink-100/40",
             modeGlow: "bg-pink-50",
             modeTitleHover: "group-hover:text-pink-600",
@@ -56,7 +75,9 @@ export const ViewModeSelector = ({
             accent: "text-blue-600",
             selectedBadge: "bg-blue-50 text-blue-700 border-blue-200 ring-1 ring-blue-100",
             searchFocus: "focus:ring-blue-200 focus:border-blue-300",
-            rowPendingHover: "hover:border-l-blue-300 hover:bg-blue-50/30",
+            rowPendingHover: "hover:border-l-blue-400 hover:bg-blue-100/60",
+            rowPendingHoverText: "group-hover:text-blue-900",
+            cardPendingHover: "hover:border-blue-300 hover:bg-blue-50/70 hover:shadow-blue-100/40",
             modeBorder: "hover:border-blue-200 hover:shadow-blue-100/40",
             modeGlow: "bg-blue-50",
             modeTitleHover: "group-hover:text-blue-600",
@@ -101,6 +122,10 @@ export const ViewModeSelector = ({
         });
 
     const handlePickProgram = (p) => {
+        if (completedPrograms.includes(p)) {
+            onStart('readonly', p);
+            return;
+        }
         setSelected(p);
         setStage('mode');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -118,8 +143,8 @@ export const ViewModeSelector = ({
         <>
             <div className="fixed inset-0 bg-slate-50 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0">
                 <div
-                    className="absolute inset-0 pointer-events-none grayscale mix-blend-multiply opacity-60"
-                    style={{ backgroundImage: `url('/SDO_Facade.webp')`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}
+                    className="absolute inset-0 pointer-events-none grayscale mix-blend-multiply opacity-60 backdrop-blur-none"
+                    style={{ backgroundImage: `url('/SDO_Facade.webp')`, backgroundSize: 'cover', backgroundPosition: 'center 25%', filter: 'blur(3px)', transform: 'scale(1.05)' }}
                 />
             </div>
             <div className={`fixed top-1/4 left-1/4 w-[36rem] h-[36rem] ${c.glow} rounded-full blur-[140px] pointer-events-none animate-pulse`} style={{ animationDuration: '5000ms' }} />
@@ -151,7 +176,7 @@ export const ViewModeSelector = ({
 
                     {/* Search + Filter toolbar */}
                     {programs.length > 0 && (
-                        <div className="w-full max-w-xl mb-4 flex flex-col gap-2.5">
+                        <div className="w-full max-w-2xl mb-4 flex flex-col gap-2.5">
                             {/* Search */}
                             <div className="relative">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
@@ -234,89 +259,64 @@ export const ViewModeSelector = ({
                             </p>
                         </div>
                     ) : (
-                        <div className="w-full max-w-xl relative">
-                            {/* Ghost count watermark */}
-                            <div className="absolute inset-0 flex items-center justify-end pr-6 pointer-events-none overflow-hidden rounded-2xl">
-                                <span className={`text-[11rem] font-black leading-none select-none ${c.ghostNum}`}>
-                                    {programs.length}
-                                </span>
-                            </div>
+                        <div className="w-full max-w-2xl relative">
+                            {/* Program cards */}
+                            {sortedFiltered.length === 0 ? (
+                                <div className="py-10 text-center">
+                                    {search ? (
+                                        <>
+                                            <p className="text-sm text-slate-400 font-medium">No programs match <span className="text-slate-500 font-semibold">&ldquo;{search}&rdquo;</span></p>
+                                            <button onClick={() => setSearch('')} className="mt-2 text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors">
+                                                Clear search
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-slate-400 font-medium">No {sortFilter} programs</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {sortedFiltered.map(p => {
+                                        const isDraft = draftProgram === p;
+                                        const isDone = completedPrograms.includes(p);
 
-                            {/* Program list */}
-                            <div className="relative bg-white/80 backdrop-blur-sm border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden divide-y divide-slate-100">
-                                {sortedFiltered.map(p => {
-                                    const isDraft = draftProgram === p;
-                                    const isDone = completedPrograms.includes(p);
+                                        return (
+                                            <button
+                                                key={p}
+                                                onClick={() => handlePickProgram(p)}
+                                                className={[
+                                                    'group w-full flex flex-col gap-3 p-4 rounded-2xl text-left',
+                                                    'border-2 transition-all duration-150 shadow-sm active:scale-[0.97]',
+                                                    isDraft
+                                                        ? 'border-amber-300 bg-amber-50 hover:bg-amber-100 hover:border-amber-400 hover:shadow-amber-100/50'
+                                                        : isDone
+                                                            ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300 hover:shadow-emerald-100/50'
+                                                            : `border-slate-200 bg-white shadow-sm ${c.cardPendingHover}`,
+                                                ].join(' ')}
+                                            >
+                                                {/* Status badge — always visible at top */}
+                                                <span className={`self-start text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                                                    isDraft
+                                                        ? 'text-amber-700 bg-amber-100 border-amber-300'
+                                                        : isDone
+                                                            ? 'text-emerald-700 bg-emerald-100 border-emerald-300'
+                                                            : 'text-slate-400 bg-slate-100 border-slate-200'
+                                                }`}>
+                                                    {isDraft ? 'Draft' : isDone ? 'Submitted' : 'Pending'}
+                                                </span>
 
-                                    return (
-                                        <button
-                                            key={p}
-                                            onClick={() => handlePickProgram(p)}
-                                            className={[
-                                                'group w-full flex items-center gap-3.5 px-5 py-4 text-left',
-                                                'border-l-[3px] transition-all duration-150',
-                                                isDraft
-                                                    ? 'border-l-amber-400 bg-amber-50/60 hover:bg-amber-50'
-                                                    : isDone
-                                                        ? 'border-l-emerald-300 bg-emerald-50/30 hover:bg-emerald-50/50'
-                                                        : `border-l-transparent ${c.rowPendingHover}`,
-                                                'active:scale-[0.995]',
-                                            ].join(' ')}
-                                        >
-                                            {/* Status indicator */}
-                                            <div className="shrink-0">
-                                                {isDone ? (
-                                                    <div className="w-6 h-6 rounded-full bg-emerald-100 ring-1 ring-emerald-200 flex items-center justify-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
-                                                            <path d="M20 6 9 17l-5-5" />
-                                                        </svg>
-                                                    </div>
-                                                ) : isDraft ? (
-                                                    <div className="w-6 h-6 rounded-full bg-amber-100 ring-1 ring-amber-200 flex items-center justify-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
-                                                            <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                                                        </svg>
-                                                    </div>
-                                                ) : (
-                                                    <div className="w-6 h-6" />
-                                                )}
-                                            </div>
+                                                {/* Program name */}
+                                                <span className={`text-sm font-bold leading-snug transition-colors ${
+                                                    isDraft ? 'text-amber-900' : isDone ? 'text-emerald-900' : 'text-slate-800'
+                                                }`}>
+                                                    {p}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
 
-                                            {/* Program name */}
-                                            <span className="flex-1 text-sm font-semibold text-slate-700 group-hover:text-slate-900 leading-snug transition-colors">
-                                                {p}
-                                            </span>
-
-                                            {/* Right: badge + chevron */}
-                                            <div className="flex items-center gap-2 shrink-0">
-                                                {isDraft && (
-                                                    <span className="text-[9px] font-black uppercase tracking-widest text-amber-600 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-md">
-                                                        Draft
-                                                    </span>
-                                                )}
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300 group-hover:text-slate-400 transition-colors -mr-0.5">
-                                                    <path d="m9 18 6-6-6-6" />
-                                                </svg>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-
-                                {sortedFiltered.length === 0 && (
-                                    <div className="py-10 text-center">
-                                        {search ? (
-                                            <>
-                                                <p className="text-sm text-slate-400 font-medium">No programs match <span className="text-slate-500 font-semibold">&ldquo;{search}&rdquo;</span></p>
-                                                <button onClick={() => setSearch('')} className="mt-2 text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors">
-                                                    Clear search
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <p className="text-sm text-slate-400 font-medium">No {sortFilter} programs</p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
                         </div>
                     )}
                 </div>
