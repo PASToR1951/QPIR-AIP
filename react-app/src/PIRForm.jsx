@@ -42,6 +42,7 @@ export default function App() {
     const [isMobile, setIsMobile] = useState(false);
     const [programList, setProgramList] = useState([]);
     const [programsWithAIPs, setProgramsWithAIPs] = useState([]);
+    const [completedPrograms, setCompletedPrograms] = useState([]);
     // schoolList/schoolMap only used for Division Personnel (manual school input if ever needed; currently unused)
     const [schoolMap, setSchoolMap] = useState({}); // name -> id lookup (School Users only)
 
@@ -59,12 +60,14 @@ export default function App() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [programsRes, withAIPsRes] = await Promise.all([
+                const [programsRes, withAIPsRes, withPIRsRes] = await Promise.all([
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { headers: authHeaders }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders })
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { headers: authHeaders }),
                 ]);
                 setProgramList(programsRes.data.map(p => p.title).sort());
                 setProgramsWithAIPs(withAIPsRes.data.map(p => p.title));
+                setCompletedPrograms(withPIRsRes.data.map(p => p.title));
 
                 // School Users: pre-build schoolMap so activity fetch works
                 if (!isDivisionPersonnel && user?.school_id) {
@@ -461,6 +464,7 @@ export default function App() {
                         hasDraft={hasDraft}
                         draftInfo={draftInfo}
                         draftProgram={loadedDraftData?.program || null}
+                        completedPrograms={completedPrograms}
                         theme="blue"
                     />
                 </motion.div>
