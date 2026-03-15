@@ -2,8 +2,31 @@ import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import { ensureDir } from "https://deno.land/std@0.224.0/fs/mod.ts";
 import * as path from "https://deno.land/std@0.224.0/path/mod.ts";
+import jwt from "jsonwebtoken";
 
 const dataRoutes = new Hono();
+const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
+
+// ==========================================
+// AUTH HELPER
+// ==========================================
+
+interface TokenPayload {
+  id: number;
+  role: string;          // "School" | "Division Personnel"
+  school_id: number | null;
+  email: string;
+  name: string | null;
+}
+
+function getUserFromToken(authHeader: string | undefined): TokenPayload | null {
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  try {
+    return jwt.verify(authHeader.slice(7), JWT_SECRET) as TokenPayload;
+  } catch {
+    return null;
+  }
+}
 
 // ==========================================
 // DRAFTS (JSON file storage)
@@ -14,13 +37,13 @@ const DRAFTS_DIR = path.join(Deno.cwd(), "data", "drafts");
 dataRoutes.post('/drafts', async (c) => {
   try {
     const { user_id, form_type, draft_data } = await c.req.json();
-    
+
     if (!user_id || !form_type || !draft_data) {
       return c.json({ error: 'Missing required fields' }, 400);
     }
 
     await ensureDir(DRAFTS_DIR);
-    
+
     // Check if a draft already exists to reuse its file path
     let existingDraft = await prisma.draft.findUnique({
       where: {
@@ -158,14 +181,97 @@ dataRoutes.get('/schools', async (c) => {
   }
 });
 
-// GET all Programs
+// GET Programs — filtered by user type
+// - School Users: all programs except those restricted for their school
+// - Division Personnel: only programs assigned via UserPrograms
+// - Unauthenticated (or no matching user in DB): all programs (fallback for dev/admin)
 dataRoutes.get('/programs', async (c) => {
   try {
-    const programs = await prisma.program.findMany();
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+
+    if (!tokenUser) {
+      // Fallback: return all programs (unauthenticated or dev use)
+      const programs = await prisma.program.findMany({ orderBy: { title: 'asc' } });
+      return c.json(programs);
+    }
+
+    if (tokenUser.role === 'Division Personnel') {
+      // Division Personnel: only assigned programs
+      const user = await prisma.user.findUnique({
+        where: { id: tokenUser.id },
+        include: { programs: { orderBy: { title: 'asc' } } }
+      });
+      return c.json(user?.programs ?? []);
+    }
+
+    // School User: filter by school level and exclude restricted programs
+    if (tokenUser.school_id) {
+      const school = await prisma.school.findUnique({
+        where: { id: tokenUser.school_id },
+        select: { level: true }
+      });
+
+      const schoolLevel = school?.level ?? 'Both';
+      const levelFilter = schoolLevel === 'Both'
+        ? ['Elementary', 'Secondary', 'Both', 'Select Schools']
+        : [schoolLevel, 'Both', 'Select Schools'];
+
+      const restricted = await prisma.program.findMany({
+        where: {
+          restricted_schools: {
+            some: { id: tokenUser.school_id }
+          }
+        },
+        select: { id: true }
+      });
+      const restrictedIds = restricted.map(p => p.id);
+
+      const programs = await prisma.program.findMany({
+        where: {
+          id: { notIn: restrictedIds },
+          school_level_requirement: { in: levelFilter }
+        },
+        orderBy: { title: 'asc' }
+      });
+      return c.json(programs);
+    }
+
+    // Fallback
+    const programs = await prisma.program.findMany({ orderBy: { title: 'asc' } });
     return c.json(programs);
   } catch (error) {
     console.error(error);
     return c.json({ error: 'Failed to fetch programs' }, 500);
+  }
+});
+
+// GET Programs that have at least one AIP for the current user/school
+dataRoutes.get('/programs/with-aips', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+
+    const db = prisma.aIP as any;
+    let aips: any[];
+    if (tokenUser.role === 'School' && tokenUser.school_id) {
+      aips = await db.findMany({
+        where: { school_id: tokenUser.school_id, year },
+        include: { program: true }
+      });
+    } else {
+      aips = await db.findMany({
+        where: { created_by_user_id: tokenUser.id, school_id: null, year },
+        include: { program: true }
+      });
+    }
+
+    const programs = aips.map((aip: any) => aip.program).sort((a: any, b: any) => a.title.localeCompare(b.title));
+    return c.json(programs);
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to fetch programs with AIPs' }, 500);
   }
 });
 
@@ -188,15 +294,36 @@ dataRoutes.get('/schools/:id/aip-status', async (c) => {
   }
 });
 
-// GET AIP activities for PIR pre-population (by school_id, program_title, year)
+// GET AIP status for a Division Personnel user
+dataRoutes.get('/users/:id/aip-status', async (c) => {
+  const user_id = parseInt(c.req.param('id'));
+  const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+
+  try {
+    const aipCount = await prisma.aIP.count({
+      where: {
+        created_by_user_id: user_id,
+        school_id: null,
+        year
+      }
+    });
+    return c.json({ hasAIP: aipCount > 0, count: aipCount });
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to fetch AIP status' }, 500);
+  }
+});
+
+// GET AIP activities for PIR pre-population
+// Supports both school-based (school_id + program_title + year)
+// and user-based (user_id + program_title + year) for Division Personnel
 dataRoutes.get('/aips/activities', async (c) => {
   try {
-    const school_id = parseInt(c.req.query('school_id') || '0');
     const program_title = c.req.query('program_title') || '';
     const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
-    if (!school_id || !program_title) {
-      return c.json({ error: 'school_id and program_title are required' }, 400);
+    if (!program_title) {
+      return c.json({ error: 'program_title is required' }, 400);
     }
 
     const program = await prisma.program.findUnique({
@@ -207,15 +334,38 @@ dataRoutes.get('/aips/activities', async (c) => {
       return c.json({ error: `Program '${program_title}' not found` }, 404);
     }
 
-    const aip = await prisma.aIP.findUnique({
-      where: {
-        school_id_program_id_year: { school_id, program_id: program.id, year }
-      },
-      include: { activities: true }
-    });
+    let aip: any;
+
+    const school_id_str = c.req.query('school_id');
+    const user_id_str = c.req.query('user_id');
+
+    if (school_id_str) {
+      // School User path
+      const school_id = parseInt(school_id_str);
+      aip = await prisma.aIP.findUnique({
+        where: {
+          school_id_program_id_year: { school_id, program_id: program.id, year }
+        },
+        include: { activities: true }
+      });
+    } else if (user_id_str) {
+      // Division Personnel path — find by created_by_user_id with null school
+      const user_id = parseInt(user_id_str);
+      aip = await prisma.aIP.findFirst({
+        where: {
+          created_by_user_id: user_id,
+          school_id: null,
+          program_id: program.id,
+          year
+        },
+        include: { activities: true }
+      });
+    } else {
+      return c.json({ error: 'school_id or user_id is required' }, 400);
+    }
 
     if (!aip) {
-      return c.json({ error: 'No AIP found for this school, program, and year' }, 404);
+      return c.json({ error: 'No AIP found for this program and year' }, 404);
     }
 
     return c.json({
@@ -238,35 +388,55 @@ dataRoutes.get('/aips/activities', async (c) => {
 dataRoutes.post('/aips', async (c) => {
   try {
     const body = await c.req.json();
-    const { 
-      school_id, 
-      program_title, // We'll look up the program_id by title
-      year, 
-      outcome, 
-      sip_title, 
-      project_coordinator, 
-      objectives,   // JSON array of strings
-      indicators,   // JSON array of { description, target }
+    const {
+      program_title,
+      year,
+      outcome,
+      sip_title,
+      project_coordinator,
+      objectives,
+      indicators,
       prepared_by_name,
       prepared_by_title,
       approved_by_name,
       approved_by_title,
-      activities 
+      activities
     } = body;
+
+    // Get the requesting user from JWT
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) {
+      return c.json({ error: 'Authentication required' }, 401);
+    }
 
     // Look up program_id
     const program = await prisma.program.findUnique({
       where: { title: program_title }
     });
-
     if (!program) {
       return c.json({ error: `Program '${program_title}' not found` }, 404);
     }
 
+    // Division Personnel: verify program is assigned to them
+    if (tokenUser.role === 'Division Personnel') {
+      const assigned = await prisma.user.findFirst({
+        where: {
+          id: tokenUser.id,
+          programs: { some: { id: program.id } }
+        }
+      });
+      if (!assigned) {
+        return c.json({ error: 'You are not assigned to this program' }, 403);
+      }
+    }
+
+    const school_id = tokenUser.role === 'School' ? tokenUser.school_id : null;
+
     const aip = await prisma.aIP.create({
       data: {
-        school_id: parseInt(school_id),
+        school_id,
         program_id: program.id,
+        created_by_user_id: tokenUser.id,
         year: parseInt(year),
         outcome,
         sip_title,
@@ -289,9 +459,7 @@ dataRoutes.post('/aips', async (c) => {
           }))
         }
       },
-      include: {
-        activities: true
-      }
+      include: { activities: true }
     });
 
     return c.json({ message: 'AIP created successfully', aip });
@@ -305,8 +473,7 @@ dataRoutes.post('/aips', async (c) => {
 dataRoutes.post('/pirs', async (c) => {
   try {
     const body = await c.req.json();
-    const { 
-      school_name,
+    const {
       program_title,
       quarter,
       program_owner,
@@ -316,49 +483,64 @@ dataRoutes.post('/pirs', async (c) => {
       factors
     } = body;
 
-    // Look up school
-    const school = await prisma.school.findFirst({
-      where: { name: school_name }
-    });
-
-    if (!school) {
-        return c.json({ error: `School '${school_name}' not found` }, 404);
+    // Get the requesting user from JWT
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) {
+      return c.json({ error: 'Authentication required' }, 401);
     }
 
     // Look up program
     const program = await prisma.program.findUnique({
       where: { title: program_title }
     });
-
     if (!program) {
       return c.json({ error: `Program '${program_title}' not found` }, 404);
     }
 
-    // Find the AIP for this school, program, and year (derived from quarter string)
     // Extract year from "Xth Quarter CY 2026"
     const yearMatch = quarter.match(/CY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
-    const aip = await prisma.aIP.findUnique({
-      where: {
-        school_id_program_id_year: {
-          school_id: school.id,
+    let aip: any;
+
+    if (tokenUser.role === 'School' && tokenUser.school_id) {
+      // School User: find AIP by school + program + year
+      aip = await prisma.aIP.findUnique({
+        where: {
+          school_id_program_id_year: {
+            school_id: tokenUser.school_id,
+            program_id: program.id,
+            year
+          }
+        },
+        include: { activities: true }
+      });
+    } else {
+      // Division Personnel: find AIP by user + program + year (school is null)
+      aip = await prisma.aIP.findFirst({
+        where: {
+          created_by_user_id: tokenUser.id,
+          school_id: null,
           program_id: program.id,
           year
-        }
-      },
-      include: {
-        activities: true
-      }
-    });
+        },
+        include: { activities: true }
+      });
+    }
 
     if (!aip) {
-      return c.json({ error: 'Associated AIP not found for this school, program, and year' }, 404);
+      return c.json({ error: 'Associated AIP not found for this program and year' }, 404);
+    }
+
+    // Verify the user can access this AIP
+    if (tokenUser.role === 'Division Personnel' && aip.created_by_user_id !== tokenUser.id) {
+      return c.json({ error: 'Access denied' }, 403);
     }
 
     const pir = await prisma.pir.create({
       data: {
         aip_id: aip.id,
+        created_by_user_id: tokenUser.id,
         quarter,
         program_owner,
         total_budget: parseFloat(total_budget || 0),
@@ -372,10 +554,9 @@ dataRoutes.post('/pirs', async (c) => {
         },
         activity_reviews: {
           create: activity_reviews.map((rev: any) => {
-            // Use aip_activity_id directly if provided, otherwise fall back to name matching
             const aipActivityId = rev.aip_activity_id
               ? parseInt(rev.aip_activity_id)
-              : aip.activities.find(a => a.activity_name === rev.name)?.id || aip.activities[0].id;
+              : aip!.activities.find(a => a.activity_name === rev.name)?.id || aip!.activities[0].id;
             return {
               aip_activity_id: aipActivityId,
               physical_target: parseFloat(rev.physTarget || 0),
