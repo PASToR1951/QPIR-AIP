@@ -19,9 +19,22 @@
  *   import { CURRENT_VERSION, CHANGELOG, getVersion } from './version';
  */
 
-export const CURRENT_VERSION = '1.0.3-beta';
+export const CURRENT_VERSION = '1.0.4-beta';
 
 export const CHANGELOG = [
+  {
+    version: '1.0.4-beta',
+    date: '2026-03-15',
+    title: 'PIR View Mode — Completed Programs & with-pirs Endpoint',
+    description:
+      'Adds a dedicated GET /api/programs/with-pirs backend endpoint to identify which programs already have a submitted PIR. Wires this data to ViewModeSelector so that the PIR review mode list is filtered to programs with completed PIRs, and enhances the program list display.',
+    changes: [
+      { type: 'feature', text: 'GET /api/programs/with-pirs endpoint — returns programs that have at least one submitted PIR for the authenticated user in the current year, used to drive completed-program filtering in the UI' },
+      { type: 'feature', text: 'ViewModeSelector completedPrograms prop wired to GET /api/programs/with-pirs — PIR review mode now shows only programs with submitted PIRs' },
+      { type: 'improvement', text: 'ViewModeSelector program list enhanced with richer display — program status indicators and improved selection UX' },
+      { type: 'improvement', text: 'App configurations and main form components updated to align with completed-programs data flow' },
+    ],
+  },
   {
     version: '1.0.3-beta',
     date: '2026-03-15',
