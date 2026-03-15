@@ -4,9 +4,10 @@ export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
     if (compact) {
         return (
             <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50/50 rounded-2xl border border-slate-100 select-none mb-4">
-                <div className="flex items-center gap-4 shrink-0">
-                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-16 w-auto drop-shadow-sm hidden sm:block" />
-                    <img src="/Division_Logo.webp" alt="Division Logo" className="h-16 w-auto drop-shadow-sm hidden sm:block" />
+                <div className="flex items-center gap-3 shrink-0">
+                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-16 w-auto drop-shadow-sm hidden sm:block print:block" />
+                    <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-16 w-auto drop-shadow-sm hidden sm:block print:block" />
+                    <img src="/Division_Logo.webp" alt="Division Logo" className="h-16 w-auto drop-shadow-sm hidden sm:block print:block" />
                 </div>
                 <div className="h-10 w-px bg-slate-200 hidden md:block"></div>
                 <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
@@ -35,8 +36,9 @@ export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
     return (
         <div className="flex flex-col items-center justify-center mb-10 select-none text-center relative">
             <div className="flex justify-center items-center gap-4 md:gap-8 mb-6 w-full max-w-4xl mx-auto">
-                <div className="flex items-center gap-4 shrink-0">
-                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-24 w-auto drop-shadow-md hidden md:block" />
+                <div className="flex items-center gap-3 shrink-0">
+                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-24 w-auto drop-shadow-md hidden md:block print:block" />
+                    <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-24 w-auto drop-shadow-md hidden md:block print:block" />
                 </div>
                 <div className="flex flex-col items-center">
                     <div className="text-[10px] md:text-[11px] space-y-0.5 text-slate-500 font-bold uppercase tracking-[0.15em] md:tracking-[0.25em] leading-tight text-center">
@@ -46,8 +48,9 @@ export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
                         <p className="text-blue-600 tracking-[0.1em] md:tracking-[0.15em]">Schools Division of Guihulngan City</p>
                     </div>
                 </div>
-                <div className="items-center gap-4 shrink-0 hidden md:flex">
+                <div className="items-center gap-3 shrink-0 hidden md:flex print:flex">
                     <img src="/Division_Logo.webp" alt="Division Logo" className="h-24 w-auto drop-shadow-md" />
+                    <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-md" />
                 </div>
             </div>
             
