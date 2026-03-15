@@ -5,9 +5,10 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
 import GithubSlugger from 'github-slugger';
-import { ArrowLeft, BookOpen, Tag, List, ChevronRight, X, Menu } from 'lucide-react';
+import { ArrowLeft, BookOpen, Tag, List, X, Menu } from 'lucide-react';
 import { CURRENT_VERSION } from '../version';
 import docsContent from '../../../SYSTEM_DOCUMENTATION_THESIS.md?raw';
+import ERDDiagram from './ui/ERDDiagram';
 
 // Pre-parse the headings from the Markdown file to display in the Table of Contents
 const slugger = new GithubSlugger();
@@ -21,7 +22,6 @@ docsContent.split('\n').forEach(line => {
     if (match) {
       const level = match[1].length;
       let title = match[2];
-      // Basic stripping for markdown links and HTML tags in headers
       title = title.replace(/<[^>]+>/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').trim();
       const id = slugger.slug(title);
       headings.push({ id, title, level });
@@ -33,14 +33,10 @@ export default function SystemDocs() {
   const [activeId, setActiveId] = useState('');
   const [isMobileTocOpen, setIsMobileTocOpen] = useState(false);
 
-  // Intersection Observer for highlighting the active section in the ToC
   useEffect(() => {
     const handleObserver = (entries) => {
-      // Find the first intersecting entry
       const visibleEntry = entries.find(entry => entry.isIntersecting);
-      if (visibleEntry) {
-        setActiveId(visibleEntry.target.id);
-      }
+      if (visibleEntry) setActiveId(visibleEntry.target.id);
     };
 
     const observer = new IntersectionObserver(handleObserver, {
@@ -49,15 +45,12 @@ export default function SystemDocs() {
 
     const elements = document.querySelectorAll('h1, h2, h3');
     elements.forEach(elem => observer.observe(elem));
-
     return () => observer.disconnect();
   }, []);
 
-  // Smooth scroll to element
   const scrollToHeading = (id) => {
     const element = document.getElementById(id);
     if (element) {
-      // Offset for sticky header
       const y = element.getBoundingClientRect().top + window.scrollY - 100;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
@@ -65,110 +58,171 @@ export default function SystemDocs() {
   };
 
   const renderTocList = () => (
-    <ul className="space-y-1.5 text-sm font-medium">
-      {headings.map((heading, idx) => {
-        const isActive = activeId === heading.id;
-        // Indentation logic based on heading level
-        const paddingLeft = heading.level === 1 ? 'pl-0 font-bold' : heading.level === 2 ? 'pl-4' : 'pl-8 text-xs';
-        
-        return (
-          <li key={idx}>
-            <button
-              onClick={() => scrollToHeading(heading.id)}
-              className={`block w-full text-left py-1.5 transition-colors group relative ${paddingLeft} ${isActive ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-900'}`}
-            >
-              {isActive && (
-                <span className="absolute left-[-24px] top-1/2 -translate-y-1/2 text-indigo-500 animate-in fade-in slide-in-from-left-2 hidden lg:inline-block">
-                  <ChevronRight size={16} strokeWidth={3} />
-                </span>
+    <nav>
+      <ul className="space-y-0.5">
+        {headings.map((heading, idx) => {
+          const isActive = activeId === heading.id;
+          const isH1 = heading.level === 1;
+          const isH2 = heading.level === 2;
+          const isH3 = heading.level === 3;
+          const showDivider = isH1 && idx > 0;
+
+          return (
+            <React.Fragment key={idx}>
+              {showDivider && (
+                <li className="py-2">
+                  <div className="h-px bg-slate-100" />
+                </li>
               )}
-              <span className={`block truncate pr-4 leading-tight ${isActive ? 'font-bold lg:font-medium' : ''}`}>{heading.title}</span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+              <li>
+                <button
+                  onClick={() => scrollToHeading(heading.id)}
+                  className={`
+                    group flex items-start w-full text-left rounded-lg transition-all duration-150
+                    ${isH1 ? 'py-1.5 px-3 mb-0.5' : isH2 ? 'py-1.5 pl-3 pr-3' : 'py-1 pl-6 pr-3'}
+                    ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}
+                  `}
+                >
+                  {isH2 && (
+                    <span className={`mt-[7px] mr-2.5 w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${isActive ? 'bg-indigo-500' : 'bg-slate-300 group-hover:bg-slate-400'}`} />
+                  )}
+                  {isH3 && (
+                    <span className={`mt-[7px] mr-2 w-1 h-1 rounded-full shrink-0 transition-colors ${isActive ? 'bg-indigo-300' : 'bg-slate-200 group-hover:bg-slate-300'}`} />
+                  )}
+                  <span className={`
+                    leading-snug truncate
+                    ${isH1 ? 'text-[10px] font-black uppercase tracking-[0.12em] text-slate-400' : ''}
+                    ${isH2 ? `text-sm ${isActive ? 'font-semibold text-indigo-700' : 'font-medium'}` : ''}
+                    ${isH3 ? `text-xs ${isActive ? 'font-medium text-indigo-600' : ''}` : ''}
+                  `}>
+                    {heading.title}
+                  </span>
+                </button>
+              </li>
+            </React.Fragment>
+          );
+        })}
+      </ul>
+    </nav>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm print:hidden relative z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 hover:text-slate-700 transition-all">
-              <ArrowLeft size={18} strokeWidth={2.5} />
+    <div className="min-h-screen bg-slate-100 font-sans">
+      {/* Top Nav */}
+      <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm print:hidden">
+        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link to="/" className="w-9 h-9 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 hover:text-slate-700 transition-all">
+              <ArrowLeft size={17} strokeWidth={2.5} />
             </Link>
             <div>
-              <h1 className="text-lg font-black text-slate-900 tracking-tight">System Documentation</h1>
-              <p className="text-xs text-slate-400 font-medium hidden sm:block">Technical Thesis & Architecture</p>
+              <h1 className="text-base font-black text-slate-900 tracking-tight leading-none">System Documentation</h1>
+              <p className="text-xs text-slate-400 font-medium hidden sm:block mt-0.5">Technical Thesis & Architecture</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-             <Link to="/changelog" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-slate-600 text-xs font-bold border border-slate-200 hover:bg-slate-100 transition-colors">
-               <Tag size={12} strokeWidth={3} /> Version Control
-             </Link>
-             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-xs font-black border border-blue-200 shadow-sm">
-               <BookOpen size={12} strokeWidth={3} /> v{CURRENT_VERSION}
-             </span>
-             <button
-               className="lg:hidden w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-all"
-               onClick={() => setIsMobileTocOpen(!isMobileTocOpen)}
-             >
-               {isMobileTocOpen ? <X size={20} strokeWidth={2.5} /> : <Menu size={20} strokeWidth={2.5} />}
-             </button>
+          <div className="flex items-center gap-2">
+            <Link to="/changelog" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-slate-600 text-xs font-bold border border-slate-200 hover:bg-slate-100 transition-colors">
+              <Tag size={12} strokeWidth={3} /> Version Control
+            </Link>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-200">
+              <BookOpen size={12} strokeWidth={3} /> v{CURRENT_VERSION}
+            </span>
+            <button
+              className="lg:hidden w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-all"
+              onClick={() => setIsMobileTocOpen(!isMobileTocOpen)}
+            >
+              {isMobileTocOpen ? <X size={18} strokeWidth={2.5} /> : <Menu size={18} strokeWidth={2.5} />}
+            </button>
           </div>
         </div>
       </div>
 
       {/* Mobile ToC Drawer */}
       {isMobileTocOpen && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-sm" onClick={() => setIsMobileTocOpen(false)}>
-          <div 
-            className="absolute right-0 top-[73px] bottom-0 w-80 bg-white border-l border-slate-200 shadow-2xl p-6 overflow-y-auto animate-in slide-in-from-right-full duration-300"
+        <div className="lg:hidden fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-sm" onClick={() => setIsMobileTocOpen(false)}>
+          <div
+            className="absolute right-0 top-[65px] bottom-0 w-72 bg-white border-l border-slate-200 shadow-2xl overflow-y-auto animate-in slide-in-from-right-full duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="font-black text-slate-900 flex items-center gap-2 mb-6 tracking-tight">
-              <List size={20} className="text-indigo-500" />
-              Table of Contents
-            </h3>
-            {renderTocList()}
+            <div className="px-4 py-3.5 border-b border-slate-100 flex items-center gap-2 sticky top-0 bg-white z-10">
+              <List size={15} className="text-indigo-500 shrink-0" />
+              <span className="font-black text-slate-800 text-sm tracking-tight">Contents</span>
+            </div>
+            <div className="p-3">
+              {renderTocList()}
+            </div>
           </div>
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 py-8 md:py-12 relative z-10">
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
-          
-          {/* Table of Contents - Left Sidebar */}
-          <div className="hidden lg:block w-72 shrink-0 sticky top-28 bg-white p-6 rounded-[2.5rem] border border-slate-200 shadow-sm self-start max-h-[calc(100vh-120px)] overflow-y-auto">
-            <h3 className="font-black text-slate-900 flex items-center gap-2 mb-6 tracking-tight">
-              <List size={20} className="text-indigo-500" />
-              Table of Contents
-            </h3>
-            {renderTocList()}
-          </div>
+      <div className="max-w-7xl mx-auto px-4 py-8 md:py-10">
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-          {/* Main Content Area */}
-          <div className="flex-1 w-full lg:w-auto bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden relative">
-            {/* Header Graphic */}
-            <div className="h-48 md:h-56 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 relative flex flex-col justify-end px-8 md:px-12 pb-8">
-               <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-               <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-               <div className="absolute top-0 right-32 w-64 h-64 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-               <div className="relative z-10 flex flex-col gap-4 w-full">
-                  <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/20 mb-2">
-                      <BookOpen size={32} strokeWidth={2.5} className="text-emerald-400" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight mb-2">AIP-PIR Portal</h1>
-                    <p className="text-slate-300 font-medium tracking-wide">System Architecture & Technical Thesis</p>
-                  </div>
-               </div>
+          {/* ToC Sidebar */}
+          <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-[74px] self-start max-h-[calc(100vh-94px)]">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 shrink-0">
+                <List size={14} className="text-indigo-500 shrink-0" />
+                <span className="font-black text-slate-800 text-sm tracking-tight">Contents</span>
+                <span className="ml-auto text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full tabular-nums">{headings.length}</span>
+              </div>
+              <div className="overflow-y-auto p-2.5 flex-1">
+                {renderTocList()}
+              </div>
             </div>
-            
-            <div className="p-8 md:p-12 lg:px-16 lg:py-14">
-              <article className="prose prose-slate prose-img:rounded-3xl prose-img:border prose-a:text-pink-600 hover:prose-a:text-pink-700 prose-headings:font-black prose-headings:text-slate-900 prose-headings:scroll-mt-24 max-w-none prose-h1:text-4xl prose-h2:text-3xl prose-h2:border-b prose-h2:pb-4 prose-h2:mt-16 prose-h3:text-2xl prose-h3:mt-10 prose-p:leading-loose prose-p:text-slate-600 prose-li:text-slate-600 prose-pre:border prose-pre:border-slate-800 prose-code:text-indigo-600 prose-strong:text-slate-800 break-words">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw, rehypeSlug]}>
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1 w-full min-w-0 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* Hero Header */}
+            <div className="bg-white border-b border-slate-200 relative flex items-center justify-center px-8 md:px-12 py-8 min-h-[120px]">
+              {/* Logos — top left */}
+              <div className="absolute left-8 md:left-12 top-1/2 -translate-y-1/2 flex items-center gap-3 md:gap-4">
+                <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-12 md:h-14 w-auto drop-shadow-sm" />
+                <img src="/DepEd%20NIR%20Logo.webp" alt="DepEd NIR Logo" className="h-12 md:h-14 w-auto drop-shadow-sm" />
+                <img src="/Division_Logo.webp" alt="SDO Guihulngan City" className="h-12 md:h-14 w-auto drop-shadow-sm" />
+              </div>
+
+              {/* AIP-PIR logo — centre */}
+              <div className="flex flex-col items-center gap-3">
+                <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-16 md:h-20 w-auto" />
+                <div className="text-center">
+                  <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none">AIP-PIR Portal</h1>
+                  <p className="text-slate-500 font-medium text-xs mt-1 tracking-wide">System Architecture & Technical Thesis</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Document Content */}
+            <div className="px-8 py-10 md:px-14 md:py-14">
+              <article className="
+                prose prose-slate max-w-none
+                prose-headings:font-black prose-headings:text-slate-900 prose-headings:scroll-mt-28 prose-headings:tracking-tight
+                prose-h1:text-4xl prose-h1:mt-0
+                prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-3 prose-h2:mt-16
+                prose-h3:text-xl prose-h3:mt-10 prose-h3:text-slate-800
+                prose-p:text-slate-600 prose-p:leading-relaxed
+                prose-li:text-slate-600
+                prose-a:text-indigo-600 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+                prose-blockquote:border-l-4 prose-blockquote:border-indigo-400 prose-blockquote:bg-indigo-50/60 prose-blockquote:rounded-r-xl prose-blockquote:py-1 prose-blockquote:not-italic prose-blockquote:text-slate-700
+                prose-code:text-indigo-600 prose-code:bg-indigo-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[0.85em] prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
+                prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 prose-pre:rounded-2xl prose-pre:shadow-lg
+                prose-img:rounded-2xl prose-img:border prose-img:border-slate-200 prose-img:shadow-sm
+                prose-strong:text-slate-800
+                prose-table:text-sm prose-th:bg-slate-50 prose-th:text-slate-700 prose-td:text-slate-600
+                break-words
+              ">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw, rehypeSlug]}
+                  components={{
+                    code({ node, className, children, ...props }) {
+                      const isERD = className === 'language-mermaid' && String(children).trim().startsWith('erDiagram');
+                      if (isERD) return <ERDDiagram />;
+                      return <code className={className} {...props}>{children}</code>;
+                    }
+                  }}
+                >
                   {docsContent}
                 </ReactMarkdown>
               </article>
