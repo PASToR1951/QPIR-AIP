@@ -90,6 +90,15 @@
 .a11y-font-xl  { font-size: 20px; }
 .a11y-font-xxl { font-size: 24px; }
 
+/* --- Form Background Fade-in --- */
+@keyframes form-bg-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.form-bg-fade {
+  animation: form-bg-fade 0.4s ease-out both;
+}
+
 /* --- Reduce Motion --- */
 .a11y-reduce-motion *,
 .a11y-reduce-motion *::before,
