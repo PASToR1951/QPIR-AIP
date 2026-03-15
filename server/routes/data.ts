@@ -275,6 +275,45 @@ dataRoutes.get('/programs/with-aips', async (c) => {
   }
 });
 
+// GET Programs that have at least one PIR for the current user/school
+dataRoutes.get('/programs/with-pirs', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+
+    let pirs: any[];
+    if (tokenUser.role === 'School' && tokenUser.school_id) {
+      pirs = await prisma.pir.findMany({
+        where: { aip: { school_id: tokenUser.school_id, year } },
+        include: { aip: { include: { program: true } } }
+      });
+    } else {
+      pirs = await prisma.pir.findMany({
+        where: { aip: { created_by_user_id: tokenUser.id, school_id: null, year } },
+        include: { aip: { include: { program: true } } }
+      });
+    }
+
+    // Deduplicate by program title (a program may have PIRs across multiple quarters)
+    const seen = new Set<string>();
+    const programs = pirs
+      .map((pir: any) => pir.aip.program)
+      .filter((p: any) => {
+        if (seen.has(p.title)) return false;
+        seen.add(p.title);
+        return true;
+      })
+      .sort((a: any, b: any) => a.title.localeCompare(b.title));
+
+    return c.json(programs);
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to fetch programs with PIRs' }, 500);
+  }
+});
+
 // GET AIP status for a school
 dataRoutes.get('/schools/:id/aip-status', async (c) => {
   const school_id = parseInt(c.req.param('id'));
@@ -574,6 +613,208 @@ dataRoutes.post('/pirs', async (c) => {
   } catch (error) {
     console.error(error);
     return c.json({ error: 'Failed to create PIR' }, 500);
+  }
+});
+
+// ==========================================
+// DEADLINE HELPERS
+// ==========================================
+
+function getQuarterLabel(quarter: number, year: number): string {
+  const ordinals: Record<number, string> = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };
+  return `${ordinals[quarter]} Quarter CY ${year}`;
+}
+
+function buildDeadline(year: number, quarter: number, customDate?: Date): Date {
+  if (customDate) {
+    const d = new Date(customDate);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  const defaults: Record<number, Date> = {
+    1: new Date(year, 2,  31, 23, 59, 59, 999), // Mar 31
+    2: new Date(year, 5,  30, 23, 59, 59, 999), // Jun 30
+    3: new Date(year, 8,  30, 23, 59, 59, 999), // Sep 30
+    4: new Date(year, 11, 31, 23, 59, 59, 999), // Dec 31
+  };
+  return defaults[quarter];
+}
+
+// ==========================================
+// DASHBOARD
+// ==========================================
+
+// GET /api/dashboard — aggregated stats for the authenticated user
+dataRoutes.get('/dashboard', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const today = new Date();
+    const currentQuarter = Math.ceil((today.getMonth() + 1) / 3);
+
+    // Load any admin-set deadlines for this year
+    const customDeadlines = await prisma.deadline.findMany({ where: { year } });
+    const getDeadline = (q: number) =>
+      buildDeadline(year, q, customDeadlines.find(d => d.quarter === q)?.date);
+
+    // ── Active Programs ──────────────────────────────────
+    let activePrograms = 0;
+    if (tokenUser.role === 'Division Personnel') {
+      const user = await prisma.user.findUnique({
+        where: { id: tokenUser.id },
+        include: { programs: true }
+      });
+      activePrograms = user?.programs.length ?? 0;
+    } else if (tokenUser.school_id) {
+      const school = await prisma.school.findUnique({
+        where: { id: tokenUser.school_id },
+        select: { level: true }
+      });
+      const schoolLevel = school?.level ?? 'Both';
+      const levelFilter = schoolLevel === 'Both'
+        ? ['Elementary', 'Secondary', 'Both', 'Select Schools']
+        : [schoolLevel, 'Both', 'Select Schools'];
+      const restricted = await prisma.program.findMany({
+        where: { restricted_schools: { some: { id: tokenUser.school_id } } },
+        select: { id: true }
+      });
+      const restrictedIds = restricted.map(p => p.id);
+      activePrograms = await prisma.program.count({
+        where: {
+          id: { notIn: restrictedIds },
+          school_level_requirement: { in: levelFilter }
+        }
+      });
+    }
+
+    // ── AIP Completion ───────────────────────────────────
+    let aipCompleted = 0;
+    if (tokenUser.role === 'Division Personnel') {
+      aipCompleted = await prisma.aIP.count({
+        where: { created_by_user_id: tokenUser.id, school_id: null, year }
+      });
+    } else if (tokenUser.school_id) {
+      aipCompleted = await prisma.aIP.count({
+        where: { school_id: tokenUser.school_id, year }
+      });
+    }
+    const aipTotal = activePrograms;
+    const aipPercentage = aipTotal > 0 ? Math.round((aipCompleted / aipTotal) * 100) : 0;
+
+    // ── PIR Submitted (current quarter) ─────────────────
+    const userAIPs = await (prisma.aIP as any).findMany({
+      where: tokenUser.role === 'Division Personnel'
+        ? { created_by_user_id: tokenUser.id, school_id: null, year }
+        : { school_id: tokenUser.school_id, year },
+      select: { id: true }
+    });
+    const aipIds: number[] = userAIPs.map((a: any) => a.id);
+    const pirTotal = aipIds.length;
+
+    const currentQuarterLabel = getQuarterLabel(currentQuarter, year);
+    const pirSubmittedCount = aipIds.length > 0
+      ? await prisma.pir.count({
+          where: { aip_id: { in: aipIds }, quarter: currentQuarterLabel }
+        })
+      : 0;
+
+    // ── Quarters ─────────────────────────────────────────
+    const quarters = await Promise.all([1, 2, 3, 4].map(async (q) => {
+      const deadline = getDeadline(q);
+      const label = getQuarterLabel(q, year);
+      let status: string;
+
+      if (q > currentQuarter) {
+        status = 'Locked';
+      } else if (q === currentQuarter && today <= deadline) {
+        status = 'In Progress';
+      } else {
+        // Past quarter or deadline has passed — check for PIR submissions
+        const pirCount = aipIds.length > 0
+          ? await prisma.pir.count({ where: { aip_id: { in: aipIds }, quarter: label } })
+          : 0;
+        status = pirCount > 0 ? 'Submitted' : 'Missed';
+      }
+
+      return {
+        name: `Q${q}`,
+        status,
+        deadline: deadline.toISOString()
+      };
+    }));
+
+    const currentDeadline = getDeadline(currentQuarter);
+
+    return c.json({
+      activePrograms,
+      aipCompletion: { completed: aipCompleted, total: aipTotal, percentage: aipPercentage },
+      pirSubmitted: { submitted: pirSubmittedCount, total: pirTotal },
+      currentQuarter,
+      deadline: currentDeadline.toISOString(),
+      quarters
+    });
+  } catch (error) {
+    console.error('Dashboard error:', error);
+    return c.json({ error: 'Failed to fetch dashboard data' }, 500);
+  }
+});
+
+// ==========================================
+// DEADLINES
+// ==========================================
+
+// GET /api/deadlines?year=YYYY — returns all 4 quarters with custom or default dates
+dataRoutes.get('/deadlines', async (c) => {
+  try {
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const dbDeadlines = await prisma.deadline.findMany({ where: { year } });
+
+    const result = [1, 2, 3, 4].map(q => {
+      const custom = dbDeadlines.find(d => d.quarter === q);
+      return {
+        quarter: q,
+        date: buildDeadline(year, q, custom?.date).toISOString(),
+        isCustom: !!custom
+      };
+    });
+
+    return c.json(result);
+  } catch (error) {
+    console.error('Deadlines GET error:', error);
+    return c.json({ error: 'Failed to fetch deadlines' }, 500);
+  }
+});
+
+// POST /api/deadlines — upsert a deadline for a given year + quarter
+dataRoutes.post('/deadlines', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const { year, quarter, date } = await c.req.json();
+
+    if (!year || !quarter || !date) {
+      return c.json({ error: 'year, quarter, and date are required' }, 400);
+    }
+
+    const deadline = await prisma.deadline.upsert({
+      where: {
+        year_quarter: { year: parseInt(year), quarter: parseInt(quarter) }
+      },
+      update: { date: new Date(date) },
+      create: {
+        year: parseInt(year),
+        quarter: parseInt(quarter),
+        date: new Date(date)
+      }
+    });
+
+    return c.json(deadline);
+  } catch (error) {
+    console.error('Deadlines POST error:', error);
+    return c.json({ error: 'Failed to save deadline' }, 500);
   }
 });
 
