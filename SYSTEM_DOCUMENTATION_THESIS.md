@@ -111,22 +111,27 @@ erDiagram
         Int id PK
         Int school_id FK
         Int program_id FK
+        Int created_by_user_id FK
         Int year
+        String outcome
         String sip_title
         String project_coordinator
-        String objectives
+        Json objectives
+        Json indicators
     }
     AIPActivity {
         Int id PK
         Int aip_id FK
         String phase
         String activity_name
+        String implementation_period
         Decimal budget_amount
         String budget_source
     }
     PIR {
         Int id PK
         Int aip_id FK
+        Int created_by_user_id FK
         String quarter
         Decimal total_budget
     }
@@ -204,8 +209,9 @@ The system employs a strict RBAC model, delineating access into two primary user
 
 #### 4.2.2 The Division Personnel
 - **Identifier:** Personnel Name mapped to an official email.
-- **Authorization Boundary:** Division Personnel act as monitoring and evaluation officers. They do not generate raw school data; rather, they consume it. 
-- **Programmatic Scope:** Their access scope is bound by a many-to-many relationship to the `Program` entity. A Division Personnel member assigned to monitor "SPED" (Special Education) can query and aggregate data from *any* school, but *only* for SPED-related submissions. This implements "Need-to-Know" data compartmentalization.
+- **Authorization Boundary:** Division Personnel create and manage their own independent AIP and PIR documents at the Division level. Unlike School Users, they are not bound to a single `School` entity — their `school_id` is null. Document ownership is tracked via the `created_by_user_id` field on both `AIP` and `PIR`, ensuring a Division Personnel member can only read, update, or delete documents they themselves created.
+- **Programmatic Scope:** Their access scope is bound by a many-to-many relationship to the `Program` entity (via the `_UserPrograms` junction table). A Division Personnel member assigned to monitor "SPED" (Special Education) can only create or access AIPs/PIRs for SPED-related submissions. Programs classified as `"Elementary"` or `"Secondary"` school-level (e.g., ALS) are excluded from Division Personnel access. This implements "Need-to-Know" data compartmentalization.
+- **PIR Auto-Population:** When a Division Personnel member creates a PIR, the system automatically fetches the activity list from the linked AIP — including each activity's `implementation_period` — and pre-fills the PIR form with read-only activity records. This bridges the planning and evaluation cycle without requiring manual re-entry.
 
 ### 4.3 Client-Side Route Guards vs Server-Side Verification
 While the React application employs Route Guards (e.g., redirecting an unauthenticated user away from the `/dashboard` to `/login`), this is acknowledged primarily as a User Experience (UX) optimization, not an impenetrable security barrier (OWASP, 2021). The definitive source of truth and security lies in the Deno backend. Every protected API endpoint sequentially extracts the JWT from the `Authorization: Bearer` header, verifies its integrity, parses the claimant's explicit Role, and cross-references it against the specific resource (School/Program ID) being updated before committing any database transactions via Prisma.

@@ -67,9 +67,35 @@
 
 ---
 
+## 🧩 Division Personnel Implementation
+
+> Schema changes require `prisma migrate reset` (dev only — **destroys all local data**).
+
+### Database
+- [x] Add `created_by_user_id` to `AIP` model (FK to User)
+- [x] Add `created_by_user_id` to `PIR` model (FK to User)
+- [~] Run Prisma migration — **blocked:** requires `PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION` env var
+
+### Backend (`server/routes/data.ts`)
+- [x] Add `GET /api/aips/activities` endpoint for PIR pre-population
+- [x] Update `POST /api/pirs` to match activities by `aip_activity_id`
+- [ ] Implement access control helper — School Users: filter by `school_id`; Division Personnel: filter by `created_by_user_id`
+- [ ] Update `POST /api/aips` — set `created_by_user_id` from JWT, validate program access
+- [ ] Update `POST /api/pirs` — set `created_by_user_id` from JWT, validate AIP ownership
+- [ ] Update `GET /api/programs` — School Users get all; Division Personnel get only assigned programs
+
+### Frontend
+- [x] `PIRForm.jsx` — auto-fetch AIP activities, populate `implementation_period` as read-only
+- [x] `PIRDocument.jsx` — add Implementation Period column to print table
+- [ ] `AIPForm.jsx` — filter programs by user type; hide school selection for Division Personnel
+- [ ] `PIRForm.jsx` — filter programs by user type for Division Personnel
+
+---
+
 ## 📦 Release
 
-- [ ] Bump version to `1.0.1-beta` and update `version.js` changelog with `🔒 security` entries
+- [x] Bump version to `1.0.1-beta` — changelog updated in `version.js` with feature/improvement entries for this sprint
+- [ ] Bump to `1.0.2-beta` and add `🔒 security` entries once P0–P1 security fixes are complete
 
 ---
 
@@ -85,5 +111,5 @@
 
 ---
 
-*Last updated: 2026-03-15*
+*Last updated: 2026-03-15 (Division Personnel section added; version bumped to 1.0.1-beta)*
 *Security findings reference: `SECURITY_AUDIT.md`*
