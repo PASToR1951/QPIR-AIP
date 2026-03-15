@@ -14,6 +14,7 @@ import { ViewModeSelector } from './components/ui/ViewModeSelector';
 import { ConfirmationModal } from './components/ui/ConfirmationModal';
 import { DocumentPreviewModal } from './components/ui/DocumentPreviewModal';
 import { PIRDocument } from './components/docs/PIRDocument';
+import { AIPDocument } from './components/docs/AIPDocument';
 import { useAccessibility } from './context/AccessibilityContext';
 import WizardStepper from './components/ui/WizardStepper';
 import SectionHeader from './components/ui/SectionHeader';
@@ -40,7 +41,6 @@ export default function App() {
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
     const [isMobile, setIsMobile] = useState(false);
-    const [programList, setProgramList] = useState([]);
     const [programsWithAIPs, setProgramsWithAIPs] = useState([]);
     const [completedPrograms, setCompletedPrograms] = useState([]);
     // schoolList/schoolMap only used for Division Personnel (manual school input if ever needed; currently unused)
@@ -60,12 +60,10 @@ export default function App() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [programsRes, withAIPsRes, withPIRsRes] = await Promise.all([
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { headers: authHeaders }),
+                const [withAIPsRes, withPIRsRes] = await Promise.all([
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { headers: authHeaders }),
                 ]);
-                setProgramList(programsRes.data.map(p => p.title).sort());
                 setProgramsWithAIPs(withAIPsRes.data.map(p => p.title));
                 setCompletedPrograms(withPIRsRes.data.map(p => p.title));
 
@@ -89,6 +87,8 @@ export default function App() {
     const [isAddingActivity, setIsAddingActivity] = useState(false);
     const [activityToDelete, setActivityToDelete] = useState(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [isAIPPreviewOpen, setIsAIPPreviewOpen] = useState(false);
+    const [aipDocumentData, setAipDocumentData] = useState(null);
 
     // Save Status State
     const [isSaving, setIsSaving] = useState(false);
@@ -114,6 +114,9 @@ export default function App() {
     const [school, setSchool] = useState(user?.school_name || "");
     const [owner, setOwner] = useState("");
     const [fundSource, setFundSource] = useState("");
+    const [ownerLocked, setOwnerLocked] = useState(false);
+    const [budgetLocked, setBudgetLocked] = useState(false);
+    const [fundSourceLocked, setFundSourceLocked] = useState(false);
 
     const [rawBudget, setRawBudget] = useState("");
     const [isBudgetFocused, setIsBudgetFocused] = useState(false);
@@ -169,7 +172,7 @@ export default function App() {
         const fetchDraft = async () => {
             if (user?.id) {
                 try {
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/PIR/${user.id}`);
+                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/PIR/${user.id}`, { headers: authHeaders });
                     if (res.data.hasDraft) {
                         setDraftInfo({ lastSaved: res.data.lastSaved });
                         setHasDraft(true);
@@ -182,6 +185,14 @@ export default function App() {
         };
         fetchDraft();
     }, [user?.id]);
+
+    // Reset AIP-prefilled lock flags and cached AIP doc when program changes
+    useEffect(() => {
+        setOwnerLocked(false);
+        setBudgetLocked(false);
+        setFundSourceLocked(false);
+        setAipDocumentData(null);
+    }, [program]);
 
     // Auto-fetch AIP activities when program is selected (and school is available for School Users)
     useEffect(() => {
@@ -216,7 +227,12 @@ export default function App() {
                         finAcc: "",
                         actions: ""
                     })));
+                    // Budget and fund source are always locked from AIP when activities load
+                    if (!rawBudget) { setRawBudget(res.data.total_budget > 0 ? String(res.data.total_budget) : ""); setBudgetLocked(true); }
+                    if (!fundSource) { setFundSource(res.data.fund_source || ""); setFundSourceLocked(true); }
                 }
+                // Owner/Coordinator is locked from AIP if not already populated
+                if (!owner && res.data.project_coordinator) { setOwner(res.data.project_coordinator); setOwnerLocked(true); }
             } catch {
                 // No AIP found - keep manual entry mode
             } finally {
@@ -228,12 +244,33 @@ export default function App() {
     }, [program, school, schoolMap, quarterString]);
 
     // Called when the user picks program + mode in the splash
-    const handleStart = (mode, selectedProgram) => {
+    const handleStart = async (mode, selectedProgram) => {
         setProgram(selectedProgram);
+
+        if (mode === 'readonly') {
+            try {
+                const res = await axios.get(
+                    `${import.meta.env.VITE_API_URL}/api/pirs`,
+                    { params: { program_title: selectedProgram, quarter: quarterString }, headers: authHeaders }
+                );
+                const d = res.data;
+                setSchool(d.school || "");
+                setOwner(d.owner || "");
+                setRawBudget(String(d.budget || ""));
+                setFundSource(d.fundSource || "");
+                if (d.activities) setActivities(d.activities);
+                if (d.factors) setFactors(d.factors);
+            } catch (e) {
+                console.error("Failed to load submitted PIR:", e);
+                return; // stay on splash if fetch fails
+            }
+            setAppMode('readonly');
+            return;
+        }
+
         if (hasDraft && loadedDraftData) {
             try {
                 const draft = loadedDraftData;
-                // Don't restore program from draft — user already selected it
                 if (isDivisionPersonnel) setSchool(draft.school || "");
                 setOwner(draft.owner || "");
                 setFundSource(draft.fundSource || "");
@@ -271,20 +308,21 @@ export default function App() {
         navigate('/');
     };
 
-    const fillDevData = () => {
-        setProgram(programList[0] || "Alternative Learning System (ALS)");
-        if (isDivisionPersonnel) setSchool(""); // Division Personnel have no school
-        setOwner("Jane Doe");
-        setFundSource("MOOE");
-        setRawBudget("250000");
-        setActivities([
-            { id: crypto.randomUUID(), name: "Conduct Q1 Training", implementation_period: "January to March", aip_activity_id: null, fromAIP: false, physTarget: "50", finTarget: "125000", physAcc: "45", finAcc: "120000", actions: "Reschedule remaining participants to Q2" },
-            { id: crypto.randomUUID(), name: "Procure Learning Materials", implementation_period: "April", aip_activity_id: null, fromAIP: false, physTarget: "500", finTarget: "125000", physAcc: "500", finAcc: "125000", actions: "Completed successfully" }
-        ]);
-        const devFactors = { ...initialFactors };
-        devFactors["Technical"] = { facilitating: "Strong local internet connectivity", hindering: "Occasional power interruptions" };
-        devFactors["Institutional"] = { facilitating: "Supportive LGU", hindering: "" };
-        setFactors(devFactors);
+    const handleViewAIP = async () => {
+        if (!aipDocumentData) {
+            try {
+                const yearMatch = quarterString.match(/CY (\d{4})/);
+                const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips`, {
+                    params: { program_title: program, year },
+                    headers: authHeaders
+                });
+                setAipDocumentData(res.data);
+            } catch (e) {
+                console.error("Failed to load AIP for preview:", e);
+            }
+        }
+        setIsAIPPreviewOpen(true);
     };
 
     const handleSaveForLater = async () => {
@@ -450,6 +488,7 @@ export default function App() {
     // RENDER APPLICATION WITH TRANSITIONS
     // ==========================================
     return (
+        <div className="min-h-screen bg-slate-50">
         <AnimatePresence mode="wait">
             {appMode === 'splash' ? (
                 <motion.div key="splash" {...motionProps}>
@@ -467,6 +506,45 @@ export default function App() {
                         completedPrograms={completedPrograms}
                         theme="blue"
                     />
+                </motion.div>
+            ) : appMode === 'readonly' ? (
+                <motion.div key="readonly" {...motionProps}>
+                    <FormHeader title="Quarterly Performance Review" onBack={() => setAppMode('splash')} theme="blue" />
+                    <div className="bg-slate-50 min-h-screen font-sans print:bg-white">
+                        {/* Lock banner */}
+                        <div className="max-w-5xl mx-auto px-4 pt-8 pb-4 print:hidden">
+                            <div className="flex items-center gap-3 px-5 py-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 shrink-0">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                                <span className="text-sm font-bold text-emerald-800 flex-1">This form has been submitted and is read-only.</span>
+                                <button
+                                    onClick={() => window.print()}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+                                    </svg>
+                                    Print / Save PDF
+                                </button>
+                            </div>
+                        </div>
+                        {/* Document */}
+                        <div className="max-w-5xl mx-auto px-4 pb-12">
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 print:shadow-none print:border-none print:p-0 print:rounded-none">
+                                <PIRDocument
+                                    quarter={quarterString}
+                                    program={program}
+                                    school={school}
+                                    owner={owner}
+                                    budget={rawBudget}
+                                    fundSource={fundSource}
+                                    activities={activities}
+                                    factors={factors}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </motion.div>
             ) : (
                 <motion.div key="form" {...motionProps}>
@@ -501,6 +579,41 @@ export default function App() {
                     factors={factors}
                 />
             </DocumentPreviewModal>
+
+            <DocumentPreviewModal
+                isOpen={isAIPPreviewOpen}
+                onClose={() => setIsAIPPreviewOpen(false)}
+                title="Annual Implementation Plan"
+                subtitle={`AIP Reference — ${program}`}
+            >
+                {aipDocumentData && (
+                    <AIPDocument
+                        year={String(aipDocumentData.year)}
+                        outcome={aipDocumentData.outcome}
+                        depedProgram={aipDocumentData.depedProgram}
+                        sipTitle={aipDocumentData.sipTitle}
+                        projectCoord={aipDocumentData.projectCoord}
+                        objectives={aipDocumentData.objectives}
+                        indicators={aipDocumentData.indicators}
+                        activities={aipDocumentData.activities}
+                        preparedByName={aipDocumentData.preparedByName}
+                        preparedByTitle={aipDocumentData.preparedByTitle}
+                        approvedByName={aipDocumentData.approvedByName}
+                        approvedByTitle={aipDocumentData.approvedByTitle}
+                    />
+                )}
+            </DocumentPreviewModal>
+
+            {/* Floating AIP reference button */}
+            {program && (
+                <button
+                    onClick={handleViewAIP}
+                    className="fixed bottom-6 left-6 z-50 print:hidden flex items-center gap-2.5 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl font-bold text-sm transition-all active:scale-95"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    View AIP
+                </button>
+            )}
 
             <style>{`
                 @media print {
@@ -538,20 +651,6 @@ export default function App() {
                 )}
 
                 <div className="bg-white border border-slate-200 rounded-[2.5rem] p-6 md:p-12 shadow-xl relative">
-
-                    {/* View Mode & Dev Toggles (Desktop Only) */}
-                    {!isMobile && import.meta.env.DEV && (
-                        <div className="absolute top-6 right-8 z-20 flex items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={fillDevData}
-                                className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full shadow-sm transition-colors flex items-center gap-1.5"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                                Fill Dev Data
-                            </button>
-                        </div>
-                    )}
 
                     {/* FULL VIEW HEADER */}
                     {appMode === 'full' && (
@@ -593,7 +692,7 @@ export default function App() {
                             {/* -------------------------------------------------------- */}
                             {/* SECTION 1: PROFILE (Shared by both Wizard Step 1 and Full Form) */}
                             {/* -------------------------------------------------------- */}
-                            <PIRProfileSection 
+                            <PIRProfileSection
                                 appMode={appMode}
                                 currentStep={currentStep}
                                 program={program}
@@ -603,19 +702,22 @@ export default function App() {
                                 quarterString={quarterString}
                                 owner={owner}
                                 setOwner={setOwner}
+                                ownerLocked={ownerLocked}
                                 isBudgetFocused={isBudgetFocused}
                                 setIsBudgetFocused={setIsBudgetFocused}
                                 displayBudget={displayBudget}
                                 rawBudget={rawBudget}
                                 setRawBudget={setRawBudget}
+                                budgetLocked={budgetLocked}
                                 fundSource={fundSource}
                                 setFundSource={setFundSource}
+                                fundSourceLocked={fundSourceLocked}
                             />
 
                             {/* -------------------------------------------------------- */}
                             {/* SECTION 2: FINANCIAL INFORMATION (Wizard Step 2 Only) */}
                             {/* -------------------------------------------------------- */}
-                            <PIRFinancialsSection 
+                            <PIRFinancialsSection
                                 appMode={appMode}
                                 currentStep={currentStep}
                                 isBudgetFocused={isBudgetFocused}
@@ -623,8 +725,10 @@ export default function App() {
                                 displayBudget={displayBudget}
                                 rawBudget={rawBudget}
                                 setRawBudget={setRawBudget}
+                                budgetLocked={budgetLocked}
                                 fundSource={fundSource}
                                 setFundSource={setFundSource}
+                                fundSourceLocked={fundSourceLocked}
                             />
 
                             {/* -------------------------------------------------------- */}
@@ -772,6 +876,7 @@ export default function App() {
                 </motion.div>
             )}
         </AnimatePresence>
+        </div>
     );
 }
 
