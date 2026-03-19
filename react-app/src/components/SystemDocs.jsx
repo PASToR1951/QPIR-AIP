@@ -7,7 +7,7 @@ import rehypeSlug from 'rehype-slug';
 import GithubSlugger from 'github-slugger';
 import { ArrowLeft, BookOpen, Tag, List, X, Menu } from 'lucide-react';
 import { CURRENT_VERSION } from '../version';
-import docsContent from '../../../SYSTEM_DOCUMENTATION_THESIS.md?raw';
+import docsContent from '../../../docs/SYSTEM_DOCUMENTATION_THESIS.md?raw';
 import ERDDiagram from './ui/ERDDiagram';
 
 // Pre-parse the headings from the Markdown file to display in the Table of Contents
