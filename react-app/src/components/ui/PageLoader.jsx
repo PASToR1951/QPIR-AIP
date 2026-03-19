@@ -12,9 +12,15 @@ export const PageLoader = ({ message = "Loading..." }) => {
   const [currentLogoIndex, setCurrentLogoIndex] = useState(0);
 
   useEffect(() => {
+    // Preload images
+    logos.forEach(logo => {
+      const img = new Image();
+      img.src = logo.src;
+    });
+
     const interval = setInterval(() => {
       setCurrentLogoIndex((prev) => (prev + 1) % logos.length);
-    }, 1200); // Change logo every 1.2 seconds
+    }, 2500); // Change logo every 2.5 seconds
 
     return () => clearInterval(interval);
   }, []);
@@ -29,17 +35,17 @@ export const PageLoader = ({ message = "Loading..." }) => {
       <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-pink-400/20 rounded-full blur-[80px] pointer-events-none animate-pulse" style={{ animationDelay: '1s' }}></div>
 
       <div className="relative z-10 flex flex-col items-center">
-        <div className="h-32 flex items-center justify-center mb-8 relative">
-          <AnimatePresence mode="wait">
+        <div className="h-32 flex items-center justify-center mb-8 relative w-full">
+          <AnimatePresence>
             <motion.img
               key={currentLogoIndex}
               src={logos[currentLogoIndex].src}
               alt={logos[currentLogoIndex].alt}
-              className="h-24 w-auto drop-shadow-xl absolute"
-              initial={{ opacity: 0, scale: 0.8, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
+              className="h-24 w-auto drop-shadow-xl absolute object-contain"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
             />
           </AnimatePresence>
         </div>

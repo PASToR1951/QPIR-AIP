@@ -2,37 +2,37 @@ import React from 'react';
 import { cn } from './Input'; // Reuse utility
 import { Info } from 'lucide-react';
 
+// Theme variants mapping
+const THEME_CLASSES = {
+    emerald: {
+        labelFocus: "group-focus-within:text-emerald-600",
+        gradient: "from-emerald-200 to-teal-200",
+        select: "bg-white focus:border-transparent focus:ring-emerald-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
+        iconHover: "group-focus-within:text-emerald-500"
+    },
+    pink: {
+        labelFocus: "group-focus-within:text-pink-600",
+        gradient: "from-pink-200 to-rose-200",
+        select: "bg-white focus:border-transparent focus:ring-pink-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
+        iconHover: "group-focus-within:text-pink-500"
+    },
+    blue: {
+        labelFocus: "group-focus-within:text-blue-600",
+        gradient: null,
+        select: "bg-white focus:border-blue-400 focus:ring-blue-500/20 shadow-sm",
+        iconHover: "group-focus-within:text-blue-500"
+    },
+    default: {
+        labelFocus: "group-focus-within:text-slate-600",
+        gradient: null,
+        select: "bg-white focus:ring-slate-500/20",
+        iconHover: "group-focus-within:text-slate-500"
+    }
+};
+
 export const Select = React.forwardRef(({ label, options, className, theme = "default", helpText, ...props }, ref) => {
     
-    // Theme variants mapping
-    const themeClasses = {
-        emerald: {
-            labelFocus: "group-focus-within:text-emerald-600",
-            gradient: "from-emerald-200 to-teal-200",
-            select: "bg-white focus:border-transparent focus:ring-emerald-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
-            iconHover: "group-focus-within:text-emerald-500"
-        },
-        pink: {
-            labelFocus: "group-focus-within:text-pink-600",
-            gradient: "from-pink-200 to-rose-200",
-            select: "bg-white focus:border-transparent focus:ring-pink-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
-            iconHover: "group-focus-within:text-pink-500"
-        },
-        blue: {
-            labelFocus: "group-focus-within:text-blue-600",
-            gradient: null,
-            select: "bg-white focus:border-blue-400 focus:ring-blue-500/20 shadow-sm",
-            iconHover: "group-focus-within:text-blue-500"
-        },
-        default: {
-            labelFocus: "group-focus-within:text-slate-600",
-            gradient: null,
-            select: "bg-white focus:ring-slate-500/20",
-            iconHover: "group-focus-within:text-slate-500"
-        }
-    };
-
-    const currentTheme = themeClasses[theme] || themeClasses.default;
+    const currentTheme = THEME_CLASSES[theme] || THEME_CLASSES.default;
 
     return (
         <div className="flex flex-col gap-1.5 w-full relative group text-left">
