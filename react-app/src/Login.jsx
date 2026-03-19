@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import anime from 'animejs';
 import { AlertCircle, Loader2, ArrowRight, Eye, EyeOff, MapPin, Mail, Facebook, Phone } from 'lucide-react';
 import { Input } from './components/ui/Input';
 
@@ -17,40 +16,6 @@ export default function Login() {
   const cardRef = useRef(null);
   const orb1Ref = useRef(null);
   const orb2Ref = useRef(null);
-
-  useEffect(() => {
-    // 1. Entrance Animation for the Main Card (Slides up and fades in)
-    anime({
-      targets: cardRef.current,
-      translateY: [40, 0],
-      opacity: [0, 1],
-      duration: 1000,
-      easing: 'easeOutElastic(1, .8)'
-    });
-
-    // 2. Continuous Floating Animation for the Orbs
-    anime({
-      targets: orb1Ref.current,
-      translateY: [0, -30, 0],
-      translateX: [0, 20, 0],
-      scale: [1, 1.1, 1],
-      duration: 6000,
-      easing: 'easeInOutSine',
-      loop: true
-    });
-
-    anime({
-      targets: orb2Ref.current,
-      translateY: [0, 40, 0],
-      translateX: [0, -20, 0],
-      scale: [1, 1.2, 1],
-      duration: 7000,
-      easing: 'easeInOutSine',
-      loop: true,
-      delay: 1000
-    });
-
-  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -75,18 +40,11 @@ export default function Login() {
       // Redirect to dashboard/home based on role
       navigate('/');
     } catch (err) {
-      // Shake animation on error
-      anime({
-        targets: cardRef.current,
-        translateX: [
-          { value: -10, duration: 50 },
-          { value: 10, duration: 50 },
-          { value: -10, duration: 50 },
-          { value: 10, duration: 50 },
-          { value: 0, duration: 50 }
-        ],
-        easing: 'easeInOutQuad'
-      });
+      // Shake animation on error via CSS
+      if (cardRef.current) {
+        cardRef.current.classList.add('login-shake');
+        setTimeout(() => cardRef.current?.classList.remove('login-shake'), 300);
+      }
       setError(err.response?.data?.error || 'Failed to login. Please check your credentials.');
     } finally {
       setIsLoading(false);
@@ -105,12 +63,12 @@ export default function Login() {
       <div className="absolute inset-0 bg-slate-900/10 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-10"></div>
 
       {/* Glowing Orbs (Animated with Anime.js) */}
-      <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 rounded-full blur-[100px] pointer-events-none z-0"></div>
-      <div ref={orb2Ref} className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/30 rounded-full blur-[100px] pointer-events-none z-0"></div>
+      <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 rounded-full blur-3xl opacity-40 pointer-events-none z-0 login-orb-float-1"></div>
+      <div ref={orb2Ref} className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/30 rounded-full blur-3xl opacity-40 pointer-events-none z-0 login-orb-float-2"></div>
 
       {/* Main Content Area */}
       <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center flex-1 w-full py-8 md:py-12 md:pb-32">
-        <div ref={cardRef} className="bg-[#fafafa]/90 border border-slate-200 rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 backdrop-blur-md opacity-0">
+        <div ref={cardRef} className="bg-[#fafafa]/90 border border-slate-200 rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 backdrop-blur-md login-card-entrance">
 
           <div className="mb-8 flex justify-center items-center gap-6">
             <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-sm" />
@@ -199,18 +157,18 @@ export default function Login() {
             {/* 1. Logos */}
             <div className="flex items-center justify-center gap-3 md:gap-4 group/logos">
               <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-8 md:h-10 w-auto opacity-80 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300" />
+                <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-8 md:h-10 w-auto hover:opacity-100 transition-all duration-300" />
               </a>
               <div className="h-6 md:h-8 w-px bg-slate-300"></div>
               <div className="flex items-center gap-2 md:gap-3">
                 <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                  <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 md:h-10 w-auto drop-shadow-sm grayscale hover:grayscale-0 transition-all duration-300" />
+                  <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 md:h-10 w-auto drop-shadow-sm transition-all duration-300" />
                 </a>
                 <a href="https://depednir.net/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                  <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-8 md:h-10 w-auto drop-shadow-sm grayscale hover:grayscale-0 transition-all duration-300" />
+                  <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-8 md:h-10 w-auto drop-shadow-sm transition-all duration-300" />
                 </a>
                 <a href="https://depedguihulngan.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                  <img src="/Division_Logo.webp" alt="Division Logo" className="h-8 md:h-10 w-auto drop-shadow-sm grayscale hover:grayscale-0 transition-all duration-300" />
+                  <img src="/Division_Logo.webp" alt="Division Logo" className="h-8 md:h-10 w-auto drop-shadow-sm transition-all duration-300" />
                 </a>
               </div>
             </div>
@@ -229,11 +187,11 @@ export default function Login() {
 
             {/* 3. Social Media Pilled Buttons */}
             <div className="flex items-center justify-center gap-3">
-              <a href="mailto:guihulngan.city@deped.gov.ph" className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
+              <a href="mailto:guihulngan.city@deped.gov.ph" className="flex items-center gap-2 px-4 py-2 bg-pink-500 border border-pink-500 rounded-full text-[10px] font-bold text-white hover:bg-pink-600 hover:border-pink-600 transition-all shadow-sm">
                 <Mail size={14} />
                 <span className="hidden lg:inline">Email Us</span>
               </a>
-              <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-sm">
+              <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-blue-600 border border-blue-600 rounded-full text-[10px] font-bold text-white hover:bg-blue-700 hover:border-blue-700 transition-all shadow-sm">
                 <Facebook size={14} />
                 <span className="hidden lg:inline">Facebook</span>
               </a>
