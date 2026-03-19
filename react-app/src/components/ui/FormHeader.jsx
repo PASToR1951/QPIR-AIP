@@ -3,15 +3,20 @@ import { ArrowLeft, Save, Home, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ViewModeToggle } from './ViewModeToggle';
 
-export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, theme = "indigo", appMode, toggleAppMode }) => {
+export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, theme = "indigo", appMode, toggleAppMode }) => {
     const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
+    let user = null;
+    try {
+        user = userStr ? JSON.parse(userStr) : null;
+    } catch {
+        localStorage.removeItem('user');
+    }
 
-    const themeClasses = {
-        indigo: "text-indigo-600 bg-indigo-50 border-indigo-100",
-        emerald: "text-emerald-600 bg-emerald-50 border-emerald-100",
-        pink: "text-pink-600 bg-pink-50 border-pink-100",
-        blue: "text-blue-600 bg-blue-50 border-blue-100",
+    const pillClasses = {
+        indigo: "text-indigo-600 bg-indigo-50 border-indigo-200",
+        emerald: "text-emerald-600 bg-emerald-50 border-emerald-200",
+        pink: "text-pink-600 bg-pink-50 border-pink-200",
+        blue: "text-blue-600 bg-blue-50 border-blue-200",
     };
 
     const btnClasses = {
@@ -21,25 +26,36 @@ export const FormHeader = ({ title, onSave, onBack, onHome, isSaving, isSaved, l
         blue: "bg-blue-600 hover:bg-blue-700 shadow-blue-200",
     };
 
+    const formLabel = title?.includes('Annual') ? 'AIP' : title?.includes('Quarterly') ? 'PIR' : '';
+    const displayTitle = programName || title;
+    const schoolName = user?.school_name;
+
     return (
         <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm print:hidden">
             <div className="container mx-auto px-4 flex justify-between items-center h-16 max-w-6xl">
-                <div className="flex items-center gap-2 md:gap-4">
-                    <button 
+                <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                    <button
                         onClick={onBack}
-                        className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500 hover:text-slate-900"
+                        className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500 hover:text-slate-900 shrink-0"
                         title="Go Back"
                     >
                         <ArrowLeft size={20} strokeWidth={2.5} />
                     </button>
 
-                    <div className="flex flex-col">
-                        <h2 className="text-xs md:text-sm font-black text-slate-900 tracking-tight leading-none uppercase truncate max-w-[150px] md:max-w-none">{title}</h2>
-                        <div className="flex items-center gap-1.5 mt-1">
-                             <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border uppercase tracking-tighter truncate max-w-[120px] md:max-w-none ${themeClasses[theme]}`}>
-                                {user?.school_name || user?.name || 'User'}
-                             </span>
+                    <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-sm md:text-base font-black text-slate-900 tracking-tight leading-none truncate max-w-[160px] md:max-w-[300px] lg:max-w-none">{displayTitle}</h2>
+                            {formLabel && (
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wide shrink-0 ${pillClasses[theme]}`}>
+                                    {formLabel}
+                                </span>
+                            )}
                         </div>
+                        {schoolName && (
+                            <span className="text-[11px] md:text-xs font-bold text-slate-500 mt-0.5 truncate max-w-[160px] md:max-w-[300px] lg:max-w-none">
+                                {schoolName}
+                            </span>
+                        )}
                     </div>
                 </div>
 

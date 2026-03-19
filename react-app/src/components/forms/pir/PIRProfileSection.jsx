@@ -16,7 +16,7 @@ function LockedField({ label, value }) {
     );
 }
 
-export default function PIRProfileSection({
+export default React.memo(function PIRProfileSection({
     appMode,
     currentStep,
     program,
@@ -88,4 +88,4 @@ export default function PIRProfileSection({
             </div>
         </div>
     );
-}
+})

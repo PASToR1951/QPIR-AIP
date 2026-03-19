@@ -2,7 +2,7 @@ import React from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
 
-export default function PIRFactorsSection({
+export default React.memo(function PIRFactorsSection({
     appMode,
     currentStep,
     FACTOR_TYPES,
@@ -106,4 +106,4 @@ export default function PIRFactorsSection({
             )}
         </div>
     );
-}
+})
