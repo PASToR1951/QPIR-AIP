@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -16,6 +16,7 @@ import { DocumentPreviewModal } from './components/ui/DocumentPreviewModal';
 import { PIRDocument } from './components/docs/PIRDocument';
 import { AIPDocument } from './components/docs/AIPDocument';
 import { useAccessibility } from './context/AccessibilityContext';
+import { PageLoader } from './components/ui/PageLoader';
 import WizardStepper from './components/ui/WizardStepper';
 import SectionHeader from './components/ui/SectionHeader';
 import SignatureBlock from './components/ui/SignatureBlock';
@@ -29,14 +30,23 @@ import PIRFactorsSection from './components/forms/pir/PIRFactorsSection';
 export default function App() {
     const navigate = useNavigate();
     const { settings } = useAccessibility();
-    const motionProps = settings.reduceMotion
-        ? { initial: false, animate: false, exit: false, transition: { duration: 0 } }
-        : { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -20 }, transition: { duration: 0.15, ease: 'easeOut' } };
+    const motionProps = useMemo(() => (
+        settings.reduceMotion
+            ? { initial: false, animate: false, exit: false, transition: { duration: 0 } }
+            : { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -20 }, transition: { duration: 0.15, ease: 'easeOut' } }
+    ), [settings.reduceMotion]);
     const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
+    let user = null;
+    try {
+        user = userStr ? JSON.parse(userStr) : null;
+    } catch {
+        localStorage.removeItem('user');
+    }
     const token = localStorage.getItem('token');
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
     const isDivisionPersonnel = user?.role === 'Division Personnel';
+
+    const saveTimerRef = useRef(null);
 
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
@@ -56,27 +66,47 @@ export default function App() {
         return `4th Quarter CY ${year}`;
     });
 
-    // Fetch programs and programs-with-AIPs in parallel
+    // Quarter number (1-4) for activity filtering
+    const currentQuarterNum = (() => {
+        if (quarterString.startsWith('1st')) return 1;
+        if (quarterString.startsWith('2nd')) return 2;
+        if (quarterString.startsWith('3rd')) return 3;
+        return 4;
+    })();
+
+    // Fetch programs, PIR completion status, draft, and school map in parallel on mount
     useEffect(() => {
-        const fetchData = async () => {
+        const init = async () => {
             try {
-                const [withAIPsRes, withPIRsRes] = await Promise.all([
+                const requests = [
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { headers: authHeaders }),
-                ]);
-                setProgramsWithAIPs(withAIPsRes.data.map(p => p.title));
-                setCompletedPrograms(withPIRsRes.data.map(p => p.title));
-
-                // School Users: pre-build schoolMap so activity fetch works
+                ];
+                if (user?.id) {
+                    requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/PIR/${user.id}`, { headers: authHeaders }));
+                }
                 if (!isDivisionPersonnel && user?.school_id) {
-                    const schoolsRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools`);
-                    setSchoolMap(Object.fromEntries(schoolsRes.data.map(s => [s.name, s.id])));
+                    requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/schools`));
+                }
+                const results = await Promise.allSettled(requests);
+                const [withAIPsRes, withPIRsRes, draftRes, schoolsRes] = results;
+                if (withAIPsRes.status === 'fulfilled') setProgramsWithAIPs(withAIPsRes.value.data.map(p => p.title));
+                if (withPIRsRes.status === 'fulfilled') setCompletedPrograms(withPIRsRes.value.data.map(p => p.title));
+                if (draftRes?.status === 'fulfilled' && draftRes.value.data.hasDraft) {
+                    setDraftInfo({ lastSaved: draftRes.value.data.lastSaved });
+                    setHasDraft(true);
+                    setLoadedDraftData(draftRes.value.data.draftData);
+                }
+                if (schoolsRes?.status === 'fulfilled') {
+                    setSchoolMap(Object.fromEntries(schoolsRes.value.data.map(s => [s.name, s.id])));
                 }
             } catch (error) {
-                console.error("Failed to fetch data:", error);
+                console.error("Failed to initialise PIR:", error);
+            } finally {
+                setIsLoading(false);
             }
         };
-        fetchData();
+        init();
     }, []);
 
     // UI State
@@ -105,7 +135,7 @@ export default function App() {
         onConfirm: () => { }
     });
 
-    const closeModal = () => setModal(prev => ({ ...prev, isOpen: false }));
+    const closeModal = useCallback(() => setModal(prev => ({ ...prev, isOpen: false })), []);
 
     // Form State
     const [program, setProgram] = useState("");
@@ -166,25 +196,7 @@ export default function App() {
     const [hasDraft, setHasDraft] = useState(false);
     const [draftInfo, setDraftInfo] = useState(null);
     const [loadedDraftData, setLoadedDraftData] = useState(null);
-
-    // API - Check for Draft on mount
-    useEffect(() => {
-        const fetchDraft = async () => {
-            if (user?.id) {
-                try {
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/PIR/${user.id}`, { headers: authHeaders });
-                    if (res.data.hasDraft) {
-                        setDraftInfo({ lastSaved: res.data.lastSaved });
-                        setHasDraft(true);
-                        setLoadedDraftData(res.data.draftData);
-                    }
-                } catch (e) {
-                    console.error("Failed to read draft info:", e);
-                }
-            }
-        };
-        fetchDraft();
-    }, [user?.id]);
+    const [isLoading, setIsLoading] = useState(true);
 
     // Reset AIP-prefilled lock flags and cached AIP doc when program changes
     useEffect(() => {
@@ -215,7 +227,16 @@ export default function App() {
                 const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/activities`, { params });
                 const aipActivities = res.data.activities;
                 if (aipActivities && aipActivities.length > 0) {
-                    setActivities(aipActivities.map(a => ({
+                    // Filter to activities relevant to the current quarter
+                    const qStart = (currentQuarterNum - 1) * 3 + 1;
+                    const qEnd = currentQuarterNum * 3;
+                    const relevantActivities = aipActivities.filter(a =>
+                        a.period_start_month && a.period_end_month
+                            ? (a.period_start_month <= qEnd && a.period_end_month >= qStart)
+                            : true // Legacy data without structured months — show in all quarters
+                    );
+                    const activitiesToUse = relevantActivities.length > 0 ? relevantActivities : aipActivities;
+                    setActivities(activitiesToUse.map(a => ({
                         id: crypto.randomUUID(),
                         name: a.activity_name,
                         implementation_period: a.implementation_period,
@@ -241,7 +262,7 @@ export default function App() {
         };
 
         fetchAIPActivities();
-    }, [program, school, schoolMap, quarterString]);
+    }, [program, school, schoolMap, quarterString, isDivisionPersonnel]);
 
     // Called when the user picks program + mode in the splash
     const handleStart = async (mode, selectedProgram) => {
@@ -326,6 +347,7 @@ export default function App() {
     };
 
     const handleSaveForLater = async () => {
+        clearTimeout(saveTimerRef.current);
         setIsSaving(true);
         const draft = {
             program,
@@ -350,14 +372,17 @@ export default function App() {
             console.error("Failed to save draft:", e);
         }
 
-        setTimeout(() => {
+        saveTimerRef.current = setTimeout(() => {
             setIsSaving(false);
             setIsSaved(true);
             const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             setLastSavedTime(timeString);
-            setTimeout(() => setIsSaved(false), 3000);
+            saveTimerRef.current = setTimeout(() => setIsSaved(false), 3000);
         }, 800);
     };
+
+    // Clean up save timers on unmount
+    useEffect(() => () => clearTimeout(saveTimerRef.current), []);
 
     // Local Storage - Check for Draft on mount
     useEffect(() => {
@@ -373,54 +398,59 @@ export default function App() {
         }
     }, []);
 
-    const handleAddActivity = () => {
+    const handleAddActivity = useCallback(() => {
         const newId = crypto.randomUUID();
-        setActivities([...activities, { id: newId, name: "", implementation_period: "", aip_activity_id: null, fromAIP: false, physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }]);
+        setActivities(prev => [...prev, { id: newId, name: "", implementation_period: "", aip_activity_id: null, fromAIP: false, physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }]);
         setExpandedActivityId(newId);
 
         setIsAddingActivity(true);
         setTimeout(() => setIsAddingActivity(false), 1200);
-    };
+    }, []);
 
-    const executeDelete = (id) => {
-        const newActivities = activities.filter(a => a.id !== id);
-        setActivities(newActivities);
-        if (expandedActivityId === id && newActivities.length > 0) {
-            setExpandedActivityId(newActivities[newActivities.length - 1].id);
-        }
-        setActivityToDelete(null);
-    };
-
-    const handleRemoveActivity = (id) => {
-        const row = activities.find(a => a.id === id);
-        const hasData = [row.name, row.physTarget, row.finTarget, row.physAcc, row.finAcc, row.actions].some(val => String(val).trim() !== '');
-
-        if (hasData) {
-            setModal({
-                isOpen: true,
-                type: 'warning',
-                title: 'Delete Activity?',
-                message: 'This activity contains data. Are you sure you want to permanently remove it?',
-                confirmText: 'Yes, Delete',
-                onConfirm: () => executeDelete(id)
-            });
-        } else {
-            executeDelete(id);
-        }
-    };
-
-    const handleActivityChange = (id, field, value) => {
-        setActivities(activities.map(a => a.id === id ? { ...a, [field]: value } : a));
-    };
-
-    const handleFactorChange = (type, category, value) => {
-        setFactors({
-            ...factors,
-            [type]: { ...factors[type], [category]: value }
+    const executeDelete = useCallback((id) => {
+        setActivities(prev => {
+            const newActivities = prev.filter(a => a.id !== id);
+            setExpandedActivityId(curr => curr === id && newActivities.length > 0 ? newActivities[newActivities.length - 1].id : curr);
+            return newActivities;
         });
-    };
+        setActivityToDelete(null);
+    }, []);
 
-    const calculateGap = (targetStr, accStr) => {
+    const handleRemoveActivity = useCallback((id) => {
+        setActivities(prev => {
+            const row = prev.find(a => a.id === id);
+            const hasData = [row.name, row.physTarget, row.finTarget, row.physAcc, row.finAcc, row.actions].some(val => String(val).trim() !== '');
+
+            if (hasData) {
+                setModal({
+                    isOpen: true,
+                    type: 'warning',
+                    title: 'Delete Activity?',
+                    message: 'This activity contains data. Are you sure you want to permanently remove it?',
+                    confirmText: 'Yes, Delete',
+                    onConfirm: () => executeDelete(id)
+                });
+                return prev;
+            } else {
+                const newActivities = prev.filter(a => a.id !== id);
+                setExpandedActivityId(curr => curr === id && newActivities.length > 0 ? newActivities[newActivities.length - 1].id : curr);
+                return newActivities;
+            }
+        });
+    }, [executeDelete]);
+
+    const handleActivityChange = useCallback((id, field, value) => {
+        setActivities(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a));
+    }, []);
+
+    const handleFactorChange = useCallback((type, category, value) => {
+        setFactors(prev => ({
+            ...prev,
+            [type]: { ...prev[type], [category]: value }
+        }));
+    }, []);
+
+    const calculateGap = useCallback((targetStr, accStr) => {
         const target = parseFloat(targetStr) || 0;
         const acc = parseFloat(accStr) || 0;
         if (target > 0) {
@@ -428,10 +458,10 @@ export default function App() {
             return ((acc - target) / target) * 100;
         }
         return 0;
-    };
+    }, []);
 
-    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, totalSteps));
-    const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+    const nextStep = useCallback(() => setCurrentStep(prev => Math.min(prev + 1, totalSteps)), []);
+    const prevStep = useCallback(() => setCurrentStep(prev => Math.max(prev - 1, 1)), []);
 
     const editSection = (stepNumber) => {
         if (appMode === 'full') return;
@@ -487,6 +517,8 @@ export default function App() {
     // ==========================================
     // RENDER APPLICATION WITH TRANSITIONS
     // ==========================================
+    if (isLoading) return <PageLoader message="Loading PIR..." />;
+
     return (
         <div className="min-h-screen bg-slate-50">
         <AnimatePresence mode="wait">
@@ -494,6 +526,7 @@ export default function App() {
                 <motion.div key="splash" {...motionProps}>
                     <FormHeader
                         title="Quarterly Performance Review"
+                        programName={program}
                         onBack={handleBack}
                         theme="blue"
                     />
@@ -509,7 +542,7 @@ export default function App() {
                 </motion.div>
             ) : appMode === 'readonly' ? (
                 <motion.div key="readonly" {...motionProps}>
-                    <FormHeader title="Quarterly Performance Review" onBack={() => setAppMode('splash')} theme="blue" />
+                    <FormHeader title="Quarterly Performance Review" programName={program} onBack={() => setAppMode('splash')} theme="blue" />
                     <div className="bg-slate-50 min-h-screen font-sans print:bg-white">
                         {/* Lock banner */}
                         <div className="max-w-5xl mx-auto px-4 pt-8 pb-4 print:hidden">
@@ -551,6 +584,7 @@ export default function App() {
                     <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative print:py-0 print:bg-white print:text-black">
             <FormHeader
                 title="Quarterly Performance Review"
+                programName={program}
                 onSave={handleSaveForLater}
                 onBack={handleBack}
                 onHome={handleHome}

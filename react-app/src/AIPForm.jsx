@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
 
 import { Input } from './components/ui/Input';
 import { Select } from './components/ui/Select';
@@ -14,6 +13,7 @@ import { ConfirmationModal } from './components/ui/ConfirmationModal';
 import { DocumentPreviewModal } from './components/ui/DocumentPreviewModal';
 import { AIPDocument } from './components/docs/AIPDocument';
 import { useAccessibility } from './context/AccessibilityContext';
+import { PageLoader } from './components/ui/PageLoader';
 import WizardStepper from './components/ui/WizardStepper';
 import SectionHeader from './components/ui/SectionHeader';
 import SignatureBlock from './components/ui/SignatureBlock';
@@ -26,14 +26,23 @@ import AIPActionPlanSection from './components/forms/aip/AIPActionPlanSection';
 export default function App() {
     const navigate = useNavigate();
     const { settings } = useAccessibility();
-    const motionProps = settings.reduceMotion
-        ? { initial: false, animate: false, exit: false, transition: { duration: 0 } }
-        : { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -20 }, transition: { duration: 0.15, ease: 'easeOut' } };
+    const motionProps = useMemo(() => (
+        settings.reduceMotion
+            ? { initial: false, animate: false, exit: false, transition: { duration: 0 } }
+            : { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -20 }, transition: { duration: 0.15, ease: 'easeOut' } }
+    ), [settings.reduceMotion]);
     const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
+    let user = null;
+    try {
+        user = userStr ? JSON.parse(userStr) : null;
+    } catch {
+        localStorage.removeItem('user');
+    }
     const token = localStorage.getItem('token');
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
     const isDivisionPersonnel = user?.role === 'Division Personnel';
+
+    const saveTimerRef = useRef(null);
 
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
@@ -65,7 +74,7 @@ export default function App() {
         onConfirm: () => { }
     });
 
-    const closeModal = () => setModal(prev => ({ ...prev, isOpen: false }));
+    const closeModal = useCallback(() => setModal(prev => ({ ...prev, isOpen: false })), []);
 
     // Form State: Profile & Goals
     const [outcome, setOutcome] = useState("");
@@ -84,52 +93,46 @@ export default function App() {
 
     // Form State: Activities
     const [activities, setActivities] = useState([
-        { id: crypto.randomUUID(), phase: "Planning", name: "", period: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" },
-        { id: crypto.randomUUID(), phase: "Implementation", name: "", period: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" },
-        { id: crypto.randomUUID(), phase: "Monitoring and Evaluation", name: "", period: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }
+        { id: crypto.randomUUID(), phase: "Planning", name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" },
+        { id: crypto.randomUUID(), phase: "Implementation", name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" },
+        { id: crypto.randomUUID(), phase: "Monitoring and Evaluation", name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }
     ]);
 
     // Draft State Tracking for ViewModeSelector
     const [hasDraft, setHasDraft] = useState(false);
     const [draftInfo, setDraftInfo] = useState(null);
-
-    // Fetch programs and completed (submitted) programs in parallel
-    useEffect(() => {
-        const fetchPrograms = async () => {
-            try {
-                const [programsRes, completedRes] = await Promise.all([
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { headers: authHeaders }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
-                ]);
-                setProgramList(programsRes.data.map(p => p.title).sort());
-                setCompletedPrograms(completedRes.data.map(p => p.title));
-            } catch (error) {
-                console.error("Failed to fetch programs:", error);
-            }
-        };
-        fetchPrograms();
-    }, []);
+    const [isLoading, setIsLoading] = useState(true);
 
     const [loadedDraftData, setLoadedDraftData] = useState(null);
 
-    // API - Check for Draft on mount
+    // Fetch programs, completed programs, and draft in parallel on mount
     useEffect(() => {
-        const fetchDraft = async () => {
-            if (user?.id) {
-                try {
-                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`, { headers: authHeaders });
-                    if (res.data.hasDraft) {
-                        setDraftInfo({ lastSaved: res.data.lastSaved });
-                        setHasDraft(true);
-                        setLoadedDraftData(res.data.draftData);
-                    }
-                } catch (e) {
-                    console.error("Failed to read draft info:", e);
+        const init = async () => {
+            try {
+                const requests = [
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { headers: authHeaders }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
+                ];
+                if (user?.id) {
+                    requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`, { headers: authHeaders }));
                 }
+                const results = await Promise.allSettled(requests);
+                const [programsRes, completedRes, draftRes] = results;
+                if (programsRes.status === 'fulfilled') setProgramList(programsRes.value.data.map(p => p.title).sort());
+                if (completedRes.status === 'fulfilled') setCompletedPrograms(completedRes.value.data.map(p => p.title));
+                if (draftRes?.status === 'fulfilled' && draftRes.value.data.hasDraft) {
+                    setDraftInfo({ lastSaved: draftRes.value.data.lastSaved });
+                    setHasDraft(true);
+                    setLoadedDraftData(draftRes.value.data.draftData);
+                }
+            } catch (error) {
+                console.error("Failed to initialise AIP:", error);
+            } finally {
+                setIsLoading(false);
             }
         };
-        fetchDraft();
-    }, [user?.id]);
+        init();
+    }, []);
 
     // Called when the user picks program + mode in the splash
     const handleStart = async (mode, selectedProgram) => {
@@ -184,18 +187,18 @@ export default function App() {
     };
 
     // Objective handlers
-    const handleObjectiveChange = (index, value) => {
+    const handleObjectiveChange = useCallback((index, value) => {
         setObjectives(prev => prev.map((obj, i) => i === index ? value : obj));
-    };
-    const addObjective = () => setObjectives(prev => [...prev, ""]);
-    const removeObjective = (index) => setObjectives(prev => prev.filter((_, i) => i !== index));
+    }, []);
+    const addObjective = useCallback(() => setObjectives(prev => [...prev, ""]), []);
+    const removeObjective = useCallback((index) => setObjectives(prev => prev.filter((_, i) => i !== index)), []);
 
     // Indicator handlers
-    const handleIndicatorChange = (index, field, value) => {
+    const handleIndicatorChange = useCallback((index, field, value) => {
         setIndicators(prev => prev.map((ind, i) => i === index ? { ...ind, [field]: value } : ind));
-    };
-    const addIndicator = () => setIndicators(prev => [...prev, { description: "", target: "" }]);
-    const removeIndicator = (index) => setIndicators(prev => prev.filter((_, i) => i !== index));
+    }, []);
+    const addIndicator = useCallback(() => setIndicators(prev => [...prev, { description: "", target: "" }]), []);
+    const removeIndicator = useCallback((index) => setIndicators(prev => prev.filter((_, i) => i !== index)), []);
 
     const hasInputtedData = () => {
         return outcome || depedProgram || sipTitle || projectCoord ||
@@ -223,6 +226,7 @@ export default function App() {
     };
 
     const handleSaveForLater = async () => {
+        clearTimeout(saveTimerRef.current);
         setIsSaving(true);
         const draft = {
             outcome,
@@ -252,14 +256,17 @@ export default function App() {
             console.error("Failed to save draft:", e);
         }
 
-        setTimeout(() => {
+        saveTimerRef.current = setTimeout(() => {
             setIsSaving(false);
             setIsSaved(true);
             const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             setLastSavedTime(timeString);
-            setTimeout(() => setIsSaved(false), 3000);
+            saveTimerRef.current = setTimeout(() => setIsSaved(false), 3000);
         }, 800);
     };
+
+    // Clean up save timers on unmount
+    useEffect(() => () => clearTimeout(saveTimerRef.current), []);
 
     const [expandedActivityId, setExpandedActivityId] = useState(activities[0]?.id ?? null);
 
@@ -284,53 +291,80 @@ export default function App() {
     };
 
     // Handlers
-    const handleAddActivity = () => {
-        // Defaults to the last phase created
-        const lastPhase = activities.length > 0 ? activities[activities.length - 1].phase : "Planning";
-        handleAddActivityPhase(lastPhase);
-    };
-
-    const handleAddActivityPhase = (targetPhase) => {
+    const handleAddActivity = useCallback(() => {
         const newId = crypto.randomUUID();
-        setActivities([...activities, { id: newId, phase: targetPhase, name: "", period: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }]);
+        setActivities(prev => {
+            const lastPhase = prev.length > 0 ? prev[prev.length - 1].phase : "Planning";
+            return [...prev, { id: newId, phase: lastPhase, name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }];
+        });
+        setExpandedActivityId(newId);
+        setIsAddingActivity(true);
+        setTimeout(() => setIsAddingActivity(false), 1200);
+    }, []);
+
+    const handleAddActivityPhase = useCallback((targetPhase) => {
+        const newId = crypto.randomUUID();
+        setActivities(prev => [...prev, { id: newId, phase: targetPhase, name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }]);
         setExpandedActivityId(newId);
 
         setIsAddingActivity(true);
         setTimeout(() => setIsAddingActivity(false), 1200);
-    };
+    }, []);
 
-    const executeDelete = (id) => {
-        const newActivities = activities.filter(a => a.id !== id);
-        setActivities(newActivities);
-        if (expandedActivityId === id && newActivities.length > 0) {
-            setExpandedActivityId(newActivities[newActivities.length - 1].id);
-        }
+    const executeDelete = useCallback((id) => {
+        setActivities(prev => {
+            const newActivities = prev.filter(a => a.id !== id);
+            setExpandedActivityId(curr => curr === id && newActivities.length > 0 ? newActivities[newActivities.length - 1].id : curr);
+            return newActivities;
+        });
         setActivityToDelete(null);
-    };
+    }, []);
 
-    const handleRemoveActivity = (id) => {
-        const row = activities.find(a => a.id === id);
-        const hasData = [row.name, row.period, row.persons, row.outputs, row.budgetAmount, row.budgetSource].some(val => String(val).trim() !== '');
+    const handleRemoveActivity = useCallback((id) => {
+        setActivities(prev => {
+            const row = prev.find(a => a.id === id);
+            const hasData = [row.name, row.period, row.persons, row.outputs, row.budgetAmount, row.budgetSource].some(val => String(val).trim() !== '');
 
-        if (hasData) {
-            setModal({
-                isOpen: true,
-                type: 'warning',
-                title: 'Delete Activity?',
-                message: 'This activity contains data. Are you sure you want to permanently remove it?',
-                confirmText: 'Yes, Delete',
-                onConfirm: () => executeDelete(id)
-            });
-        } else {
-            executeDelete(id);
-        }
+            if (hasData) {
+                setModal({
+                    isOpen: true,
+                    type: 'warning',
+                    title: 'Delete Activity?',
+                    message: 'This activity contains data. Are you sure you want to permanently remove it?',
+                    confirmText: 'Yes, Delete',
+                    onConfirm: () => executeDelete(id)
+                });
+                return prev; // Don't modify activities yet
+            } else {
+                const newActivities = prev.filter(a => a.id !== id);
+                setExpandedActivityId(curr => curr === id && newActivities.length > 0 ? newActivities[newActivities.length - 1].id : curr);
+                return newActivities;
+            }
+        });
+    }, [executeDelete]);
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const derivePeriodLabel = (startMonth, endMonth) => {
+        if (!startMonth || !endMonth) return '';
+        const s = parseInt(startMonth), e = parseInt(endMonth);
+        if (isNaN(s) || isNaN(e)) return '';
+        return s === e ? MONTH_NAMES[s - 1] : `${MONTH_NAMES[s - 1]} to ${MONTH_NAMES[e - 1]}`;
     };
-    const handleActivityChange = (id, field, value) => {
-        setActivities(activities.map(a => a.id === id ? { ...a, [field]: value } : a));
-    };
+    const handleActivityChange = useCallback((id, field, value) => {
+        setActivities(prev => prev.map(a => {
+            if (a.id !== id) return a;
+            const updated = { ...a, [field]: value };
+            // Auto-derive period display when month fields change
+            if (field === 'periodStartMonth' || field === 'periodEndMonth') {
+                const s = field === 'periodStartMonth' ? value : updated.periodStartMonth;
+                const e = field === 'periodEndMonth' ? value : updated.periodEndMonth;
+                updated.period = derivePeriodLabel(s, e);
+            }
+            return updated;
+        }));
+    }, []);
 
-    const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, totalSteps));
-    const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+    const nextStep = useCallback(() => setCurrentStep(prev => Math.min(prev + 1, totalSteps)), []);
+    const prevStep = useCallback(() => setCurrentStep(prev => Math.max(prev - 1, 1)), []);
 
     const editSection = (stepNumber) => {
         if (appMode === 'full') return;
@@ -391,6 +425,8 @@ export default function App() {
     // ==========================================
     // RENDER APPLICATION WITH TRANSITIONS
     // ==========================================
+    if (isLoading) return <PageLoader message="Loading AIP..." />;
+
     return (
         <div className="min-h-screen bg-slate-50">
         <AnimatePresence mode="wait">
@@ -398,6 +434,7 @@ export default function App() {
                 <motion.div key="splash" {...motionProps}>
                     <FormHeader
                         title="Annual Implementation Plan"
+                        programName={depedProgram}
                         onBack={handleBack}
                         theme="pink"
                     />
@@ -413,7 +450,7 @@ export default function App() {
                 </motion.div>
             ) : appMode === 'readonly' ? (
                 <motion.div key="readonly" {...motionProps}>
-                    <FormHeader title="Annual Implementation Plan" onBack={() => setAppMode('splash')} theme="pink" />
+                    <FormHeader title="Annual Implementation Plan" programName={depedProgram} onBack={() => setAppMode('splash')} theme="pink" />
                     <div className="bg-slate-50 min-h-screen font-sans print:bg-white">
                         {/* Lock banner */}
                         <div className="max-w-5xl mx-auto px-4 pt-8 pb-4 print:hidden">
@@ -459,6 +496,7 @@ export default function App() {
                     <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative print:py-0 print:bg-white print:text-black">
             <FormHeader
                 title="Annual Implementation Plan"
+                programName={depedProgram}
                 onSave={handleSaveForLater}
                 onBack={handleBack}
                 onHome={handleHome}

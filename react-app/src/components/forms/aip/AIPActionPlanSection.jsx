@@ -4,7 +4,47 @@ import { TextareaAuto } from '../../ui/TextareaAuto';
 
 export const AIP_PHASES = ["Planning", "Implementation", "Monitoring and Evaluation"];
 
-export default function AIPActionPlanSection({
+const MONTHS = [
+    { value: 1, label: 'Jan' }, { value: 2, label: 'Feb' }, { value: 3, label: 'Mar' },
+    { value: 4, label: 'Apr' }, { value: 5, label: 'May' }, { value: 6, label: 'Jun' },
+    { value: 7, label: 'Jul' }, { value: 8, label: 'Aug' }, { value: 9, label: 'Sep' },
+    { value: 10, label: 'Oct' }, { value: 11, label: 'Nov' }, { value: 12, label: 'Dec' },
+];
+
+function MonthRangePicker({ startMonth, endMonth, onStartChange, onEndChange, compact }) {
+    const selectClass = compact
+        ? "w-full bg-transparent text-center outline-none text-sm font-medium text-slate-700 focus:bg-white border border-transparent focus:border-slate-300 rounded p-1 appearance-none cursor-pointer"
+        : "w-full bg-white border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800 appearance-none cursor-pointer";
+    return (
+        <div className={compact ? "flex items-center gap-1" : "flex items-center gap-2"}>
+            <select
+                value={startMonth || ''}
+                onChange={(e) => {
+                    const v = e.target.value ? parseInt(e.target.value) : '';
+                    onStartChange(v);
+                    if (v && endMonth && parseInt(endMonth) < v) onEndChange(v);
+                }}
+                className={selectClass}
+            >
+                <option value="">Start</option>
+                {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+            <span className="text-slate-300 text-xs shrink-0">to</span>
+            <select
+                value={endMonth || ''}
+                onChange={(e) => onEndChange(e.target.value ? parseInt(e.target.value) : '')}
+                className={selectClass}
+            >
+                <option value="">End</option>
+                {MONTHS.filter(m => !startMonth || m.value >= parseInt(startMonth)).map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
+            </select>
+        </div>
+    );
+}
+
+export default React.memo(function AIPActionPlanSection({
     appMode,
     currentStep,
     activities,
@@ -68,7 +108,12 @@ export default function AIPActionPlanSection({
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
                                                         <div>
                                                             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Implementation Period</label>
-                                                            <TextareaAuto placeholder="e.g. Jan-Mar" className="w-full bg-white border border-slate-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800" value={act.period} onChange={(e) => handleActivityChange(act.id, 'period', e.target.value)} />
+                                                            <MonthRangePicker
+                                                                startMonth={act.periodStartMonth}
+                                                                endMonth={act.periodEndMonth}
+                                                                onStartChange={(v) => handleActivityChange(act.id, 'periodStartMonth', v)}
+                                                                onEndChange={(v) => handleActivityChange(act.id, 'periodEndMonth', v)}
+                                                            />
                                                         </div>
                                                         <div>
                                                             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Persons Involved</label>
@@ -147,7 +192,13 @@ export default function AIPActionPlanSection({
                                                         </div>
                                                     </td>
                                                     <td className="border-r border-slate-200 p-2 align-top">
-                                                        <TextareaAuto placeholder="e.g. Jan-Mar" className="font-medium text-slate-700 w-full bg-transparent p-1 text-center focus:bg-white border border-transparent focus:border-slate-300 rounded" value={act.period} onChange={(e) => handleActivityChange(act.id, 'period', e.target.value)} />
+                                                        <MonthRangePicker
+                                                            startMonth={act.periodStartMonth}
+                                                            endMonth={act.periodEndMonth}
+                                                            onStartChange={(v) => handleActivityChange(act.id, 'periodStartMonth', v)}
+                                                            onEndChange={(v) => handleActivityChange(act.id, 'periodEndMonth', v)}
+                                                            compact
+                                                        />
                                                     </td>
                                                     <td className="border-r border-slate-200 p-2 align-top">
                                                         <TextareaAuto placeholder="e.g. Teachers" className="font-medium text-slate-700 w-full bg-transparent p-1 text-center focus:bg-white border border-transparent focus:border-slate-300 rounded" value={act.persons} onChange={(e) => handleActivityChange(act.id, 'persons', e.target.value)} />
@@ -190,4 +241,4 @@ export default function AIPActionPlanSection({
             )}
         </>
     );
-}
+});
