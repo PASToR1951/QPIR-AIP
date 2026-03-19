@@ -2,7 +2,7 @@ import React from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
 
-export default function PIRMonitoringEvaluationSection({
+export default React.memo(function PIRMonitoringEvaluationSection({
     appMode,
     currentStep,
     isLoadingActivities,
@@ -355,4 +355,4 @@ export default function PIRMonitoringEvaluationSection({
             )}
         </div>
     );
-}
+});
