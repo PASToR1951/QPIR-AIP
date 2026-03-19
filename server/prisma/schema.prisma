@@ -121,6 +121,8 @@ model AIPActivity {
   phase                 String   // "Planning", "Implementation", "Monitoring and Evaluation"
   activity_name         String
   implementation_period String
+  period_start_month    Int?     // 1=Jan … 12=Dec — nullable for legacy data
+  period_end_month      Int?     // 1=Jan … 12=Dec
   persons_involved      String
   outputs               String
   budget_amount         Decimal  @default(0.0)
