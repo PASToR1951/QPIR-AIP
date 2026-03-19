@@ -439,6 +439,8 @@ dataRoutes.get('/aips/activities', async (c) => {
         id: a.id,
         activity_name: a.activity_name,
         implementation_period: a.implementation_period,
+        period_start_month: a.period_start_month,
+        period_end_month: a.period_end_month,
         phase: a.phase,
         budget_amount: a.budget_amount
       }))
@@ -495,6 +497,8 @@ dataRoutes.get('/aips', async (c) => {
         phase: a.phase,
         name: a.activity_name,
         period: a.implementation_period,
+        periodStartMonth: a.period_start_month,
+        periodEndMonth: a.period_end_month,
         persons: a.persons_involved,
         outputs: a.outputs,
         budgetAmount: a.budget_amount,
@@ -574,6 +578,8 @@ dataRoutes.get('/pirs', async (c) => {
         id: r.id,
         name: r.aip_activity.activity_name,
         implementation_period: r.aip_activity.implementation_period,
+        period_start_month: r.aip_activity.period_start_month,
+        period_end_month: r.aip_activity.period_end_month,
         physTarget: r.physical_target,
         finTarget: r.financial_target,
         physAcc: r.physical_accomplished,
@@ -656,6 +662,8 @@ dataRoutes.post('/aips', async (c) => {
             phase: act.phase,
             activity_name: act.name,
             implementation_period: act.period,
+            period_start_month: act.periodStartMonth ? parseInt(act.periodStartMonth) : null,
+            period_end_month: act.periodEndMonth ? parseInt(act.periodEndMonth) : null,
             persons_involved: act.persons,
             outputs: act.outputs,
             budget_amount: parseFloat(act.budgetAmount || 0),
@@ -782,8 +790,14 @@ dataRoutes.post('/pirs', async (c) => {
 });
 
 // ==========================================
-// DEADLINE HELPERS
+// QUARTER / DEADLINE HELPERS
 // ==========================================
+
+function activityOverlapsQuarter(startMonth: number, endMonth: number, quarter: number): boolean {
+  const qStart = (quarter - 1) * 3 + 1; // Q1=1, Q2=4, Q3=7, Q4=10
+  const qEnd = quarter * 3;              // Q1=3, Q2=6, Q3=9, Q4=12
+  return startMonth <= qEnd && endMonth >= qStart;
+}
 
 function getQuarterLabel(quarter: number, year: number): string {
   const ordinals: Record<number, string> = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };
@@ -868,45 +882,82 @@ dataRoutes.get('/dashboard', async (c) => {
     const aipTotal = activePrograms;
     const aipPercentage = aipTotal > 0 ? Math.round((aipCompleted / aipTotal) * 100) : 0;
 
-    // ── PIR Submitted (current quarter) ─────────────────
-    const userAIPs = await (prisma.aIP as any).findMany({
+    // ── PIR Submitted (timeline-aware) ──────────────────
+    const userAIPsWithActivities = await (prisma.aIP as any).findMany({
       where: tokenUser.role === 'Division Personnel'
         ? { created_by_user_id: tokenUser.id, school_id: null, year }
         : { school_id: tokenUser.school_id, year },
-      select: { id: true }
+      select: {
+        id: true,
+        activities: { select: { period_start_month: true, period_end_month: true, budget_amount: true } }
+      }
     });
-    const aipIds: number[] = userAIPs.map((a: any) => a.id);
-    const pirTotal = aipIds.length;
+    const allAipIds: number[] = userAIPsWithActivities.map((a: any) => a.id);
+
+    // Helper: check if an AIP has activities in a given quarter
+    const aipHasActivitiesInQuarter = (aip: any, q: number) =>
+      aip.activities.some((a: any) =>
+        a.period_start_month && a.period_end_month
+          ? activityOverlapsQuarter(a.period_start_month, a.period_end_month, q)
+          : true // Legacy data without structured months — assume relevant
+      );
+
+    // Current quarter: only count AIPs with activities this quarter
+    const aipsRelevantThisQuarter = userAIPsWithActivities.filter(
+      (aip: any) => aipHasActivitiesInQuarter(aip, currentQuarter)
+    );
+    const pirTotal = aipsRelevantThisQuarter.length;
+    const relevantAipIds: number[] = aipsRelevantThisQuarter.map((a: any) => a.id);
 
     const currentQuarterLabel = getQuarterLabel(currentQuarter, year);
-    const pirSubmittedCount = aipIds.length > 0
+    const pirSubmittedCount = relevantAipIds.length > 0
       ? await prisma.pIR.count({
-          where: { aip_id: { in: aipIds }, quarter: currentQuarterLabel }
+          where: { aip_id: { in: relevantAipIds }, quarter: currentQuarterLabel }
         })
       : 0;
 
-    // ── Quarters ─────────────────────────────────────────
+    // ── Total Planned Budget ──────────────────────────────
+    const totalPlannedBudget = userAIPsWithActivities.reduce((sum: number, aip: any) =>
+      sum + aip.activities.reduce((s: number, a: any) => s + (parseFloat(a.budget_amount) || 0), 0)
+    , 0);
+
+    // ── Quarters (timeline-aware) ─────────────────────────
     const quarters = await Promise.all([1, 2, 3, 4].map(async (q) => {
       const deadline = getDeadline(q);
       const label = getQuarterLabel(q, year);
-      let status: string;
 
-      if (q > currentQuarter) {
+      // Check if any AIPs have activities in this quarter
+      const hasActivities = userAIPsWithActivities.some(
+        (aip: any) => aipHasActivitiesInQuarter(aip, q)
+      );
+
+      // Count relevant AIPs and submitted PIRs for this quarter
+      const relevantIds = userAIPsWithActivities
+        .filter((aip: any) => aipHasActivitiesInQuarter(aip, q))
+        .map((a: any) => a.id);
+      const qTotal = relevantIds.length;
+      const qSubmitted = qTotal > 0
+        ? await prisma.pIR.count({ where: { aip_id: { in: relevantIds }, quarter: label } })
+        : 0;
+
+      let status: string;
+      if (!hasActivities && allAipIds.length > 0) {
+        status = 'No Activities';
+      } else if (q > currentQuarter) {
         status = 'Locked';
       } else if (q === currentQuarter && today <= deadline) {
         status = 'In Progress';
       } else {
-        // Past quarter or deadline has passed — check for PIR submissions
-        const pirCount = aipIds.length > 0
-          ? await prisma.pIR.count({ where: { aip_id: { in: aipIds }, quarter: label } })
-          : 0;
-        status = pirCount > 0 ? 'Submitted' : 'Missed';
+        // Past quarter or deadline has passed
+        status = qSubmitted >= qTotal && qTotal > 0 ? 'Submitted' : (qTotal > 0 ? 'Missed' : 'No Activities');
       }
 
       return {
         name: `Q${q}`,
         status,
-        deadline: deadline.toISOString()
+        deadline: deadline.toISOString(),
+        submitted: qSubmitted,
+        total: qTotal
       };
     }));
 
@@ -916,6 +967,7 @@ dataRoutes.get('/dashboard', async (c) => {
       activePrograms,
       aipCompletion: { completed: aipCompleted, total: aipTotal, percentage: aipPercentage },
       pirSubmitted: { submitted: pirSubmittedCount, total: pirTotal },
+      totalPlannedBudget,
       currentQuarter,
       deadline: currentDeadline.toISOString(),
       quarters
