@@ -2,7 +2,7 @@
 
 Web-based system for managing **Annual Implementation Plans (AIP)** and **Program Implementation Reviews (PIR)** for the DepEd Division of Guihulngan City.
 
-> **Version:** 1.0.1-beta — Active development. Security hardening and Division Personnel features are in progress.
+> **Version:** 1.0.5-beta — Performance & Timeline Update. 
 
 ---
 
@@ -11,8 +11,8 @@ Web-based system for managing **Annual Implementation Plans (AIP)** and **Progra
 Schools submit an AIP at the start of each fiscal year, outlining their program activities, targets, and budget. At the end of each quarter, they submit a PIR to track how well those activities were implemented. The system enforces a gated workflow — PIR submission is locked until the AIP is completed.
 
 **User roles:**
-- **School Users** — tied 1-to-1 with a school; manage their school's AIP and PIRs
-- **Division Personnel** — not school-bound; manage programs they are directly assigned to
+- **School User** — tied 1-to-1 with a school; manage their school's AIP and PIRs
+- **Division Personnel** — manage programs they are directly assigned to; maintain their own independent AIP/PIR records
 
 ---
 
@@ -22,7 +22,7 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 |-------|-----------|
 | Frontend | React 19, React Router 7, Vite 7 |
 | Styling | Tailwind CSS 4, Framer Motion |
-| Backend | Deno, Hono 4 |
+| Backend | Deno 2, Hono 4 |
 | Database | PostgreSQL, Prisma ORM 7 |
 | Auth | JWT (HS256) |
 
@@ -36,16 +36,16 @@ QPIR-AIP/
 │   ├── src/
 │   │   ├── components/ # Reusable UI and document components
 │   │   ├── context/    # React context (accessibility, etc.)
-│   │   ├── AIPForm.jsx
-│   │   ├── PIRForm.jsx
-│   │   ├── App.jsx     # Routes and route guards
-│   │   └── version.js  # Version + changelog registry
-│   └── public/         # Static assets and fonts
+│   │   ├── AIPForm.jsx # Multi-step AIP wizard
+│   │   ├── PIRForm.jsx # Multi-step PIR wizard
+│   │   ├── App.jsx     # Dashboard, routes, and route guards
+│   │   └── version.js  # Version + changelog registry (ignored)
+│   └── public/         # Institutional logos and fonts
 │
 └── server/             # Deno backend
     ├── routes/
     │   ├── auth.ts     # Login, token verification
-    │   └── data.ts     # AIP, PIR, programs, drafts CRUD
+    │   └── data.ts     # AIP, PIR, dashboard, and deadline CRUD
     ├── prisma/
     │   ├── schema.prisma
     │   └── migrations/
@@ -56,9 +56,9 @@ QPIR-AIP/
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) 18+ (for the React frontend)
+- [Node.js](https://nodejs.org/) 20+ (for the React frontend)
 - [Deno](https://deno.land/) 2.x (for the backend)
-- [PostgreSQL](https://www.postgresql.org/) 14+
+- [PostgreSQL](https://www.postgresql.org/) 15+
 
 ---
 
@@ -77,7 +77,7 @@ npm install
 **Backend** — create `server/.env`:
 ```env
 DATABASE_URL="postgresql://postgres:password@localhost:5432/pir_system?schema=public"
-JWT_SECRET="change-this-to-a-strong-random-secret"
+JWT_SECRET="your-strong-random-secret"
 PORT=3001
 ```
 
@@ -124,31 +124,13 @@ cd react-app && npm run dev
 
 ## Key Features
 
-- **Gated workflow** — PIR is locked until the AIP for that school/program/year is submitted
-- **PIR auto-population** — activity names and implementation periods are pre-filled from the completed AIP
-- **Draft persistence** — forms auto-save progress; users can resume at any time
-- **Print-ready documents** — generates formatted AIP and PIR documents for official submission
-- **Accessibility panel** — high contrast, reduced motion, and dyslexia-friendly font options
-- **Quarterly structure** — Q1–Q4 review periods with deadline countdowns on the dashboard
-
----
-
-## Available Scripts
-
-**Frontend:**
-```bash
-npm run dev        # Vite dev server with HMR
-npm run build      # Production build
-npm run lint       # ESLint
-npm run changelog  # Generate changelog from version.js
-```
-
-**Backend:**
-```bash
-deno task dev      # Hot-reload development server
-deno task start    # Production server
-deno task seed     # Seed database
-```
+- **Performance Optimized** — React 19 memoization and stable callbacks for a smooth, lag-free form experience; migrated to pure CSS animations for lightweight transitions.
+- **Structured Timeline Logic** — Precise month-range pickers in the AIP Action Plan enable intelligent PIR filtering and dashboard metrics.
+- **Gated Workflow** — PIR is locked until the AIP for that school/program/year is submitted.
+- **Timeline-Aware PIR Filtering** — PIR forms automatically filter AIP activities to only show those scheduled for the selected quarter.
+- **Interactive Dashboard** — Real-time progress tracking with a visual 4-node `QuarterTimeline` stepper and urgency-aware deadline tiers.
+- **Print-ready Documents** — Generates official formatted AIP and PIR documents with NIR and Division institutional branding.
+- **Accessibility Engine** — High contrast, reduced motion, and dyslexia-friendly font options (OpenDyslexic).
 
 ---
 
@@ -157,22 +139,23 @@ deno task seed     # Seed database
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/auth/login` | Authenticate user, returns JWT |
-| `GET` | `/api/auth/verify` | Verify token validity |
-| `GET` | `/api/programs` | List programs (filtered by user role) |
-| `GET` | `/api/aips` | List AIPs for current user/school |
-| `POST` | `/api/aips` | Create a new AIP |
-| `GET` | `/api/aips/activities` | Fetch AIP activities for PIR population |
-| `GET` | `/api/pirs` | List PIRs for current user/school |
-| `POST` | `/api/pirs` | Create a new PIR |
-| `GET` | `/api/drafts/:type/:userId` | Fetch saved draft |
-| `PUT` | `/api/drafts/:type/:userId` | Save or update draft |
+| `GET` | `/api/dashboard` | Aggregated dashboard stats, current quarter, and deadlines |
+| `GET` | `/api/programs` | List programs (filtered by role and school level) |
+| `GET` | `/api/aips` | List submitted AIPs for current user |
+| `POST` | `/api/aips` | Create a new AIP (persists structured month periods) |
+| `GET` | `/api/aips/activities` | Fetch timeline-filtered AIP activities for PIR population |
+| `GET` | `/api/pirs` | List submitted PIRs for current user |
+| `POST` | `/api/pirs` | Create a new PIR review |
+| `GET` | `/api/deadlines` | List submission deadlines for a given fiscal year |
+| `GET` | `/api/drafts/:type/:userId` | Fetch saved in-progress draft |
 
 ---
 
 ## Status
 
-This project is in active beta development.
+Active beta development.
 
-- Security hardening (JWT middleware, CORS, IDOR fixes) is pending the Admin Function
-- Division Personnel access isolation (`created_by_user_id`) is schema-ready, pending migration
-- See the internal `TODO.md` and `SECURITY_AUDIT.md` for full task and vulnerability tracking
+- Performance and timeline features (v1.0.5) are complete.
+- Admin Function development (v1.0.6) is the next milestone.
+- Security hardening (v1.0.7) follows the Admin Function.
+- See internal `ROADMAP.md` and `TODO.md` for full milestone tracking.
