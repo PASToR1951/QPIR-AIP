@@ -99,13 +99,55 @@
   animation: form-bg-fade 0.4s ease-out both;
 }
 
+/* --- Login page CSS animations (replaces animejs) --- */
+@keyframes login-card-entrance {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.login-card-entrance {
+  animation: login-card-entrance 0.6s ease-out both;
+}
+
+@keyframes login-orb-float-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(20px, -30px) scale(1.1); }
+}
+.login-orb-float-1 {
+  animation: login-orb-float-1 6s ease-in-out infinite;
+}
+
+@keyframes login-orb-float-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-20px, 40px) scale(1.2); }
+}
+.login-orb-float-2 {
+  animation: login-orb-float-2 7s ease-in-out 1s infinite;
+}
+
+@keyframes login-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-10px); }
+  40%      { transform: translateX(10px); }
+  60%      { transform: translateX(-10px); }
+  80%      { transform: translateX(10px); }
+}
+.login-shake {
+  animation: login-shake 0.25s ease-in-out;
+}
+
 /* --- Reduce Motion --- */
-.a11y-reduce-motion *,
-.a11y-reduce-motion *::before,
-.a11y-reduce-motion *::after {
+.a11y-reduce-motion .animate-pulse,
+.a11y-reduce-motion .animate-spin,
+.a11y-reduce-motion .animate-bounce,
+.a11y-reduce-motion .login-orb-float-1,
+.a11y-reduce-motion .login-orb-float-2,
+.a11y-reduce-motion .login-card-entrance,
+.a11y-reduce-motion .login-shake,
+.a11y-reduce-motion [data-motion] {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
+}
+.a11y-reduce-motion {
   scroll-behavior: auto !important;
 }
 
