@@ -1,0 +1,199 @@
+import React from 'react';
+import { FileText, BarChart3, Clock } from 'lucide-react';
+
+function calculateDaysLeft(isoDate) {
+    const deadline = new Date(isoDate);
+    const now = new Date();
+    return Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatDeadlineShort(isoDate) {
+    return new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatBudget(amount) {
+    if (!amount || amount === 0) return null;
+    return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+}
+
+function getUrgencyTier(daysLeft) {
+    if (daysLeft <= 0)  return { level: 'overdue',   color: 'rose',  bgTint: 'bg-rose-50 border-rose-200' };
+    if (daysLeft <= 7)  return { level: 'urgent',    color: 'rose',  bgTint: 'bg-rose-50/50 border-rose-100' };
+    if (daysLeft <= 29) return { level: 'attention', color: 'amber', bgTint: 'bg-amber-50/50 border-amber-100' };
+    return                      { level: 'calm',      color: 'slate', bgTint: 'bg-white border-slate-200' };
+}
+
+// Segmented progress bar
+function SegmentedBar({ completed, total }) {
+    if (total === 0) return null;
+    return (
+        <div className="flex gap-1 mt-3 w-full">
+            {Array.from({ length: total }).map((_, i) => (
+                <div
+                    key={i}
+                    className={`h-1.5 rounded-full flex-1 transition-colors ${
+                        i < completed ? 'bg-emerald-400' : 'bg-slate-200'
+                    }`}
+                />
+            ))}
+        </div>
+    );
+}
+
+// Dot pips for PIR progress
+function DotPips({ submitted, total }) {
+    if (total === 0) return null;
+    return (
+        <div className="flex gap-1.5 mt-3 justify-center">
+            {Array.from({ length: total }).map((_, i) => (
+                <div
+                    key={i}
+                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                        i < submitted ? 'bg-emerald-400' : 'bg-slate-200'
+                    }`}
+                />
+            ))}
+        </div>
+    );
+}
+
+function LoadingSkeleton() {
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {[1, 2, 3].map(i => (
+                <div key={i} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm animate-pulse">
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="w-8 h-8 bg-slate-200 rounded-full" />
+                        <div className="w-20 h-6 bg-slate-200 rounded" />
+                        <div className="w-32 h-3 bg-slate-100 rounded" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+export default function DashboardStats({ data, loading }) {
+    if (loading || !data) return <LoadingSkeleton />;
+
+    const { aipCompletion, pirSubmitted, currentQuarter, deadline, totalPlannedBudget } = data;
+    const daysLeft = calculateDaysLeft(deadline);
+    const urgency = getUrgencyTier(daysLeft);
+
+    const aipPending = aipCompletion.total - aipCompletion.completed;
+    const pirPending = pirSubmitted.total - pirSubmitted.submitted;
+    const allAipDone = aipCompletion.total > 0 && aipCompletion.completed >= aipCompletion.total;
+    const allPirDone = pirSubmitted.total > 0 && pirSubmitted.submitted >= pirSubmitted.total;
+    const noPirNeeded = pirSubmitted.total === 0;
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* AIP Progress */}
+            <div className={`bg-white border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allAipDone ? 'border-emerald-200' : 'border-slate-200'}`}>
+                <div className="flex items-center gap-3 mb-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allAipDone ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-600'}`}>
+                        <FileText size={18} strokeWidth={2.5} />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">AIP Progress</span>
+                </div>
+                <div className="text-2xl font-black text-slate-800 leading-none">
+                    {aipCompletion.completed} <span className="text-sm font-bold text-slate-400">of {aipCompletion.total}</span>
+                </div>
+                <p className={`text-xs font-semibold mt-1.5 ${allAipDone ? 'text-emerald-600' : 'text-slate-500'}`}>
+                    {aipCompletion.total === 0
+                        ? 'No programs assigned'
+                        : allAipDone
+                            ? 'All programs complete'
+                            : `${aipPending} program${aipPending !== 1 ? 's' : ''} need AIP`
+                    }
+                </p>
+                <SegmentedBar completed={aipCompletion.completed} total={aipCompletion.total} />
+            </div>
+
+            {/* PIR This Quarter */}
+            <div className={`bg-white border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allPirDone ? 'border-emerald-200' : noPirNeeded ? 'border-slate-200' : 'border-amber-100'}`}>
+                <div className="flex items-center gap-3 mb-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allPirDone ? 'bg-emerald-100 text-emerald-600' : noPirNeeded ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-600'}`}>
+                        <BarChart3 size={18} strokeWidth={2.5} />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Q{currentQuarter} Reviews</span>
+                </div>
+                <div className="text-2xl font-black text-slate-800 leading-none">
+                    {noPirNeeded
+                        ? <span className="text-slate-400">—</span>
+                        : <>{pirSubmitted.submitted} <span className="text-sm font-bold text-slate-400">of {pirSubmitted.total}</span></>
+                    }
+                </div>
+                <p className={`text-xs font-semibold mt-1.5 ${allPirDone ? 'text-emerald-600' : noPirNeeded ? 'text-slate-400' : 'text-amber-600'}`}>
+                    {noPirNeeded
+                        ? 'No activities this quarter'
+                        : allPirDone
+                            ? 'All reviews submitted'
+                            : `${pirPending} review${pirPending !== 1 ? 's' : ''} pending`
+                    }
+                </p>
+                <DotPips submitted={pirSubmitted.submitted} total={pirSubmitted.total} />
+            </div>
+
+            {/* Deadline */}
+            <div className={`border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${urgency.bgTint}`}>
+                <div className="flex items-center gap-3 mb-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                        urgency.level === 'calm' ? 'bg-slate-100 text-slate-500' :
+                        urgency.level === 'attention' ? 'bg-amber-100 text-amber-600' :
+                        'bg-rose-100 text-rose-600'
+                    }`}>
+                        <Clock size={18} strokeWidth={2.5} />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Q{currentQuarter} Deadline</span>
+                    {urgency.level === 'urgent' && (
+                        <span className="relative flex h-2.5 w-2.5 ml-auto">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500" />
+                        </span>
+                    )}
+                </div>
+                <div className={`text-2xl font-black leading-none ${
+                    urgency.level === 'overdue' ? 'text-rose-600' :
+                    urgency.level === 'urgent' ? 'text-rose-600' :
+                    urgency.level === 'attention' ? 'text-amber-700' :
+                    'text-slate-800'
+                }`}>
+                    {urgency.level === 'overdue'
+                        ? (daysLeft === 0 ? 'Due Today' : 'Overdue')
+                        : urgency.level === 'calm'
+                            ? formatDeadlineShort(deadline)
+                            : `${daysLeft} Day${daysLeft !== 1 ? 's' : ''}`
+                    }
+                </div>
+                <p className="text-xs font-semibold mt-1.5 text-slate-500">
+                    {urgency.level === 'calm'
+                        ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`
+                        : `Q${currentQuarter} deadline · ${formatDeadlineShort(deadline)}`
+                    }
+                </p>
+            </div>
+        </div>
+    );
+}
+
+// Helper for welcome section action prompt
+export function getActionPrompt(data, aipStatus) {
+    if (!data) return '';
+    const { aipCompletion, pirSubmitted, currentQuarter } = data;
+    const daysLeft = calculateDaysLeft(data.deadline);
+
+    if (aipCompletion.completed === 0) {
+        return `Start by submitting your Annual Implementation Plan for FY ${new Date().getFullYear()}.`;
+    }
+    if (pirSubmitted.total > 0 && pirSubmitted.submitted < pirSubmitted.total) {
+        return `Your Q${currentQuarter} review is due in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — submit your quarterly PIR.`;
+    }
+    if (pirSubmitted.total === 0 && aipCompletion.completed > 0) {
+        return `No activities scheduled for Q${currentQuarter}. ${currentQuarter < 4 ? `Your next review opens in Q${currentQuarter + 1}.` : 'All quarters reviewed.'}`;
+    }
+    if (pirSubmitted.submitted >= pirSubmitted.total && aipCompletion.completed >= aipCompletion.total) {
+        return `You're on track for Q${currentQuarter}. ${currentQuarter < 4 ? `Next review opens in Q${currentQuarter + 1}.` : 'Great work this year!'}`;
+    }
+    return `You are currently managing the planning and review cycle for FY ${new Date().getFullYear()}.`;
+}

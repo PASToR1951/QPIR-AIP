@@ -4,22 +4,11 @@ import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { useAccessibility } from './context/AccessibilityContext';
 import axios from 'axios';
 import {
-  LogOut,
-  LayoutDashboard,
   FileText,
   BarChart3,
-  CheckCircle2,
-  Clock,
   Lock,
-  Unlock,
   AlertTriangle,
   ArrowRight,
-  BookOpen,
-  Headset,
-  Layers,
-  Sparkles,
-  ChevronRight,
-  Tag
 } from 'lucide-react';
 import Login from './Login';
 import AIPForm from './AIPForm';
@@ -35,6 +24,7 @@ import PageTransition from './components/ui/PageTransition';
 import PageLoader from './components/ui/PageLoader';
 import FormBackground from './components/ui/FormBackground';
 import AccessibilityPanel from './components/ui/AccessibilityPanel';
+import DashboardStats, { getActionPrompt } from './components/ui/DashboardStats';
 
 // Simple Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -50,7 +40,12 @@ const PIRRouteGuard = ({ children }) => {
   const [hasAIP, setHasAIP] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : null;
+  let user = null;
+  try {
+    user = userStr ? JSON.parse(userStr) : null;
+  } catch {
+    localStorage.removeItem('user');
+  }
   const isDivisionPersonnel = user?.role === 'Division Personnel';
   const token = localStorage.getItem('token');
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
@@ -100,7 +95,12 @@ const PIRRouteGuard = ({ children }) => {
 
 function Dashboard() {
   const userStr = localStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : null;
+  let user = null;
+  try {
+    user = userStr ? JSON.parse(userStr) : null;
+  } catch {
+    localStorage.removeItem('user');
+  }
   const token = localStorage.getItem('token');
 
   const [aipStatus, setAipStatus] = useState('none');
@@ -141,53 +141,7 @@ function Dashboard() {
 
   const hasAIP = dashboardData ? dashboardData.aipCompletion.completed > 0 : false;
 
-  // Build stats from live data
-  const calculateDaysLeft = (isoDate) => {
-    const deadline = new Date(isoDate);
-    const now = new Date();
-    return Math.max(0, Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-  };
-
-  const formatDeadlineShort = (isoDate) => {
-    return new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  const stats = dashboardData
-    ? [
-      {
-        label: 'Active Programs',
-        value: String(dashboardData.activePrograms),
-        icon: <Layers className="w-7 h-7 text-pink-500" />,
-        color: 'pink'
-      },
-      {
-        label: 'AIP Completion',
-        value: `${dashboardData.aipCompletion.percentage}%`,
-        icon: <CheckCircle2 className="w-7 h-7 text-emerald-500" />,
-        symbol: '◈',
-        subtext: `${dashboardData.aipCompletion.completed} of ${dashboardData.aipCompletion.total} Programs Complete`,
-        color: 'emerald'
-      },
-      {
-        label: 'PIR Submitted',
-        value: `${dashboardData.pirSubmitted.submitted}/${dashboardData.pirSubmitted.total}`,
-        icon: <BarChart3 className="w-7 h-7 text-amber-500" />,
-        symbol: `Q${dashboardData.currentQuarter}`,
-        subtext: `${dashboardData.pirSubmitted.submitted}/${dashboardData.pirSubmitted.total} PIRs This Quarter`,
-        color: 'amber'
-      },
-      {
-        label: 'Days to Deadline',
-        value: `${calculateDaysLeft(dashboardData.deadline)} Days`,
-        icon: <Clock className="w-7 h-7 text-rose-500" />,
-        symbol: '◷',
-        subtext: `Q${dashboardData.currentQuarter} Deadline · ${formatDeadlineShort(dashboardData.deadline)}`,
-        color: 'rose'
-      },
-    ]
-    : [];
-
-  const currentQuarterLabel = dashboardData ? `Q${dashboardData.currentQuarter} In Progress` : '—';
+  const actionPrompt = dashboardData ? getActionPrompt(dashboardData, aipStatus) : '';
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -239,80 +193,19 @@ function Dashboard() {
                 You are currently managing the planning and review cycle for <span className="text-slate-900 font-bold">FY 2026</span>.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-auto">
-                <div className={`border p-4 rounded-2xl flex items-center gap-4 group/item transition-all ${aipStatus === 'review' ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200 hover:shadow-sm' :
-                  aipStatus === 'draft' ? 'bg-blue-50/50 border-blue-100 hover:border-blue-200 hover:shadow-sm' :
-                    'bg-slate-50 border-slate-100 hover:border-pink-200 hover:shadow-sm'
-                  }`}>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${aipStatus === 'review' ? 'bg-emerald-100 text-emerald-600 group-hover/item:bg-emerald-200' :
-                    aipStatus === 'draft' ? 'bg-blue-100 text-blue-600 group-hover/item:bg-blue-200' :
-                      'bg-slate-200 text-slate-400 group-hover/item:bg-pink-100 group-hover/item:text-pink-600'
-                    }`}>
-                    <FileText size={20} strokeWidth={2.5} />
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight group-hover/item:text-slate-500 transition-colors">Annual Implementation Plan</div>
-                    <div className={`text-sm font-black transition-colors ${aipStatus === 'review' ? 'text-emerald-700 group-hover/item:text-emerald-800' :
-                      aipStatus === 'draft' ? 'text-blue-700 group-hover/item:text-blue-800' :
-                        'text-slate-500 group-hover/item:text-pink-700'
-                      }`}>
-                      {aipStatus === 'review' ? 'Awaiting Review' :
-                        aipStatus === 'draft' ? 'Draft in Progress' : 'No Submission Found'}
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 group/item hover:border-blue-200 transition-colors">
-                  <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
-                    <BarChart3 size={20} strokeWidth={2.5} />
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Current Review</div>
-                    <div className="text-sm font-black text-slate-800">
-                      {dashboardLoading ? <span className="inline-block w-20 h-3 bg-slate-200 rounded animate-pulse" /> : currentQuarterLabel}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <p className="text-sm font-semibold text-slate-500 mt-auto">
+                {dashboardLoading
+                  ? <span className="inline-block w-64 h-4 bg-slate-200 rounded animate-pulse" />
+                  : actionPrompt
+                }
+              </p>
             </div>
           </div>
 
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-          {dashboardLoading
-            ? Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm animate-pulse">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-8 h-8 bg-slate-200 rounded-full" />
-                  <div className="w-16 h-6 bg-slate-200 rounded" />
-                  <div className="w-24 h-3 bg-slate-100 rounded" />
-                </div>
-              </div>
-            ))
-            : stats.map((stat) => (
-              <div key={stat.label} className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-                <div className="flex flex-col items-center text-center relative z-10">
-                  <div className="text-3xl mb-3 group-hover:scale-125 transition-transform duration-500">{stat.icon}</div>
-                  <div className="text-3xl font-black text-slate-800 leading-none mb-1.5">{stat.value}</div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">{stat.label}</div>
-                  {stat.symbol && (
-                    <div className={`inline-flex items-center justify-center group-hover:justify-start gap-0 group-hover:gap-1.5 overflow-hidden transition-all duration-300 ease-out rounded-full border px-2 py-1 max-w-[32px] group-hover:max-w-[280px] ${stat.color === 'emerald' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
-                      stat.color === 'amber' ? 'text-amber-700 bg-amber-50 border-amber-200' :
-                        stat.color === 'rose' ? 'text-rose-600 bg-rose-50 border-rose-200' :
-                          'text-pink-700 bg-pink-50 border-pink-200'
-                      }`}>
-                      <span className="shrink-0 text-xs font-black leading-none">{stat.symbol}</span>
-                      <span className="whitespace-nowrap text-xs font-black uppercase tracking-tight max-w-0 group-hover:max-w-[260px] overflow-hidden transition-[max-width] duration-300 ease-out delay-100">
-                        {stat.subtext}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))
-          }
-        </div>
+        {/* Stats + Quarter Timeline */}
+        <DashboardStats data={dashboardData} loading={dashboardLoading} />
 
         {/* Modules Section */}
         <div className="flex items-center justify-between mb-8 px-2 mt-4">
@@ -332,14 +225,13 @@ function Dashboard() {
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-md border bg-gradient-to-br from-pink-50 to-pink-100 text-pink-600 border-pink-200 shadow-pink-100/50 group-hover:from-pink-500 group-hover:to-pink-600 group-hover:text-white group-hover:shadow-pink-300">
                   <FileText size={32} strokeWidth={2.5} />
                 </div>
-                {aipStatus === 'review' && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 shadow-sm">
-                    <CheckCircle2 size={12} strokeWidth={3} /> Submitted
-                  </div>
-                )}
-                {aipStatus === 'draft' && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-50 text-pink-700 text-[10px] font-black uppercase tracking-widest border border-pink-200 shadow-sm">
-                    <Clock size={12} strokeWidth={3} /> In Progress
+                {dashboardData && dashboardData.aipCompletion.total > 0 && (
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm ${
+                    dashboardData.aipCompletion.completed >= dashboardData.aipCompletion.total
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-pink-50 text-pink-700 border-pink-200'
+                  }`}>
+                    {dashboardData.aipCompletion.completed}/{dashboardData.aipCompletion.total} Programs
                   </div>
                 )}
               </div>
@@ -348,7 +240,12 @@ function Dashboard() {
                 <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-3 transition-colors group-hover:text-pink-600">AIP Form</h3>
                 <p className="font-medium text-slate-500 leading-relaxed text-base md:text-lg mb-6">
                   Annual Implementation Plan <br />
-                  <span className="text-slate-400 text-sm md:text-base font-normal">Plan strategic objectives, target outputs, and allocate budget for the fiscal year.</span>
+                  <span className="text-slate-400 text-sm md:text-base font-normal">
+                    {dashboardData && dashboardData.aipCompletion.completed < dashboardData.aipCompletion.total
+                      ? `${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed} program${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed !== 1 ? 's' : ''} still need planning for FY ${new Date().getFullYear()}.`
+                      : 'Plan strategic objectives, target outputs, and allocate budget for the fiscal year.'
+                    }
+                  </span>
                 </p>
 
                 <div className="flex items-center gap-3 text-pink-600 font-bold group-hover:translate-x-2 transition-transform duration-300">
@@ -374,21 +271,40 @@ function Dashboard() {
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-md border bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-200 shadow-blue-100/50 group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:shadow-blue-300">
                     <BarChart3 size={32} strokeWidth={2.5} />
                   </div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-widest border border-blue-200 shadow-sm mt-8 sm:mt-0">
-                    <Unlock size={12} strokeWidth={3} />
-                    Unlocked
-                  </div>
+                  {dashboardData && (
+                    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm mt-8 sm:mt-0 ${
+                      dashboardData.pirSubmitted.total === 0
+                        ? 'bg-slate-50 text-slate-500 border-slate-200'
+                        : dashboardData.pirSubmitted.submitted >= dashboardData.pirSubmitted.total
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {dashboardData.pirSubmitted.total === 0
+                        ? `No Q${dashboardData.currentQuarter} Activities`
+                        : `Q${dashboardData.currentQuarter}: ${dashboardData.pirSubmitted.submitted}/${dashboardData.pirSubmitted.total} Filed`
+                      }
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-auto">
                   <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-3 transition-colors group-hover:text-blue-600">PIR Form</h3>
                   <p className="font-medium text-slate-500 leading-relaxed text-base md:text-lg mb-6">
                     Program Implementation Review <br />
-                    <span className="text-slate-400 text-sm md:text-base font-normal">Report physical accomplishments and financial utilization per quarter.</span>
+                    <span className="text-slate-400 text-sm md:text-base font-normal">
+                      {dashboardData && dashboardData.pirSubmitted.total > 0 && dashboardData.pirSubmitted.submitted < dashboardData.pirSubmitted.total
+                        ? `${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted} quarterly review${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted !== 1 ? 's' : ''} pending for Q${dashboardData.currentQuarter}.`
+                        : dashboardData && dashboardData.pirSubmitted.total === 0
+                          ? `No activities scheduled this quarter. Check back next quarter.`
+                          : 'Report physical accomplishments and financial utilization per quarter.'
+                      }
+                    </span>
                   </p>
 
                   <div className="flex items-center gap-3 text-blue-600 font-bold group-hover:translate-x-2 transition-transform duration-300">
-                    <span className="text-sm uppercase tracking-widest">Start Review</span>
+                    <span className="text-sm uppercase tracking-widest">
+                      {dashboardData && dashboardData.pirSubmitted.submitted > 0 ? 'View Reviews' : 'Start Review'}
+                    </span>
                     <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
                       <ArrowRight size={16} strokeWidth={3} />
                     </div>
