@@ -16,7 +16,7 @@ function LockedField({ label, value }) {
     );
 }
 
-export default function PIRFinancialsSection({
+export default React.memo(function PIRFinancialsSection({
     appMode,
     currentStep,
     isBudgetFocused, setIsBudgetFocused,
@@ -47,4 +47,4 @@ export default function PIRFinancialsSection({
             </div>
         </div>
     );
-}
+})

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const AccessibilityContext = createContext(null);
 
@@ -43,13 +43,15 @@ export function AccessibilityProvider({ children }) {
         html.classList.toggle('a11y-letter-wide', settings.letterSpacing === 'wide');
     }, [settings]);
 
-    const update = (key, value) =>
-        setSettings(prev => ({ ...prev, [key]: value }));
+    const update = useCallback((key, value) =>
+        setSettings(prev => ({ ...prev, [key]: value })), []);
 
-    const reset = () => setSettings(DEFAULTS);
+    const reset = useCallback(() => setSettings(DEFAULTS), []);
+
+    const contextValue = useMemo(() => ({ settings, update, reset }), [settings, update, reset]);
 
     return (
-        <AccessibilityContext.Provider value={{ settings, update, reset }}>
+        <AccessibilityContext.Provider value={contextValue}>
             {children}
         </AccessibilityContext.Provider>
     );

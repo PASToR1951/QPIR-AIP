@@ -11,7 +11,7 @@ export const OUTCOME_OPTIONS = [
     "Outcome 5: Empowered Graduates fit for Employment, Entrepreneurship or Higher Education"
 ];
 
-export default function AIPProfileSection({ 
+export default React.memo(function AIPProfileSection({ 
     appMode, 
     outcome, setOutcome, 
     year, setYear, 
@@ -43,4 +43,4 @@ export default function AIPProfileSection({
             </div>
         </>
     );
-}
+})

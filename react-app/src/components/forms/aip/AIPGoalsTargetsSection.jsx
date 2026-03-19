@@ -2,7 +2,7 @@ import React from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
 
-export default function AIPGoalsTargetsSection({
+export default React.memo(function AIPGoalsTargetsSection({
     appMode,
     objectives, handleObjectiveChange, addObjective, removeObjective,
     indicators, handleIndicatorChange, addIndicator, removeIndicator
@@ -90,4 +90,4 @@ export default function AIPGoalsTargetsSection({
             </div>
         </>
     );
-}
+})

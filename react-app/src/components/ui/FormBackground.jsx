@@ -27,9 +27,9 @@ export default function FormBackground({ orb = 'pink' }) {
                 />
             </div>
 
-            {/* Glowing orbs */}
-            <div className={`form-bg-fade fixed top-1/4 left-1/4 w-[30rem] h-[30rem] ${orbColors[0]} rounded-full blur-[120px] pointer-events-none z-0 print:hidden animate-pulse duration-[4000ms]`} style={{ animationDelay: '0.1s' }} />
-            <div className={`form-bg-fade fixed bottom-1/4 right-1/4 w-[30rem] h-[30rem] ${orbColors[1]} rounded-full blur-[120px] pointer-events-none z-0 print:hidden animate-pulse duration-[4000ms]`} style={{ animationDelay: '0.2s' }} />
+            {/* Glowing orbs — static opacity, no continuous animation or expensive blur */}
+            <div className={`form-bg-fade fixed top-1/4 left-1/4 w-[30rem] h-[30rem] ${orbColors[0]} rounded-full blur-3xl opacity-40 pointer-events-none z-0 print:hidden`} />
+            <div className={`form-bg-fade fixed bottom-1/4 right-1/4 w-[30rem] h-[30rem] ${orbColors[1]} rounded-full blur-3xl opacity-40 pointer-events-none z-0 print:hidden`} />
         </>,
         document.body
     );
