@@ -49,3 +49,4 @@ Thumbs.db
 .idea/
 *.suo
 *.sw?
+react-app/src/version.js
