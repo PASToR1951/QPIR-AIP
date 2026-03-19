@@ -29,8 +29,8 @@ export const DashboardHeader = ({ user, onLogout }) => {
                     <div className="flex items-center gap-2">
                         <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-9 w-auto drop-shadow-sm" />
                         <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block"></div>
-                        <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-9 w-auto drop-shadow-sm hidden sm:block" />
-                        <img src="/Division_Logo.webp" alt="Division Logo" className="h-9 w-auto drop-shadow-sm hidden sm:block" />
+                        <img src="/DepEd_Seal.webp" alt="DepEd Seal" width={36} height={36} loading="lazy" className="h-9 w-auto drop-shadow-sm hidden sm:block" />
+                        <img src="/Division_Logo.webp" alt="Division Logo" width={36} height={36} loading="lazy" className="h-9 w-auto drop-shadow-sm hidden sm:block" />
                     </div>
                     <div className="h-8 w-px bg-slate-200 hidden sm:block"></div>
                     <div className="flex flex-col">
