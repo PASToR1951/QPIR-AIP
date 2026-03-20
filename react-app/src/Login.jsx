@@ -52,7 +52,7 @@ export default function Login() {
   };
 
   return (
-    <div className="bg-slate-50 min-h-[100svh] flex flex-col items-center justify-center relative font-sans overflow-x-hidden">
+    <div className="bg-slate-50 dark:bg-dark-base min-h-[100svh] flex flex-col items-center justify-center relative font-sans overflow-x-hidden">
       {/* Background Image */}
       <div
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-20"
@@ -63,27 +63,27 @@ export default function Login() {
       <div className="absolute inset-0 bg-slate-900/10 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-10"></div>
 
       {/* Glowing Orbs (Animated with Anime.js) */}
-      <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 rounded-full blur-3xl opacity-40 pointer-events-none z-0 login-orb-float-1"></div>
-      <div ref={orb2Ref} className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/30 rounded-full blur-3xl opacity-40 pointer-events-none z-0 login-orb-float-2"></div>
+      <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 dark:opacity-30 rounded-full blur-3xl opacity-40 pointer-events-none z-0 login-orb-float-1"></div>
+      <div ref={orb2Ref} className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/30 dark:opacity-30 rounded-full blur-3xl opacity-40 pointer-events-none z-0 login-orb-float-2"></div>
 
       {/* Main Content Area */}
       <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center flex-1 w-full py-8 md:py-12 md:pb-32">
-        <div ref={cardRef} className="bg-[#fafafa]/90 border border-slate-200 rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 backdrop-blur-md login-card-entrance">
+        <div ref={cardRef} className="bg-[#fafafa]/90 dark:bg-dark-surface/90 border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 dark:ring-dark-border/30 backdrop-blur-md login-card-entrance">
 
           <div className="mb-8 flex justify-center items-center gap-6">
             <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-sm" />
           </div>
 
-          <h2 className="text-3xl font-extrabold tracking-tighter text-slate-900 pb-2">
+          <h2 className="text-3xl font-extrabold tracking-tighter text-slate-900 dark:text-slate-100 pb-2">
             AIP-PIR System
           </h2>
-          <p className="text-slate-500 font-medium mb-8 text-sm px-4">
+          <p className="text-slate-500 dark:text-slate-400 font-medium mb-8 text-sm px-4">
             Tracking of Education Programs: Program Implementation Review System.
           </p>
 
           <form className="space-y-6" onSubmit={handleLogin}>
             {error && (
-              <div className="text-red-600 text-sm font-semibold text-center bg-red-50 border border-red-100 p-3 rounded-xl flex items-center justify-center gap-2">
+              <div className="text-red-600 dark:text-red-400 text-sm font-semibold text-center bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 p-3 rounded-xl flex items-center justify-center gap-2">
                 <AlertCircle size={16} strokeWidth={2.5} />
                 {error}
               </div>
@@ -151,15 +151,15 @@ export default function Login() {
 
       {/* Pill Style Footer */}
       <footer className="md:absolute md:bottom-6 w-full z-40 p-4">
-        <div className="container mx-auto max-w-6xl bg-white/90 backdrop-blur-xl border border-slate-200 rounded-[2.5rem] md:rounded-full shadow-xl shadow-slate-200/50 py-6 md:py-3 px-6 md:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 text-slate-500 text-xs">
+        <div className="container mx-auto max-w-6xl bg-white/90 dark:bg-dark-surface/90 backdrop-blur-xl border border-slate-200 dark:border-dark-border rounded-[2.5rem] md:rounded-full shadow-xl shadow-slate-200/50 py-6 md:py-3 px-6 md:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 text-slate-500 dark:text-slate-400 text-xs">
 
             {/* 1. Logos */}
             <div className="flex items-center justify-center gap-3 md:gap-4 group/logos">
               <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
                 <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-8 md:h-10 w-auto hover:opacity-100 transition-all duration-300" />
               </a>
-              <div className="h-6 md:h-8 w-px bg-slate-300"></div>
+              <div className="h-6 md:h-8 w-px bg-slate-300 dark:bg-dark-border"></div>
               <div className="flex items-center gap-2 md:gap-3">
                 <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
                   <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 md:h-10 w-auto drop-shadow-sm transition-all duration-300" />
@@ -174,7 +174,7 @@ export default function Login() {
             </div>
 
             {/* 2. Middle Info (Address & Copyright) */}
-            <div className="flex flex-col items-center gap-1 text-[10px] text-slate-400 font-medium text-center">
+            <div className="flex flex-col items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 font-medium text-center">
               <div className="flex flex-wrap justify-center items-center gap-2">
                 <span className="flex items-center gap-1"><MapPin size={10} className="text-slate-300" /> Osmeña Avenue, City of Guihulngan, Negros Oriental</span>
                 <span className="hidden lg:inline text-slate-300">•</span>

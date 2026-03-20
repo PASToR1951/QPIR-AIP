@@ -79,8 +79,8 @@ const PIRRouteGuard = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-slate-50 z-50">
-        <div className="w-6 h-6 rounded-full border-2 border-slate-300 border-t-blue-500 animate-spin" />
+      <div className="fixed inset-0 flex items-center justify-center bg-slate-50 dark:bg-dark-base z-50">
+        <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-blue-500 animate-spin" />
       </div>
     );
   }
@@ -150,10 +150,10 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative select-none">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col font-sans relative select-none">
       {/* Subtle Background Asset Overlay */}
       <div
-        className="absolute inset-x-0 top-0 h-[60vh] z-0 opacity-[0.03] pointer-events-none"
+        className="absolute inset-x-0 top-0 h-[60vh] z-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none"
         style={{
           backgroundImage: `url('/SDO_Facade.webp')`,
           backgroundSize: 'cover',
@@ -167,7 +167,7 @@ function Dashboard() {
       <main className="flex-1 w-full max-w-6xl mx-auto mt-6 px-4 pb-12 relative z-10">
         {/* Welcome Section */}
         <div className="mb-8">
-          <div className="relative bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-10 shadow-sm overflow-hidden group">
+          <div className="relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2.5rem] p-8 md:p-10 shadow-sm overflow-hidden group">
 {/* Card Background Facade */}
             <div
               className="absolute inset-0 opacity-70 grayscale pointer-events-none transition-all duration-700 group-hover:opacity-85 group-hover:grayscale-0"
@@ -181,21 +181,21 @@ function Dashboard() {
 
             <div className="relative z-10 flex flex-col h-full">
               <div className="flex items-center mb-6">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Summary</span>
+                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Summary</span>
               </div>
 
-              <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-2">
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-2">
                 Welcome back, <br />
                 <span className="text-pink-600">{user?.school_name || user?.name || 'User'}</span>
               </h1>
 
-              <p className="text-slate-500 font-medium max-w-md text-sm md:text-base leading-relaxed mb-8">
-                You are currently managing the planning and review cycle for <span className="text-slate-900 font-bold">FY 2026</span>.
+              <p className="text-slate-500 dark:text-slate-400 font-medium max-w-md text-sm md:text-base leading-relaxed mb-8">
+                You are currently managing the planning and review cycle for <span className="text-slate-900 dark:text-slate-100 font-bold">FY 2026</span>.
               </p>
 
-              <p className="text-sm font-semibold text-slate-500 mt-auto">
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-auto">
                 {dashboardLoading
-                  ? <span className="inline-block w-64 h-4 bg-slate-200 rounded animate-pulse" />
+                  ? <span className="inline-block w-64 h-4 bg-slate-200 dark:bg-dark-border/60 rounded animate-pulse" />
                   : actionPrompt
                 }
               </p>
@@ -209,16 +209,16 @@ function Dashboard() {
 
         {/* Modules Section */}
         <div className="flex items-center justify-between mb-8 px-2 mt-4">
-          <h2 className="text-sm font-extrabold text-slate-400 uppercase tracking-widest flex items-center gap-4">
+          <h2 className="text-sm font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-4">
             Workspace Hub
-            <span className="flex-1 h-px bg-slate-200"></span>
+            <span className="flex-1 h-px bg-slate-200 dark:bg-dark-border/60"></span>
           </h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* AIP Card */}
-          <Link to="/aip" className="group block bg-white rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 hover:border-pink-200 relative">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-pink-50 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
+          <Link to="/aip" className="group block bg-white dark:bg-dark-surface rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 dark:border-dark-border hover:border-pink-200 dark:hover:border-pink-400 relative">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-pink-50 dark:bg-pink-950 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
 
             <div className="p-8 md:p-10 relative z-10 flex flex-col h-full">
               <div className="flex justify-between items-start mb-12">
@@ -228,8 +228,8 @@ function Dashboard() {
                 {dashboardData && dashboardData.aipCompletion.total > 0 && (
                   <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm ${
                     dashboardData.aipCompletion.completed >= dashboardData.aipCompletion.total
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : 'bg-pink-50 text-pink-700 border-pink-200'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 border-emerald-200'
+                      : 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 border-pink-200'
                   }`}>
                     {dashboardData.aipCompletion.completed}/{dashboardData.aipCompletion.total} Programs
                   </div>
@@ -237,10 +237,10 @@ function Dashboard() {
               </div>
 
               <div className="mt-auto">
-                <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-3 transition-colors group-hover:text-pink-600">AIP Form</h3>
-                <p className="font-medium text-slate-500 leading-relaxed text-base md:text-lg mb-6">
+                <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 transition-colors group-hover:text-pink-600">AIP Form</h3>
+                <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6">
                   Annual Implementation Plan <br />
-                  <span className="text-slate-400 text-sm md:text-base font-normal">
+                  <span className="text-slate-400 dark:text-slate-500 text-sm md:text-base font-normal">
                     {dashboardData && dashboardData.aipCompletion.completed < dashboardData.aipCompletion.total
                       ? `${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed} program${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed !== 1 ? 's' : ''} still need planning for FY ${new Date().getFullYear()}.`
                       : 'Plan strategic objectives, target outputs, and allocate budget for the fiscal year.'
@@ -252,7 +252,7 @@ function Dashboard() {
                   <span className="text-sm uppercase tracking-widest">
                     {aipStatus === 'review' ? 'View Submission' : aipStatus === 'draft' ? 'Continue Plan' : 'Start Planning'}
                   </span>
-                  <div className="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
                     <ArrowRight size={16} strokeWidth={3} />
                   </div>
                 </div>
@@ -262,9 +262,9 @@ function Dashboard() {
 
           {/* PIR Card */}
           {hasAIP ? (
-            <div className="group block bg-white rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 hover:border-blue-200 relative">
+            <div className="group block bg-white dark:bg-dark-surface rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 dark:border-dark-border hover:border-blue-200 dark:hover:border-blue-400 relative">
               <Link to="/pir" className="absolute inset-0 z-10"></Link>
-              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 dark:bg-blue-950 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
 
               <div className="p-8 md:p-10 relative z-0 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-12">
@@ -274,10 +274,10 @@ function Dashboard() {
                   {dashboardData && (
                     <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm mt-8 sm:mt-0 ${
                       dashboardData.pirSubmitted.total === 0
-                        ? 'bg-slate-50 text-slate-500 border-slate-200'
+                        ? 'bg-slate-50 dark:bg-dark-border text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600'
                         : dashboardData.pirSubmitted.submitted >= dashboardData.pirSubmitted.total
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 border-emerald-200'
+                          : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 border-amber-200'
                     }`}>
                       {dashboardData.pirSubmitted.total === 0
                         ? `No Q${dashboardData.currentQuarter} Activities`
@@ -288,10 +288,10 @@ function Dashboard() {
                 </div>
 
                 <div className="mt-auto">
-                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-3 transition-colors group-hover:text-blue-600">PIR Form</h3>
-                  <p className="font-medium text-slate-500 leading-relaxed text-base md:text-lg mb-6">
+                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 transition-colors group-hover:text-blue-600">PIR Form</h3>
+                  <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6">
                     Program Implementation Review <br />
-                    <span className="text-slate-400 text-sm md:text-base font-normal">
+                    <span className="text-slate-400 dark:text-slate-500 text-sm md:text-base font-normal">
                       {dashboardData && dashboardData.pirSubmitted.total > 0 && dashboardData.pirSubmitted.submitted < dashboardData.pirSubmitted.total
                         ? `${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted} quarterly review${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted !== 1 ? 's' : ''} pending for Q${dashboardData.currentQuarter}.`
                         : dashboardData && dashboardData.pirSubmitted.total === 0
@@ -305,7 +305,7 @@ function Dashboard() {
                     <span className="text-sm uppercase tracking-widest">
                       {dashboardData && dashboardData.pirSubmitted.submitted > 0 ? 'View Reviews' : 'Start Review'}
                     </span>
-                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
                       <ArrowRight size={16} strokeWidth={3} />
                     </div>
                   </div>
@@ -313,26 +313,26 @@ function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="block bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-200 relative overflow-hidden group">
+            <div className="block bg-slate-50/50 dark:bg-dark-surface/50 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-dark-border relative overflow-hidden group">
               <div className="p-8 md:p-10 flex flex-col h-full opacity-60 grayscale transition-opacity group-hover:opacity-80">
                 <div className="flex justify-between items-start mb-12">
-                  <div className="w-16 h-16 bg-white text-slate-400 rounded-2xl flex items-center justify-center border border-slate-200 shadow-sm">
+                  <div className="w-16 h-16 bg-white dark:bg-dark-border text-slate-400 dark:text-slate-500 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-dark-border shadow-sm">
                     <BarChart3 size={32} strokeWidth={2.5} />
                   </div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest border border-slate-200 shadow-sm mt-8 sm:mt-0">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-dark-border shadow-sm mt-8 sm:mt-0">
                     <Lock size={12} strokeWidth={3} />
                     Locked
                   </div>
                 </div>
 
                 <div className="mt-auto">
-                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 mb-3">PIR Form</h3>
-                  <p className="font-medium text-slate-500 leading-relaxed text-base md:text-lg mb-6">
+                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3">PIR Form</h3>
+                  <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6">
                     Program Implementation Review <br />
-                    <span className="text-slate-500 text-sm md:text-base font-normal">Complete and submit your AIP first to unlock quarterly performance reviews.</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-normal">Complete and submit your AIP first to unlock quarterly performance reviews.</span>
                   </p>
 
-                  <div className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm">
+                  <div className="inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 text-amber-700 border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm">
                     <AlertTriangle size={16} strokeWidth={2.5} />
                     AIP Submission Required
                   </div>
