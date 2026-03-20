@@ -10,16 +10,30 @@
   --color-surface-card: #fafaf9;     /* off-white */
   --color-border: #e2e8f0;           /* slate-200 */
   --color-border-subtle: #f1f5f9;    /* slate-100 */
-  --color-grid-line: #e2e8f0;
+  --color-grid-line: #dde3ec;
+  --segment-empty: #e2e8f0;          /* slate-200 — unfilled bar/pip segments */
 }
 
 .dark {
-  --color-surface: #1A1A2E;
-  --color-surface-card: #16213E;
-  --color-border: #0F3460;
-  --color-border-subtle: rgba(15, 52, 96, 0.5);
-  --color-grid-line: #16213E;
+  --color-surface: #1A1917;
+  --color-surface-card: #262421;
+  --color-border: #413D37;
+  --color-border-subtle: rgba(65, 61, 55, 0.5);
+  --color-grid-line: rgba(0, 0, 0, 0.35);
+  --segment-empty: rgba(65, 61, 55, 0.6);  /* dark-border at 60% — unfilled bar/pip segments */
   color-scheme: dark;
+
+  /* Neutralize light-colored shadows — they glow white against dark backgrounds */
+  [class*="shadow-slate-"],
+  [class*="shadow-pink-"],
+  [class*="shadow-blue-"],
+  [class*="shadow-indigo-"],
+  [class*="shadow-amber-"],
+  [class*="shadow-emerald-"],
+  [class*="shadow-violet-"],
+  [class*="shadow-purple-"] {
+    --tw-shadow-color: rgb(0 0 0 / 0.3);
+  }
 }
 
 /* Smooth transition when toggling dark mode */
@@ -80,9 +94,9 @@ html.dark-transition *::after {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
   /* Dark mode palette */
-  --color-dark-base:      #1A1A2E;
-  --color-dark-surface:   #16213E;
-  --color-dark-border:    #0F3460;
+  --color-dark-base:      #1A1917;
+  --color-dark-surface:   #262421;
+  --color-dark-border:    #413D37;
   --color-dark-highlight: #E94560;
 }
 
@@ -104,40 +118,75 @@ html.dark-transition *::after {
 }
 
 /* ============================================================
+   FOOTER PATTERN — responsive diamond grid with subtle color
+   ============================================================ */
+.footer-pattern {
+  /* Tile size scales up with viewport */
+  --fp-s:  30px;   /* mobile  */
+  --fp-c1: #eff3ff;  /* indigo-50  — faint cool blue   */
+  --fp-c2: #eef2ff;  /* indigo-100 — slightly deeper   */
+  --fp-c: #0000 71%, var(--fp-c1) 0 79%, #0000 0;
+
+  background:
+    /* Subtle color blobs for dynamism */
+    radial-gradient(ellipse 70% 50% at 15% 70%, rgba(99,102,241,0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 60% at 85% 20%, rgba(148,163,184,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 50% 90%, rgba(99,102,241,0.03)  0%, transparent 60%),
+    /* Diamond lattice */
+    linear-gradient(45deg,  var(--fp-c))
+      calc(var(--fp-s) / -2) calc(var(--fp-s) / 2) / calc(2 * var(--fp-s)) calc(2 * var(--fp-s)),
+    linear-gradient(135deg, var(--fp-c))
+      calc(var(--fp-s) / 2)  calc(var(--fp-s) / 2) / calc(2 * var(--fp-s)) calc(2 * var(--fp-s)),
+    radial-gradient(var(--fp-c1) 35%, var(--fp-c2) 37%)
+      0 0 / var(--fp-s) var(--fp-s);
+}
+.dark .footer-pattern {
+  --fp-c1: #121418;  /* dark with faint blue   */
+  --fp-c2: #141620;  /* slightly deeper indigo */
+}
+
+@media (min-width: 768px) {
+  .footer-pattern { --fp-s: 55px; }
+}
+@media (min-width: 1024px) {
+  .footer-pattern { --fp-s: 80px; }
+}
+
+/* ============================================================
    ACCESSIBILITY OVERRIDES
    Applied as classes on <html> by AccessibilityContext
    ============================================================ */
 
-/* --- High Contrast (light) --- */
-.a11y-high-contrast body {
+/* --- High Contrast (light) — only when NOT in dark mode --- */
+html:not(.dark).a11y-high-contrast body {
   background-color: #fafaf9 !important;
   color: #0f172a !important;
 }
-.a11y-high-contrast input,
-.a11y-high-contrast textarea,
-.a11y-high-contrast select {
+html:not(.dark).a11y-high-contrast input,
+html:not(.dark).a11y-high-contrast textarea,
+html:not(.dark).a11y-high-contrast select {
   border-color: #0f172a !important;
   color: #0f172a !important;
   background-color: #fafaf9 !important;
 }
-.a11y-high-contrast label {
+html:not(.dark).a11y-high-contrast label {
   color: #0f172a !important;
 }
-.a11y-high-contrast .bg-white,
-.a11y-high-contrast .bg-slate-50 {
+html:not(.dark).a11y-high-contrast .bg-white,
+html:not(.dark).a11y-high-contrast .bg-slate-50 {
   background-color: #fafaf9 !important;
 }
-.a11y-high-contrast .text-slate-400,
-.a11y-high-contrast .text-slate-500 {
+html:not(.dark).a11y-high-contrast .text-slate-400,
+html:not(.dark).a11y-high-contrast .text-slate-500 {
   color: #374151 !important;
 }
-.a11y-high-contrast .border-slate-200 {
+html:not(.dark).a11y-high-contrast .border-slate-200 {
   border-color: #6b7280 !important;
 }
 
 /* --- High Contrast (dark) --- */
 .a11y-high-contrast.dark body {
-  background-color: #0c0f1a !important;
+  background-color: #0d0b09 !important;
   color: #f1f5f9 !important;
 }
 .a11y-high-contrast.dark input,
@@ -145,10 +194,14 @@ html.dark-transition *::after {
 .a11y-high-contrast.dark select {
   border-color: #f1f5f9 !important;
   color: #f1f5f9 !important;
-  background-color: #0c0f1a !important;
+  background-color: #0d0b09 !important;
 }
 .a11y-high-contrast.dark label {
   color: #f1f5f9 !important;
+}
+.a11y-high-contrast.dark .bg-white,
+.a11y-high-contrast.dark .bg-slate-50 {
+  background-color: #1e1b18 !important;
 }
 .a11y-high-contrast.dark .text-slate-400,
 .a11y-high-contrast.dark .text-slate-500 {
