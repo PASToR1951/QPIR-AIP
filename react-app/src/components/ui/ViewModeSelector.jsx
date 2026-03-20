@@ -9,12 +9,13 @@ const THEME_CLASSES = {
         searchFocus: "focus:ring-pink-200 focus:border-pink-300",
         rowPendingHover: "hover:border-l-pink-400 hover:bg-pink-100/60",
         rowPendingHoverText: "group-hover:text-pink-900",
-        cardPendingHover: "hover:border-pink-300 hover:bg-pink-50/70 hover:shadow-pink-100/40",
+        cardPendingHover: "hover:border-pink-300 hover:bg-pink-50/70 dark:hover:bg-pink-900/40 hover:shadow-pink-100/40",
+        pendingBadge: "text-pink-700 bg-pink-100 border-pink-300 dark:text-pink-300 dark:bg-pink-900/50 dark:border-pink-700",
         modeBorder: "hover:border-pink-200 hover:shadow-pink-100/40",
-        modeGlow: "bg-pink-50",
-        modeTitleHover: "group-hover:text-pink-600",
-        modeCta: "text-pink-600 bg-pink-50 group-hover:bg-pink-100",
-        cardIconBase: "bg-gradient-to-br from-pink-50 to-pink-100 text-pink-600 border-pink-200",
+        modeGlow: "bg-pink-50 dark:bg-pink-900/30",
+        modeTitleSweep: "bg-gradient-to-r from-pink-600 dark:from-pink-400 to-slate-900 dark:to-slate-100 bg-[length:200%_100%] bg-right group-hover:bg-left bg-clip-text text-transparent transition-[background-position] duration-300 ease-out",
+        modeCta: "text-pink-600 bg-pink-50 group-hover:bg-pink-500 group-hover:text-white dark:text-pink-400 dark:bg-pink-900/40 dark:group-hover:bg-pink-600 dark:group-hover:text-white",
+        cardIconBase: "bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/50 dark:to-pink-800/40 text-pink-600 dark:text-pink-400 border-pink-200 dark:border-pink-800",
         cardIconHover: "group-hover:from-pink-500 group-hover:to-pink-600 group-hover:text-white group-hover:border-pink-500",
         statsDone: "text-emerald-600",
         statsDraft: "text-amber-600",
@@ -31,12 +32,13 @@ const THEME_CLASSES = {
         searchFocus: "focus:ring-blue-200 focus:border-blue-300",
         rowPendingHover: "hover:border-l-blue-400 hover:bg-blue-100/60",
         rowPendingHoverText: "group-hover:text-blue-900",
-        cardPendingHover: "hover:border-blue-300 hover:bg-blue-50/70 hover:shadow-blue-100/40",
+        cardPendingHover: "hover:border-blue-300 hover:bg-blue-50/70 dark:hover:bg-blue-900/40 hover:shadow-blue-100/40",
+        pendingBadge: "text-blue-700 bg-blue-100 border-blue-300 dark:text-blue-300 dark:bg-blue-900/50 dark:border-blue-700",
         modeBorder: "hover:border-blue-200 hover:shadow-blue-100/40",
-        modeGlow: "bg-blue-50",
-        modeTitleHover: "group-hover:text-blue-600",
-        modeCta: "text-blue-600 bg-blue-50 group-hover:bg-blue-100",
-        cardIconBase: "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-200",
+        modeGlow: "bg-blue-50 dark:bg-blue-900/30",
+        modeTitleSweep: "bg-gradient-to-r from-blue-600 dark:from-blue-400 to-slate-900 dark:to-slate-100 bg-[length:200%_100%] bg-right group-hover:bg-left bg-clip-text text-transparent transition-[background-position] duration-300 ease-out",
+        modeCta: "text-blue-600 bg-blue-50 group-hover:bg-blue-500 group-hover:text-white dark:text-blue-400 dark:bg-blue-900/40 dark:group-hover:bg-blue-600 dark:group-hover:text-white",
+        cardIconBase: "bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/50 dark:to-blue-800/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800",
         cardIconHover: "group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:border-blue-500",
         statsDone: "text-emerald-600",
         statsDraft: "text-amber-600",
@@ -150,7 +152,7 @@ export const ViewModeSelector = ({
 
     const Background = () => (
         <>
-            <div className="fixed inset-0 bg-slate-50 dark:bg-dark-base bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0">
+            <div className="fixed inset-0 bg-slate-50 dark:bg-dark-base bg-grid [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0">
                 <div
                     className="absolute inset-0 pointer-events-none grayscale mix-blend-multiply opacity-60 backdrop-blur-none"
                     style={{ backgroundImage: `url('/SDO_Facade.webp')`, backgroundSize: 'cover', backgroundPosition: 'center 25%', filter: 'blur(3px)', transform: 'scale(1.05)' }}
@@ -297,19 +299,19 @@ export const ViewModeSelector = ({
                                                     'group w-full flex flex-col gap-3 p-4 rounded-2xl text-left',
                                                     'border-2 transition-all duration-150 shadow-sm active:scale-[0.97]',
                                                     isDraft
-                                                        ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 hover:border-amber-400 hover:shadow-amber-100/50'
+                                                        ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 hover:border-amber-400 hover:shadow-amber-100/50'
                                                         : isDone
-                                                            ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 hover:border-emerald-300 hover:shadow-emerald-100/50'
+                                                            ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300 hover:shadow-emerald-100/50'
                                                             : `border-slate-200/80 dark:border-dark-border bg-slate-100/60 dark:bg-dark-surface/60 backdrop-blur-sm shadow-sm ${c.cardPendingHover}`,
                                                 ].join(' ')}
                                             >
                                                 {/* Status badge — always visible at top */}
                                                 <span className={`self-start text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
                                                     isDraft
-                                                        ? 'text-amber-700 bg-amber-100 border-amber-300'
+                                                        ? 'text-amber-700 bg-amber-100 border-amber-300 dark:text-amber-300 dark:bg-amber-900/50 dark:border-amber-700'
                                                         : isDone
-                                                            ? 'text-emerald-700 bg-emerald-100 border-emerald-300'
-                                                            : 'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-dark-border border-slate-200 dark:border-dark-border'
+                                                            ? 'text-emerald-700 bg-emerald-100 border-emerald-300 dark:text-emerald-300 dark:bg-emerald-900/50 dark:border-emerald-700'
+                                                            : c.pendingBadge
                                                 }`}>
                                                     {isDraft ? 'Draft' : isDone ? 'Submitted' : 'Pending'}
                                                 </span>
@@ -397,19 +399,19 @@ export const ViewModeSelector = ({
                         {/* Wizard */}
                         <button
                             onClick={() => onStart('wizard', selected)}
-                            className={`group bg-white/90 dark:bg-dark-surface/90 backdrop-blur-sm rounded-2xl lg:rounded-3xl border-2 border-slate-100 dark:border-dark-border ${c.modeBorder} p-6 md:p-7 lg:p-8 text-left transition-all duration-200 shadow-sm hover:shadow-lg active:scale-[0.97] overflow-hidden relative`}
+                            className={`group bg-white/90 dark:bg-dark-surface/90 backdrop-blur-sm rounded-2xl lg:rounded-3xl border-2 border-slate-100 dark:border-dark-border ${c.modeBorder} p-6 md:p-7 lg:p-8 text-left transition-all duration-300 ease-out shadow-sm hover:shadow-lg active:scale-[0.97] overflow-hidden relative`}
                         >
                             <div className={`absolute top-0 right-0 w-40 h-40 lg:w-52 lg:h-52 ${c.modeGlow} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none -mr-12 -mt-12`} />
 
                             {/* Icon row */}
                             <div className="flex items-center gap-3 md:gap-4 mb-5 md:mb-6">
-                                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-all duration-200 group-hover:scale-105 ${c.cardIconBase} ${c.cardIconHover} shadow-sm`}>
+                                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-transform duration-300 ease-out will-change-transform group-hover:scale-110 ${c.cardIconBase} ${c.cardIconHover} shadow-sm`}>
                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="m9 18 6-6-6-6" />
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 className={`text-lg md:text-xl font-black text-slate-900 dark:text-slate-100 leading-none transition-colors ${c.modeTitleHover}`}>Step-by-Step</h3>
+                                    <h3 className={`text-lg md:text-xl font-black leading-none ${c.modeTitleSweep}`}>Step-by-Step</h3>
                                     <p className="text-xs md:text-sm text-slate-400 dark:text-slate-500 font-medium mt-1">Guided wizard</p>
                                 </div>
                             </div>
@@ -427,7 +429,7 @@ export const ViewModeSelector = ({
                             </ul>
 
                             {/* CTA */}
-                            <div className={`inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl transition-colors ${c.modeCta}`}>
+                            <div className={`inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl transition-colors duration-200 ease-out ${c.modeCta}`}>
                                 <span>Start Wizard</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
@@ -438,13 +440,13 @@ export const ViewModeSelector = ({
                         {/* Full Form */}
                         <button
                             onClick={() => onStart('full', selected)}
-                            className="group bg-white/90 dark:bg-dark-surface/90 backdrop-blur-sm rounded-2xl lg:rounded-3xl border-2 border-slate-100 dark:border-dark-border hover:border-slate-200 dark:hover:border-dark-border hover:shadow-lg p-6 md:p-7 lg:p-8 text-left transition-all duration-200 shadow-sm active:scale-[0.97] overflow-hidden relative"
+                            className="group bg-white/90 dark:bg-dark-surface/90 backdrop-blur-sm rounded-2xl lg:rounded-3xl border-2 border-slate-100 dark:border-dark-border hover:border-slate-300 dark:hover:border-slate-500 hover:shadow-lg hover:shadow-slate-200/40 p-6 md:p-7 lg:p-8 text-left transition-all duration-300 ease-out shadow-sm active:scale-[0.97] overflow-hidden relative"
                         >
                             <div className="absolute top-0 right-0 w-40 h-40 lg:w-52 lg:h-52 bg-slate-100 dark:bg-dark-border rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none -mr-12 -mt-12" />
 
                             {/* Icon row */}
                             <div className="flex items-center gap-3 md:gap-4 mb-5 md:mb-6">
-                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-all duration-200 group-hover:scale-105 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-dark-border dark:to-dark-border text-slate-500 dark:text-slate-400 border-slate-200 dark:border-dark-border group-hover:from-slate-100 group-hover:to-slate-200 shadow-sm">
+                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-transform duration-300 ease-out will-change-transform group-hover:scale-110 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-dark-border dark:to-dark-border text-slate-500 dark:text-slate-400 border-slate-200 dark:border-dark-border group-hover:from-slate-500 group-hover:to-slate-600 group-hover:text-white group-hover:border-slate-500 shadow-sm">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                         <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
                                         <line x1="3" x2="21" y1="9" y2="9" />
@@ -452,7 +454,7 @@ export const ViewModeSelector = ({
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-slate-100 leading-none group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">Full Form</h3>
+                                    <h3 className="text-lg md:text-xl font-black leading-none bg-gradient-to-r from-slate-600 dark:from-slate-300 to-slate-900 dark:to-slate-100 bg-[length:200%_100%] bg-right group-hover:bg-left bg-clip-text text-transparent transition-[background-position] duration-300 ease-out">Full Form</h3>
                                     <p className="text-xs md:text-sm text-slate-400 dark:text-slate-500 font-medium mt-1">Classic layout</p>
                                 </div>
                             </div>
@@ -470,7 +472,7 @@ export const ViewModeSelector = ({
                             </ul>
 
                             {/* CTA */}
-                            <div className="inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-dark-border transition-colors">
+                            <div className="inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 group-hover:bg-slate-600 group-hover:text-white dark:group-hover:bg-slate-600 dark:group-hover:text-white transition-colors duration-200 ease-out">
                                 <span>Open Form</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />

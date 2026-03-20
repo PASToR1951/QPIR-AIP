@@ -34,7 +34,7 @@ const THEMES = {
         segmentOn:      'from-pink-500 to-rose-500',
         segmentShadow:  'shadow-pink-200',
         btnOpen:        'from-pink-500 to-rose-500 border-pink-600 shadow-pink-200',
-        btnClosed:      'hover:border-pink-200 hover:text-pink-500 hover:shadow-pink-100',
+        btnClosed:      'hover:border-pink-200 dark:hover:border-pink-500/40 hover:text-pink-500 dark:hover:text-pink-400 hover:shadow-pink-100 dark:hover:shadow-none',
         focusRing:      'focus-visible:outline-pink-500',
     },
     blue: {
@@ -44,7 +44,7 @@ const THEMES = {
         segmentOn:      'from-blue-500 to-cyan-500',
         segmentShadow:  'shadow-blue-200',
         btnOpen:        'from-blue-500 to-cyan-500 border-blue-600 shadow-blue-200',
-        btnClosed:      'hover:border-blue-200 hover:text-blue-500 hover:shadow-blue-100',
+        btnClosed:      'hover:border-blue-200 dark:hover:border-blue-500/40 hover:text-blue-500 dark:hover:text-blue-400 hover:shadow-blue-100 dark:hover:shadow-none',
         focusRing:      'focus-visible:outline-blue-500',
     },
     indigo: {
@@ -54,7 +54,7 @@ const THEMES = {
         segmentOn:      'from-indigo-500 to-violet-500',
         segmentShadow:  'shadow-indigo-200',
         btnOpen:        'from-indigo-500 to-violet-500 border-indigo-600 shadow-indigo-200',
-        btnClosed:      'hover:border-indigo-200 hover:text-indigo-500 hover:shadow-indigo-100',
+        btnClosed:      'hover:border-indigo-200 dark:hover:border-indigo-500/40 hover:text-indigo-500 dark:hover:text-indigo-400 hover:shadow-indigo-100 dark:hover:shadow-none',
         focusRing:      'focus-visible:outline-indigo-500',
     },
     slate: {
@@ -64,7 +64,7 @@ const THEMES = {
         segmentOn:      'from-slate-600 to-slate-700',
         segmentShadow:  'shadow-slate-200',
         btnOpen:        'from-slate-600 to-slate-700 border-slate-700 shadow-slate-200',
-        btnClosed:      'hover:border-slate-400 hover:text-slate-600 hover:shadow-slate-100',
+        btnClosed:      'hover:border-slate-400 dark:hover:border-slate-500/40 hover:text-slate-600 dark:hover:text-slate-400 hover:shadow-slate-100 dark:hover:shadow-none',
         focusRing:      'focus-visible:outline-slate-500',
     },
 };
