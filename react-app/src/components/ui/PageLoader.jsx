@@ -26,7 +26,7 @@ export const PageLoader = ({ message = "Loading..." }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-slate-50 z-[100] flex flex-col items-center justify-center">
+    <div className="fixed inset-0 bg-slate-50 dark:bg-dark-base z-[100] flex flex-col items-center justify-center">
       {/* Grid Background Overlay */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_130%)] pointer-events-none opacity-30"></div>
       
@@ -57,7 +57,7 @@ export const PageLoader = ({ message = "Loading..." }) => {
                 <span className="w-2.5 h-2.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
                 <span className="w-2.5 h-2.5 bg-pink-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
             </div>
-            <p className="text-slate-500 font-bold tracking-widest uppercase text-xs animate-pulse">
+            <p className="text-slate-500 dark:text-slate-400 font-bold tracking-widest uppercase text-xs animate-pulse">
             {message}
             </p>
         </div>

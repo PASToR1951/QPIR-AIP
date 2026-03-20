@@ -31,12 +31,12 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
     const schoolName = user?.school_name;
 
     return (
-        <nav className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-sm print:hidden">
+        <nav className="bg-white/80 dark:bg-dark-base/80 backdrop-blur-md border-b border-slate-200 dark:border-dark-border sticky top-0 z-50 shadow-sm print:hidden">
             <div className="container mx-auto px-4 flex justify-between items-center h-16 max-w-6xl">
                 <div className="flex items-center gap-2 md:gap-4 min-w-0">
                     <button
                         onClick={onBack}
-                        className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500 hover:text-slate-900 shrink-0"
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 shrink-0"
                         title="Go Back"
                     >
                         <ArrowLeft size={20} strokeWidth={2.5} />
@@ -44,7 +44,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
 
                     <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-sm md:text-base font-black text-slate-900 tracking-tight leading-none truncate max-w-[160px] md:max-w-[300px] lg:max-w-none">{displayTitle}</h2>
+                            <h2 className="text-sm md:text-base font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none truncate max-w-[160px] md:max-w-[300px] lg:max-w-none">{displayTitle}</h2>
                             {formLabel && (
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wide shrink-0 ${pillClasses[theme]}`}>
                                     {formLabel}
@@ -52,7 +52,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                             )}
                         </div>
                         {schoolName && (
-                            <span className="text-[11px] md:text-xs font-bold text-slate-500 mt-0.5 truncate max-w-[160px] md:max-w-[300px] lg:max-w-none">
+                            <span className="text-[11px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-[160px] md:max-w-[300px] lg:max-w-none">
                                 {schoolName}
                             </span>
                         )}
@@ -63,7 +63,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                     <ViewModeToggle appMode={appMode} toggleAppMode={toggleAppMode} theme={theme} />
 
                     {lastSavedTime && !isSaved && (
-                        <span className="text-[10px] text-slate-500 font-medium hidden md:block">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden md:block">
                             Last saved: {lastSavedTime}
                         </span>
                     )}
@@ -74,7 +74,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-emerald-50 text-emerald-600 border border-emerald-100`}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 border border-emerald-100 dark:border-emerald-900/50`}
                             >
                                 <CheckCircle size={16} strokeWidth={3} />
                                 <span className="hidden sm:inline">Saved {lastSavedTime}</span>
@@ -103,10 +103,10 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
 
                     {onHome && (
                         <>
-                            <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block"></div>
-                            <button 
+                            <div className="w-px h-6 bg-slate-200 dark:bg-dark-border mx-1 hidden sm:block"></div>
+                            <button
                                 onClick={onHome}
-                                className="p-2 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-xl transition-colors hidden sm:flex"
+                                className="p-2 bg-slate-50 dark:bg-dark-surface text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-dark-border hover:text-slate-600 dark:hover:text-slate-300 rounded-xl transition-colors hidden sm:flex"
                                 title="Home Dashboard"
                             >
                                 <Home size={18} strokeWidth={2.5} />

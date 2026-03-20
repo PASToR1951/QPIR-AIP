@@ -15,11 +15,11 @@ export default function SignatureBlock({
 
     return (
         <div className="flex flex-col">
-            <p className="text-xs text-left mb-8 select-none text-slate-500 font-bold uppercase tracking-widest">{label}</p>
+            <p className="text-xs text-left mb-8 select-none text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">{label}</p>
             {readOnly ? (
                 <input 
                     type="text" 
-                    className="w-full border-b-2 border-slate-200 text-center font-black uppercase text-lg pointer-events-none select-none bg-transparent pb-2 text-slate-800" 
+                    className="w-full border-b-2 border-slate-200 dark:border-dark-border text-center font-black uppercase text-lg pointer-events-none select-none bg-transparent pb-2 text-slate-800 dark:text-slate-100"
                     value={name} 
                     readOnly 
                     tabIndex={-1} 
@@ -27,7 +27,7 @@ export default function SignatureBlock({
             ) : (
                 <input 
                     type="text" 
-                    className={`w-full border-b-2 border-slate-200 ${focusColor} transition-colors text-center font-black uppercase text-lg outline-none bg-transparent pb-2 text-slate-800 placeholder:text-slate-300`} 
+                    className={`w-full border-b-2 border-slate-200 dark:border-dark-border ${focusColor} transition-colors text-center font-black uppercase text-lg outline-none bg-transparent pb-2 text-slate-800 dark:text-slate-100 placeholder:text-slate-300`}
                     placeholder={namePlaceholder} 
                     value={name} 
                     onChange={onNameChange ? (e) => onNameChange(e.target.value) : undefined} 
@@ -35,13 +35,13 @@ export default function SignatureBlock({
             )}
             
             {title ? (
-                <p className="text-xs mt-3 select-none text-slate-500 text-center font-semibold uppercase tracking-widest">
+                <p className="text-xs mt-3 select-none text-slate-500 dark:text-slate-400 text-center font-semibold uppercase tracking-widest">
                     {title}
                 </p>
             ) : (
                 <input 
                     type="text" 
-                    className={`mt-2 w-full border-b-2 border-slate-100 ${focusColor} transition-colors text-center text-xs font-semibold uppercase tracking-widest outline-none bg-transparent pb-1 text-slate-500 placeholder:text-slate-300`} 
+                    className={`mt-2 w-full border-b-2 border-slate-100 dark:border-dark-border ${focusColor} transition-colors text-center text-xs font-semibold uppercase tracking-widest outline-none bg-transparent pb-1 text-slate-500 dark:text-slate-400 placeholder:text-slate-300`}
                     placeholder={titlePlaceholder} 
                     value={title} 
                     onChange={onTitleChange ? (e) => onTitleChange(e.target.value) : undefined} 

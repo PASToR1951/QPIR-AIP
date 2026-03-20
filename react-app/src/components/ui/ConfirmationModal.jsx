@@ -33,14 +33,14 @@ export const ConfirmationModal = ({
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="bg-white rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl border border-slate-100 relative overflow-hidden"
+                        className="bg-white dark:bg-dark-surface rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl border border-slate-100 dark:border-dark-border relative overflow-hidden"
                     >
                         {/* Decorative background element */}
-                        <div className="absolute -top-24 -right-24 w-48 h-48 bg-slate-50 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
+                        <div className="absolute -top-24 -right-24 w-48 h-48 bg-slate-50 dark:bg-dark-base rounded-full blur-3xl opacity-50 pointer-events-none"></div>
                         
                         <button 
                             onClick={onClose}
-                            className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                            className="absolute top-6 right-6 p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark-border rounded-full transition-colors"
                         >
                             <X size={20} strokeWidth={2.5} />
                         </button>
@@ -50,18 +50,18 @@ export const ConfirmationModal = ({
                                 {icon || icons[type]}
                             </div>
                             
-                            <h3 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">
+                            <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 mb-3 tracking-tight">
                                 {title}
                             </h3>
                             
-                            <p className="text-slate-500 font-medium leading-relaxed mb-10">
+                            <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-10">
                                 {message}
                             </p>
                             
                             <div className="flex flex-col sm:flex-row gap-3 w-full">
                                 <button 
                                     onClick={onClose}
-                                    className="flex-1 px-6 py-4 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all active:scale-95"
+                                    className="flex-1 px-6 py-4 rounded-2xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-all active:scale-95"
                                 >
                                     {cancelText}
                                 </button>

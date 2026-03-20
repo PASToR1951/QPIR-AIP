@@ -8,28 +8,28 @@ export default function WizardStepper({ steps, currentStep, theme = 'pink' }) {
     const tc = {
         pink: {
             bg: 'bg-pink-600',
-            text: 'text-pink-700',
+            text: 'text-pink-700 dark:text-pink-400',
             ring: 'ring-pink-100',
             bar: 'bg-pink-500',
-            barTrack: 'bg-pink-100',
-            mobileBg: 'bg-pink-50',
-            mobileBorder: 'border-pink-100',
-            mobileNum: 'text-pink-600 bg-pink-100',
+            barTrack: 'bg-pink-100 dark:bg-pink-900/40',
+            mobileBg: 'bg-pink-50 dark:bg-pink-950/30',
+            mobileBorder: 'border-pink-100 dark:border-pink-900/50',
+            mobileNum: 'text-pink-600 dark:text-pink-400 bg-pink-100 dark:bg-pink-900/40',
         },
         blue: {
             bg: 'bg-blue-600',
-            text: 'text-blue-700',
+            text: 'text-blue-700 dark:text-blue-400',
             ring: 'ring-blue-100',
             bar: 'bg-blue-500',
-            barTrack: 'bg-blue-100',
-            mobileBg: 'bg-blue-50',
-            mobileBorder: 'border-blue-100',
-            mobileNum: 'text-blue-600 bg-blue-100',
+            barTrack: 'bg-blue-100 dark:bg-blue-900/40',
+            mobileBg: 'bg-blue-50 dark:bg-blue-950/30',
+            mobileBorder: 'border-blue-100 dark:border-blue-900/50',
+            mobileNum: 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/40',
         }
     }[theme] || {
-        bg: 'bg-pink-600', text: 'text-pink-700', ring: 'ring-pink-100',
-        bar: 'bg-pink-500', barTrack: 'bg-pink-100', mobileBg: 'bg-pink-50',
-        mobileBorder: 'border-pink-100', mobileNum: 'text-pink-600 bg-pink-100',
+        bg: 'bg-pink-600', text: 'text-pink-700 dark:text-pink-400', ring: 'ring-pink-100',
+        bar: 'bg-pink-500', barTrack: 'bg-pink-100 dark:bg-pink-900/40', mobileBg: 'bg-pink-50 dark:bg-pink-950/30',
+        mobileBorder: 'border-pink-100 dark:border-pink-900/50', mobileNum: 'text-pink-600 dark:text-pink-400 bg-pink-100 dark:bg-pink-900/40',
     };
 
     return (
@@ -57,7 +57,7 @@ export default function WizardStepper({ steps, currentStep, theme = 'pink' }) {
                     </div>
 
                     {/* Completed count */}
-                    <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 shrink-0">
                         {currentStep > 1 ? `${currentStep - 1} done` : ''}
                     </span>
                 </div>
@@ -66,7 +66,7 @@ export default function WizardStepper({ steps, currentStep, theme = 'pink' }) {
             {/* ── Desktop: full stepper ── */}
             <div className="hidden md:block">
                 <div className="flex justify-between items-center max-w-2xl mx-auto px-4 relative">
-                    <div className="absolute left-[10%] right-[10%] top-[14px] h-[2px] bg-slate-200 -z-0 rounded-full overflow-hidden">
+                    <div className="absolute left-[10%] right-[10%] top-[14px] h-[2px] bg-slate-200 dark:bg-dark-border -z-0 rounded-full overflow-hidden">
                         <div
                             className={`h-full ${tc.bar} transition-all duration-300 ease-out`}
                             style={{ width: `${progress}%` }}
@@ -76,13 +76,13 @@ export default function WizardStepper({ steps, currentStep, theme = 'pink' }) {
                         <div key={step.num} className="flex flex-col items-center gap-2 relative z-10 flex-1">
                             <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs transition-colors ${
                                     currentStep === step.num ? `${tc.bg} text-white shadow-md ring-4 ${tc.ring}` :
-                                    currentStep > step.num ? `${tc.bg} text-white ring-2 ring-white` : 'bg-white text-slate-400 border-2 border-slate-200'
+                                    currentStep > step.num ? `${tc.bg} text-white ring-2 ring-white dark:ring-dark-surface` : 'bg-white dark:bg-dark-surface text-slate-400 dark:text-slate-500 border-2 border-slate-200 dark:border-dark-border'
                                 }`}>
                                 {currentStep > step.num ? (
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                 ) : step.num}
                             </div>
-                            <span className={`text-xs font-bold uppercase tracking-widest text-center ${currentStep === step.num ? tc.text : 'text-slate-400'}`}>
+                            <span className={`text-xs font-bold uppercase tracking-widest text-center ${currentStep === step.num ? tc.text : 'text-slate-400 dark:text-slate-500'}`}>
                                 {step.label}
                             </span>
                         </div>

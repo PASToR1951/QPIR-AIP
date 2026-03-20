@@ -15,12 +15,12 @@ function formatDeadline(isoDate) {
 export default function QuarterTimeline({ quarters, currentQuarter, loading }) {
     if (loading || !quarters) {
         return (
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mb-8 animate-pulse">
+            <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-6 shadow-sm mb-8 animate-pulse">
                 <div className="flex justify-between items-center">
                     {[1, 2, 3, 4].map(i => (
                         <div key={i} className="flex flex-col items-center gap-2">
-                            <div className="w-8 h-8 bg-slate-200 rounded-full" />
-                            <div className="w-12 h-3 bg-slate-100 rounded" />
+                            <div className="w-8 h-8 bg-slate-200 dark:bg-dark-border/60 rounded-full" />
+                            <div className="w-12 h-3 bg-slate-100 dark:bg-dark-border rounded" />
                         </div>
                     ))}
                 </div>
@@ -32,12 +32,12 @@ export default function QuarterTimeline({ quarters, currentQuarter, loading }) {
     const progressIndex = Math.max(0, (currentQuarter || 1) - 1);
 
     return (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 md:px-10 shadow-sm mb-8">
+        <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-6 md:px-10 shadow-sm mb-8">
             {/* Desktop: horizontal */}
             <div className="hidden md:block">
                 <div className="flex justify-between items-center relative">
                     {/* Connecting line background */}
-                    <div className="absolute left-[12%] right-[12%] top-4 h-[2px] bg-slate-200 rounded-full overflow-hidden">
+                    <div className="absolute left-[12%] right-[12%] top-4 h-[2px] bg-slate-200 dark:bg-dark-border/60 rounded-full overflow-hidden">
                         <div
                             className="h-full bg-blue-400 transition-all duration-500 ease-out rounded-full"
                             style={{ width: `${(progressIndex / 3) * 100}%` }}
@@ -53,9 +53,9 @@ export default function QuarterTimeline({ quarters, currentQuarter, loading }) {
                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                                     ) : q.name.replace('Q', ''))}
                                 </div>
-                                <span className="text-xs font-extrabold text-slate-700">{q.name}</span>
+                                <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200">{q.name}</span>
                                 <span className={`text-[10px] font-bold uppercase tracking-wider ${config.text}`}>{config.label}</span>
-                                <span className="text-[10px] text-slate-400 font-medium">{formatDeadline(q.deadline)}</span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{formatDeadline(q.deadline)}</span>
                             </div>
                         );
                     })}
@@ -75,10 +75,10 @@ export default function QuarterTimeline({ quarters, currentQuarter, loading }) {
                             </div>
                             <div className="flex-1 flex items-center justify-between">
                                 <div>
-                                    <span className="text-sm font-bold text-slate-700">{q.name}</span>
+                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{q.name}</span>
                                     <span className={`ml-2 text-[10px] font-bold uppercase tracking-wider ${config.text}`}>{config.label}</span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 font-medium">{formatDeadline(q.deadline)}</span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">{formatDeadline(q.deadline)}</span>
                             </div>
                         </div>
                     );

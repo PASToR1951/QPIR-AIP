@@ -90,15 +90,15 @@ export default function ERDDiagram() {
   }, [view]);
 
   return (
-    <div className="not-prose my-6 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div className="not-prose my-6 rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Entity Relationship Diagram</span>
-        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-base">
+        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Entity Relationship Diagram</span>
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface p-0.5 shadow-sm">
           <button
             onClick={() => setView('diagram')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              view === 'diagram' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+              view === 'diagram' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border'
             }`}
           >
             <DiagramIcon /> Diagram
@@ -106,7 +106,7 @@ export default function ERDDiagram() {
           <button
             onClick={() => setView('source')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              view === 'source' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+              view === 'source' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border'
             }`}
           >
             <CodeIcon /> Source
@@ -117,7 +117,7 @@ export default function ERDDiagram() {
       {view === 'diagram' ? (
         <div className="p-6 overflow-auto flex justify-center min-h-[200px] items-center">
           {status === 'loading' && (
-            <div className="text-slate-400 text-sm font-medium animate-pulse">Rendering diagram…</div>
+            <div className="text-slate-400 dark:text-slate-500 text-sm font-medium animate-pulse">Rendering diagram…</div>
           )}
           {status === 'error' && (
             <div className="text-red-400 text-sm font-medium">Failed to render diagram.</div>
