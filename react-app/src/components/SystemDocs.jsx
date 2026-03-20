@@ -185,7 +185,7 @@ export default function SystemDocs() {
 
               {/* AIP-PIR logo — centre */}
               <div className="flex flex-col items-center gap-3">
-                <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-16 md:h-20 w-auto" />
+                <img src="/AIP-PIR-logo.png" alt="AIP-PIR Logo" className="h-16 md:h-20 w-auto" />
                 <div className="text-center">
                   <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">AIP-PIR Portal</h1>
                   <p className="text-slate-500 dark:text-slate-400 font-medium text-xs mt-1 tracking-wide">System Architecture & Technical Thesis</p>

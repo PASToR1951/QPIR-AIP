@@ -60,7 +60,7 @@ export default function Login() {
       ></div>
 
       {/* Aceternity Grid Background overlay */}
-      <div className="absolute inset-0 bg-slate-900/10 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-10"></div>
+      <div className="absolute inset-0 bg-slate-900/10 bg-grid [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-10"></div>
 
       {/* Glowing Orbs (Animated with Anime.js) */}
       <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 dark:opacity-30 rounded-full blur-3xl opacity-40 pointer-events-none z-0 login-orb-float-1"></div>
@@ -71,7 +71,7 @@ export default function Login() {
         <div ref={cardRef} className="bg-[#fafafa]/90 dark:bg-dark-surface/90 border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 dark:ring-dark-border/30 backdrop-blur-md login-card-entrance">
 
           <div className="mb-8 flex justify-center items-center gap-6">
-            <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-sm" />
+            <img src="/AIP-PIR-logo.png" alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-sm" />
           </div>
 
           <h2 className="text-3xl font-extrabold tracking-tighter text-slate-900 dark:text-slate-100 pb-2">

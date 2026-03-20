@@ -72,7 +72,7 @@ export default React.memo(function AIPActionPlanSection({
                         const actualIndex = currentStep === 3 ? pIdx + 1 : 3;
                         return (
                             <div key={phase} className="bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-2xl p-4">
-                                <h3 className="text-sm font-bold text-pink-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <h3 className="text-sm font-bold text-pink-800 dark:text-pink-300 uppercase tracking-wider mb-3 flex items-center gap-2">
                                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-pink-100 text-pink-700 text-xs">{actualIndex}</span>
                                     {phase}
                                 </h3>
@@ -140,7 +140,7 @@ export default React.memo(function AIPActionPlanSection({
                                 <button
                                     type="button"
                                     onClick={() => handleAddActivityPhase(phase)}
-                                    className="mt-3 text-xs font-bold text-pink-600 hover:text-pink-800 bg-pink-50 hover:bg-pink-100 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 origin-left"
+                                    className="mt-3 text-xs font-bold text-pink-600 hover:text-pink-800 bg-pink-50 hover:bg-pink-100 dark:bg-pink-950/30 dark:hover:bg-pink-900/30 px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 origin-left"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                     Add Activity to {phase}
@@ -177,7 +177,7 @@ export default React.memo(function AIPActionPlanSection({
                                         <React.Fragment key={phase}>
                                             {/* Phase Header Row */}
                                             <tr className="bg-pink-50/50 dark:bg-pink-950/30 border-b border-slate-200 dark:border-dark-border">
-                                                <td colSpan="7" className="p-3 font-bold text-pink-800 text-xs uppercase tracking-wider">
+                                                <td colSpan="7" className="p-3 font-bold text-pink-800 dark:text-pink-300 text-xs uppercase tracking-wider">
                                                     {pIdx + 1}. {phase}
                                                 </td>
                                             </tr>
@@ -225,7 +225,7 @@ export default React.memo(function AIPActionPlanSection({
                                             {/* Add Activity Button explicitly for this Phase */}
                                             <tr className="border-b-2 border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface group transition-colors">
                                                 <td colSpan="7" className="p-2">
-                                                    <button type="button" onClick={() => handleAddActivityPhase(phase)} className="text-[11px] font-bold text-pink-600 hover:text-pink-800 bg-pink-50 hover:bg-pink-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 origin-left">
+                                                    <button type="button" onClick={() => handleAddActivityPhase(phase)} className="text-[11px] font-bold text-pink-600 hover:text-pink-800 bg-pink-50 hover:bg-pink-100 dark:bg-pink-950/30 dark:hover:bg-pink-900/30 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 active:scale-95 origin-left">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                                                         Add Activity to {phase}
                                                     </button>

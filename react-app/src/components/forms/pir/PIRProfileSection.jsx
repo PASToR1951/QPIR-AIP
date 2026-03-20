@@ -44,7 +44,7 @@ export default React.memo(function PIRProfileSection({
                     <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">Program Name</label>
                     <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 rounded-xl">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 shrink-0"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
-                        <span className="text-sm font-semibold text-blue-800 truncate">{program || '—'}</span>
+                        <span className="text-sm font-semibold text-blue-800 dark:text-blue-300 truncate">{program || '—'}</span>
                     </div>
                 </div>
 
@@ -64,7 +64,7 @@ export default React.memo(function PIRProfileSection({
                     <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">Reporting Quarter</label>
                     <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 rounded-xl">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 shrink-0"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                        <span className="text-sm font-bold text-blue-700">{quarterString}</span>
+                        <span className="text-sm font-bold text-blue-700 dark:text-blue-300">{quarterString}</span>
                     </div>
                 </div>
 
