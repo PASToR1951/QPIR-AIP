@@ -23,19 +23,32 @@ function getUrgencyTier(daysLeft) {
     return                      { level: 'calm',      color: 'slate', bgTint: 'bg-white dark:bg-dark-surface border-slate-200 dark:border-dark-border' };
 }
 
+// Interpolate between green (#10b981) and pink (#E94560) based on position t ∈ [0,1]
+function gradientColor(t) {
+    const r = Math.round(16  + t * (233 - 16));
+    const g = Math.round(185 + t * (69  - 185));
+    const b = Math.round(129 + t * (96  - 129));
+    return `rgb(${r},${g},${b})`;
+}
+
 // Segmented progress bar
 function SegmentedBar({ completed, total }) {
     if (total === 0) return null;
     return (
         <div className="flex gap-1 mt-3 w-full">
-            {Array.from({ length: total }).map((_, i) => (
-                <div
-                    key={i}
-                    className={`h-1.5 rounded-full flex-1 transition-colors ${
-                        i < completed ? 'bg-emerald-400' : 'bg-slate-200 dark:bg-dark-border/60'
-                    }`}
-                />
-            ))}
+            {Array.from({ length: total }).map((_, i) => {
+                const t = total > 1 ? i / (total - 1) : 0;
+                return (
+                    <div
+                        key={i}
+                        className="h-1.5 rounded-full flex-1 transition-all"
+                        style={i < completed
+                            ? { backgroundColor: gradientColor(t) }
+                            : { backgroundColor: 'var(--segment-empty)' }
+                        }
+                    />
+                );
+            })}
         </div>
     );
 }
@@ -45,14 +58,19 @@ function DotPips({ submitted, total }) {
     if (total === 0) return null;
     return (
         <div className="flex gap-1.5 mt-3 justify-center">
-            {Array.from({ length: total }).map((_, i) => (
-                <div
-                    key={i}
-                    className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                        i < submitted ? 'bg-emerald-400' : 'bg-slate-200 dark:bg-dark-border/60'
-                    }`}
-                />
-            ))}
+            {Array.from({ length: total }).map((_, i) => {
+                const t = total > 1 ? i / (total - 1) : 0;
+                return (
+                    <div
+                        key={i}
+                        className="w-2.5 h-2.5 rounded-full transition-all"
+                        style={i < submitted
+                            ? { backgroundColor: gradientColor(t) }
+                            : { backgroundColor: 'var(--segment-empty)' }
+                        }
+                    />
+                );
+            })}
         </div>
     );
 }
@@ -91,7 +109,7 @@ export default function DashboardStats({ data, loading }) {
             {/* AIP Progress */}
             <div className={`bg-white dark:bg-dark-surface border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allAipDone ? 'border-emerald-200 dark:border-emerald-700' : 'border-slate-200 dark:border-dark-border'}`}>
                 <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allAipDone ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-600'}`}>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allAipDone ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400' : 'bg-pink-100 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400'}`}>
                         <FileText size={18} strokeWidth={2.5} />
                     </div>
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">AIP Progress</span>
@@ -99,7 +117,7 @@ export default function DashboardStats({ data, loading }) {
                 <div className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">
                     {aipCompletion.completed} <span className="text-sm font-bold text-slate-400 dark:text-slate-500">of {aipCompletion.total}</span>
                 </div>
-                <p className={`text-xs font-semibold mt-1.5 ${allAipDone ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-400'}`}>
+                <p className={`text-xs font-semibold mt-1.5 ${allAipDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                     {aipCompletion.total === 0
                         ? 'No programs assigned'
                         : allAipDone
@@ -111,9 +129,9 @@ export default function DashboardStats({ data, loading }) {
             </div>
 
             {/* PIR This Quarter */}
-            <div className={`bg-white dark:bg-dark-surface border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allPirDone ? 'border-emerald-200 dark:border-emerald-700' : noPirNeeded ? 'border-slate-200 dark:border-dark-border' : 'border-amber-100'}`}>
+            <div className={`bg-white dark:bg-dark-surface border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allPirDone ? 'border-emerald-200 dark:border-emerald-700' : noPirNeeded ? 'border-slate-200 dark:border-dark-border' : 'border-amber-100 dark:border-amber-800/50'}`}>
                 <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allPirDone ? 'bg-emerald-100 text-emerald-600' : noPirNeeded ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-600'}`}>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allPirDone ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400' : noPirNeeded ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500' : 'bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400'}`}>
                         <BarChart3 size={18} strokeWidth={2.5} />
                     </div>
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Q{currentQuarter} Reviews</span>
@@ -124,7 +142,7 @@ export default function DashboardStats({ data, loading }) {
                         : <>{pirSubmitted.submitted} <span className="text-sm font-bold text-slate-400 dark:text-slate-500">of {pirSubmitted.total}</span></>
                     }
                 </div>
-                <p className={`text-xs font-semibold mt-1.5 ${allPirDone ? 'text-emerald-600' : noPirNeeded ? 'text-slate-400 dark:text-slate-500' : 'text-amber-600'}`}>
+                <p className={`text-xs font-semibold mt-1.5 ${allPirDone ? 'text-emerald-600 dark:text-emerald-400' : noPirNeeded ? 'text-slate-400 dark:text-slate-500' : 'text-amber-600 dark:text-amber-400'}`}>
                     {noPirNeeded
                         ? 'No activities this quarter'
                         : allPirDone
@@ -139,9 +157,9 @@ export default function DashboardStats({ data, loading }) {
             <div className={`border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${urgency.bgTint}`}>
                 <div className="flex items-center gap-3 mb-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                        urgency.level === 'calm' ? 'bg-slate-100 text-slate-500' :
-                        urgency.level === 'attention' ? 'bg-amber-100 text-amber-600' :
-                        'bg-rose-100 text-rose-600'
+                        urgency.level === 'calm' ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400' :
+                        urgency.level === 'attention' ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400' :
+                        'bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400'
                     }`}>
                         <Clock size={18} strokeWidth={2.5} />
                     </div>

@@ -50,7 +50,7 @@ export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
                 </div>
                 <div className="items-center gap-3 shrink-0 hidden md:flex print:flex">
                     <img src="/Division_Logo.webp" alt="Division Logo" className="h-24 w-auto drop-shadow-md" />
-                    <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-md" />
+                    <img src="/AIP-PIR-logo.png" alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-md" />
                 </div>
             </div>
 

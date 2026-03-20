@@ -3,22 +3,22 @@ import React from 'react';
 export default function FinalizeCard({ isSubmitted, onSubmit, onPreview, theme = 'pink' }) {
     const themeColors = {
         pink: {
-            bg: 'bg-pink-50',
-            bgHover: 'bg-pink-50/30',
+            bg: 'bg-pink-50 dark:bg-pink-950/30',
+            bgHover: 'bg-pink-50/30 dark:bg-pink-950/20',
             text: 'text-pink-600',
             borderHover: 'hover:border-pink-200',
             btnBg: 'bg-slate-900 hover:bg-slate-800 shadow-slate-200',
             btnRing: 'ring-slate-500/30 text-white',
-            border: 'border-pink-100'
+            border: 'border-pink-100 dark:border-pink-900/50'
         },
         blue: {
-            bg: 'bg-blue-50',
-            bgHover: 'bg-blue-50/30',
+            bg: 'bg-blue-50 dark:bg-blue-950/30',
+            bgHover: 'bg-blue-50/30 dark:bg-blue-950/20',
             text: 'text-blue-600',
             borderHover: 'hover:border-blue-200',
             btnBg: 'bg-slate-900 hover:bg-slate-800 shadow-slate-200',
             btnRing: 'ring-slate-500/30 text-white',
-            border: 'border-blue-100'
+            border: 'border-blue-100 dark:border-blue-900/50'
         }
     }[theme] || themeColors.pink;
 
