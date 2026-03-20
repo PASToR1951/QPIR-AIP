@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import {
     Accessibility,
     X,
+    Moon,
     Sun,
     ZapOff,
     BookOpen,
@@ -90,8 +91,8 @@ function ToggleRow({ label, description, icon, value, onChange, theme }) {
             <div className="flex items-center gap-2.5 min-w-0">
                 <span className={`flex-shrink-0 transition-colors ${value ? t.icon : 'text-slate-400'}`}>{icon}</span>
                 <div className="min-w-0">
-                    <div className="text-xs font-bold text-slate-700 leading-tight">{label}</div>
-                    <div className="text-[10px] text-slate-400 leading-tight mt-0.5">{description}</div>
+                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 leading-tight">{label}</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight mt-0.5">{description}</div>
                 </div>
             </div>
             <ToggleSwitch value={value} onChange={onChange} theme={theme} />
@@ -125,25 +126,22 @@ export default function AccessibilityPanel() {
     const segmentActive = (active) =>
         active
             ? `bg-gradient-to-br ${t.segmentOn} text-white shadow-sm ${t.segmentShadow}`
-            : 'bg-slate-100 text-slate-500 hover:bg-slate-200';
+            : 'bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-border/80';
 
     return (
         <div className="fixed bottom-6 right-6 z-[60] print:hidden">
             {isOpen && (
-                <div className="absolute bottom-14 right-0 w-72 bg-white border border-slate-200 rounded-[1.5rem] shadow-2xl overflow-hidden mb-2">
-
-                    {/* Gradient accent strip */}
-                    <div className={`h-1 bg-gradient-to-r ${t.strip}`} />
+                <div className="absolute bottom-14 right-0 w-72 bg-slate-50 dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[1.5rem] shadow-2xl overflow-hidden mb-2">
 
                     {/* Header */}
-                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                    <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-dark-border">
+                        <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
                             <Accessibility className={`w-3.5 h-3.5 ${t.icon}`} />
                             Accessibility
                         </h3>
                         <button
                             onClick={() => setIsOpen(false)}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                            className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
                             aria-label="Close accessibility panel"
                         >
                             <X className="w-3.5 h-3.5" />
@@ -158,6 +156,14 @@ export default function AccessibilityPanel() {
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Visual</p>
                             <div className="space-y-3.5">
                                 <ToggleRow
+                                    label="Dark Mode"
+                                    description="Reduce eye strain with darker colors"
+                                    icon={<Moon className="w-4 h-4" />}
+                                    value={settings.darkMode}
+                                    onChange={v => update('darkMode', v)}
+                                    theme={themeName}
+                                />
+                                <ToggleRow
                                     label="High Contrast"
                                     description="Stronger borders and colors"
                                     icon={<Sun className="w-4 h-4" />}
@@ -168,7 +174,7 @@ export default function AccessibilityPanel() {
                                 <div>
                                     <div className="flex items-center gap-2 mb-2">
                                         <Type className={`w-4 h-4 ${settings.fontSize !== 'normal' ? t.icon : 'text-slate-400'}`} />
-                                        <span className="text-xs font-bold text-slate-700">Font Size</span>
+                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Font Size</span>
                                     </div>
                                     <div className="flex gap-1">
                                         {FONT_SIZES.map(({ value, label, size }) => (
@@ -186,7 +192,7 @@ export default function AccessibilityPanel() {
                             </div>
                         </div>
 
-                        <div className="border-t border-slate-100" />
+                        <div className="border-t border-slate-100 dark:border-dark-border" />
 
                         {/* Motion & Reading */}
                         <div>
@@ -211,7 +217,7 @@ export default function AccessibilityPanel() {
                                 <div>
                                     <div className="flex items-center gap-2 mb-2">
                                         <AlignLeft className={`w-4 h-4 ${settings.lineSpacing !== 'normal' ? t.icon : 'text-slate-400'}`} />
-                                        <span className="text-xs font-bold text-slate-700">Line Spacing</span>
+                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Line Spacing</span>
                                     </div>
                                     <div className="flex gap-1">
                                         {SPACING_OPTIONS.map(({ value, label }) => (
@@ -236,11 +242,11 @@ export default function AccessibilityPanel() {
                             </div>
                         </div>
 
-                        <div className="border-t border-slate-100" />
+                        <div className="border-t border-slate-100 dark:border-dark-border" />
 
                         <button
                             onClick={reset}
-                            className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-colors"
+                            className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-dark-border rounded-xl transition-colors"
                         >
                             <RotateCcw className="w-3 h-3" />
                             Reset to defaults
@@ -255,7 +261,7 @@ export default function AccessibilityPanel() {
                 className={`w-12 h-12 rounded-2xl shadow-lg border transition-all duration-200 flex items-center justify-center ${
                     isOpen
                         ? `bg-gradient-to-br ${t.btnOpen} text-white`
-                        : `bg-white border-slate-200 text-slate-500 ${t.btnClosed}`
+                        : `bg-slate-50 dark:bg-dark-surface border-slate-200 dark:border-dark-border text-slate-500 dark:text-slate-400 ${t.btnClosed}`
                 }`}
                 title="Accessibility Options"
                 aria-label="Open accessibility options"
