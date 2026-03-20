@@ -222,23 +222,23 @@ function Dashboard() {
 
             <div className="p-8 md:p-10 relative z-10 flex flex-col h-full">
               <div className="flex justify-between items-start mb-12">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-md border bg-gradient-to-br from-pink-50 to-pink-100 text-pink-600 border-pink-200 shadow-pink-100/50 group-hover:from-pink-500 group-hover:to-pink-600 group-hover:text-white group-hover:shadow-pink-300">
-                  <FileText size={32} strokeWidth={2.5} />
+                <div className="relative overflow-hidden w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform duration-300 ease-out shadow-md border bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/40 dark:to-pink-900/30 text-pink-600 border-pink-200 dark:border-pink-800/60 shadow-pink-100/50 group-hover:border-pink-500 group-hover:shadow-pink-400/40">
+                  <span className="absolute inset-0 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 ease-out bg-pink-500/75 backdrop-blur-sm rounded-2xl" />
+                  <FileText size={32} strokeWidth={2.5} className="relative z-10 group-hover:text-white transition-colors duration-300" />
                 </div>
                 {dashboardData && dashboardData.aipCompletion.total > 0 && (
-                  <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm ${
-                    dashboardData.aipCompletion.completed >= dashboardData.aipCompletion.total
-                      ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 border-emerald-200'
-                      : 'bg-pink-50 dark:bg-pink-950/30 text-pink-700 border-pink-200'
-                  }`}>
-                    {dashboardData.aipCompletion.completed}/{dashboardData.aipCompletion.total} Programs
+                  <div className="relative overflow-hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400 border-pink-200 dark:border-pink-700/60 group-hover:border-pink-500 dark:group-hover:border-pink-500 transition-colors duration-300">
+                    <span className="absolute inset-0 -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out bg-pink-500/75 backdrop-blur-sm rounded-full" />
+                    <span className="relative z-10 group-hover:text-white transition-colors duration-300">
+                      {dashboardData.aipCompletion.completed}/{dashboardData.aipCompletion.total} Programs
+                    </span>
                   </div>
                 )}
               </div>
 
               <div className="mt-auto">
-                <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 transition-colors group-hover:text-pink-600">AIP Form</h3>
-                <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6">
+                <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:text-pink-600">AIP Form</h3>
+                <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
                   Annual Implementation Plan <br />
                   <span className="text-slate-400 dark:text-slate-500 text-sm md:text-base font-normal">
                     {dashboardData && dashboardData.aipCompletion.completed < dashboardData.aipCompletion.total
@@ -248,11 +248,14 @@ function Dashboard() {
                   </span>
                 </p>
 
-                <div className="flex items-center gap-3 text-pink-600 font-bold group-hover:translate-x-2 transition-transform duration-300">
+                <div className="flex items-center gap-2 text-pink-600 dark:text-pink-400 font-bold group-hover:translate-x-2 transition-transform duration-300">
                   <span className="text-sm uppercase tracking-widest">
                     {aipStatus === 'review' ? 'View Submission' : aipStatus === 'draft' ? 'Continue Plan' : 'Start Planning'}
                   </span>
-                  <div className="w-8 h-8 rounded-full bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center group-hover:bg-pink-100 transition-colors">
+                  <div className="w-0 group-hover:w-5 overflow-hidden transition-all duration-300 ease-out flex items-center">
+                    <div className="w-5 h-px bg-pink-400/60 dark:bg-pink-500/50 rounded-full" />
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center group-hover:bg-pink-500/15 dark:group-hover:bg-pink-500/20 transition-colors">
                     <ArrowRight size={16} strokeWidth={3} />
                   </div>
                 </div>
@@ -268,28 +271,32 @@ function Dashboard() {
 
               <div className="p-8 md:p-10 relative z-0 flex flex-col h-full">
                 <div className="flex justify-between items-start mb-12">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-500 shadow-md border bg-gradient-to-br from-blue-50 to-blue-100 text-blue-600 border-blue-200 shadow-blue-100/50 group-hover:from-blue-500 group-hover:to-blue-600 group-hover:text-white group-hover:shadow-blue-300">
-                    <BarChart3 size={32} strokeWidth={2.5} />
+                  <div className="relative overflow-hidden w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform duration-300 ease-out shadow-md border bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/30 text-blue-600 border-blue-200 dark:border-blue-800/60 shadow-blue-100/50 group-hover:border-blue-500 group-hover:shadow-blue-400/40">
+                    <span className="absolute inset-0 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 ease-out bg-blue-500/75 backdrop-blur-sm rounded-2xl" />
+                    <BarChart3 size={32} strokeWidth={2.5} className="relative z-10 group-hover:text-white transition-colors duration-300" />
                   </div>
                   {dashboardData && (
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm mt-8 sm:mt-0 ${
+                    <div className={`relative overflow-hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm mt-8 sm:mt-0 group-hover:border-blue-500 dark:group-hover:border-blue-500 transition-colors duration-300 ${
                       dashboardData.pirSubmitted.total === 0
-                        ? 'bg-slate-50 dark:bg-dark-border text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600'
+                        ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-500 dark:text-blue-400 border-blue-200 dark:border-blue-700/60'
                         : dashboardData.pirSubmitted.submitted >= dashboardData.pirSubmitted.total
-                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 border-emerald-200'
-                          : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 border-amber-200'
+                          ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700/60'
+                          : 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-700/60'
                     }`}>
-                      {dashboardData.pirSubmitted.total === 0
-                        ? `No Q${dashboardData.currentQuarter} Activities`
-                        : `Q${dashboardData.currentQuarter}: ${dashboardData.pirSubmitted.submitted}/${dashboardData.pirSubmitted.total} Filed`
-                      }
+                      <span className="absolute inset-0 -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out bg-blue-500/75 backdrop-blur-sm rounded-full" />
+                      <span className="relative z-10 group-hover:text-white transition-colors duration-300">
+                        {dashboardData.pirSubmitted.total === 0
+                          ? `No Q${dashboardData.currentQuarter} Activities`
+                          : `Q${dashboardData.currentQuarter}: ${dashboardData.pirSubmitted.submitted}/${dashboardData.pirSubmitted.total} Filed`
+                        }
+                      </span>
                     </div>
                   )}
                 </div>
 
                 <div className="mt-auto">
-                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 transition-colors group-hover:text-blue-600">PIR Form</h3>
-                  <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6">
+                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:text-blue-600">PIR Form</h3>
+                  <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
                     Program Implementation Review <br />
                     <span className="text-slate-400 dark:text-slate-500 text-sm md:text-base font-normal">
                       {dashboardData && dashboardData.pirSubmitted.total > 0 && dashboardData.pirSubmitted.submitted < dashboardData.pirSubmitted.total
@@ -301,11 +308,14 @@ function Dashboard() {
                     </span>
                   </p>
 
-                  <div className="flex items-center gap-3 text-blue-600 font-bold group-hover:translate-x-2 transition-transform duration-300">
+                  <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold group-hover:translate-x-2 transition-transform duration-300">
                     <span className="text-sm uppercase tracking-widest">
                       {dashboardData && dashboardData.pirSubmitted.submitted > 0 ? 'View Reviews' : 'Start Review'}
                     </span>
-                    <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                    <div className="w-0 group-hover:w-5 overflow-hidden transition-all duration-300 ease-out flex items-center">
+                      <div className="w-5 h-px bg-blue-400/60 dark:bg-blue-500/50 rounded-full" />
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-500/15 dark:group-hover:bg-blue-500/20 transition-colors">
                       <ArrowRight size={16} strokeWidth={3} />
                     </div>
                   </div>

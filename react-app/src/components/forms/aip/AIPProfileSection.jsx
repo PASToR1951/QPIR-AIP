@@ -35,7 +35,7 @@ export default React.memo(function AIPProfileSection({
                     <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">DepEd Program Aligned</label>
                     <div className="flex items-center gap-3 px-4 py-3 bg-pink-50 dark:bg-pink-950/30 border border-pink-200 rounded-xl">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-pink-500 shrink-0"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
-                        <span className="text-sm font-semibold text-pink-800 truncate">{depedProgram || '—'}</span>
+                        <span className="text-sm font-semibold text-pink-800 dark:text-pink-300 truncate">{depedProgram || '—'}</span>
                     </div>
                 </div>
                 <Input theme="pink" label="School Improvement Project / Title" placeholder="Enter SIP Title..." value={sipTitle} onChange={(e) => setSipTitle(e.target.value)} />

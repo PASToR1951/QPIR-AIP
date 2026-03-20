@@ -520,7 +520,7 @@ export default function App() {
     if (isLoading) return <PageLoader message="Loading PIR..." />;
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 dark:bg-dark-base">
         <AnimatePresence mode="wait">
             {appMode === 'splash' ? (
                 <motion.div key="splash" {...motionProps}>
@@ -543,14 +543,14 @@ export default function App() {
             ) : appMode === 'readonly' ? (
                 <motion.div key="readonly" {...motionProps}>
                     <FormHeader title="Quarterly Performance Review" programName={program} onBack={() => setAppMode('splash')} theme="blue" />
-                    <div className="bg-slate-50 min-h-screen font-sans print:bg-white">
+                    <div className="bg-slate-50 dark:bg-dark-base min-h-screen font-sans print:bg-white">
                         {/* Lock banner */}
                         <div className="max-w-5xl mx-auto px-4 pt-8 pb-4 print:hidden">
-                            <div className="flex items-center gap-3 px-5 py-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl shadow-sm">
+                            <div className="flex items-center gap-3 px-5 py-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl shadow-sm">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 shrink-0">
                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                 </svg>
-                                <span className="text-sm font-bold text-emerald-800 flex-1">This form has been submitted and is read-only.</span>
+                                <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex-1">This form has been submitted and is read-only.</span>
                                 <button
                                     onClick={() => window.print()}
                                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors"
@@ -564,7 +564,7 @@ export default function App() {
                         </div>
                         {/* Document */}
                         <div className="max-w-5xl mx-auto px-4 pb-12">
-                            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 print:shadow-none print:border-none print:p-0 print:rounded-none">
+                            <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border p-8 print:shadow-none print:border-none print:p-0 print:rounded-none">
                                 <PIRDocument
                                     quarter={quarterString}
                                     program={program}
@@ -581,7 +581,7 @@ export default function App() {
                 </motion.div>
             ) : (
                 <motion.div key="form" {...motionProps}>
-                    <div className="bg-slate-50 min-h-screen flex flex-col text-slate-800 font-sans relative print:py-0 print:bg-white print:text-black">
+                    <div className="bg-slate-50 dark:bg-dark-base min-h-screen flex flex-col text-slate-800 dark:text-slate-100 font-sans relative print:py-0 print:bg-white print:text-black">
             <FormHeader
                 title="Quarterly Performance Review"
                 programName={program}
@@ -675,7 +675,7 @@ export default function App() {
 
                 {/* Independent Header Card (Wizard View) */}
                 {appMode === 'wizard' && (
-                    <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-md mb-6">
+                    <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-6 shadow-md mb-6">
                         <FormBoxHeader
                             title="Quarterly Performance Review"
                             badge={quarterString}
@@ -684,7 +684,7 @@ export default function App() {
                     </div>
                 )}
 
-                <div className="bg-white border border-slate-200 rounded-[2.5rem] p-6 md:p-12 shadow-xl relative">
+                <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2.5rem] p-6 md:p-12 shadow-xl relative">
 
                     {/* FULL VIEW HEADER */}
                     {appMode === 'full' && (
@@ -805,7 +805,8 @@ export default function App() {
                                     appMode={appMode}
                                 />
 
-                                <div className="bg-white p-8 md:p-12 rounded-3xl border border-slate-200 shadow-sm mb-2 relative">
+                                <div className="bg-white dark:bg-dark-surface p-8 md:p-12 rounded-3xl border border-slate-200 dark:border-dark-border shadow-sm mb-2 relative overflow-hidden">
+                                        <svg className="absolute inset-0 h-full w-full opacity-20 dark:opacity-40 stroke-slate-300 dark:stroke-dark-border" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 30%)' }} xmlns="http://www.w3.org/2000/svg"><defs><pattern id="diagonal-lines-pir" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="20" strokeWidth="2"></line></pattern></defs><rect width="100%" height="100%" fill="url(#diagonal-lines-pir)"></rect></svg>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 relative z-10">
                                         <SignatureBlock 
                                             label="Prepared by" 
@@ -845,14 +846,14 @@ export default function App() {
 
                         {/* Navigation Buttons for Wizard Mode */}
                         {appMode === 'wizard' && (
-                            <div className="mt-12 pt-6 border-t border-slate-200 flex justify-between items-center">
+                            <div className="mt-12 pt-6 border-t border-slate-200 dark:border-dark-border flex justify-between items-center">
                                 <button
                                     type="button"
                                     onClick={prevStep}
                                     disabled={currentStep === 1}
                                     className={`group relative inline-flex h-12 items-center justify-center rounded-xl px-6 font-medium transition-colors gap-2 ${currentStep === 1
-                                            ? 'text-slate-300 cursor-not-allowed'
-                                            : 'text-slate-600 bg-white shadow-sm border border-slate-200 hover:bg-slate-50 active:scale-95'
+                                            ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                                            : 'text-slate-600 dark:text-slate-300 bg-white dark:bg-dark-surface shadow-sm border border-slate-200 dark:border-dark-border hover:bg-slate-50 dark:hover:bg-dark-base active:scale-95'
                                         }`}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -876,14 +877,14 @@ export default function App() {
 
                         {/* FINAL ACTION BUTTONS (Below Full Form Only) */}
                         {appMode === 'full' && (
-                            <div className="mt-12 bg-white border border-slate-200 rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
-                                <h3 className="text-slate-800 font-bold text-xl mb-6">Ready to finalize your review?</h3>
+                            <div className="mt-12 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
+                                <h3 className="text-slate-800 dark:text-slate-100 font-bold text-xl mb-6">Ready to finalize your review?</h3>
 
                                 <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                                     <button
                                         type="button"
                                         onClick={() => setIsPreviewOpen(true)}
-                                        className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-white border-2 border-slate-200 px-8 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors active:scale-95 w-full sm:w-auto shadow-sm"
+                                        className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-white dark:bg-dark-surface border-2 border-slate-200 dark:border-dark-border px-8 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-dark-base transition-colors active:scale-95 w-full sm:w-auto shadow-sm"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                         Preview Layout
