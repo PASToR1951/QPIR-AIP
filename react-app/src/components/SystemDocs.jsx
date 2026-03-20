@@ -71,7 +71,7 @@ export default function SystemDocs() {
             <React.Fragment key={idx}>
               {showDivider && (
                 <li className="py-2">
-                  <div className="h-px bg-slate-100" />
+                  <div className="h-px bg-slate-100 dark:bg-dark-border" />
                 </li>
               )}
               <li>
@@ -80,18 +80,18 @@ export default function SystemDocs() {
                   className={`
                     group flex items-start w-full text-left rounded-lg transition-all duration-150
                     ${isH1 ? 'py-1.5 px-3 mb-0.5' : isH2 ? 'py-1.5 pl-3 pr-3' : 'py-1 pl-6 pr-3'}
-                    ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'}
+                    ${isActive ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-dark-base hover:text-slate-800 dark:hover:text-slate-200'}
                   `}
                 >
                   {isH2 && (
-                    <span className={`mt-[7px] mr-2.5 w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${isActive ? 'bg-indigo-500' : 'bg-slate-300 group-hover:bg-slate-400'}`} />
+                    <span className={`mt-[7px] mr-2.5 w-1.5 h-1.5 rounded-full shrink-0 transition-colors ${isActive ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-600 group-hover:bg-slate-400 dark:group-hover:bg-slate-500'}`} />
                   )}
                   {isH3 && (
-                    <span className={`mt-[7px] mr-2 w-1 h-1 rounded-full shrink-0 transition-colors ${isActive ? 'bg-indigo-300' : 'bg-slate-200 group-hover:bg-slate-300'}`} />
+                    <span className={`mt-[7px] mr-2 w-1 h-1 rounded-full shrink-0 transition-colors ${isActive ? 'bg-indigo-300' : 'bg-slate-200 dark:bg-slate-700 group-hover:bg-slate-300 dark:group-hover:bg-slate-600'}`} />
                   )}
                   <span className={`
                     leading-snug truncate
-                    ${isH1 ? 'text-[10px] font-black uppercase tracking-[0.12em] text-slate-400' : ''}
+                    ${isH1 ? 'text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500' : ''}
                     ${isH2 ? `text-sm ${isActive ? 'font-semibold text-indigo-700' : 'font-medium'}` : ''}
                     ${isH3 ? `text-xs ${isActive ? 'font-medium text-indigo-600' : ''}` : ''}
                   `}>
@@ -107,21 +107,21 @@ export default function SystemDocs() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-100 font-sans">
+    <div className="min-h-screen bg-slate-100 dark:bg-dark-base font-sans">
       {/* Top Nav */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm print:hidden">
+      <div className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border sticky top-0 z-50 shadow-sm print:hidden">
         <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/" className="w-9 h-9 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 hover:text-slate-700 transition-all">
+            <Link to="/" className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all">
               <ArrowLeft size={17} strokeWidth={2.5} />
             </Link>
             <div>
-              <h1 className="text-base font-black text-slate-900 tracking-tight leading-none">System Documentation</h1>
-              <p className="text-xs text-slate-400 font-medium hidden sm:block mt-0.5">Technical Thesis & Architecture</p>
+              <h1 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">System Documentation</h1>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium hidden sm:block mt-0.5">Technical Thesis & Architecture</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link to="/changelog" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 text-slate-600 text-xs font-bold border border-slate-200 hover:bg-slate-100 transition-colors">
+            <Link to="/changelog" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-dark-base text-slate-600 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-dark-border hover:bg-slate-100 dark:hover:bg-dark-border transition-colors">
               <Tag size={12} strokeWidth={3} /> Version Control
             </Link>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-200">
@@ -141,12 +141,12 @@ export default function SystemDocs() {
       {isMobileTocOpen && (
         <div className="lg:hidden fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-sm" onClick={() => setIsMobileTocOpen(false)}>
           <div
-            className="absolute right-0 top-[65px] bottom-0 w-72 bg-white border-l border-slate-200 shadow-2xl overflow-y-auto animate-in slide-in-from-right-full duration-300"
+            className="absolute right-0 top-[65px] bottom-0 w-72 bg-white dark:bg-dark-surface border-l border-slate-200 dark:border-dark-border shadow-2xl overflow-y-auto animate-in slide-in-from-right-full duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 py-3.5 border-b border-slate-100 flex items-center gap-2 sticky top-0 bg-white z-10">
+            <div className="px-4 py-3.5 border-b border-slate-100 dark:border-dark-border flex items-center gap-2 sticky top-0 bg-white dark:bg-dark-surface z-10">
               <List size={15} className="text-indigo-500 shrink-0" />
-              <span className="font-black text-slate-800 text-sm tracking-tight">Contents</span>
+              <span className="font-black text-slate-800 dark:text-slate-100 text-sm tracking-tight">Contents</span>
             </div>
             <div className="p-3">
               {renderTocList()}
@@ -160,11 +160,11 @@ export default function SystemDocs() {
 
           {/* ToC Sidebar */}
           <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-[74px] self-start max-h-[calc(100vh-94px)]">
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 shrink-0">
+            <div className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-dark-border shadow-sm overflow-hidden flex flex-col h-full">
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-dark-border flex items-center gap-2 shrink-0">
                 <List size={14} className="text-indigo-500 shrink-0" />
-                <span className="font-black text-slate-800 text-sm tracking-tight">Contents</span>
-                <span className="ml-auto text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full tabular-nums">{headings.length}</span>
+                <span className="font-black text-slate-800 dark:text-slate-100 text-sm tracking-tight">Contents</span>
+                <span className="ml-auto text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-dark-border px-1.5 py-0.5 rounded-full tabular-nums">{headings.length}</span>
               </div>
               <div className="overflow-y-auto p-2.5 flex-1">
                 {renderTocList()}
@@ -173,9 +173,9 @@ export default function SystemDocs() {
           </aside>
 
           {/* Main Content */}
-          <div className="flex-1 w-full min-w-0 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="flex-1 w-full min-w-0 bg-white dark:bg-dark-surface rounded-3xl border border-slate-200 dark:border-dark-border shadow-sm overflow-hidden">
             {/* Hero Header */}
-            <div className="bg-white border-b border-slate-200 relative flex items-center justify-center px-8 md:px-12 py-8 min-h-[120px]">
+            <div className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border relative flex items-center justify-center px-8 md:px-12 py-8 min-h-[120px]">
               {/* Logos — top left */}
               <div className="absolute left-8 md:left-12 top-1/2 -translate-y-1/2 flex items-center gap-3 md:gap-4">
                 <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-12 md:h-14 w-auto drop-shadow-sm" />
@@ -187,8 +187,8 @@ export default function SystemDocs() {
               <div className="flex flex-col items-center gap-3">
                 <img src="/AIP-PIR_logo.svg" alt="AIP-PIR Logo" className="h-16 md:h-20 w-auto" />
                 <div className="text-center">
-                  <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-none">AIP-PIR Portal</h1>
-                  <p className="text-slate-500 font-medium text-xs mt-1 tracking-wide">System Architecture & Technical Thesis</p>
+                  <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">AIP-PIR Portal</h1>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium text-xs mt-1 tracking-wide">System Architecture & Technical Thesis</p>
                 </div>
               </div>
             </div>
@@ -197,19 +197,19 @@ export default function SystemDocs() {
             <div className="px-8 py-10 md:px-14 md:py-14">
               <article className="
                 prose prose-slate max-w-none
-                prose-headings:font-black prose-headings:text-slate-900 prose-headings:scroll-mt-28 prose-headings:tracking-tight
+                prose-headings:font-black prose-headings:text-slate-900 dark:prose-headings:text-slate-100 prose-headings:scroll-mt-28 prose-headings:tracking-tight
                 prose-h1:text-4xl prose-h1:mt-0
-                prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-200 prose-h2:pb-3 prose-h2:mt-16
-                prose-h3:text-xl prose-h3:mt-10 prose-h3:text-slate-800
-                prose-p:text-slate-600 prose-p:leading-relaxed
-                prose-li:text-slate-600
+                prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-200 dark:prose-h2:border-dark-border prose-h2:pb-3 prose-h2:mt-16
+                prose-h3:text-xl prose-h3:mt-10 prose-h3:text-slate-800 dark:prose-h3:text-slate-200
+                prose-p:text-slate-600 dark:prose-p:text-slate-300 prose-p:leading-relaxed
+                prose-li:text-slate-600 dark:prose-li:text-slate-300
                 prose-a:text-indigo-600 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
-                prose-blockquote:border-l-4 prose-blockquote:border-indigo-400 prose-blockquote:bg-indigo-50/60 prose-blockquote:rounded-r-xl prose-blockquote:py-1 prose-blockquote:not-italic prose-blockquote:text-slate-700
-                prose-code:text-indigo-600 prose-code:bg-indigo-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[0.85em] prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
+                prose-blockquote:border-l-4 prose-blockquote:border-indigo-400 prose-blockquote:bg-indigo-50/60 dark:prose-blockquote:bg-indigo-950/20 prose-blockquote:rounded-r-xl prose-blockquote:py-1 prose-blockquote:not-italic prose-blockquote:text-slate-700 dark:prose-blockquote:text-slate-300
+                prose-code:text-indigo-600 prose-code:bg-indigo-50 dark:prose-code:bg-indigo-950/30 dark:prose-code:text-indigo-400 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[0.85em] prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
                 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 prose-pre:rounded-2xl prose-pre:shadow-lg
-                prose-img:rounded-2xl prose-img:border prose-img:border-slate-200 prose-img:shadow-sm
-                prose-strong:text-slate-800
-                prose-table:text-sm prose-th:bg-slate-50 prose-th:text-slate-700 prose-td:text-slate-600
+                prose-img:rounded-2xl prose-img:border prose-img:border-slate-200 dark:prose-img:border-dark-border prose-img:shadow-sm
+                prose-strong:text-slate-800 dark:prose-strong:text-slate-100
+                prose-table:text-sm prose-th:bg-slate-50 dark:prose-th:bg-dark-border prose-th:text-slate-700 dark:prose-th:text-slate-200 prose-td:text-slate-600 dark:prose-td:text-slate-300
                 break-words
               ">
                 <ReactMarkdown

@@ -23,7 +23,7 @@ const TYPE_CONFIG = {
   feature: {
     label: 'Feature',
     icon: Sparkles,
-    bg: 'bg-emerald-100',
+    bg: 'bg-emerald-100 dark:bg-emerald-950/30',
     text: 'text-emerald-700',
     border: 'border-emerald-200',
     dot: 'bg-emerald-500',
@@ -31,7 +31,7 @@ const TYPE_CONFIG = {
   fix: {
     label: 'Bug Fix',
     icon: Bug,
-    bg: 'bg-red-100',
+    bg: 'bg-red-100 dark:bg-red-950/30',
     text: 'text-red-700',
     border: 'border-red-200',
     dot: 'bg-red-500',
@@ -39,7 +39,7 @@ const TYPE_CONFIG = {
   improvement: {
     label: 'Improvement',
     icon: Zap,
-    bg: 'bg-blue-100',
+    bg: 'bg-blue-100 dark:bg-blue-950/30',
     text: 'text-blue-700',
     border: 'border-blue-200',
     dot: 'bg-blue-500',
@@ -47,7 +47,7 @@ const TYPE_CONFIG = {
   breaking: {
     label: 'Breaking Change',
     icon: AlertTriangle,
-    bg: 'bg-amber-100',
+    bg: 'bg-amber-100 dark:bg-amber-950/30',
     text: 'text-amber-700',
     border: 'border-amber-200',
     dot: 'bg-amber-500',
@@ -55,7 +55,7 @@ const TYPE_CONFIG = {
   docs: {
     label: 'Documentation',
     icon: FileText,
-    bg: 'bg-purple-100',
+    bg: 'bg-purple-100 dark:bg-purple-950/30',
     text: 'text-purple-700',
     border: 'border-purple-200',
     dot: 'bg-purple-500',
@@ -63,7 +63,7 @@ const TYPE_CONFIG = {
   security: {
     label: 'Security',
     icon: Shield,
-    bg: 'bg-rose-100',
+    bg: 'bg-rose-100 dark:bg-rose-950/30',
     text: 'text-rose-700',
     border: 'border-rose-200',
     dot: 'bg-rose-500',
@@ -112,7 +112,7 @@ const ReleaseCard = ({ release, isLatest }) => {
   return (
     <div className="relative group">
       {/* Timeline connector */}
-      <div className="absolute left-6 top-0 bottom-0 w-px bg-slate-200 group-last:hidden hidden md:block" />
+      <div className="absolute left-6 top-0 bottom-0 w-px bg-slate-200 dark:bg-dark-border group-last:hidden hidden md:block" />
 
       <div className="flex gap-6">
         {/* Timeline dot */}
@@ -120,8 +120,8 @@ const ReleaseCard = ({ release, isLatest }) => {
           <div
             className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 shadow-sm transition-all duration-300 ${
               isLatest
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-600 shadow-emerald-100'
-                : 'bg-white border-slate-200 text-slate-400'
+                ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 text-emerald-600 shadow-emerald-100'
+                : 'bg-white dark:bg-dark-surface border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500'
             }`}
           >
             <Tag size={20} strokeWidth={2.5} />
@@ -131,8 +131,8 @@ const ReleaseCard = ({ release, isLatest }) => {
         {/* Release content */}
         <div className="flex-1 min-w-0">
           <div
-            className={`bg-white rounded-2xl border-2 overflow-hidden transition-all duration-300 hover:shadow-lg ${
-              isLatest ? 'border-emerald-200 shadow-md shadow-emerald-50' : 'border-slate-200 shadow-sm'
+            className={`bg-white dark:bg-dark-surface rounded-2xl border-2 overflow-hidden transition-all duration-300 hover:shadow-lg ${
+              isLatest ? 'border-emerald-200 shadow-md shadow-emerald-50' : 'border-slate-200 dark:border-dark-border shadow-sm'
             }`}
           >
             {/* Release header */}
@@ -142,7 +142,7 @@ const ReleaseCard = ({ release, isLatest }) => {
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3 mb-2">
-                  <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                  <h3 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                     {release.title || `v${release.version}`}
                   </h3>
                   {isLatest && (
@@ -157,7 +157,7 @@ const ReleaseCard = ({ release, isLatest }) => {
                       e.stopPropagation();
                       handleCopyVersion();
                     }}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-mono font-bold text-xs hover:bg-slate-200 transition-colors border border-slate-200"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-300 font-mono font-bold text-xs hover:bg-slate-200 dark:hover:bg-dark-border transition-colors border border-slate-200 dark:border-dark-border"
                     title="Copy version"
                   >
                     <GitBranch size={12} strokeWidth={2.5} />
@@ -168,28 +168,28 @@ const ReleaseCard = ({ release, isLatest }) => {
                       <Copy size={12} className="text-slate-400" />
                     )}
                   </button>
-                  <span className="inline-flex items-center gap-1.5 text-slate-400 text-xs font-medium">
+                  <span className="inline-flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-xs font-medium">
                     <Calendar size={12} />
                     {formattedDate}
                   </span>
-                  <span className="text-slate-300 text-xs">•</span>
-                  <span className="text-slate-400 text-xs font-medium">
+                  <span className="text-slate-300 dark:text-slate-600 text-xs">•</span>
+                  <span className="text-slate-400 dark:text-slate-500 text-xs font-medium">
                     {release.changes?.length || 0} changes
                   </span>
                 </div>
               </div>
-              <button className="text-slate-400 hover:text-slate-600 transition-colors mt-1 shrink-0">
+              <button className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors mt-1 shrink-0">
                 {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </button>
             </div>
 
             {/* Release body */}
             {isExpanded && (
-              <div className="border-t border-slate-100">
+              <div className="border-t border-slate-100 dark:border-dark-border">
                 {/* Description */}
                 {release.description && (
-                  <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-100">
-                    <p className="text-sm text-slate-600 leading-relaxed font-medium">{release.description}</p>
+                  <div className="px-6 py-4 bg-slate-50/50 dark:bg-dark-base/50 border-b border-slate-100 dark:border-dark-border">
+                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">{release.description}</p>
                   </div>
                 )}
 
@@ -201,7 +201,7 @@ const ReleaseCard = ({ release, isLatest }) => {
                       <div key={type}>
                         <div className="flex items-center gap-2 mb-3">
                           <TypeBadge type={type} />
-                          <span className="text-xs text-slate-400 font-bold">({grouped[type].length})</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-500 font-bold">({grouped[type].length})</span>
                         </div>
                         <ul className="space-y-2 ml-1">
                           {grouped[type].map((change, idx) => (
@@ -209,7 +209,7 @@ const ReleaseCard = ({ release, isLatest }) => {
                               <div
                                 className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${config.dot} opacity-60 group-hover/item:opacity-100 transition-opacity`}
                               />
-                              <span className="text-sm text-slate-700 leading-relaxed font-medium">{change.text}</span>
+                              <span className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed font-medium">{change.text}</span>
                             </li>
                           ))}
                         </ul>
@@ -244,20 +244,20 @@ const Changelog = () => {
     : changelog;
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-base font-sans">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-50">
+      <div className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
               to="/"
-              className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 hover:text-slate-700 transition-all"
+              className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all"
             >
               <ArrowLeft size={18} strokeWidth={2.5} />
             </Link>
             <div>
-              <h1 className="text-lg font-black text-slate-900 tracking-tight">Changelog</h1>
-              <p className="text-xs text-slate-400 font-medium">Release history & version notes</p>
+              <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">Changelog</h1>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Release history & version notes</p>
             </div>
           </div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black border border-emerald-200">
@@ -306,13 +306,13 @@ const Changelog = () => {
 
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-2 mb-6">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Filter:</span>
+          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1">Filter:</span>
           <button
             onClick={() => setFilterType(null)}
             className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
               !filterType
                 ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                : 'bg-white dark:bg-dark-surface text-slate-500 dark:text-slate-400 border-slate-200 dark:border-dark-border hover:border-slate-300 dark:hover:border-dark-border'
             }`}
           >
             All
@@ -327,7 +327,7 @@ const Changelog = () => {
                 className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
                   filterType === type
                     ? `${config.bg} ${config.text} ${config.border}`
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                    : 'bg-white dark:bg-dark-surface text-slate-500 dark:text-slate-400 border-slate-200 dark:border-dark-border hover:border-slate-300 dark:hover:border-dark-border'
                 }`}
               >
                 {config.label}
@@ -340,10 +340,10 @@ const Changelog = () => {
         <div className="space-y-8">
           {filteredChangelog.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Tag size={28} className="text-slate-300" />
+              <div className="w-16 h-16 bg-slate-100 dark:bg-dark-border rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Tag size={28} className="text-slate-300 dark:text-slate-600" />
               </div>
-              <p className="text-slate-400 font-bold text-sm">No releases match the current filter.</p>
+              <p className="text-slate-400 dark:text-slate-500 font-bold text-sm">No releases match the current filter.</p>
             </div>
           ) : (
             filteredChangelog.map((release, idx) => (
@@ -354,7 +354,7 @@ const Changelog = () => {
 
         {/* Footer note */}
         <div className="text-center mt-12 mb-8">
-          <p className="text-xs text-slate-400 font-medium">
+          <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
             End of changelog • {changelog.length} release{changelog.length !== 1 ? 's' : ''} documented
           </p>
         </div>
