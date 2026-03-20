@@ -52,18 +52,18 @@ const FAQItem = ({ item }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className={`border-2 rounded-2xl transition-all duration-300 overflow-hidden ${isOpen ? 'border-pink-200 bg-white shadow-md' : 'border-slate-100 bg-slate-50 hover:border-slate-200 hover:bg-white'}`}>
+    <div className={`border-2 rounded-2xl transition-all duration-300 overflow-hidden ${isOpen ? 'border-pink-200 bg-white dark:bg-dark-surface shadow-md' : 'border-slate-100 dark:border-dark-border bg-slate-50 dark:bg-dark-base hover:border-slate-200 dark:hover:border-dark-border hover:bg-white dark:hover:bg-dark-surface'}`}>
       <button 
         className="w-full flex items-center justify-between p-5 md:p-6 text-left focus:outline-none"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className="font-bold text-slate-800 pr-8">{item.q}</span>
-        <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isOpen ? 'bg-pink-100 text-pink-600' : 'bg-slate-200 text-slate-500'}`}>
+        <span className="font-bold text-slate-800 dark:text-slate-100 pr-8">{item.q}</span>
+        <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isOpen ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-600' : 'bg-slate-200 dark:bg-dark-border text-slate-500 dark:text-slate-400'}`}>
           {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </div>
       </button>
       <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="p-5 md:p-6 pt-0 border-t border-slate-100 mt-2 text-slate-600 leading-relaxed">
+        <div className="p-5 md:p-6 pt-0 border-t border-slate-100 dark:border-dark-border mt-2 text-slate-600 dark:text-slate-300 leading-relaxed">
           {item.a}
         </div>
       </div>
@@ -84,16 +84,16 @@ export default function FAQ() {
   })).filter(category => category.questions.length > 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col font-sans">
+      <div className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border sticky top-0 z-50 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/" className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 hover:text-slate-700 transition-all">
+            <Link to="/" className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all">
               <ArrowLeft size={18} strokeWidth={2.5} />
             </Link>
             <div>
-              <h1 className="text-lg font-black text-slate-900 tracking-tight">Help Center / FAQ</h1>
-              <p className="text-xs text-slate-400 font-medium">Frequently Asked Questions</p>
+              <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">Help Center / FAQ</h1>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">Frequently Asked Questions</p>
             </div>
           </div>
         </div>
@@ -103,8 +103,8 @@ export default function FAQ() {
         
         {/* Header Area */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">How can we help?</h1>
-          <p className="text-slate-500 font-medium max-w-xl mx-auto mb-8">
+          <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-slate-100 tracking-tight mb-4">How can we help?</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium max-w-xl mx-auto mb-8">
             Search our knowledge base or browse categories below to find answers to the most common questions about the AIP-PIR Portal.
           </p>
           
@@ -114,7 +114,7 @@ export default function FAQ() {
             </div>
             <input
               type="text"
-              className="block w-full pl-12 pr-4 py-4 md:py-5 border-2 border-slate-200 rounded-3xl leading-5 bg-white placeholder-slate-400 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 sm:text-lg transition-all shadow-sm focus:shadow-md"
+              className="block w-full pl-12 pr-4 py-4 md:py-5 border-2 border-slate-200 dark:border-dark-border rounded-3xl leading-5 bg-white dark:bg-dark-surface placeholder-slate-400 dark:placeholder-slate-500 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 sm:text-lg transition-all shadow-sm focus:shadow-md"
               placeholder="Search for answers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -128,12 +128,12 @@ export default function FAQ() {
             filteredData.map((category, idx) => {
               const Icon = category.icon;
               return (
-                <div key={idx} className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                <div key={idx} className="bg-white dark:bg-dark-surface p-6 md:p-8 rounded-[2.5rem] border border-slate-200 dark:border-dark-border shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100">
+                    <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100 dark:border-indigo-900">
                       <Icon size={24} strokeWidth={2.5} />
                     </div>
-                    <h2 className="text-2xl font-black tracking-tight text-slate-900">{category.category}</h2>
+                    <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">{category.category}</h2>
                   </div>
                   <div className="space-y-4">
                     {category.questions.map((item, qIdx) => (
@@ -144,12 +144,12 @@ export default function FAQ() {
               );
             })
           ) : (
-            <div className="text-center py-16 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm">
-              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Search size={28} className="text-slate-300" />
+            <div className="text-center py-16 bg-white dark:bg-dark-surface rounded-[2.5rem] border border-slate-200 dark:border-dark-border shadow-sm">
+              <div className="w-16 h-16 bg-slate-100 dark:bg-dark-border rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Search size={28} className="text-slate-300 dark:text-slate-600" />
               </div>
-              <h3 className="text-xl font-black text-slate-800 mb-2">No results found</h3>
-              <p className="text-slate-500 font-medium max-w-sm mx-auto">
+              <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">No results found</h3>
+              <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto">
                 We couldn't find any questions matching "{searchQuery}". Try using different keywords or contact the helpdesk.
               </p>
               <button 
