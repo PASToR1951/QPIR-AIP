@@ -7,25 +7,25 @@ const THEME_CLASSES = {
     emerald: {
         labelFocus: "group-focus-within:text-emerald-600",
         gradient: "from-emerald-200 to-teal-200",
-        select: "bg-white focus:border-transparent focus:ring-emerald-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
+        select: "bg-white dark:bg-dark-surface focus:border-transparent focus:ring-emerald-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
         iconHover: "group-focus-within:text-emerald-500"
     },
     pink: {
         labelFocus: "group-focus-within:text-pink-600",
         gradient: "from-pink-200 to-rose-200",
-        select: "bg-white focus:border-transparent focus:ring-pink-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
+        select: "bg-white dark:bg-dark-surface focus:border-transparent focus:ring-pink-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
         iconHover: "group-focus-within:text-pink-500"
     },
     blue: {
         labelFocus: "group-focus-within:text-blue-600",
         gradient: null,
-        select: "bg-white focus:border-blue-400 focus:ring-blue-500/20 shadow-sm",
+        select: "bg-white dark:bg-dark-surface focus:border-blue-400 focus:ring-blue-500/20 shadow-sm",
         iconHover: "group-focus-within:text-blue-500"
     },
     default: {
         labelFocus: "group-focus-within:text-slate-600",
         gradient: null,
-        select: "bg-white focus:ring-slate-500/20",
+        select: "bg-white dark:bg-dark-surface focus:ring-slate-500/20",
         iconHover: "group-focus-within:text-slate-500"
     }
 };
@@ -39,7 +39,7 @@ export const Select = React.forwardRef(({ label, options, className, theme = "de
             {label && (
                 <div className="flex items-center gap-1.5 print:hidden">
                     <label className={cn(
-                        "text-xs font-semibold text-slate-500 uppercase tracking-widest select-none transition-colors",
+                        "text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest select-none transition-colors",
                         currentTheme.labelFocus
                     )}>
                         {label}
@@ -65,7 +65,7 @@ export const Select = React.forwardRef(({ label, options, className, theme = "de
                 <select
                     ref={ref}
                     className={cn(
-                        "relative w-full border border-slate-200 focus:ring-2 transition-all rounded-xl px-4 py-3 text-sm font-medium text-slate-800 outline-none cursor-pointer appearance-none print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:appearance-none print:text-black",
+                        "relative w-full border border-slate-200 dark:border-dark-border focus:ring-2 transition-all rounded-xl px-4 py-3 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none cursor-pointer appearance-none print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:appearance-none print:text-black",
                         currentTheme.select,
                         className
                     )}
@@ -79,7 +79,7 @@ export const Select = React.forwardRef(({ label, options, className, theme = "de
                     ))}
                 </select>
                 <div className={cn(
-                    "pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors print:hidden",
+                    "pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 transition-colors print:hidden",
                     currentTheme.iconHover
                 )}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>

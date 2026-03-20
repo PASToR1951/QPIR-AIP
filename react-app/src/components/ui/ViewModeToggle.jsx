@@ -13,7 +13,7 @@ export const ViewModeToggle = ({ appMode, toggleAppMode, theme = "indigo" }) => 
     return (
         <button
             onClick={toggleAppMode}
-            className={`hidden md:flex text-xs font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full shadow-sm transition-colors items-center gap-1.5 ${textHoverClasses[theme]}`}
+            className={`hidden md:flex text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border px-3 py-1.5 rounded-full shadow-sm transition-colors items-center gap-1.5 ${textHoverClasses[theme]}`}
         >
             {appMode === 'wizard' ? (
                 <><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><line x1="3" x2="21" y1="9" y2="9" /><line x1="9" x2="9" y1="21" y2="9" /></svg> <span className="hidden sm:inline">Switch to Full View</span></>

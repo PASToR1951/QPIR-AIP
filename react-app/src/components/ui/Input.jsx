@@ -12,27 +12,27 @@ const THEME_CLASSES = {
     indigo: {
         labelFocus: "group-focus-within:text-indigo-600",
         gradient: "from-indigo-200 to-purple-200",
-        input: "bg-[#fafafa] focus:border-transparent focus:ring-indigo-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
+        input: "bg-[#fafafa] dark:bg-dark-surface focus:border-transparent focus:ring-indigo-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
     },
     emerald: {
         labelFocus: "group-focus-within:text-emerald-600",
         gradient: "from-emerald-200 to-teal-200",
-        input: "bg-white focus:border-transparent focus:ring-emerald-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)] print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:placeholder-transparent print:text-black",
+        input: "bg-white dark:bg-dark-surface focus:border-transparent focus:ring-emerald-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)] print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:placeholder-transparent print:text-black",
     },
     pink: {
         labelFocus: "group-focus-within:text-pink-600",
         gradient: "from-pink-200 to-rose-200",
-        input: "bg-white focus:border-transparent focus:ring-pink-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)] print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:placeholder-transparent print:text-black",
+        input: "bg-white dark:bg-dark-surface focus:border-transparent focus:ring-pink-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)] print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:placeholder-transparent print:text-black",
     },
     blue: {
         labelFocus: "group-focus-within:text-blue-600",
         gradient: null, // No gradient blur for PIR
-        input: "bg-white focus:border-blue-400 focus:ring-blue-500/20 shadow-sm print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:placeholder-transparent print:text-black",
+        input: "bg-white dark:bg-dark-surface focus:border-blue-400 focus:ring-blue-500/20 shadow-sm print:bg-transparent print:border-b-black print:border-b print:border-t-0 print:border-l-0 print:border-r-0 print:rounded-none print:px-0 print:py-1 print:placeholder-transparent print:text-black",
     },
     default: {
         labelFocus: "group-focus-within:text-slate-600",
         gradient: null,
-        input: "bg-white focus:ring-slate-500/20",
+        input: "bg-white dark:bg-dark-surface focus:ring-slate-500/20",
     }
 };
 
@@ -45,7 +45,7 @@ export const Input = React.forwardRef(({ label, className, endIcon, theme = "def
             {label && (
                 <div className="flex items-center gap-1.5 print:hidden">
                     <label className={cn(
-                        "text-xs font-semibold text-slate-500 uppercase tracking-widest select-none transition-colors",
+                        "text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest select-none transition-colors",
                         currentTheme.labelFocus
                     )}>
                         {label}
@@ -71,9 +71,9 @@ export const Input = React.forwardRef(({ label, className, endIcon, theme = "def
                 <input
                     ref={ref}
                     className={cn(
-                        "relative w-full border border-slate-200 focus:ring-2 transition-all rounded-xl px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-400",
+                        "relative w-full border border-slate-200 dark:border-dark-border focus:ring-2 transition-all rounded-xl px-4 py-3 text-sm text-slate-800 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500",
                         endIcon && "pr-11",
-                        error && "border-red-400 focus:ring-red-500/20 bg-red-50",
+                        error && "border-red-400 focus:ring-red-500/20 bg-red-50 dark:bg-red-950/30",
                         currentTheme.input,
                         className
                     )}
@@ -82,7 +82,7 @@ export const Input = React.forwardRef(({ label, className, endIcon, theme = "def
                     {...props}
                 />
                 {endIcon && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 transition-colors z-10 print:hidden">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center text-slate-400 dark:text-slate-500 transition-colors z-10 print:hidden">
                         {endIcon}
                     </div>
                 )}

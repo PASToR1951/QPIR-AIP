@@ -16,9 +16,10 @@ export default function FormBackground({ orb = 'pink' }) {
     return createPortal(
         <>
             {/* Grid + facade image */}
-            <div className="form-bg-fade fixed inset-0 bg-slate-50 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden">
+            {/* Note: the inline-style grid gradient (#e2e8f0) cannot use dark: variants — left as-is */}
+            <div className="form-bg-fade fixed inset-0 bg-slate-50 dark:bg-dark-base bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden">
                 <div
-                    className="absolute inset-0 opacity-100 pointer-events-none grayscale mix-blend-multiply"
+                    className="absolute inset-0 opacity-100 pointer-events-none grayscale mix-blend-multiply dark:mix-blend-screen"
                     style={{
                         backgroundImage: `url('/SDO_Facade.webp')`,
                         backgroundSize: 'cover',
@@ -28,8 +29,8 @@ export default function FormBackground({ orb = 'pink' }) {
             </div>
 
             {/* Glowing orbs — static opacity, no continuous animation or expensive blur */}
-            <div className={`form-bg-fade fixed top-1/4 left-1/4 w-[30rem] h-[30rem] ${orbColors[0]} rounded-full blur-3xl opacity-40 pointer-events-none z-0 print:hidden`} />
-            <div className={`form-bg-fade fixed bottom-1/4 right-1/4 w-[30rem] h-[30rem] ${orbColors[1]} rounded-full blur-3xl opacity-40 pointer-events-none z-0 print:hidden`} />
+            <div className={`form-bg-fade fixed top-1/4 left-1/4 w-[30rem] h-[30rem] ${orbColors[0]} rounded-full blur-3xl opacity-40 dark:opacity-30 pointer-events-none z-0 print:hidden`} />
+            <div className={`form-bg-fade fixed bottom-1/4 right-1/4 w-[30rem] h-[30rem] ${orbColors[1]} rounded-full blur-3xl opacity-40 dark:opacity-30 pointer-events-none z-0 print:hidden`} />
         </>,
         document.body
     );

@@ -23,7 +23,7 @@ export default function FinalizeCard({ isSubmitted, onSubmit, onPreview, theme =
     }[theme] || themeColors.pink;
 
     return (
-        <div className={`bg-white p-8 md:p-12 rounded-[2.5rem] border-2 border-slate-100 shadow-sm mb-12 flex flex-col items-center justify-center text-center group relative overflow-hidden transition-all ${themeColors.borderHover}`}>
+        <div className={`bg-white dark:bg-dark-surface p-8 md:p-12 rounded-[2.5rem] border-2 border-slate-100 dark:border-dark-border shadow-sm mb-12 flex flex-col items-center justify-center text-center group relative overflow-hidden transition-all ${themeColors.borderHover}`}>
             <div className={`absolute inset-0 ${themeColors.bgHover} opacity-0 group-hover:opacity-100 transition-opacity`}></div>
             <div className={`w-16 h-16 ${themeColors.bg} rounded-2xl flex items-center justify-center mb-6 ${themeColors.text} border ${themeColors.border} group-hover:scale-110 transition-transform`}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -34,8 +34,8 @@ export default function FinalizeCard({ isSubmitted, onSubmit, onPreview, theme =
                     <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
             </div>
-            <h3 className="text-xl font-black text-slate-800 mb-2">Final Review</h3>
-            <p className="text-sm text-slate-500 font-medium mb-8 max-w-sm">Please ensure all required information is complete and accurate before submitting. This action will submit the form for approval.</p>
+            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">Final Review</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 max-w-sm">Please ensure all required information is complete and accurate before submitting. This action will submit the form for approval.</p>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full justify-center relative z-10">
                 {onPreview && (

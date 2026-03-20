@@ -60,7 +60,7 @@ export const TextareaAuto = React.forwardRef(({ className, value, onChange, ...p
             onInput={handleInput}
             onBlur={handleBlur}
             className={cn(
-                "w-full outline-none resize-none overflow-hidden placeholder:text-slate-400 bg-transparent min-h-[2.5rem]",
+                "w-full outline-none resize-none overflow-hidden placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-transparent dark:text-slate-100 min-h-[2.5rem]",
                 className
             )}
             {...props}

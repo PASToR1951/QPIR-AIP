@@ -17,10 +17,10 @@ function formatBudget(amount) {
 }
 
 function getUrgencyTier(daysLeft) {
-    if (daysLeft <= 0)  return { level: 'overdue',   color: 'rose',  bgTint: 'bg-rose-50 border-rose-200' };
-    if (daysLeft <= 7)  return { level: 'urgent',    color: 'rose',  bgTint: 'bg-rose-50/50 border-rose-100' };
-    if (daysLeft <= 29) return { level: 'attention', color: 'amber', bgTint: 'bg-amber-50/50 border-amber-100' };
-    return                      { level: 'calm',      color: 'slate', bgTint: 'bg-white border-slate-200' };
+    if (daysLeft <= 0)  return { level: 'overdue',   color: 'rose',  bgTint: 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800' };
+    if (daysLeft <= 7)  return { level: 'urgent',    color: 'rose',  bgTint: 'bg-rose-50/50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-800' };
+    if (daysLeft <= 29) return { level: 'attention', color: 'amber', bgTint: 'bg-amber-50/50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-800' };
+    return                      { level: 'calm',      color: 'slate', bgTint: 'bg-white dark:bg-dark-surface border-slate-200 dark:border-dark-border' };
 }
 
 // Segmented progress bar
@@ -32,7 +32,7 @@ function SegmentedBar({ completed, total }) {
                 <div
                     key={i}
                     className={`h-1.5 rounded-full flex-1 transition-colors ${
-                        i < completed ? 'bg-emerald-400' : 'bg-slate-200'
+                        i < completed ? 'bg-emerald-400' : 'bg-slate-200 dark:bg-dark-border/60'
                     }`}
                 />
             ))}
@@ -49,7 +49,7 @@ function DotPips({ submitted, total }) {
                 <div
                     key={i}
                     className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                        i < submitted ? 'bg-emerald-400' : 'bg-slate-200'
+                        i < submitted ? 'bg-emerald-400' : 'bg-slate-200 dark:bg-dark-border/60'
                     }`}
                 />
             ))}
@@ -61,11 +61,11 @@ function LoadingSkeleton() {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {[1, 2, 3].map(i => (
-                <div key={i} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm animate-pulse">
+                <div key={i} className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-6 shadow-sm animate-pulse">
                     <div className="flex flex-col items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-200 rounded-full" />
-                        <div className="w-20 h-6 bg-slate-200 rounded" />
-                        <div className="w-32 h-3 bg-slate-100 rounded" />
+                        <div className="w-8 h-8 bg-slate-200 dark:bg-dark-border/60 rounded-full" />
+                        <div className="w-20 h-6 bg-slate-200 dark:bg-dark-border/60 rounded" />
+                        <div className="w-32 h-3 bg-slate-100 dark:bg-dark-border rounded" />
                     </div>
                 </div>
             ))}
@@ -89,17 +89,17 @@ export default function DashboardStats({ data, loading }) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {/* AIP Progress */}
-            <div className={`bg-white border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allAipDone ? 'border-emerald-200' : 'border-slate-200'}`}>
+            <div className={`bg-white dark:bg-dark-surface border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allAipDone ? 'border-emerald-200 dark:border-emerald-700' : 'border-slate-200 dark:border-dark-border'}`}>
                 <div className="flex items-center gap-3 mb-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allAipDone ? 'bg-emerald-100 text-emerald-600' : 'bg-pink-100 text-pink-600'}`}>
                         <FileText size={18} strokeWidth={2.5} />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">AIP Progress</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">AIP Progress</span>
                 </div>
-                <div className="text-2xl font-black text-slate-800 leading-none">
-                    {aipCompletion.completed} <span className="text-sm font-bold text-slate-400">of {aipCompletion.total}</span>
+                <div className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">
+                    {aipCompletion.completed} <span className="text-sm font-bold text-slate-400 dark:text-slate-500">of {aipCompletion.total}</span>
                 </div>
-                <p className={`text-xs font-semibold mt-1.5 ${allAipDone ? 'text-emerald-600' : 'text-slate-500'}`}>
+                <p className={`text-xs font-semibold mt-1.5 ${allAipDone ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-400'}`}>
                     {aipCompletion.total === 0
                         ? 'No programs assigned'
                         : allAipDone
@@ -111,20 +111,20 @@ export default function DashboardStats({ data, loading }) {
             </div>
 
             {/* PIR This Quarter */}
-            <div className={`bg-white border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allPirDone ? 'border-emerald-200' : noPirNeeded ? 'border-slate-200' : 'border-amber-100'}`}>
+            <div className={`bg-white dark:bg-dark-surface border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allPirDone ? 'border-emerald-200 dark:border-emerald-700' : noPirNeeded ? 'border-slate-200 dark:border-dark-border' : 'border-amber-100'}`}>
                 <div className="flex items-center gap-3 mb-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allPirDone ? 'bg-emerald-100 text-emerald-600' : noPirNeeded ? 'bg-slate-100 text-slate-400' : 'bg-amber-100 text-amber-600'}`}>
                         <BarChart3 size={18} strokeWidth={2.5} />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Q{currentQuarter} Reviews</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Q{currentQuarter} Reviews</span>
                 </div>
-                <div className="text-2xl font-black text-slate-800 leading-none">
+                <div className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">
                     {noPirNeeded
-                        ? <span className="text-slate-400">—</span>
-                        : <>{pirSubmitted.submitted} <span className="text-sm font-bold text-slate-400">of {pirSubmitted.total}</span></>
+                        ? <span className="text-slate-400 dark:text-slate-500">—</span>
+                        : <>{pirSubmitted.submitted} <span className="text-sm font-bold text-slate-400 dark:text-slate-500">of {pirSubmitted.total}</span></>
                     }
                 </div>
-                <p className={`text-xs font-semibold mt-1.5 ${allPirDone ? 'text-emerald-600' : noPirNeeded ? 'text-slate-400' : 'text-amber-600'}`}>
+                <p className={`text-xs font-semibold mt-1.5 ${allPirDone ? 'text-emerald-600' : noPirNeeded ? 'text-slate-400 dark:text-slate-500' : 'text-amber-600'}`}>
                     {noPirNeeded
                         ? 'No activities this quarter'
                         : allPirDone
@@ -145,7 +145,7 @@ export default function DashboardStats({ data, loading }) {
                     }`}>
                         <Clock size={18} strokeWidth={2.5} />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Q{currentQuarter} Deadline</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Q{currentQuarter} Deadline</span>
                     {urgency.level === 'urgent' && (
                         <span className="relative flex h-2.5 w-2.5 ml-auto">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
@@ -157,7 +157,7 @@ export default function DashboardStats({ data, loading }) {
                     urgency.level === 'overdue' ? 'text-rose-600' :
                     urgency.level === 'urgent' ? 'text-rose-600' :
                     urgency.level === 'attention' ? 'text-amber-700' :
-                    'text-slate-800'
+                    'text-slate-800 dark:text-slate-100'
                 }`}>
                     {urgency.level === 'overdue'
                         ? (daysLeft === 0 ? 'Due Today' : 'Overdue')
@@ -166,7 +166,7 @@ export default function DashboardStats({ data, loading }) {
                             : `${daysLeft} Day${daysLeft !== 1 ? 's' : ''}`
                     }
                 </div>
-                <p className="text-xs font-semibold mt-1.5 text-slate-500">
+                <p className="text-xs font-semibold mt-1.5 text-slate-500 dark:text-slate-400">
                     {urgency.level === 'calm'
                         ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`
                         : `Q${currentQuarter} deadline · ${formatDeadlineShort(deadline)}`
