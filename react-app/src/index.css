@@ -1,5 +1,50 @@
 @import "tailwindcss";
 
+/* ============================================================
+   DARK MODE — class-based (Tailwind v4)
+   ============================================================ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-surface: #f8fafc;          /* slate-50 */
+  --color-surface-card: #fafaf9;     /* off-white */
+  --color-border: #e2e8f0;           /* slate-200 */
+  --color-border-subtle: #f1f5f9;    /* slate-100 */
+  --color-grid-line: #e2e8f0;
+}
+
+.dark {
+  --color-surface: #1A1A2E;
+  --color-surface-card: #16213E;
+  --color-border: #0F3460;
+  --color-border-subtle: rgba(15, 52, 96, 0.5);
+  --color-grid-line: #16213E;
+  color-scheme: dark;
+}
+
+/* Smooth transition when toggling dark mode */
+html.dark-transition,
+html.dark-transition *,
+html.dark-transition *::before,
+html.dark-transition *::after {
+  transition: background-color 300ms ease, color 200ms ease, border-color 200ms ease, box-shadow 200ms ease !important;
+}
+
+/* Reusable grid background using CSS variable */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, var(--color-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-grid-line) 1px, transparent 1px);
+  background-size: 4rem 4rem;
+}
+
+/* Print always uses light mode */
+@media print {
+  .dark {
+    color-scheme: light;
+  }
+}
+
 /* OpenDyslexic — self-hosted from public/fonts */
 @font-face {
   font-family: "Open Dyslexic";
@@ -33,6 +78,12 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* Dark mode palette */
+  --color-dark-base:      #1A1A2E;
+  --color-dark-surface:   #16213E;
+  --color-dark-border:    #0F3460;
+  --color-dark-highlight: #E94560;
 }
 
 @layer base {
@@ -57,24 +108,24 @@
    Applied as classes on <html> by AccessibilityContext
    ============================================================ */
 
-/* --- High Contrast --- */
+/* --- High Contrast (light) --- */
 .a11y-high-contrast body {
-  background-color: #fff !important;
-  color: #000 !important;
+  background-color: #fafaf9 !important;
+  color: #0f172a !important;
 }
 .a11y-high-contrast input,
 .a11y-high-contrast textarea,
 .a11y-high-contrast select {
-  border-color: #000 !important;
-  color: #000 !important;
-  background-color: #fff !important;
+  border-color: #0f172a !important;
+  color: #0f172a !important;
+  background-color: #fafaf9 !important;
 }
 .a11y-high-contrast label {
-  color: #000 !important;
+  color: #0f172a !important;
 }
 .a11y-high-contrast .bg-white,
 .a11y-high-contrast .bg-slate-50 {
-  background-color: #fff !important;
+  background-color: #fafaf9 !important;
 }
 .a11y-high-contrast .text-slate-400,
 .a11y-high-contrast .text-slate-500 {
@@ -82,6 +133,29 @@
 }
 .a11y-high-contrast .border-slate-200 {
   border-color: #6b7280 !important;
+}
+
+/* --- High Contrast (dark) --- */
+.a11y-high-contrast.dark body {
+  background-color: #0c0f1a !important;
+  color: #f1f5f9 !important;
+}
+.a11y-high-contrast.dark input,
+.a11y-high-contrast.dark textarea,
+.a11y-high-contrast.dark select {
+  border-color: #f1f5f9 !important;
+  color: #f1f5f9 !important;
+  background-color: #0c0f1a !important;
+}
+.a11y-high-contrast.dark label {
+  color: #f1f5f9 !important;
+}
+.a11y-high-contrast.dark .text-slate-400,
+.a11y-high-contrast.dark .text-slate-500 {
+  color: #cbd5e1 !important;
+}
+.a11y-high-contrast.dark .border-slate-200 {
+  border-color: #94a3b8 !important;
 }
 
 /* --- Font Size --- */

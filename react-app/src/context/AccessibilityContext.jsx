@@ -1,8 +1,9 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 const AccessibilityContext = createContext(null);
 
 const DEFAULTS = {
+    darkMode: false,
     highContrast: false,
     fontSize: 'normal',     // 'sm' | 'normal' | 'lg' | 'xl' | 'xxl'
     reduceMotion: false,
@@ -20,6 +21,7 @@ export function AccessibilityProvider({ children }) {
             return DEFAULTS;
         }
     });
+    const prevDarkRef = useRef(settings.darkMode);
 
     useEffect(() => {
         try {
@@ -27,6 +29,15 @@ export function AccessibilityProvider({ children }) {
         } catch { /* ignore */ }
 
         const html = document.documentElement;
+
+        // Dark mode — with smooth transition on toggle
+        if (prevDarkRef.current !== settings.darkMode) {
+            html.classList.add('dark-transition');
+            setTimeout(() => html.classList.remove('dark-transition'), 400);
+            prevDarkRef.current = settings.darkMode;
+        }
+        html.classList.toggle('dark', settings.darkMode);
+        html.style.colorScheme = settings.darkMode ? 'dark' : 'light';
 
         html.classList.toggle('a11y-high-contrast', settings.highContrast);
 
