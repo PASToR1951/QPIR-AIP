@@ -55,8 +55,9 @@ model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
   password  String    // Hashed password
-  role      String    // "School" or "Division Personnel"
+  role      String    // "School", "Division Personnel", or "Admin"
   name      String?
+  is_active Boolean   @default(true)
 
   // Relation to School (For School Role Users)
   school_id Int?      @unique
@@ -65,26 +66,17 @@ model User {
   // Relation to Programs (For Division Personnel Users)
   programs  Program[] @relation("UserPrograms")
 
-  // Drafts
-  drafts    Draft[]
-
   // Documents created by this user (for Division Personnel tracking)
   aips      AIP[]     @relation("CreatedByUser")
   pirs      PIR[]     @relation("CreatedByUser")
 
+  // Admin audit logs
+  audit_logs    AuditLog[]
+
+  // Notifications
+  notifications Notification[]
+
   created_at DateTime @default(now())
-}
-
-model Draft {
-  id         Int      @id @default(autoincrement())
-  user_id    Int
-  form_type  String   // "AIP" or "PIR"
-  file_path  String   // Path to the JSON file
-  updated_at DateTime @updatedAt @default(now())
-
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, form_type])
 }
 
 model AIP {
@@ -102,6 +94,8 @@ model AIP {
   prepared_by_title   String   @default("")
   approved_by_name    String   @default("")
   approved_by_title   String   @default("")
+  status              String   @default("Submitted") // "Draft" | "Submitted" | "Pending" | "Verified" | "Under Review" | "Approved" | "Returned"
+  verification_document_path String?  // Path to the uploaded signed PDF (fast-entry beta only)
   created_at          DateTime @default(now())
 
   // Relations
@@ -141,6 +135,8 @@ model PIR {
   program_owner      String
   total_budget       Decimal  @default(0.0)
   fund_source        String
+  status             String   @default("Submitted") // "Draft" | "Submitted" | "Under Review" | "Approved" | "Returned"
+  remarks            String?  // Admin remarks/annotations on this PIR
   created_at         DateTime @default(now())
 
   // Relations
@@ -182,6 +178,19 @@ model PIRFactor {
   @@unique([pir_id, factor_type]) // Only one record per factor type per PIR
 }
 
+model Notification {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title      String
+  message    String
+  type       String   // "approved" | "returned" | "remarked" | "under_review"
+  read       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@map("notifications")
+}
+
 model Deadline {
   id         Int      @id @default(autoincrement())
   year       Int      // Fiscal year, e.g. 2026
@@ -192,4 +201,30 @@ model Deadline {
 
   @@unique([year, quarter])
   @@map("deadlines")
+}
+
+model Announcement {
+  id         Int      @id @default(autoincrement())
+  message    String
+  type       String   @default("info") // "info" | "warning" | "critical"
+  is_active  Boolean  @default(true)
+  created_by Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("announcements")
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  admin_id    Int
+  action      String   // e.g. "created_user", "approved_aip", "changed_deadline"
+  entity_type String   // "User", "AIP", "PIR", "School", "Program", etc.
+  entity_id   Int
+  details     Json
+  created_at  DateTime @default(now())
+
+  admin       User     @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
 }

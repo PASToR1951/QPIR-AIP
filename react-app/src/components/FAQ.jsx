@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Search, ChevronDown, ChevronUp, HelpCircle, BookOpen, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MagnifyingGlass as Search, CaretDown as ChevronDown, CaretUp as ChevronUp, Question as HelpCircle, BookOpen, WarningCircle as AlertCircle } from '@phosphor-icons/react';
 import Footer from './ui/Footer';
 
 const FAQ_DATA = [
@@ -28,7 +28,7 @@ const FAQ_DATA = [
       },
       {
         q: "Can I save my progress and continue later?",
-        a: "Yes! The portal features Draft Persistence. You can save your progress at any time and resume on a different device securely."
+        a: "Yes! Your progress is saved as a draft directly in the database. You can resume on any device — just log in and continue where you left off."
       }
     ]
   },
@@ -89,7 +89,7 @@ export default function FAQ() {
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all">
-              <ArrowLeft size={18} strokeWidth={2.5} />
+              <ArrowLeft size={18} weight="bold" />
             </Link>
             <div>
               <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">Help Center / FAQ</h1>
@@ -131,7 +131,7 @@ export default function FAQ() {
                 <div key={idx} className="bg-white dark:bg-dark-surface p-6 md:p-8 rounded-[2.5rem] border border-slate-200 dark:border-dark-border shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100 dark:border-indigo-900">
-                      <Icon size={24} strokeWidth={2.5} />
+                      <Icon size={24} />
                     </div>
                     <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">{category.category}</h2>
                   </div>

@@ -8,7 +8,7 @@ const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-chang
 
 authRoutes.post('/register', async (c) => {
   const body = await c.req.json();
-  const { email, password, role, name, school_id } = body;
+  const { email, password, name, school_id } = body;
 
   try {
     const salt = await bcrypt.genSalt(10);
@@ -18,7 +18,7 @@ authRoutes.post('/register', async (c) => {
       data: {
         email,
         password: hashedPassword,
-        role,
+        role: 'School Head',
         name,
         school_id
       }
@@ -36,7 +36,7 @@ authRoutes.post('/login', async (c) => {
   const { email, password } = body;
 
   try {
-    const user = await prisma.user.findUnique({ 
+    const user = await prisma.user.findUnique({
       where: { email },
       include: { school: true }
     });
@@ -49,28 +49,30 @@ authRoutes.post('/login', async (c) => {
       return c.json({ error: 'Invalid credentials' }, 401);
     }
 
+    // Issue JWT
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role, school_id: user.school_id, school_name: user.school?.name, name: user.name },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    return c.json({ 
-      message: 'Login successful', 
+    return c.json({
+      message: 'Login successful',
       token,
-      user: { 
-        id: user.id, 
-        email: user.email, 
-        role: user.role, 
-        school_id: user.school_id, 
-        school_name: user.school?.name, 
-        name: user.name 
-      } 
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        school_id: user.school_id,
+        school_name: user.school?.name,
+        name: user.name
+      }
     });
   } catch (error) {
     console.error(error);
     return c.json({ error: 'Login failed' }, 500);
   }
 });
+
 
 export default authRoutes;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, Facebook, MapPin, Phone } from 'lucide-react';
+import { EnvelopeIcon as Mail, FacebookLogoIcon as Facebook, MapPinIcon as MapPin, PhoneIcon as Phone} from '@phosphor-icons/react';
 import { CURRENT_VERSION } from '../../version';
 
 const Footer = () => {

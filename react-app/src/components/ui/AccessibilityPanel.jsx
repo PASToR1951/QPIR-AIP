@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
-    Accessibility,
-    X,
+    PersonArmsSpread as Accessibility,
+    XCircleIcon as X,
     Moon,
     Sun,
-    ZapOff,
+    Lightning as ZapOff,
     BookOpen,
-    AlignLeft,
-    Type,
-    RotateCcw,
-} from 'lucide-react';
+    TextAlignLeft as AlignLeft,
+    TextT as Type,
+    ArrowCounterClockwise as RotateCcw,
+} from '@phosphor-icons/react';
 import { useAccessibility } from '../../context/AccessibilityContext';
 
 /* ── Theme definitions ─────────────────────────────────────────────────── */
@@ -144,7 +144,7 @@ export default function AccessibilityPanel() {
                             className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
                             aria-label="Close accessibility panel"
                         >
-                            <X className="w-3.5 h-3.5" />
+                            <X className="w-4 h-4" />
                         </button>
                     </div>
 

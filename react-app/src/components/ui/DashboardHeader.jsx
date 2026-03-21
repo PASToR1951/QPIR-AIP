@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, ChevronDown, User, BookOpen, MessageCircle, History, Tag } from 'lucide-react';
+import { SignOut as LogOut, CaretDown as ChevronDown, User, BookOpen, ChatCircle as MessageCircle, ClockCounterClockwise as History, Tag } from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { NotificationBell } from './NotificationBell.jsx';
 
 export const DashboardHeader = ({ user, onLogout }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -41,7 +42,11 @@ export const DashboardHeader = ({ user, onLogout }) => {
                     </div>
                 </div>
 
-                {/* Right Side Profile Dropdown */}
+                {/* Right Side Actions */}
+                <div className="flex items-center gap-1">
+                <NotificationBell />
+
+                {/* Profile Dropdown */}
                 <div className="flex items-center relative" ref={dropdownRef}>
                     <button 
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -78,26 +83,26 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                 
                                 <div className="px-2 py-1">
                                     <a href="#" onClick={(e) => { e.preventDefault(); setIsDropdownOpen(false); }} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
-                                        <User size={16} strokeWidth={2.5} />
+                                        <User size={16} />
                                         Profile
                                     </a>
                                     <Link to="/faq" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
-                                        <MessageCircle size={16} strokeWidth={2.5} />
+                                        <MessageCircle size={16} />
                                         FAQ
                                     </Link>
                                     <Link to="/docs" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
-                                        <BookOpen size={16} strokeWidth={2.5} />
+                                        <BookOpen size={16} />
                                         User Manual
                                     </Link>
                                 </div>
 
                                 <div className="px-2 py-1 border-t border-slate-100 dark:border-dark-border">
                                     <a href="#" onClick={(e) => { e.preventDefault(); setIsDropdownOpen(false); }} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 rounded-xl transition-colors">
-                                        <History size={16} strokeWidth={2.5} />
+                                        <History size={16} />
                                         User Logs
                                     </a>
                                     <Link to="/changelog" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-xl transition-colors">
-                                        <Tag size={16} strokeWidth={2.5} />
+                                        <Tag size={16} />
                                         Change Logs
                                     </Link>
                                 </div>
@@ -107,7 +112,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                         onClick={() => { setIsDropdownOpen(false); onLogout(); }}
                                         className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors"
                                     >
-                                        <LogOut size={16} strokeWidth={2.5} />
+                                        <LogOut size={16} />
                                         Logout
                                     </button>
                                 </div>
@@ -115,6 +120,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                         )}
                     </AnimatePresence>
                 </div>
+                </div>{/* end Right Side Actions */}
             </div>
         </nav>
     );

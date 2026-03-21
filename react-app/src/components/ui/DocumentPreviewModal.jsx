@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Printer, Download, Eye, FileText, ChevronRight } from 'lucide-react';
+import { X, Printer, DownloadSimple as Download, Eye, FileText, CaretRight as ChevronRight } from '@phosphor-icons/react';
 
 export const DocumentPreviewModal = ({ 
     isOpen, 
@@ -56,13 +56,13 @@ export const DocumentPreviewModal = ({
                         <div className="flex items-center justify-between px-6 py-4 bg-white/80 dark:bg-dark-surface/80 backdrop-blur-md border-b border-slate-200 dark:border-dark-border shrink-0 z-10 print:hidden">
                             <div className="flex items-center gap-4">
                                 <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl border border-indigo-100/50 shadow-sm shadow-indigo-100/50">
-                                    <FileText size={20} strokeWidth={2.5} />
+                                    <FileText size={20} />
                                 </div>
                                 <div className="flex flex-col">
                                     <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight leading-none">{title}</h2>
                                     <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1.5 flex items-center gap-1.5">
                                         {subtitle} 
-                                        <ChevronRight size={10} strokeWidth={3} className="text-slate-300" />
+                                        <ChevronRight size={10} className="text-slate-300" />
                                         <span className="text-indigo-600">Form Preview</span>
                                     </p>
                                 </div>
@@ -73,7 +73,7 @@ export const DocumentPreviewModal = ({
                                     onClick={() => window.print()}
                                     className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-lg shadow-slate-200"
                                 >
-                                    <Printer size={16} strokeWidth={2.5} />
+                                    <Printer size={16} />
                                     Print Document
                                 </button>
                                 <div className="w-px h-6 bg-slate-200 dark:bg-dark-border mx-1"></div>
@@ -82,7 +82,7 @@ export const DocumentPreviewModal = ({
                                     className="p-2.5 bg-slate-100 dark:bg-dark-border text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-dark-border rounded-xl transition-all active:scale-95"
                                     title="Close Preview"
                                 >
-                                    <X size={20} strokeWidth={2.5} />
+                                    <X size={20} />
                                 </button>
                             </div>
                         </div>

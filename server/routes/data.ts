@@ -29,148 +29,424 @@ function getUserFromToken(authHeader: string | undefined): TokenPayload | null {
 }
 
 // ==========================================
-// DRAFTS (JSON file storage)
+// DRAFTS (stored as AIP/PIR rows with status = "Draft")
 // ==========================================
 
-const DRAFTS_DIR = path.join(Deno.cwd(), "data", "drafts");
-
-dataRoutes.post('/drafts', async (c) => {
+// POST /api/aips/draft — save or update an AIP draft
+dataRoutes.post('/aips/draft', async (c) => {
   try {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const { form_type, draft_data } = await c.req.json();
+    const body = await c.req.json();
+    const { program_title, year: rawYear, outcome, sip_title, project_coordinator,
+            objectives, indicators, prepared_by_name, prepared_by_title,
+            approved_by_name, approved_by_title, activities } = body;
 
-    if (!form_type || !draft_data) {
-      return c.json({ error: 'Missing required fields' }, 400);
-    }
+    if (!program_title) return c.json({ error: 'program_title is required' }, 400);
 
-    // Always use the authenticated user's ID — never trust a client-supplied user_id
-    const userId = tokenUser.id;
+    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
 
-    await ensureDir(DRAFTS_DIR);
+    const year = parseInt(rawYear) || new Date().getFullYear();
+    const school_id = tokenUser.role === 'School' ? tokenUser.school_id : null;
 
-    // Check if a draft already exists to reuse its file path
-    let existingDraft = await prisma.draft.findUnique({
-      where: {
-        user_id_form_type: {
-          user_id: userId,
-          form_type: form_type.toUpperCase()
-        }
-      }
-    });
-
-    let filePath;
-    if (existingDraft && existingDraft.file_path) {
-        filePath = existingDraft.file_path;
+    // Try to find an existing draft or submitted AIP to update
+    let existing: any;
+    if (school_id) {
+      existing = await prisma.aIP.findUnique({
+        where: { school_id_program_id_year: { school_id, program_id: program.id, year } },
+        include: { activities: true }
+      });
     } else {
-        const uniqueId = crypto.randomUUID();
-        const fileName = `draft_${userId}_${form_type.toLowerCase()}_${uniqueId}.json`;
-        filePath = path.join(DRAFTS_DIR, fileName);
+      existing = await prisma.aIP.findFirst({
+        where: { created_by_user_id: tokenUser.id, school_id: null, program_id: program.id, year },
+        include: { activities: true }
+      });
     }
 
-    await Deno.writeTextFile(filePath, JSON.stringify(draft_data, null, 2));
+    // Only allow saving drafts over Draft status or creating new ones
+    if (existing && existing.status !== 'Draft') {
+      return c.json({ error: 'An AIP has already been submitted for this program and year' }, 409);
+    }
 
-    const draft = await prisma.draft.upsert({
-      where: {
-        user_id_form_type: {
-          user_id: userId,
-          form_type: form_type.toUpperCase()
-        }
-      },
-      update: { file_path: filePath },
-      create: {
-        user_id: userId,
-        form_type: form_type.toUpperCase(),
-        file_path: filePath
-      }
-    });
+    const aipData = {
+      outcome: outcome || '',
+      sip_title: sip_title || '',
+      project_coordinator: project_coordinator || '',
+      objectives: objectives || [],
+      indicators: indicators || [],
+      prepared_by_name: prepared_by_name || '',
+      prepared_by_title: prepared_by_title || '',
+      approved_by_name: approved_by_name || '',
+      approved_by_title: approved_by_title || '',
+      status: 'Draft',
+    };
 
-    return c.json({ message: 'Draft saved successfully', draft });
+    const activityData = (activities || []).map((act: any) => ({
+      phase: act.phase || '',
+      activity_name: act.name || '',
+      implementation_period: act.period || '',
+      period_start_month: act.periodStartMonth ? parseInt(act.periodStartMonth) : null,
+      period_end_month: act.periodEndMonth ? parseInt(act.periodEndMonth) : null,
+      persons_involved: act.persons || '',
+      outputs: act.outputs || '',
+      budget_amount: parseFloat(act.budgetAmount || 0),
+      budget_source: act.budgetSource || ''
+    }));
+
+    let aip;
+    if (existing) {
+      // Update existing draft: delete old activities and recreate
+      await prisma.aIPActivity.deleteMany({ where: { aip_id: existing.id } });
+      aip = await prisma.aIP.update({
+        where: { id: existing.id },
+        data: {
+          ...aipData,
+          activities: { create: activityData }
+        },
+        include: { activities: true }
+      });
+    } else {
+      aip = await prisma.aIP.create({
+        data: {
+          school_id,
+          program_id: program.id,
+          created_by_user_id: tokenUser.id,
+          year,
+          ...aipData,
+          activities: { create: activityData }
+        },
+        include: { activities: true }
+      });
+    }
+
+    return c.json({ message: 'Draft saved successfully', aip });
   } catch (error) {
-    console.error('Failed to save draft:', error);
+    console.error('Failed to save AIP draft:', error);
     return c.json({ error: 'Failed to save draft' }, 500);
   }
 });
 
-dataRoutes.get('/drafts/:formType/:userId', async (c) => {
+// GET /api/aips/draft — check if the current user has an AIP draft
+dataRoutes.get('/aips/draft', async (c) => {
   try {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const formType = c.req.param('formType').toUpperCase();
-    const requestedId = parseInt(c.req.param('userId'));
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
-    // Reject if the client is requesting a different user's draft
-    if (tokenUser.id !== requestedId) {
-      return c.json({ error: 'Forbidden' }, 403);
+    let drafts: any[];
+    if (tokenUser.role === 'School' && tokenUser.school_id) {
+      drafts = await prisma.aIP.findMany({
+        where: { school_id: tokenUser.school_id, year, status: 'Draft' },
+        include: { activities: true, program: true }
+      });
+    } else {
+      drafts = await prisma.aIP.findMany({
+        where: { created_by_user_id: tokenUser.id, school_id: null, year, status: 'Draft' },
+        include: { activities: true, program: true }
+      });
     }
 
-    const draft = await prisma.draft.findUnique({
-      where: {
-        user_id_form_type: {
-          user_id: tokenUser.id,
-          form_type: formType
-        }
-      }
-    });
-
-    if (!draft) {
+    if (drafts.length === 0) {
       return c.json({ hasDraft: false });
     }
 
-    try {
-      const draftDataStr = await Deno.readTextFile(draft.file_path);
-      const draftData = JSON.parse(draftDataStr);
-      return c.json({ hasDraft: true, draftData, lastSaved: draft.updated_at });
-    } catch (fsError) {
-      console.error("Draft file not found, but DB entry exists:", fsError);
-      return c.json({ hasDraft: false });
-    }
+    // Return the first (and typically only) draft, mapped to the frontend's expected format
+    const aip = drafts[0];
+    const draftData = {
+      outcome: aip.outcome,
+      year: String(aip.year),
+      depedProgram: aip.program.title,
+      sipTitle: aip.sip_title,
+      projectCoord: aip.project_coordinator,
+      objectives: aip.objectives,
+      indicators: aip.indicators,
+      preparedByName: aip.prepared_by_name,
+      preparedByTitle: aip.prepared_by_title,
+      approvedByName: aip.approved_by_name,
+      approvedByTitle: aip.approved_by_title,
+      activities: aip.activities.map((a: any) => ({
+        id: a.id,
+        phase: a.phase,
+        name: a.activity_name,
+        period: a.implementation_period,
+        periodStartMonth: a.period_start_month,
+        periodEndMonth: a.period_end_month,
+        persons: a.persons_involved,
+        outputs: a.outputs,
+        budgetAmount: a.budget_amount,
+        budgetSource: a.budget_source,
+      })),
+    };
+
+    return c.json({ hasDraft: true, draftData, lastSaved: aip.created_at });
   } catch (error) {
-    console.error('Failed to load draft:', error);
+    console.error('Failed to load AIP draft:', error);
     return c.json({ error: 'Failed to load draft' }, 500);
   }
 });
 
-dataRoutes.delete('/drafts/:formType/:userId', async (c) => {
+// DELETE /api/aips/draft — delete an AIP draft for the current user
+dataRoutes.delete('/aips/draft', async (c) => {
   try {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const formType = c.req.param('formType').toUpperCase();
-    const requestedId = parseInt(c.req.param('userId'));
+    const program_title = c.req.query('program_title');
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
-    if (tokenUser.id !== requestedId) {
-      return c.json({ error: 'Forbidden' }, 403);
+    let where: any = { status: 'Draft', year };
+
+    if (tokenUser.role === 'School' && tokenUser.school_id) {
+      where.school_id = tokenUser.school_id;
+    } else {
+      where.created_by_user_id = tokenUser.id;
+      where.school_id = null;
     }
 
-    const userId = tokenUser.id;
+    if (program_title) {
+      const program = await prisma.program.findUnique({ where: { title: program_title } });
+      if (program) where.program_id = program.id;
+    }
 
-    const draft = await prisma.draft.findUnique({
-      where: {
-        user_id_form_type: {
-          user_id: userId,
-          form_type: formType
-        }
-      }
+    await prisma.aIP.deleteMany({ where });
+
+    return c.json({ message: 'Draft deleted' });
+  } catch (error) {
+    console.error('Failed to delete AIP draft:', error);
+    return c.json({ error: 'Failed to delete draft' }, 500);
+  }
+});
+
+// POST /api/pirs/draft — save or update a PIR draft
+dataRoutes.post('/pirs/draft', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const body = await c.req.json();
+    const { program_title, quarter, program_owner, total_budget, fund_source,
+            activity_reviews, factors } = body;
+
+    if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
+
+    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
+
+    const yearMatch = quarter.match(/CY (\d{4})/);
+    const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+
+    let aip: any;
+    if (tokenUser.role === 'School' && tokenUser.school_id) {
+      aip = await prisma.aIP.findUnique({
+        where: { school_id_program_id_year: { school_id: tokenUser.school_id, program_id: program.id, year } },
+        include: { activities: true }
+      });
+    } else {
+      aip = await prisma.aIP.findFirst({
+        where: { created_by_user_id: tokenUser.id, school_id: null, program_id: program.id, year },
+        include: { activities: true }
+      });
+    }
+
+    if (!aip) return c.json({ error: 'Associated AIP not found' }, 404);
+
+    // Check for existing PIR draft
+    const existing = await prisma.pIR.findUnique({
+      where: { aip_id_quarter: { aip_id: aip.id, quarter } }
     });
 
-    if (draft) {
-      try {
-        await Deno.remove(draft.file_path);
-      } catch (e) {
-        // Ignore file missing errors
-      }
-      await prisma.draft.delete({
-        where: { id: draft.id }
+    if (existing && existing.status !== 'Draft') {
+      return c.json({ error: 'A PIR has already been submitted for this quarter' }, 409);
+    }
+
+    const pirData = {
+      program_owner: program_owner || '',
+      total_budget: parseFloat(total_budget || 0),
+      fund_source: fund_source || '',
+      status: 'Draft',
+    };
+
+    let pir;
+    if (existing) {
+      // Delete old relations and recreate
+      await prisma.pIRActivityReview.deleteMany({ where: { pir_id: existing.id } });
+      await prisma.pIRFactor.deleteMany({ where: { pir_id: existing.id } });
+      pir = await prisma.pIR.update({
+        where: { id: existing.id },
+        data: {
+          ...pirData,
+          factors: {
+            create: factors ? Object.entries(factors).map(([type, data]: [string, any]) => ({
+              factor_type: type,
+              facilitating_factors: data.facilitating || '',
+              hindering_factors: data.hindering || ''
+            })) : []
+          },
+          activity_reviews: {
+            create: (activity_reviews || []).map((rev: any) => ({
+              aip_activity_id: parseInt(rev.aip_activity_id) || aip!.activities[0]?.id,
+              physical_target: parseFloat(rev.physTarget || 0),
+              financial_target: parseFloat(rev.finTarget || 0),
+              physical_accomplished: parseFloat(rev.physAcc || 0),
+              financial_accomplished: parseFloat(rev.finAcc || 0),
+              actions_to_address_gap: rev.actions || ''
+            }))
+          }
+        }
       });
+    } else {
+      pir = await prisma.pIR.create({
+        data: {
+          aip_id: aip.id,
+          created_by_user_id: tokenUser.id,
+          quarter,
+          ...pirData,
+          factors: {
+            create: factors ? Object.entries(factors).map(([type, data]: [string, any]) => ({
+              factor_type: type,
+              facilitating_factors: data.facilitating || '',
+              hindering_factors: data.hindering || ''
+            })) : []
+          },
+          activity_reviews: {
+            create: (activity_reviews || []).map((rev: any) => ({
+              aip_activity_id: parseInt(rev.aip_activity_id) || aip!.activities[0]?.id,
+              physical_target: parseFloat(rev.physTarget || 0),
+              financial_target: parseFloat(rev.finTarget || 0),
+              physical_accomplished: parseFloat(rev.physAcc || 0),
+              financial_accomplished: parseFloat(rev.finAcc || 0),
+              actions_to_address_gap: rev.actions || ''
+            }))
+          }
+        }
+      });
+    }
+
+    return c.json({ message: 'PIR draft saved successfully', pir });
+  } catch (error) {
+    console.error('Failed to save PIR draft:', error);
+    return c.json({ error: 'Failed to save PIR draft' }, 500);
+  }
+});
+
+// GET /api/pirs/draft — check if the current user has a PIR draft
+dataRoutes.get('/pirs/draft', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const program_title = c.req.query('program_title');
+    const quarter = c.req.query('quarter');
+
+    if (!program_title) return c.json({ hasDraft: false });
+
+    const yearMatch = quarter?.match(/CY (\d{4})/);
+    const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+
+    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    if (!program) return c.json({ hasDraft: false });
+
+    let aip: any;
+    if (tokenUser.role === 'School' && tokenUser.school_id) {
+      aip = await prisma.aIP.findUnique({
+        where: { school_id_program_id_year: { school_id: tokenUser.school_id, program_id: program.id, year } }
+      });
+    } else {
+      aip = await prisma.aIP.findFirst({
+        where: { created_by_user_id: tokenUser.id, school_id: null, program_id: program.id, year }
+      });
+    }
+
+    if (!aip) return c.json({ hasDraft: false });
+
+    const pir = quarter
+      ? await prisma.pIR.findUnique({
+          where: { aip_id_quarter: { aip_id: aip.id, quarter } },
+          include: { activity_reviews: true, factors: true }
+        })
+      : await prisma.pIR.findFirst({
+          where: { aip_id: aip.id, status: 'Draft' },
+          include: { activity_reviews: true, factors: true }
+        });
+
+    if (!pir || pir.status !== 'Draft') return c.json({ hasDraft: false });
+
+    const factorsMap: Record<string, any> = {};
+    for (const f of pir.factors) {
+      factorsMap[f.factor_type] = { facilitating: f.facilitating_factors, hindering: f.hindering_factors };
+    }
+
+    return c.json({
+      hasDraft: true,
+      draftData: {
+        program: program_title,
+        quarter: pir.quarter,
+        owner: pir.program_owner,
+        fundSource: pir.fund_source,
+        rawBudget: String(pir.total_budget),
+        activities: pir.activity_reviews.map((r: any) => ({
+          aip_activity_id: r.aip_activity_id,
+          physTarget: r.physical_target,
+          finTarget: r.financial_target,
+          physAcc: r.physical_accomplished,
+          finAcc: r.financial_accomplished,
+          actions: r.actions_to_address_gap || ''
+        })),
+        factors: factorsMap
+      },
+      lastSaved: pir.created_at
+    });
+  } catch (error) {
+    console.error('Failed to load PIR draft:', error);
+    return c.json({ error: 'Failed to load PIR draft' }, 500);
+  }
+});
+
+// DELETE /api/pirs/draft — delete a PIR draft
+dataRoutes.delete('/pirs/draft', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const program_title = c.req.query('program_title');
+    const quarter = c.req.query('quarter');
+
+    if (!program_title || !quarter) return c.json({ error: 'program_title and quarter required' }, 400);
+
+    const yearMatch = quarter.match(/CY (\d{4})/);
+    const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+
+    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    if (!program) return c.json({ message: 'No draft found' });
+
+    let aip: any;
+    if (tokenUser.role === 'School' && tokenUser.school_id) {
+      aip = await prisma.aIP.findUnique({
+        where: { school_id_program_id_year: { school_id: tokenUser.school_id, program_id: program.id, year } }
+      });
+    } else {
+      aip = await prisma.aIP.findFirst({
+        where: { created_by_user_id: tokenUser.id, school_id: null, program_id: program.id, year }
+      });
+    }
+
+    if (!aip) return c.json({ message: 'No draft found' });
+
+    const pir = await prisma.pIR.findUnique({
+      where: { aip_id_quarter: { aip_id: aip.id, quarter } }
+    });
+
+    if (pir && pir.status === 'Draft') {
+      await prisma.pIR.delete({ where: { id: pir.id } });
     }
 
     return c.json({ message: 'Draft deleted' });
   } catch (error) {
-    console.error('Failed to delete draft:', error);
-    return c.json({ error: 'Failed to delete draft' }, 500);
+    console.error('Failed to delete PIR draft:', error);
+    return c.json({ error: 'Failed to delete PIR draft' }, 500);
   }
 });
 
@@ -427,6 +703,10 @@ dataRoutes.get('/aips/activities', async (c) => {
       return c.json({ error: 'No AIP found for this program and year' }, 404);
     }
 
+    if (aip.status === 'Pending') {
+      return c.json({ error: 'This AIP is pending verification and cannot be used for PIR yet.' }, 403);
+    }
+
     const totalBudget = aip.activities.reduce((sum: number, a: any) => sum + (parseFloat(a.budget_amount) || 0), 0);
     const fundSources = [...new Set(aip.activities.map((a: any) => a.budget_source).filter(Boolean))].join(' / ');
 
@@ -594,29 +874,92 @@ dataRoutes.get('/pirs', async (c) => {
   }
 });
 
+const AIP_DOCS_DIR = Deno.env.get("UPLOAD_DIR") || "/var/lib/qpir-aip/uploads/pdfs";
+const MAX_PDF_SIZE = 5 * 1024 * 1024; // 5 MB
+
 // POST a new AIP
+// Accepts both JSON (wizard/full mode) and multipart/form-data (beta mode with PDF upload)
 dataRoutes.post('/aips', async (c) => {
   try {
-    const body = await c.req.json();
-    const {
-      program_title,
-      year,
-      outcome,
-      sip_title,
-      project_coordinator,
-      objectives,
-      indicators,
-      prepared_by_name,
-      prepared_by_title,
-      approved_by_name,
-      approved_by_title,
-      activities
-    } = body;
-
     // Get the requesting user from JWT
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) {
       return c.json({ error: 'Authentication required' }, 401);
+    }
+
+    let program_title: string, year: string, outcome: string, sip_title: string,
+        project_coordinator: string, objectives: any, indicators: any,
+        prepared_by_name: string, prepared_by_title: string,
+        approved_by_name: string, approved_by_title: string,
+        activities: any[], isBetaSubmission = false;
+    let verificationDocPath: string | null = null;
+
+    const contentType = c.req.header('content-type') || '';
+
+    if (contentType.includes('multipart/form-data')) {
+      // Beta fast-entry submission with optional PDF
+      const formData = await c.req.formData();
+      program_title = formData.get('program_title') as string;
+      year = formData.get('year') as string;
+      outcome = formData.get('outcome') as string;
+      sip_title = formData.get('sip_title') as string;
+      project_coordinator = formData.get('project_coordinator') as string;
+      objectives = JSON.parse(formData.get('objectives') as string || '[]');
+      indicators = JSON.parse(formData.get('indicators') as string || '[]');
+      prepared_by_name = formData.get('prepared_by_name') as string || '';
+      prepared_by_title = formData.get('prepared_by_title') as string || '';
+      approved_by_name = formData.get('approved_by_name') as string || '';
+      approved_by_title = formData.get('approved_by_title') as string || '';
+      activities = JSON.parse(formData.get('activities') as string || '[]');
+      isBetaSubmission = true;
+
+      const pdfFile = formData.get('verification_document') as File | null;
+      if (pdfFile) {
+        // Validate PDF
+        if (!pdfFile.name.toLowerCase().endsWith('.pdf') && pdfFile.type !== 'application/pdf') {
+          return c.json({ error: 'Only PDF files are accepted for the verification document.' }, 400);
+        }
+        if (pdfFile.size > MAX_PDF_SIZE) {
+          return c.json({ error: 'Verification document exceeds 5 MB limit.' }, 400);
+        }
+
+        // Build organized directory path:
+        //   School users:    {base}/{cluster_number}/{level}/{school_name}/{program_name}/
+        //   Division Personnel: {base}/sdo/{program_name}/
+        const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_\-. ]/g, '').replace(/\s+/g, '_').toLowerCase();
+        let pdfSubDir: string;
+
+        if (tokenUser.role === 'School' && tokenUser.school_id) {
+          const school = await prisma.school.findUnique({
+            where: { id: tokenUser.school_id },
+            include: { cluster: true }
+          });
+          if (!school) return c.json({ error: 'School not found' }, 404);
+          pdfSubDir = path.join(
+            AIP_DOCS_DIR,
+            String(school.cluster.cluster_number),
+            sanitize(school.level),
+            sanitize(school.name),
+            sanitize(program_title)
+          );
+        } else {
+          pdfSubDir = path.join(AIP_DOCS_DIR, 'sdo', sanitize(program_title));
+        }
+
+        await ensureDir(pdfSubDir);
+        const uniqueId = crypto.randomUUID();
+        const fileName = `aip_doc_${uniqueId}.pdf`;
+        const filePath = path.join(pdfSubDir, fileName);
+        const buffer = await pdfFile.arrayBuffer();
+        await Deno.writeFile(filePath, new Uint8Array(buffer));
+        verificationDocPath = filePath;
+      }
+    } else {
+      // Standard JSON submission (wizard / full form)
+      const body = await c.req.json();
+      ({ program_title, year, outcome, sip_title, project_coordinator,
+         objectives, indicators, prepared_by_name, prepared_by_title,
+         approved_by_name, approved_by_title, activities } = body);
     }
 
     // Look up program_id
@@ -641,38 +984,72 @@ dataRoutes.post('/aips', async (c) => {
     }
 
     const school_id = tokenUser.role === 'School' ? tokenUser.school_id : null;
+    const parsedYear = parseInt(year);
+    const newStatus = isBetaSubmission ? 'Pending' : 'Submitted';
 
-    const aip = await prisma.aIP.create({
-      data: {
-        school_id,
-        program_id: program.id,
-        created_by_user_id: tokenUser.id,
-        year: parseInt(year),
-        outcome,
-        sip_title,
-        project_coordinator,
-        objectives,
-        indicators,
-        prepared_by_name: prepared_by_name || '',
-        prepared_by_title: prepared_by_title || '',
-        approved_by_name: approved_by_name || '',
-        approved_by_title: approved_by_title || '',
-        activities: {
-          create: activities.map((act: any) => ({
-            phase: act.phase,
-            activity_name: act.name,
-            implementation_period: act.period,
-            period_start_month: act.periodStartMonth ? parseInt(act.periodStartMonth) : null,
-            period_end_month: act.periodEndMonth ? parseInt(act.periodEndMonth) : null,
-            persons_involved: act.persons,
-            outputs: act.outputs,
-            budget_amount: parseFloat(act.budgetAmount || 0),
-            budget_source: act.budgetSource
-          }))
-        }
-      },
-      include: { activities: true }
-    });
+    const aipFields = {
+      outcome,
+      sip_title,
+      project_coordinator,
+      objectives,
+      indicators,
+      prepared_by_name: prepared_by_name || '',
+      prepared_by_title: prepared_by_title || '',
+      approved_by_name: approved_by_name || '',
+      approved_by_title: approved_by_title || '',
+      status: newStatus,
+      verification_document_path: verificationDocPath,
+    };
+
+    const activityFields = activities.map((act: any) => ({
+      phase: act.phase,
+      activity_name: act.name,
+      implementation_period: act.period,
+      period_start_month: act.periodStartMonth ? parseInt(act.periodStartMonth) : null,
+      period_end_month: act.periodEndMonth ? parseInt(act.periodEndMonth) : null,
+      persons_involved: act.persons,
+      outputs: act.outputs,
+      budget_amount: parseFloat(act.budgetAmount || 0),
+      budget_source: act.budgetSource
+    }));
+
+    // Check if a Draft AIP already exists — if so, update it instead of creating a new one
+    let existingDraft: any = null;
+    if (school_id) {
+      existingDraft = await prisma.aIP.findUnique({
+        where: { school_id_program_id_year: { school_id, program_id: program.id, year: parsedYear } }
+      });
+    } else {
+      existingDraft = await prisma.aIP.findFirst({
+        where: { created_by_user_id: tokenUser.id, school_id: null, program_id: program.id, year: parsedYear }
+      });
+    }
+
+    let aip;
+    if (existingDraft && existingDraft.status === 'Draft') {
+      // Promote draft to submitted: delete old activities and replace
+      await prisma.aIPActivity.deleteMany({ where: { aip_id: existingDraft.id } });
+      aip = await prisma.aIP.update({
+        where: { id: existingDraft.id },
+        data: {
+          ...aipFields,
+          activities: { create: activityFields }
+        },
+        include: { activities: true }
+      });
+    } else {
+      aip = await prisma.aIP.create({
+        data: {
+          school_id,
+          program_id: program.id,
+          created_by_user_id: tokenUser.id,
+          year: parsedYear,
+          ...aipFields,
+          activities: { create: activityFields }
+        },
+        include: { activities: true }
+      });
+    }
 
     return c.json({ message: 'AIP created successfully', aip });
   } catch (error) {
@@ -749,38 +1126,65 @@ dataRoutes.post('/pirs', async (c) => {
       return c.json({ error: 'Access denied' }, 403);
     }
 
-    const pir = await prisma.pIR.create({
-      data: {
-        aip_id: aip.id,
-        created_by_user_id: tokenUser.id,
-        quarter,
-        program_owner,
-        total_budget: parseFloat(total_budget || 0),
-        fund_source,
-        factors: {
-          create: Object.entries(factors).map(([type, data]: [string, any]) => ({
-            factor_type: type,
-            facilitating_factors: data.facilitating,
-            hindering_factors: data.hindering
-          }))
-        },
-        activity_reviews: {
-          create: activity_reviews.map((rev: any) => {
-            const aipActivityId = rev.aip_activity_id
-              ? parseInt(rev.aip_activity_id)
-              : aip!.activities.find(a => a.activity_name === rev.name)?.id || aip!.activities[0].id;
-            return {
-              aip_activity_id: aipActivityId,
-              physical_target: parseFloat(rev.physTarget || 0),
-              financial_target: parseFloat(rev.finTarget || 0),
-              physical_accomplished: parseFloat(rev.physAcc || 0),
-              financial_accomplished: parseFloat(rev.finAcc || 0),
-              actions_to_address_gap: rev.actions
-            };
-          })
-        }
-      }
+    // Block PIR submission if the AIP is still Pending verification
+    if (aip.status === 'Pending') {
+      return c.json({ error: 'This AIP is pending verification by Division Personnel. PIR submission is not allowed until the AIP is verified.' }, 403);
+    }
+
+    const factorData = Object.entries(factors).map(([type, data]: [string, any]) => ({
+      factor_type: type,
+      facilitating_factors: data.facilitating,
+      hindering_factors: data.hindering
+    }));
+
+    const reviewData = activity_reviews.map((rev: any) => {
+      const aipActivityId = rev.aip_activity_id
+        ? parseInt(rev.aip_activity_id)
+        : aip!.activities.find(a => a.activity_name === rev.name)?.id || aip!.activities[0].id;
+      return {
+        aip_activity_id: aipActivityId,
+        physical_target: parseFloat(rev.physTarget || 0),
+        financial_target: parseFloat(rev.finTarget || 0),
+        physical_accomplished: parseFloat(rev.physAcc || 0),
+        financial_accomplished: parseFloat(rev.finAcc || 0),
+        actions_to_address_gap: rev.actions
+      };
     });
+
+    // Check if a Draft PIR exists — promote it instead of creating a new one
+    const existingDraft = await prisma.pIR.findUnique({
+      where: { aip_id_quarter: { aip_id: aip.id, quarter } }
+    });
+
+    let pir;
+    if (existingDraft && existingDraft.status === 'Draft') {
+      await prisma.pIRActivityReview.deleteMany({ where: { pir_id: existingDraft.id } });
+      await prisma.pIRFactor.deleteMany({ where: { pir_id: existingDraft.id } });
+      pir = await prisma.pIR.update({
+        where: { id: existingDraft.id },
+        data: {
+          program_owner,
+          total_budget: parseFloat(total_budget || 0),
+          fund_source,
+          status: 'Submitted',
+          factors: { create: factorData },
+          activity_reviews: { create: reviewData }
+        }
+      });
+    } else {
+      pir = await prisma.pIR.create({
+        data: {
+          aip_id: aip.id,
+          created_by_user_id: tokenUser.id,
+          quarter,
+          program_owner,
+          total_budget: parseFloat(total_budget || 0),
+          fund_source,
+          factors: { create: factorData },
+          activity_reviews: { create: reviewData }
+        }
+      });
+    }
 
     return c.json({ message: 'PIR created successfully', pir });
   } catch (error) {
@@ -1034,6 +1438,185 @@ dataRoutes.post('/deadlines', async (c) => {
     console.error('Deadlines POST error:', error);
     return c.json({ error: 'Failed to save deadline' }, 500);
   }
+});
+
+// ==========================================
+// AIP VERIFICATION (Division Personnel)
+// ==========================================
+
+// GET /api/aips/pending — returns all Pending AIPs for Division Personnel to verify
+dataRoutes.get('/aips/pending', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+    if (tokenUser.role !== 'Division Personnel') {
+      return c.json({ error: 'Division Personnel access required' }, 403);
+    }
+
+    // Return Pending AIPs for programs assigned to this Division Personnel user
+    const user = await prisma.user.findUnique({
+      where: { id: tokenUser.id },
+      include: { programs: true }
+    });
+    const programIds = user?.programs.map(p => p.id) ?? [];
+
+    const aips = await prisma.aIP.findMany({
+      where: {
+        status: 'Pending',
+        program_id: { in: programIds }
+      },
+      include: {
+        school: { select: { name: true } },
+        program: { select: { title: true } },
+        activities: true
+      },
+      orderBy: { created_at: 'asc' }
+    });
+
+    return c.json(aips);
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to fetch pending AIPs' }, 500);
+  }
+});
+
+// GET /api/aips/:id/document — serve the uploaded PDF for verification
+dataRoutes.get('/aips/:id/document', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+    if (tokenUser.role !== 'Division Personnel') {
+      return c.json({ error: 'Division Personnel access required' }, 403);
+    }
+
+    const aipId = parseInt(c.req.param('id'));
+    const aip = await prisma.aIP.findUnique({ where: { id: aipId } });
+    if (!aip) return c.json({ error: 'AIP not found' }, 404);
+    if (!aip.verification_document_path) {
+      return c.json({ error: 'No verification document for this AIP' }, 404);
+    }
+
+    const fileData = await Deno.readFile(aip.verification_document_path);
+    return new Response(fileData, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `inline; filename="aip_document_${aipId}.pdf"`
+      }
+    });
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to serve document' }, 500);
+  }
+});
+
+// POST /api/aips/:id/verify — mark an AIP as Verified
+dataRoutes.post('/aips/:id/verify', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+    if (tokenUser.role !== 'Division Personnel') {
+      return c.json({ error: 'Division Personnel access required' }, 403);
+    }
+
+    const aipId = parseInt(c.req.param('id'));
+    const aip = await prisma.aIP.findUnique({
+      where: { id: aipId },
+      include: { program: { include: { personnel: true } } }
+    });
+    if (!aip) return c.json({ error: 'AIP not found' }, 404);
+    if (aip.status !== 'Pending') {
+      return c.json({ error: 'Only Pending AIPs can be verified' }, 400);
+    }
+    // Ensure this Division Personnel is assigned to the AIP's program
+    const isAssigned = aip.program.personnel.some(p => p.id === tokenUser.id);
+    if (!isAssigned) {
+      return c.json({ error: 'You are not assigned to this program' }, 403);
+    }
+
+    const updated = await prisma.aIP.update({
+      where: { id: aipId },
+      data: { status: 'Verified' }
+    });
+    return c.json({ message: 'AIP verified successfully', aip: updated });
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to verify AIP' }, 500);
+  }
+});
+
+// POST /api/aips/:id/return — return an AIP for correction
+dataRoutes.post('/aips/:id/return', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+    if (tokenUser.role !== 'Division Personnel') {
+      return c.json({ error: 'Division Personnel access required' }, 403);
+    }
+
+    const aipId = parseInt(c.req.param('id'));
+    const aip = await prisma.aIP.findUnique({
+      where: { id: aipId },
+      include: { program: { include: { personnel: true } } }
+    });
+    if (!aip) return c.json({ error: 'AIP not found' }, 404);
+    if (aip.status !== 'Pending') {
+      return c.json({ error: 'Only Pending AIPs can be returned' }, 400);
+    }
+    const isAssigned = aip.program.personnel.some(p => p.id === tokenUser.id);
+    if (!isAssigned) {
+      return c.json({ error: 'You are not assigned to this program' }, 403);
+    }
+
+    const updated = await prisma.aIP.update({
+      where: { id: aipId },
+      data: { status: 'Returned' }
+    });
+    return c.json({ message: 'AIP returned for correction', aip: updated });
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to return AIP' }, 500);
+  }
+});
+
+// ==========================================
+// NOTIFICATIONS
+// ==========================================
+
+dataRoutes.get("/notifications", async (c) => {
+  const tokenUser = getUserFromToken(c.req.header("Authorization"));
+  if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
+
+  const notifications = await prisma.notification.findMany({
+    where: { user_id: tokenUser.id },
+    orderBy: [{ read: "asc" }, { created_at: "desc" }],
+    take: 20,
+  });
+
+  return c.json(notifications);
+});
+
+dataRoutes.patch("/notifications/:id/read", async (c) => {
+  const tokenUser = getUserFromToken(c.req.header("Authorization"));
+  if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = parseInt(c.req.param("id"));
+  const notif = await prisma.notification.findUnique({ where: { id } });
+  if (!notif || notif.user_id !== tokenUser.id) return c.json({ error: "Not found" }, 404);
+
+  await prisma.notification.update({ where: { id }, data: { read: true } });
+  return c.json({ success: true });
+});
+
+dataRoutes.patch("/notifications/read-all", async (c) => {
+  const tokenUser = getUserFromToken(c.req.header("Authorization"));
+  if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
+
+  await prisma.notification.updateMany({
+    where: { user_id: tokenUser.id, read: false },
+    data: { read: true },
+  });
+
+  return c.json({ success: true });
 });
 
 export default dataRoutes;

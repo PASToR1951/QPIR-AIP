@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { AlertCircle, Loader2, ArrowRight, Eye, EyeOff, MapPin, Mail, Facebook, Phone } from 'lucide-react';
+import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, MapPinIcon as MapPin, EnvelopeIcon as Mail, FacebookLogoIcon as Facebook,PhoneIcon as Phone } from '@phosphor-icons/react';
 import { Input } from './components/ui/Input';
 
 export default function Login() {
@@ -16,6 +16,20 @@ export default function Login() {
   const cardRef = useRef(null);
   const orb1Ref = useRef(null);
   const orb2Ref = useRef(null);
+
+  // Remove entrance animation class once it finishes so re-renders don't replay it
+  const handleCardAnimationEnd = (e) => {
+    if (e.animationName === 'login-card-entrance') {
+      cardRef.current?.classList.remove('login-card-entrance');
+    }
+  };
+
+  const shakeCard = () => {
+    if (cardRef.current) {
+      cardRef.current.classList.add('login-shake');
+      setTimeout(() => cardRef.current?.classList.remove('login-shake'), 300);
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -32,20 +46,12 @@ export default function Login() {
       });
 
       const { token, user } = response.data;
-
-      // Store token and user data
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-
-      // Redirect to dashboard/home based on role
-      navigate('/');
+      navigate(user.role === 'Admin' ? '/admin' : '/');
     } catch (err) {
-      // Shake animation on error via CSS
-      if (cardRef.current) {
-        cardRef.current.classList.add('login-shake');
-        setTimeout(() => cardRef.current?.classList.remove('login-shake'), 300);
-      }
-      setError(err.response?.data?.error || 'Failed to login. Please check your credentials.');
+      shakeCard();
+      setError(err.response?.data?.error || 'Failed to login. Check your credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +74,7 @@ export default function Login() {
 
       {/* Main Content Area */}
       <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center flex-1 w-full py-8 md:py-12 md:pb-32">
-        <div ref={cardRef} className="bg-[#fafafa]/90 dark:bg-dark-surface/90 border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 dark:ring-dark-border/30 backdrop-blur-md login-card-entrance">
+        <div ref={cardRef} onAnimationEnd={handleCardAnimationEnd} className="bg-[#fafafa]/90 dark:bg-dark-surface/90 border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 md:p-12 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 dark:ring-dark-border/30 backdrop-blur-md login-card-entrance">
 
           <div className="mb-8 flex justify-center items-center gap-6">
             <img src="/AIP-PIR-logo.png" alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-sm" />
@@ -84,7 +90,7 @@ export default function Login() {
           <form className="space-y-6" onSubmit={handleLogin}>
             {error && (
               <div className="text-red-600 dark:text-red-400 text-sm font-semibold text-center bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 p-3 rounded-xl flex items-center justify-center gap-2">
-                <AlertCircle size={16} strokeWidth={2.5} />
+                <AlertCircle size={16} />
                 {error}
               </div>
             )}
@@ -135,14 +141,11 @@ export default function Login() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="animate-spin" size={16} strokeWidth={2.5} />
+                  <Loader2 className="animate-spin" size={16} />
                   Signing in...
                 </>
               ) : (
-                <>
-                  Sign In
-                  <ArrowRight size={16} strokeWidth={2.5} className="transition-transform group-hover:translate-x-1" />
-                </>
+                'Sign In'
               )}
             </button>
           </form>

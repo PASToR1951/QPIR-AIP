@@ -82,9 +82,7 @@ export default function App() {
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { headers: authHeaders }),
                 ];
-                if (user?.id) {
-                    requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/PIR/${user.id}`, { headers: authHeaders }));
-                }
+                requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { headers: authHeaders }));
                 if (!isDivisionPersonnel && user?.school_id) {
                     requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/schools`));
                 }
@@ -349,25 +347,17 @@ export default function App() {
     const handleSaveForLater = async () => {
         clearTimeout(saveTimerRef.current);
         setIsSaving(true);
-        const draft = {
-            program,
-            school,
-            owner,
-            fundSource,
-            rawBudget,
-            activities,
-            factors,
-            lastSaved: new Date().toISOString()
-        };
 
         try {
-            if (user?.id) {
-                await axios.post(`${import.meta.env.VITE_API_URL}/api/drafts`, {
-                    user_id: user.id,
-                    form_type: 'PIR',
-                    draft_data: draft
-                });
-            }
+            await axios.post(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, {
+                program_title: program,
+                quarter: quarterString,
+                program_owner: owner,
+                total_budget: rawBudget,
+                fund_source: fundSource,
+                activity_reviews: activities,
+                factors
+            }, { headers: authHeaders });
         } catch (e) {
             console.error("Failed to save draft:", e);
         }
@@ -384,19 +374,7 @@ export default function App() {
     // Clean up save timers on unmount
     useEffect(() => () => clearTimeout(saveTimerRef.current), []);
 
-    // Local Storage - Check for Draft on mount
-    useEffect(() => {
-        const savedDraft = localStorage.getItem('pir_draft');
-        if (savedDraft) {
-            try {
-                const draft = JSON.parse(savedDraft);
-                setDraftInfo({ lastSaved: draft.lastSaved });
-                setHasDraft(true);
-            } catch (e) {
-                console.error("Failed to read draft info:", e);
-            }
-        }
-    }, []);
+    // Draft state is already loaded from the server in the init useEffect above
 
     const handleAddActivity = useCallback(() => {
         const newId = crypto.randomUUID();
@@ -486,13 +464,7 @@ export default function App() {
             );
 
             setIsSubmitted(true);
-            if (user?.id) {
-                try {
-                    await axios.delete(`${import.meta.env.VITE_API_URL}/api/drafts/PIR/${user.id}`);
-                } catch (e) {
-                    console.error("Failed to delete draft:", e);
-                }
-            }
+            // Draft is promoted to Submitted in the backend — no separate delete needed
             setModal({
                 isOpen: true,
                 type: 'success',

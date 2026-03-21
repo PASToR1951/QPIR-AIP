@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from './Input'; // Reuse utility
-import { Info } from 'lucide-react';
+import { Info } from '@phosphor-icons/react';
 
 // Theme variants mapping
 const THEME_CLASSES = {

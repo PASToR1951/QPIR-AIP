@@ -4,19 +4,19 @@ import {
   ArrowLeft,
   Tag,
   Calendar,
-  Sparkles,
+  Sparkle as Sparkles,
   Bug,
-  Zap,
-  AlertTriangle,
+  Lightning as Zap,
+  Warning as AlertTriangle,
   FileText,
   Shield,
   GitBranch,
-  ChevronDown,
-  ChevronUp,
+  CaretDown as ChevronDown,
+  CaretUp as ChevronUp,
   Copy,
-  Check,
+  CheckCircle as Check,
   BookOpen,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { CURRENT_VERSION, getChangelog } from '../version';
 
 const TYPE_CONFIG = {
@@ -77,7 +77,7 @@ const TypeBadge = ({ type }) => {
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${config.bg} ${config.text} ${config.border}`}
     >
-      <Icon size={12} strokeWidth={2.5} />
+      <Icon size={12} />
       {config.label}
     </span>
   );
@@ -124,7 +124,7 @@ const ReleaseCard = ({ release, isLatest }) => {
                 : 'bg-white dark:bg-dark-surface border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500'
             }`}
           >
-            <Tag size={20} strokeWidth={2.5} />
+            <Tag size={20} />
           </div>
         </div>
 
@@ -160,7 +160,7 @@ const ReleaseCard = ({ release, isLatest }) => {
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-300 font-mono font-bold text-xs hover:bg-slate-200 dark:hover:bg-dark-border transition-colors border border-slate-200 dark:border-dark-border"
                     title="Copy version"
                   >
-                    <GitBranch size={12} strokeWidth={2.5} />
+                    <GitBranch size={12} />
                     v{release.version}
                     {copiedVersion ? (
                       <Check size={12} className="text-emerald-500" />
@@ -253,7 +253,7 @@ const Changelog = () => {
               to="/"
               className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all"
             >
-              <ArrowLeft size={18} strokeWidth={2.5} />
+              <ArrowLeft size={18} weight="bold" />
             </Link>
             <div>
               <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">Changelog</h1>
@@ -261,7 +261,7 @@ const Changelog = () => {
             </div>
           </div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black border border-emerald-200">
-            <Tag size={12} strokeWidth={3} />
+            <Tag size={12} />
             v{CURRENT_VERSION}
           </span>
         </div>
