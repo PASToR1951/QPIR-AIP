@@ -1,133 +1,508 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 
-const MERMAID_TEXT = `erDiagram
-    Cluster ||--o{ School : "has"
-    School ||--|| User : "has account"
-    School ||--o{ AIP : "creates"
-    Program ||--o{ AIP : "has"
-    User }|--|{ Program : "monitors (Division)"
-    School }|--|{ Program : "restricted programs (e.g. ALS)"
-    User ||--o{ AIP : "created by"
-    User ||--o{ PIR : "created by"
-    User ||--o{ Draft : "owns"
-    AIP ||--o{ AIPActivity : "includes"
-    AIP ||--o{ PIR : "is reviewed in"
-    PIR ||--o{ PIRActivityReview : "contains"
-    AIPActivity ||--o{ PIRActivityReview : "reviewed as"
-    PIR ||--o{ PIRFactor : "reports"`;
+// ── Schema data derived from Prisma schema ──────────────────────────────────
 
-let mermaidReady = false;
+const MODELS = [
+  {
+    name: 'Cluster',
+    table: 'clusters',
+    color: '#6366f1',
+    fields: [
+      { name: 'id', type: 'Int', pk: true },
+      { name: 'cluster_number', type: 'Int', unique: true },
+      { name: 'name', type: 'String' },
+    ],
+  },
+  {
+    name: 'School',
+    table: 'schools',
+    color: '#0ea5e9',
+    fields: [
+      { name: 'id', type: 'Int', pk: true },
+      { name: 'name', type: 'String' },
+      { name: 'level', type: 'String' },
+      { name: 'cluster_id', type: 'Int', fk: true },
+    ],
+  },
+  {
+    name: 'Program',
+    table: 'programs',
+    color: '#8b5cf6',
+    fields: [
+      { name: 'id', type: 'Int', pk: true },
+      { name: 'title', type: 'String', unique: true },
+      { name: 'school_level_requirement', type: 'String' },
+    ],
+  },
+  {
+    name: 'User',
+    table: 'users',
+    color: '#f59e0b',
+    fields: [
+      { name: 'id', type: 'Int', pk: true },
+      { name: 'email', type: 'String', unique: true },
+      { name: 'password', type: 'String' },
+      { name: 'role', type: 'String' },
+      { name: 'name', type: 'String?' },
+      { name: 'school_id', type: 'Int?', fk: true, unique: true },
+      { name: 'created_at', type: 'DateTime' },
+    ],
+  },
+  {
+    name: 'AIP',
+    table: 'aips',
+    color: '#10b981',
+    fields: [
+      { name: 'id', type: 'Int', pk: true },
+      { name: 'school_id', type: 'Int?', fk: true },
+      { name: 'program_id', type: 'Int', fk: true },
+      { name: 'created_by_user_id', type: 'Int?', fk: true },
+      { name: 'year', type: 'Int' },
+      { name: 'outcome', type: 'String' },
+      { name: 'sip_title', type: 'String' },
+      { name: 'project_coordinator', type: 'String' },
+      { name: 'objectives', type: 'Json' },
+      { name: 'indicators', type: 'Json' },
+      { name: 'created_at', type: 'DateTime' },
+    ],
+  },
+  {
+    name: 'AIPActivity',
+    table: 'aip_activities',
+    color: '#14b8a6',
+    fields: [
+      { name: 'id', type: 'Int', pk: true },
+      { name: 'aip_id', type: 'Int', fk: true },
+      { name: 'phase', type: 'String' },
+      { name: 'activity_name', type: 'String' },
+      { name: 'budget_amount', type: 'Decimal' },
+      { name: 'budget_source', type: 'String' },
+    ],
+  },
+  {
+    name: 'PIR',
+    table: 'pirs',
+    color: '#ef4444',
+    fields: [
+      { name: 'id', type: 'Int', pk: true },
+      { name: 'aip_id', type: 'Int', fk: true },
+      { name: 'created_by_user_id', type: 'Int?', fk: true },
+      { name: 'quarter', type: 'String' },
+      { name: 'total_budget', type: 'Decimal' },
+      { name: 'created_at', type: 'DateTime' },
+    ],
+  },
+  {
+    name: 'PIRActivityReview',
+    table: 'pir_activity_reviews',
+    color: '#f97316',
+    fields: [
+      { name: 'id', type: 'Int', pk: true },
+      { name: 'pir_id', type: 'Int', fk: true },
+      { name: 'aip_activity_id', type: 'Int', fk: true },
+      { name: 'physical_target', type: 'Decimal' },
+      { name: 'financial_target', type: 'Decimal' },
+      { name: 'physical_accomplished', type: 'Decimal' },
+      { name: 'financial_accomplished', type: 'Decimal' },
+    ],
+  },
+  {
+    name: 'PIRFactor',
+    table: 'pir_factors',
+    color: '#ec4899',
+    fields: [
+      { name: 'id', type: 'Int', pk: true },
+      { name: 'pir_id', type: 'Int', fk: true },
+      { name: 'factor_type', type: 'String' },
+      { name: 'facilitating_factors', type: 'String' },
+      { name: 'hindering_factors', type: 'String' },
+    ],
+  },
+  {
+    name: 'Deadline',
+    table: 'deadlines',
+    color: '#64748b',
+    fields: [
+      { name: 'id', type: 'Int', pk: true },
+      { name: 'year', type: 'Int' },
+      { name: 'quarter', type: 'Int' },
+      { name: 'date', type: 'DateTime' },
+    ],
+  },
+];
 
-function DiagramIcon() {
+const RELATIONS = [
+  { from: 'Cluster', to: 'School', type: '1:N', label: 'has' },
+  { from: 'School', to: 'User', type: '1:1', label: 'account' },
+  { from: 'School', to: 'AIP', type: '1:N', label: 'creates' },
+  { from: 'Program', to: 'AIP', type: '1:N', label: 'has' },
+  { from: 'User', to: 'Program', type: 'M:N', label: 'monitors' },
+  { from: 'School', to: 'Program', type: 'M:N', label: 'restricted' },
+  { from: 'User', to: 'AIP', type: '1:N', label: 'created by' },
+  { from: 'User', to: 'PIR', type: '1:N', label: 'created by' },
+  { from: 'AIP', to: 'AIPActivity', type: '1:N', label: 'includes' },
+  { from: 'AIP', to: 'PIR', type: '1:N', label: 'reviewed in' },
+  { from: 'PIR', to: 'PIRActivityReview', type: '1:N', label: 'contains' },
+  { from: 'AIPActivity', to: 'PIRActivityReview', type: '1:N', label: 'reviewed as' },
+  { from: 'PIR', to: 'PIRFactor', type: '1:N', label: 'reports' },
+];
+
+// ── Layout positions (hand-tuned for readability) ───────────────────────────
+
+const CARD_W = 220;
+const HEADER_H = 36;
+const ROW_H = 22;
+const GAP_X = 80;
+const GAP_Y = 40;
+
+function cardHeight(model) {
+  return HEADER_H + model.fields.length * ROW_H + 8;
+}
+
+// Arrange in a logical grid: row 0 = Cluster/School/Program, row 1 = User/AIP/Draft, row 2 = AIPActivity/PIR, row 3 = PIRActivityReview/PIRFactor, standalone = Deadline
+const LAYOUT = {
+  Cluster:           { col: 0, row: 0 },
+  School:            { col: 1, row: 0 },
+  Program:           { col: 2, row: 0 },
+  User:              { col: 0, row: 1 },
+  AIP:               { col: 1, row: 1 },
+  AIPActivity:       { col: 0.5, row: 2 },
+  PIR:               { col: 1.5, row: 2 },
+  Deadline:          { col: 2.5, row: 2 },
+  PIRActivityReview: { col: 0.5, row: 3 },
+  PIRFactor:         { col: 1.8, row: 3 },
+};
+
+function computePositions() {
+  // Compute max row heights
+  const rowHeights = {};
+  for (const model of MODELS) {
+    const l = LAYOUT[model.name];
+    const h = cardHeight(model);
+    rowHeights[l.row] = Math.max(rowHeights[l.row] || 0, h);
+  }
+
+  const positions = {};
+  for (const model of MODELS) {
+    const l = LAYOUT[model.name];
+    let y = 20;
+    for (let r = 0; r < l.row; r++) {
+      y += (rowHeights[r] || 0) + GAP_Y;
+    }
+    positions[model.name] = {
+      x: 20 + l.col * (CARD_W + GAP_X),
+      y,
+      w: CARD_W,
+      h: cardHeight(model),
+    };
+  }
+  return positions;
+}
+
+// ── Relationship line helpers ────────────────────────────────────────────────
+
+function getConnectionPoints(fromRect, toRect) {
+  const fromCx = fromRect.x + fromRect.w / 2;
+  const fromCy = fromRect.y + fromRect.h / 2;
+  const toCx = toRect.x + toRect.w / 2;
+  const toCy = toRect.y + toRect.h / 2;
+
+  function edgePoint(rect, cx, cy, targetX, targetY) {
+    const dx = targetX - cx;
+    const dy = targetY - cy;
+    const hw = rect.w / 2;
+    const hh = rect.h / 2;
+
+    if (dx === 0 && dy === 0) return { x: cx, y: cy };
+
+    const absDx = Math.abs(dx);
+    const absDy = Math.abs(dy);
+    const scaleX = hw / (absDx || 1);
+    const scaleY = hh / (absDy || 1);
+    const scale = Math.min(scaleX, scaleY);
+
+    return { x: cx + dx * scale, y: cy + dy * scale };
+  }
+
+  const start = edgePoint(fromRect, fromCx, fromCy, toCx, toCy);
+  const end = edgePoint(toRect, toCx, toCy, fromCx, fromCy);
+  return { start, end };
+}
+
+function RelationshipLine({ from, to, type, label, positions }) {
+  const fromRect = positions[from];
+  const toRect = positions[to];
+  if (!fromRect || !toRect) return null;
+
+  const { start, end } = getConnectionPoints(fromRect, toRect);
+  const midX = (start.x + end.x) / 2;
+  const midY = (start.y + end.y) / 2;
+
+  // Cardinality markers
+  const fromMarker = type === 'M:N' ? 'url(#crow)' : '';
+  const toMarker = type === '1:1' ? 'url(#one)' : type === '1:N' ? 'url(#crow)' : type === 'M:N' ? 'url(#crow)' : '';
+
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect x="1" y="1" width="4" height="4" rx="1" fill="currentColor" />
-      <rect x="11" y="1" width="4" height="4" rx="1" fill="currentColor" />
-      <rect x="6" y="11" width="4" height="4" rx="1" fill="currentColor" />
-      <line x1="3" y1="5" x2="3" y2="9" stroke="currentColor" strokeWidth="1.5" />
-      <line x1="13" y1="5" x2="13" y2="9" stroke="currentColor" strokeWidth="1.5" />
-      <line x1="3" y1="9" x2="8" y2="11" stroke="currentColor" strokeWidth="1.5" />
-      <line x1="13" y1="9" x2="8" y2="11" stroke="currentColor" strokeWidth="1.5" />
-    </svg>
+    <g>
+      <line
+        x1={start.x} y1={start.y} x2={end.x} y2={end.y}
+        stroke="#94a3b8"
+        markerStart={fromMarker} markerEnd={toMarker}
+      />
+      {label && (
+        <g transform={`translate(${midX}, ${midY})`}>
+          <rect x={-label.length * 3.5 - 6} y={-9} width={label.length * 7 + 12} height={18} rx={4} fill="#f8fafc" stroke="#e2e8f0" />
+          <text textAnchor="middle" dy={4} fontSize={10} fill="#64748b" fontFamily="system-ui, sans-serif" fontWeight={500}>{label}</text>
+        </g>
+      )}
+    </g>
   );
 }
 
-function CodeIcon() {
+// ── Model card ──────────────────────────────────────────────────────────────
+
+function ModelCard({ model, x, y, w, h }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M5 4L1 8L5 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M11 4L15 8L11 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <g transform={`translate(${x}, ${y})`}>
+      {/* Shadow */}
+      <rect x={2} y={2} width={w} height={h} rx={10} fill="#0f172a" opacity={0.06} />
+      {/* Card body */}
+      <rect width={w} height={h} rx={10} fill="#fff" stroke="#e2e8f0" />
+      {/* Header */}
+      <rect width={w} height={HEADER_H} rx={10} fill={model.color} />
+      <rect y={HEADER_H - 10} width={w} height={10} fill={model.color} />
+      <text x={12} y={23} fontSize={13} fontWeight={700} fill="#fff" fontFamily="system-ui, sans-serif">{model.name}</text>
+      {model.table && (
+        <text x={w - 8} y={23} fontSize={9} fill="rgba(255,255,255,0.7)" fontFamily="ui-monospace, monospace" textAnchor="end">{model.table}</text>
+      )}
+
+      {/* Fields */}
+      {model.fields.map((field, i) => {
+        const fy = HEADER_H + 4 + i * ROW_H;
+        return (
+          <g key={field.name} transform={`translate(0, ${fy})`}>
+            {i % 2 === 0 && <rect x={1} width={w - 2} height={ROW_H} fill="#f8fafc" />}
+            {/* PK/FK badge */}
+            {field.pk && (
+              <g transform="translate(8, 4)">
+                <rect width={18} height={14} rx={3} fill="#fef3c7" stroke="#f59e0b" />
+                <text x={9} y={10.5} textAnchor="middle" fontSize={8} fontWeight={700} fill="#92400e" fontFamily="ui-monospace, monospace">PK</text>
+              </g>
+            )}
+            {field.fk && !field.pk && (
+              <g transform="translate(8, 4)">
+                <rect width={18} height={14} rx={3} fill="#dbeafe" stroke="#3b82f6" />
+                <text x={9} y={10.5} textAnchor="middle" fontSize={8} fontWeight={700} fill="#1e40af" fontFamily="ui-monospace, monospace">FK</text>
+              </g>
+            )}
+            <text x={field.pk || field.fk ? 32 : 12} y={14} fontSize={11} fill="#1e293b" fontFamily="system-ui, sans-serif" fontWeight={field.pk ? 600 : 400}>{field.name}</text>
+            <text x={w - 8} y={14} textAnchor="end" fontSize={10} fill="#94a3b8" fontFamily="ui-monospace, monospace">{field.type}</text>
+            {field.unique && !field.pk && (
+              <g transform={`translate(${w - 8 - field.type.length * 6 - 28}, 4)`}>
+                <rect width={22} height={14} rx={3} fill="#f0fdf4" stroke="#22c55e" />
+                <text x={11} y={10.5} textAnchor="middle" fontSize={7} fontWeight={700} fill="#166534" fontFamily="ui-monospace, monospace">UQ</text>
+              </g>
+            )}
+          </g>
+        );
+      })}
+
+      {/* Bottom border radius cover */}
+      <rect y={h - 1} width={w} height={1} rx={0} fill="#e2e8f0" />
+    </g>
   );
 }
+
+// ── Main component ──────────────────────────────────────────────────────────
 
 export default function ERDDiagram() {
   const [view, setView] = useState('diagram');
-  const [status, setStatus] = useState('loading'); // 'loading' | 'ready' | 'error'
+  const svgRef = useRef(null);
   const containerRef = useRef(null);
 
+  // Pan & zoom state
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStart = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
+
+  const positions = computePositions();
+
+  // Compute SVG viewBox bounds
+  let maxX = 0, maxY = 0;
+  for (const model of MODELS) {
+    const p = positions[model.name];
+    maxX = Math.max(maxX, p.x + p.w + 40);
+    maxY = Math.max(maxY, p.y + p.h + 40);
+  }
+
+  // Fit to container on mount
   useEffect(() => {
-    if (view !== 'diagram') return;
-    let cancelled = false;
-
-    setStatus('loading');
-
-    import('mermaid').then(({ default: mermaid }) => {
-      if (cancelled) return;
-
-      if (!mermaidReady) {
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: 'default',
-          er: {
-            diagramPadding: 24,
-            layoutDirection: 'TB',
-            minEntityWidth: 100,
-            minEntityHeight: 75,
-            entityPadding: 15,
-            useMaxWidth: true,
-          },
-        });
-        mermaidReady = true;
-      }
-
-      return mermaid.render('erd-diagram-main', MERMAID_TEXT);
-    }).then(({ svg }) => {
-      if (cancelled || !containerRef.current) return;
-      containerRef.current.innerHTML = svg;
-      // Make the SVG responsive
-      const svgEl = containerRef.current.querySelector('svg');
-      if (svgEl) {
-        svgEl.style.maxWidth = '100%';
-        svgEl.style.height = 'auto';
-      }
-      setStatus('ready');
-    }).catch(() => {
-      if (!cancelled) setStatus('error');
-    });
-
-    return () => { cancelled = true; };
+    if (!containerRef.current) return;
+    const cw = containerRef.current.clientWidth;
+    const ch = containerRef.current.clientHeight || 500;
+    const scaleX = cw / maxX;
+    const scaleY = ch / maxY;
+    const s = Math.min(scaleX, scaleY, 1) * 0.95;
+    setTransform({ x: (cw - maxX * s) / 2, y: 10, scale: s });
   }, [view]);
+
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setTransform(t => {
+      const newScale = Math.min(Math.max(t.scale * delta, 0.3), 2.5);
+      const rect = containerRef.current.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      return {
+        scale: newScale,
+        x: mx - (mx - t.x) * (newScale / t.scale),
+        y: my - (my - t.y) * (newScale / t.scale),
+      };
+    });
+  }, []);
+
+  const handlePointerDown = useCallback((e) => {
+    if (e.button !== 0) return;
+    setIsPanning(true);
+    panStart.current = { x: e.clientX, y: e.clientY, tx: transform.x, ty: transform.y };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [transform]);
+
+  const handlePointerMove = useCallback((e) => {
+    if (!isPanning) return;
+    setTransform(t => ({
+      ...t,
+      x: panStart.current.tx + (e.clientX - panStart.current.x),
+      y: panStart.current.ty + (e.clientY - panStart.current.y),
+    }));
+  }, [isPanning]);
+
+  const handlePointerUp = useCallback(() => setIsPanning(false), []);
+
+  const resetView = () => {
+    if (!containerRef.current) return;
+    const cw = containerRef.current.clientWidth;
+    const ch = containerRef.current.clientHeight || 500;
+    const scaleX = cw / maxX;
+    const scaleY = ch / maxY;
+    const s = Math.min(scaleX, scaleY, 1) * 0.95;
+    setTransform({ x: (cw - maxX * s) / 2, y: 10, scale: s });
+  };
+
+  // Source view text
+  const sourceText = MODELS.map(m => {
+    const fields = m.fields.map(f => {
+      const badges = [f.pk && '@id', f.fk && '@fk', f.unique && '@unique'].filter(Boolean).join(' ');
+      return `  ${f.name.padEnd(24)} ${f.type}${badges ? '  ' + badges : ''}`;
+    }).join('\n');
+    return `model ${m.name} {\n${fields}\n}`;
+  }).join('\n\n');
 
   return (
     <div className="not-prose my-6 rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-base">
         <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Entity Relationship Diagram</span>
-        <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface p-0.5 shadow-sm">
-          <button
-            onClick={() => setView('diagram')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              view === 'diagram' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border'
-            }`}
-          >
-            <DiagramIcon /> Diagram
-          </button>
-          <button
-            onClick={() => setView('source')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-              view === 'source' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border'
-            }`}
-          >
-            <CodeIcon /> Source
-          </button>
+        <div className="flex items-center gap-2">
+          {view === 'diagram' && (
+            <button onClick={resetView} className="px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border transition-all" title="Reset zoom">
+              Reset
+            </button>
+          )}
+          <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface p-0.5 shadow-sm">
+            <button
+              onClick={() => setView('diagram')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                view === 'diagram' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border'
+              }`}
+            >
+              Diagram
+            </button>
+            <button
+              onClick={() => setView('source')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                view === 'source' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border'
+              }`}
+            >
+              Schema
+            </button>
+          </div>
         </div>
       </div>
 
       {view === 'diagram' ? (
-        <div className="p-6 overflow-auto flex justify-center min-h-[200px] items-center">
-          {status === 'loading' && (
-            <div className="text-slate-400 dark:text-slate-500 text-sm font-medium animate-pulse">Rendering diagram…</div>
-          )}
-          {status === 'error' && (
-            <div className="text-red-400 text-sm font-medium">Failed to render diagram.</div>
-          )}
-          <div ref={containerRef} className={status === 'ready' ? 'w-full' : 'hidden'} />
+        <div
+          ref={containerRef}
+          className="relative overflow-hidden bg-[#fafbfc] dark:bg-dark-base"
+          style={{ height: 560, cursor: isPanning ? 'grabbing' : 'grab' }}
+          onWheel={handleWheel}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        >
+          {/* Grid pattern */}
+          <div className="absolute inset-0 opacity-[0.35]" style={{
+            backgroundImage: 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)',
+            backgroundSize: '20px 20px',
+          }} />
+
+          <svg
+            ref={svgRef}
+            width="100%"
+            height="100%"
+            style={{ position: 'absolute', inset: 0 }}
+          >
+            <defs>
+              {/* Crow's foot marker */}
+              <marker id="crow" viewBox="0 0 12 12" refX={12} refY={6} markerWidth={10} markerHeight={10} orient="auto-start-reverse">
+                <path d="M0,6 L12,0 M0,6 L12,12 M0,6 L12,6" stroke="#94a3b8" fill="none" />
+              </marker>
+              <marker id="one" viewBox="0 0 12 12" refX={12} refY={6} markerWidth={10} markerHeight={10} orient="auto-start-reverse">
+                <line x1={10} y1={0} x2={10} y2={12} stroke="#94a3b8" />
+              </marker>
+            </defs>
+
+            <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
+              {/* Relations (behind cards) */}
+              {RELATIONS.map((rel, i) => (
+                <RelationshipLine key={i} {...rel} positions={positions} />
+              ))}
+
+              {/* Model cards */}
+              {MODELS.map(model => {
+                const p = positions[model.name];
+                return <ModelCard key={model.name} model={model} x={p.x} y={p.y} w={p.w} h={p.h} />;
+              })}
+            </g>
+          </svg>
+
+          {/* Zoom indicator */}
+          <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-md bg-white/80 dark:bg-dark-surface/80 border border-slate-200 dark:border-dark-border text-[10px] font-mono text-slate-400 dark:text-slate-500 backdrop-blur-sm">
+            {Math.round(transform.scale * 100)}%
+          </div>
+
+          {/* Legend */}
+          <div className="absolute bottom-3 left-3 flex items-center gap-3 px-3 py-1.5 rounded-lg bg-white/80 dark:bg-dark-surface/80 border border-slate-200 dark:border-dark-border backdrop-blur-sm">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-4 h-3 rounded bg-[#fef3c7] border border-[#f59e0b]" style={{ fontSize: 0 }} />
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">PK</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-4 h-3 rounded bg-[#dbeafe] border border-[#3b82f6]" style={{ fontSize: 0 }} />
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">FK</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-4 h-3 rounded bg-[#f0fdf4] border border-[#22c55e]" style={{ fontSize: 0 }} />
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Unique</span>
+            </div>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">Scroll to zoom &middot; Drag to pan</span>
+          </div>
         </div>
       ) : (
-        <div className="overflow-auto bg-slate-900 p-5">
+        <div className="overflow-auto bg-slate-900 dark:bg-slate-950 p-5 max-h-[560px]">
           <pre className="text-sm font-mono text-slate-200 whitespace-pre leading-relaxed">
-            <code>{MERMAID_TEXT}</code>
+            <code>{sourceText}</code>
           </pre>
         </div>
       )}

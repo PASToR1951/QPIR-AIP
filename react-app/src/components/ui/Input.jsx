@@ -1,7 +1,7 @@
 import React from 'react';
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { Info, AlertCircle } from 'lucide-react';
+import { Info, WarningCircle as AlertCircle } from '@phosphor-icons/react';
 
 export function cn(...inputs) {
   return twMerge(clsx(inputs));

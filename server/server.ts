@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import authRoutes from "./routes/auth.ts";
 import dataRoutes from "./routes/data.ts";
+import adminRoutes from "./routes/admin.ts";
 
 const app = new Hono();
 
@@ -17,9 +18,20 @@ app.get('/api/health', (c) => {
   return c.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// Public: active announcement for user dashboard banner
+import { prisma as _prisma } from "./db/client.ts";
+app.get('/api/announcement', async (c) => {
+  const a = await _prisma.announcement.findFirst({
+    where: { is_active: true },
+    orderBy: { updated_at: 'desc' },
+  });
+  return c.json(a ?? null);
+});
+
 // Mount modular routes
 app.route('/api/auth', authRoutes);
 app.route('/api', dataRoutes);
+app.route('/api/admin', adminRoutes);
 
 const PORT = parseInt(Deno.env.get("PORT") || "3001");
 console.log(`✅ Backend server running on http://localhost:${PORT}`);

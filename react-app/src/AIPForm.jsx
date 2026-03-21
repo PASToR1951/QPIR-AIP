@@ -113,9 +113,7 @@ export default function App() {
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { headers: authHeaders }),
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
                 ];
-                if (user?.id) {
-                    requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`, { headers: authHeaders }));
-                }
+                requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, { headers: authHeaders }));
                 const results = await Promise.allSettled(requests);
                 const [programsRes, completedRes, draftRes] = results;
                 if (programsRes.status === 'fulfilled') setProgramList(programsRes.value.data.map(p => p.title).sort());
@@ -135,8 +133,13 @@ export default function App() {
     }, []);
 
     // Called when the user picks program + mode in the splash
-    const handleStart = async (mode, selectedProgram) => {
+    const handleStart = async (mode, selectedProgram, opts = {}) => {
         setDepedProgram(selectedProgram);
+
+        if (opts.fastEntry) {
+            navigate(`/aip-beta?program=${encodeURIComponent(selectedProgram)}&submode=${mode}`);
+            return;
+        }
 
         if (mode === 'readonly') {
             try {
@@ -228,30 +231,22 @@ export default function App() {
     const handleSaveForLater = async () => {
         clearTimeout(saveTimerRef.current);
         setIsSaving(true);
-        const draft = {
-            outcome,
-            year,
-            depedProgram,
-            sipTitle,
-            projectCoord,
-            objectives,
-            indicators,
-            preparedByName,
-            preparedByTitle,
-            approvedByName,
-            approvedByTitle,
-            activities,
-            lastSaved: new Date().toISOString()
-        };
 
         try {
-            if (user?.id) {
-                await axios.post(`${import.meta.env.VITE_API_URL}/api/drafts`, {
-                    user_id: user.id,
-                    form_type: 'AIP',
-                    draft_data: draft
-                });
-            }
+            await axios.post(`${import.meta.env.VITE_API_URL}/api/aips/draft`, {
+                program_title: depedProgram,
+                year: parseInt(year),
+                outcome,
+                sip_title: sipTitle,
+                project_coordinator: projectCoord,
+                objectives,
+                indicators,
+                prepared_by_name: preparedByName,
+                prepared_by_title: preparedByTitle,
+                approved_by_name: approvedByName,
+                approved_by_title: approvedByTitle,
+                activities
+            }, { headers: authHeaders });
         } catch (e) {
             console.error("Failed to save draft:", e);
         }
@@ -394,13 +389,7 @@ export default function App() {
             );
 
             setIsSubmitted(true);
-            if (user?.id) {
-                try {
-                    await axios.delete(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`);
-                } catch (e) {
-                    console.error("Failed to delete draft:", e);
-                }
-            }
+            // Draft is now promoted to Submitted in the backend — no separate delete needed
             setModal({
                 isOpen: true,
                 type: 'success',
@@ -506,6 +495,7 @@ export default function App() {
                 theme="pink"
                 appMode={appMode}
                 toggleAppMode={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
+                onBeta={() => navigate(`/aip-beta?program=${encodeURIComponent(depedProgram)}`)}
             />
 
             <DocumentPreviewModal

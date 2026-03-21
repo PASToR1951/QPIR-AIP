@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, ArrowLeft } from 'lucide-react';
+import { House as Home, ArrowLeft } from '@phosphor-icons/react';
 
 const NotFound = () => {
   const navigate = useNavigate();
@@ -58,7 +58,7 @@ const NotFound = () => {
             to="/"
             className="group flex items-center gap-3 bg-slate-900 text-white px-10 py-4 rounded-[2rem] font-black text-sm tracking-widest uppercase hover:bg-pink-600 transition-all active:scale-95 shadow-xl shadow-slate-200 w-full sm:w-auto justify-center"
           >
-            <Home size={18} strokeWidth={2.5} />
+            <Home size={18} />
             Back to Dashboard
           </Link>
 
@@ -66,7 +66,7 @@ const NotFound = () => {
             onClick={() => navigate(-1)}
             className="group flex items-center gap-3 bg-white dark:bg-dark-surface border-2 border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 px-10 py-4 rounded-[2rem] font-black text-sm tracking-widest uppercase hover:border-slate-900 dark:hover:border-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all active:scale-95 w-full sm:w-auto justify-center shadow-lg shadow-slate-100"
           >
-            <ArrowLeft size={18} strokeWidth={2.5} />
+            <ArrowLeft size={18} weight="bold" />
             Return
           </button>
         </div>

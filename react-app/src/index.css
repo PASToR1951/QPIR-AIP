@@ -4,6 +4,7 @@
    DARK MODE — class-based (Tailwind v4)
    ============================================================ */
 @custom-variant dark (&:where(.dark, .dark *));
+@custom-variant fast-mode (&:where(.fast-mode, .fast-mode *));
 
 :root {
   --color-surface: #f8fafc;          /* slate-50 */
@@ -36,6 +37,31 @@
   }
 }
 
+/* ============================================================
+   FAST MODE — amber-dark theme applied to the AIP form selector
+   when "Fast Entry" is toggled ON
+   ============================================================ */
+.fast-mode {
+  --fm-bg:          #0D0B06;   /* near-black with warm undertone */
+  --fm-surface:     #161208;   /* dark warm surface */
+  --fm-surface-2:   #1E1910;   /* slightly lighter surface */
+  --fm-border:      #2C2410;   /* amber-tinted dark border */
+  --fm-border-sub:  #1C1A0C;   /* subtle divider */
+  --fm-text:        #F5EAC8;   /* warm off-white */
+  --fm-text-muted:  #8C7E46;   /* muted warm gold */
+  --fm-text-dim:    #4A4220;   /* dimmed warm */
+  --fm-amber:       #F59E0B;   /* amber accent */
+  color-scheme: dark;
+}
+
+/* Smooth transition into/out of Fast Mode */
+.fast-mode-transition,
+.fast-mode-transition *,
+.fast-mode-transition *::before,
+.fast-mode-transition *::after {
+  transition: background-color 280ms ease, color 200ms ease, border-color 220ms ease, box-shadow 200ms ease !important;
+}
+
 /* Smooth transition when toggling dark mode */
 html.dark-transition,
 html.dark-transition *,
@@ -50,6 +76,48 @@ html.dark-transition *::after {
     linear-gradient(to right, var(--color-grid-line) 1px, transparent 1px),
     linear-gradient(to bottom, var(--color-grid-line) 1px, transparent 1px);
   background-size: 4rem 4rem;
+}
+
+/* ============================================================
+   RECHARTS — dark mode overrides
+   Recharts renders SVG/HTML outside Tailwind's scope, so we
+   target its internal class names directly.
+   ============================================================ */
+
+/* Axis tick labels */
+.dark .recharts-cartesian-axis-tick-value {
+  fill: #94a3b8; /* slate-400 */
+}
+
+/* Polar axis (radar charts) */
+.dark .recharts-polar-angle-axis-tick-value,
+.dark .recharts-polar-radius-axis-tick-value {
+  fill: #94a3b8;
+}
+
+/* Legend text */
+.dark .recharts-legend-item-text {
+  color: #94a3b8 !important;
+}
+
+/* Default tooltip box */
+.dark .recharts-default-tooltip {
+  background-color: #262421 !important;  /* dark-surface */
+  border-color: #413D37 !important;      /* dark-border */
+}
+.dark .recharts-tooltip-label {
+  color: #f1f5f9 !important;             /* slate-100 */
+}
+.dark .recharts-tooltip-item {
+  color: #cbd5e1 !important;             /* slate-300 */
+}
+
+/* Cursor overlay on bar/line charts */
+.dark .recharts-rectangle.recharts-tooltip-cursor {
+  fill: rgba(255, 255, 255, 0.04);
+}
+.dark .recharts-sector.recharts-tooltip-cursor {
+  stroke: rgba(255, 255, 255, 0.08);
 }
 
 /* Print always uses light mode */

@@ -3,15 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } f
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { useAccessibility } from './context/AccessibilityContext';
 import axios from 'axios';
-import {
-  FileText,
-  BarChart3,
-  Lock,
-  AlertTriangle,
-  ArrowRight,
-} from 'lucide-react';
+import { NotePencil, Table, LockKey as Lock, Warning as AlertTriangle, CaretCircleRight } from '@phosphor-icons/react';
 import Login from './Login';
 import AIPForm from './AIPForm';
+import AIPBetaForm from './AIPBetaForm';
+import VerifyAIPs from './VerifyAIPs';
 import PIRForm from './PIRForm';
 import NotFound from './NotFound';
 import ErrorPage from './ErrorPage';
@@ -26,10 +22,37 @@ import FormBackground from './components/ui/FormBackground';
 import AccessibilityPanel from './components/ui/AccessibilityPanel';
 import DashboardStats, { getActionPrompt } from './components/ui/DashboardStats';
 
+// Admin pages
+import AdminOverview from './admin/pages/AdminOverview.jsx';
+import AdminSubmissions from './admin/pages/AdminSubmissions.jsx';
+import AdminUsers from './admin/pages/AdminUsers.jsx';
+import AdminSchools from './admin/pages/AdminSchools.jsx';
+import AdminPrograms from './admin/pages/AdminPrograms.jsx';
+import AdminDeadlines from './admin/pages/AdminDeadlines.jsx';
+import AdminReports from './admin/pages/AdminReports.jsx';
+import AdminSettings from './admin/pages/AdminSettings.jsx';
+
 // Simple Protected Route component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
-  if (!token) {
+  if (!token) return <Navigate to="/login" replace />;
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (user?.role === 'Admin') return <Navigate to="/admin" replace />;
+  } catch {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+// Admin-only route guard
+const AdminRouteGuard = ({ children }) => {
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/login" replace />;
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    if (user?.role !== 'Admin') return <Navigate to="/403" replace />;
+  } catch {
     return <Navigate to="/login" replace />;
   }
   return children;
@@ -124,7 +147,9 @@ function Dashboard() {
           setAipStatus('review');
         } else {
           try {
-            const draftRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/drafts/AIP/${user.id}`);
+            const draftRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
             setAipStatus(draftRes.data.hasDraft ? 'draft' : 'none');
           } catch {
             setAipStatus('none');
@@ -215,6 +240,28 @@ function Dashboard() {
           </h2>
         </div>
 
+        {user?.role === 'Division Personnel' && (
+          <div className="mb-8">
+            <Link to="/verify-aips" className="group flex items-center justify-between bg-white dark:bg-dark-surface rounded-[2rem] border-2 border-amber-200 dark:border-amber-800/50 hover:border-amber-400 dark:hover:border-amber-600 shadow-sm hover:shadow-lg transition-all duration-300 px-8 py-5 active:scale-[0.99]">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-600 dark:text-amber-400 group-hover:bg-amber-500 group-hover:text-white group-hover:border-amber-500 transition-all duration-300">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 6 9 17l-5-5"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">AIP Verification Queue</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Review and verify fast-entry AIPs submitted by schools.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold group-hover:translate-x-1 transition-transform duration-300 text-sm uppercase tracking-widest">
+                Review
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </div>
+            </Link>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* AIP Card */}
           <Link to="/aip" className="group block bg-white dark:bg-dark-surface rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 dark:border-dark-border hover:border-pink-200 dark:hover:border-pink-400 relative">
@@ -224,7 +271,7 @@ function Dashboard() {
               <div className="flex justify-between items-start mb-12">
                 <div className="relative overflow-hidden w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform duration-300 ease-out shadow-md border bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-950/40 dark:to-pink-900/30 text-pink-600 border-pink-200 dark:border-pink-800/60 shadow-pink-100/50 group-hover:border-pink-500 group-hover:shadow-pink-400/40">
                   <span className="absolute inset-0 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 ease-out bg-pink-500/75 backdrop-blur-sm rounded-2xl" />
-                  <FileText size={32} strokeWidth={2.5} className="relative z-10 group-hover:text-white transition-colors duration-300" />
+                  <NotePencil size={32} className="relative z-10 group-hover:text-white transition-colors duration-300" />
                 </div>
                 {dashboardData && dashboardData.aipCompletion.total > 0 && (
                   <div className="relative overflow-hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400 border-pink-200 dark:border-pink-700/60 group-hover:border-pink-500 dark:group-hover:border-pink-500 transition-colors duration-300">
@@ -255,9 +302,7 @@ function Dashboard() {
                   <div className="w-0 group-hover:w-5 overflow-hidden transition-all duration-300 ease-out flex items-center">
                     <div className="w-5 h-px bg-pink-400/60 dark:bg-pink-500/50 rounded-full" />
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center group-hover:bg-pink-500/15 dark:group-hover:bg-pink-500/20 transition-colors">
-                    <ArrowRight size={16} strokeWidth={3} />
-                  </div>
+                  <CaretCircleRight size={22} />
                 </div>
               </div>
             </div>
@@ -273,7 +318,7 @@ function Dashboard() {
                 <div className="flex justify-between items-start mb-12">
                   <div className="relative overflow-hidden w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform duration-300 ease-out shadow-md border bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/30 text-blue-600 border-blue-200 dark:border-blue-800/60 shadow-blue-100/50 group-hover:border-blue-500 group-hover:shadow-blue-400/40">
                     <span className="absolute inset-0 scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 ease-out bg-blue-500/75 backdrop-blur-sm rounded-2xl" />
-                    <BarChart3 size={32} strokeWidth={2.5} className="relative z-10 group-hover:text-white transition-colors duration-300" />
+                    <Table size={32} className="relative z-10 group-hover:text-white transition-colors duration-300" />
                   </div>
                   {dashboardData && (
                     <div className={`relative overflow-hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm mt-8 sm:mt-0 group-hover:border-blue-500 dark:group-hover:border-blue-500 transition-colors duration-300 ${
@@ -315,9 +360,7 @@ function Dashboard() {
                     <div className="w-0 group-hover:w-5 overflow-hidden transition-all duration-300 ease-out flex items-center">
                       <div className="w-5 h-px bg-blue-400/60 dark:bg-blue-500/50 rounded-full" />
                     </div>
-                    <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center group-hover:bg-blue-500/15 dark:group-hover:bg-blue-500/20 transition-colors">
-                      <ArrowRight size={16} strokeWidth={3} />
-                    </div>
+                    <CaretCircleRight size={22} />
                   </div>
                 </div>
               </div>
@@ -327,10 +370,10 @@ function Dashboard() {
               <div className="p-8 md:p-10 flex flex-col h-full opacity-60 grayscale transition-opacity group-hover:opacity-80">
                 <div className="flex justify-between items-start mb-12">
                   <div className="w-16 h-16 bg-white dark:bg-dark-border text-slate-400 dark:text-slate-500 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-dark-border shadow-sm">
-                    <BarChart3 size={32} strokeWidth={2.5} />
+                    <Table size={32} />
                   </div>
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-dark-border shadow-sm mt-8 sm:mt-0">
-                    <Lock size={12} strokeWidth={3} />
+                    <Lock size={12} />
                     Locked
                   </div>
                 </div>
@@ -343,7 +386,7 @@ function Dashboard() {
                   </p>
 
                   <div className="inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 text-amber-700 border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm">
-                    <AlertTriangle size={16} strokeWidth={2.5} />
+                    <AlertTriangle size={16} />
                     AIP Submission Required
                   </div>
                 </div>
@@ -394,6 +437,22 @@ function AnimatedRoutes() {
             }
           />
           <Route
+            path="/aip-beta"
+            element={
+              <ProtectedRoute>
+                <PageTransition><AIPBetaForm /></PageTransition>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/verify-aips"
+            element={
+              <ProtectedRoute>
+                <PageTransition><VerifyAIPs /></PageTransition>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/pir"
             element={
               <ProtectedRoute>
@@ -403,6 +462,16 @@ function AnimatedRoutes() {
               </ProtectedRoute>
             }
           />
+
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminRouteGuard><AdminOverview /></AdminRouteGuard>} />
+          <Route path="/admin/submissions" element={<AdminRouteGuard><AdminSubmissions /></AdminRouteGuard>} />
+          <Route path="/admin/users" element={<AdminRouteGuard><AdminUsers /></AdminRouteGuard>} />
+          <Route path="/admin/schools" element={<AdminRouteGuard><AdminSchools /></AdminRouteGuard>} />
+          <Route path="/admin/programs" element={<AdminRouteGuard><AdminPrograms /></AdminRouteGuard>} />
+          <Route path="/admin/deadlines" element={<AdminRouteGuard><AdminDeadlines /></AdminRouteGuard>} />
+          <Route path="/admin/reports" element={<AdminRouteGuard><AdminReports /></AdminRouteGuard>} />
+          <Route path="/admin/settings" element={<AdminRouteGuard><AdminSettings /></AdminRouteGuard>} />
 
           {/* Error Pages */}
           <Route path="/403" element={<PageTransition><ErrorPage type="403" /></PageTransition>} />

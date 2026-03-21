@@ -10,7 +10,7 @@ const THEME_CLASSES = {
         rowPendingHover: "hover:border-l-pink-400 hover:bg-pink-100/60",
         rowPendingHoverText: "group-hover:text-pink-900",
         cardPendingHover: "hover:border-pink-300 hover:bg-pink-50/70 dark:hover:bg-pink-900/40 hover:shadow-pink-100/40",
-        pendingBadge: "text-pink-700 bg-pink-100 border-pink-300 dark:text-pink-300 dark:bg-pink-900/50 dark:border-pink-700",
+        pendingBadge: "text-amber-700 bg-amber-100 border-amber-300 dark:text-amber-400 dark:bg-amber-950/40 dark:border-amber-800/50",
         modeBorder: "hover:border-pink-200 hover:shadow-pink-100/40",
         modeGlow: "bg-pink-50 dark:bg-pink-900/30",
         modeTitleSweep: "bg-gradient-to-r from-pink-600 dark:from-pink-400 to-slate-900 dark:to-slate-100 bg-[length:200%_100%] bg-right group-hover:bg-left bg-clip-text text-transparent transition-[background-position] duration-300 ease-out",
@@ -33,7 +33,7 @@ const THEME_CLASSES = {
         rowPendingHover: "hover:border-l-blue-400 hover:bg-blue-100/60",
         rowPendingHoverText: "group-hover:text-blue-900",
         cardPendingHover: "hover:border-blue-300 hover:bg-blue-50/70 dark:hover:bg-blue-900/40 hover:shadow-blue-100/40",
-        pendingBadge: "text-blue-700 bg-blue-100 border-blue-300 dark:text-blue-300 dark:bg-blue-900/50 dark:border-blue-700",
+        pendingBadge: "text-amber-700 bg-amber-100 border-amber-300 dark:text-amber-400 dark:bg-amber-950/40 dark:border-amber-800/50",
         modeBorder: "hover:border-blue-200 hover:shadow-blue-100/40",
         modeGlow: "bg-blue-50 dark:bg-blue-900/30",
         modeTitleSweep: "bg-gradient-to-r from-blue-600 dark:from-blue-400 to-slate-900 dark:to-slate-100 bg-[length:200%_100%] bg-right group-hover:bg-left bg-clip-text text-transparent transition-[background-position] duration-300 ease-out",
@@ -94,6 +94,16 @@ export const ViewModeSelector = ({
     const [search, setSearch] = useState('');
     const [sortFilter, setSortFilter] = useState('all');
     const [sortOrder, setSortOrder] = useState('status');
+    const [fastEntry, setFastEntry] = useState(false);
+    const [lightning, setLightning] = useState(false); // flash animation state
+
+    useEffect(() => {
+        if (fastEntry) {
+            setLightning(true);
+            const t = setTimeout(() => setLightning(false), 500);
+            return () => clearTimeout(t);
+        }
+    }, [fastEntry]);
 
     const c = THEME_CLASSES[theme] || THEME_CLASSES.pink;
 
@@ -152,14 +162,15 @@ export const ViewModeSelector = ({
 
     const Background = () => (
         <>
-            <div className="fixed inset-0 bg-slate-50 dark:bg-dark-base bg-grid [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0">
+            <div className={`fixed inset-0 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0 transition-all duration-300 ${fastEntry ? '' : 'bg-grid'}`}
+                style={{ backgroundColor: fastEntry ? '#0D0B06' : undefined }}>
                 <div
-                    className="absolute inset-0 pointer-events-none grayscale mix-blend-multiply opacity-60 backdrop-blur-none"
+                    className={`absolute inset-0 pointer-events-none grayscale mix-blend-multiply backdrop-blur-none transition-opacity duration-300 ${fastEntry ? 'opacity-20' : 'opacity-60'}`}
                     style={{ backgroundImage: `url('/SDO_Facade.webp')`, backgroundSize: 'cover', backgroundPosition: 'center 25%', filter: 'blur(3px)', transform: 'scale(1.05)' }}
                 />
             </div>
-            <div className={`fixed top-1/4 left-1/4 w-[36rem] h-[36rem] ${c.glow} rounded-full blur-[140px] pointer-events-none animate-pulse`} style={{ animationDuration: '5000ms' }} />
-            <div className={`fixed bottom-1/3 right-1/4 w-[28rem] h-[28rem] ${c.glowSecondary} rounded-full blur-[120px] pointer-events-none animate-pulse`} style={{ animationDuration: '7000ms', animationDelay: '2s' }} />
+            <div className={`fixed top-1/4 left-1/4 w-[36rem] h-[36rem] rounded-full blur-[140px] pointer-events-none animate-pulse transition-colors duration-300 ${fastEntry ? 'bg-amber-500/10' : c.glow}`} style={{ animationDuration: '5000ms' }} />
+            <div className={`fixed bottom-1/3 right-1/4 w-[28rem] h-[28rem] rounded-full blur-[120px] pointer-events-none animate-pulse transition-colors duration-300 ${fastEntry ? 'bg-amber-700/8' : c.glowSecondary}`} style={{ animationDuration: '7000ms', animationDelay: '2s' }} />
         </>
     );
 
@@ -340,7 +351,26 @@ export const ViewModeSelector = ({
     const isCompleted = completedPrograms.includes(selected);
 
     return (
-        <div className="bg-slate-50 dark:bg-dark-base min-h-screen flex flex-col font-sans relative overflow-hidden">
+        <div className={`min-h-screen flex flex-col font-sans relative overflow-hidden fast-mode-transition ${fastEntry ? 'fast-mode bg-[#0D0B06]' : 'bg-slate-50 dark:bg-dark-base'}`}>
+            {/* Lightning flash overlay */}
+            <div
+                className="fixed inset-0 z-50 pointer-events-none"
+                style={{
+                    background: 'radial-gradient(ellipse at 50% 40%, rgba(251,191,36,0.18) 0%, rgba(0,0,0,0.72) 100%)',
+                    opacity: lightning ? 1 : 0,
+                    transition: lightning ? 'opacity 0.04s ease-in' : 'opacity 0.55s ease-out',
+                }}
+            >
+                {/* Lightning bolt icon centered */}
+                <div
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ opacity: lightning ? 1 : 0, transition: lightning ? 'opacity 0.04s' : 'opacity 0.3s' }}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="rgba(251,191,36,0.9)" style={{ filter: 'drop-shadow(0 0 32px rgba(251,191,36,0.9)) drop-shadow(0 0 80px rgba(251,191,36,0.5))' }}>
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                </div>
+            </div>
             <Background />
             <div className="relative z-10 container mx-auto px-6 flex flex-col items-center justify-center flex-1 py-10 md:py-16 lg:py-20">
                 <div className="max-w-xl md:max-w-2xl lg:max-w-3xl w-full">
@@ -348,7 +378,7 @@ export const ViewModeSelector = ({
                     {/* Back link */}
                     <button
                         onClick={() => setStage('program')}
-                        className="inline-flex items-center gap-2 text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100/80 dark:bg-dark-surface/80 hover:bg-slate-200/80 dark:hover:bg-dark-border backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200/60 dark:border-dark-border transition-all uppercase tracking-wider mb-6 md:mb-10 shadow-sm"
+                        className="inline-flex items-center gap-2 text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 fast-mode:text-[#8C7E46] hover:text-slate-700 dark:hover:text-slate-200 fast-mode:hover:text-[#F5EAC8] bg-slate-100/80 dark:bg-dark-surface/80 fast-mode:bg-[#161208]/80 hover:bg-slate-200/80 dark:hover:bg-dark-border fast-mode:hover:bg-[#1E1910] backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200/60 dark:border-dark-border fast-mode:border-[#2C2410]/60 transition-all uppercase tracking-wider mb-6 md:mb-10 shadow-sm"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="m15 18-6-6 6-6" />
@@ -357,7 +387,7 @@ export const ViewModeSelector = ({
                     </button>
 
                     {/* Hero card — program context + heading */}
-                    <div className="bg-white/90 dark:bg-dark-surface/90 backdrop-blur-sm rounded-2xl lg:rounded-3xl border border-slate-200/80 dark:border-dark-border shadow-sm p-6 md:p-8 lg:p-10 mb-5 md:mb-6">
+                    <div className="bg-white/90 dark:bg-dark-surface/90 fast-mode:bg-[#161208]/90 backdrop-blur-sm rounded-2xl lg:rounded-3xl border border-slate-200/80 dark:border-dark-border fast-mode:border-[#2C2410]/80 shadow-sm p-6 md:p-8 lg:p-10 mb-5 md:mb-6">
                         <div className="flex items-start gap-4 lg:gap-5 mb-5 md:mb-6">
                             <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border shrink-0 ${c.cardIconBase}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -365,10 +395,16 @@ export const ViewModeSelector = ({
                                 </svg>
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 mb-1 md:mb-1.5">
+                                <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 fast-mode:text-[#4A4220] mb-1 md:mb-1.5 flex items-center gap-2">
                                     {theme === 'blue' ? 'Quarterly PIR' : 'Annual AIP'} for
+                                    {fastEntry && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.2em] bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-md" style={{ letterSpacing: '0.15em' }}>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                            Fast Mode
+                                        </span>
+                                    )}
                                 </p>
-                                <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight leading-snug break-words">
+                                <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-slate-900 dark:text-slate-100 fast-mode:text-[#F5EAC8] tracking-tight leading-snug break-words">
                                     {selected}
                                 </h2>
                             </div>
@@ -388,40 +424,98 @@ export const ViewModeSelector = ({
                         )}
 
                         {/* Divider + prompt */}
-                        <div className="border-t border-slate-100 dark:border-dark-border pt-5 md:pt-6">
-                            <p className="text-base md:text-lg font-bold text-slate-700 dark:text-slate-200 mb-1">How would you like to work?</p>
-                            <p className="text-sm md:text-base text-slate-400 dark:text-slate-500">Pick a layout that fits your style.</p>
+                        <div className="border-t border-slate-100 dark:border-dark-border fast-mode:border-[#2C2410] pt-5 md:pt-6">
+                            <p className="text-base md:text-lg font-bold text-slate-700 dark:text-slate-200 fast-mode:text-[#D4A84B] mb-1">
+                                {fastEntry ? 'Choose your Fast Mode layout' : 'How would you like to work?'}
+                            </p>
+                            <p className="text-sm md:text-base text-slate-400 dark:text-slate-500 fast-mode:text-[#6B5F35]">
+                                {fastEntry ? 'Both routes use Fast Entry — PDF upload required.' : 'Pick a layout that fits your style.'}
+                            </p>
                         </div>
                     </div>
 
+                    {/* Fast Entry toggle */}
+                    <button
+                        onClick={() => setFastEntry(v => !v)}
+                        className={[
+                            'w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 transition-all duration-200 text-left',
+                            fastEntry
+                                ? 'border-amber-400/60 bg-[#1E1910] shadow-lg shadow-amber-900/20'
+                                : 'border-slate-200 dark:border-dark-border bg-white/80 dark:bg-dark-surface/80 hover:border-slate-300 dark:hover:border-slate-600',
+                        ].join(' ')}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-colors ${fastEntry ? 'bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400' : 'bg-slate-100 dark:bg-dark-border border-slate-200 dark:border-dark-border text-slate-400'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-sm font-black ${fastEntry ? 'text-amber-300' : 'text-slate-700 dark:text-slate-200'}`}>Fast Entry</span>
+                                    <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest border rounded-md ${fastEntry ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700'}`}>Beta</span>
+                                </div>
+                                <p className={`text-xs mt-0.5 ${fastEntry ? 'text-[#6B5F35]' : 'text-slate-400 dark:text-slate-500'}`}>Requires a signed PDF upload — submission verified by Division</p>
+                            </div>
+                        </div>
+                        {/* Toggle switch */}
+                        <div
+                            role="switch"
+                            aria-checked={fastEntry}
+                            className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ${fastEntry ? 'bg-amber-500' : 'bg-slate-200 dark:bg-dark-border'}`}
+                        >
+                            <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${fastEntry ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </div>
+                    </button>
+
                     {/* Mode cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 mt-6 md:mt-8">
                         {/* Wizard */}
                         <button
-                            onClick={() => onStart('wizard', selected)}
-                            className={`group bg-white/90 dark:bg-dark-surface/90 backdrop-blur-sm rounded-2xl lg:rounded-3xl border-2 border-slate-100 dark:border-dark-border ${c.modeBorder} p-6 md:p-7 lg:p-8 text-left transition-all duration-300 ease-out shadow-sm hover:shadow-lg active:scale-[0.97] overflow-hidden relative`}
+                            onClick={() => onStart('wizard', selected, { fastEntry })}
+                            className={[
+                                'group backdrop-blur-sm rounded-2xl lg:rounded-3xl border-2 p-6 md:p-7 lg:p-8 text-left transition-all duration-300 ease-out shadow-sm active:scale-[0.97] overflow-hidden relative',
+                                fastEntry
+                                    ? 'bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60 hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-lg hover:shadow-amber-100/60 dark:hover:shadow-amber-900/30'
+                                    : `bg-white/90 dark:bg-dark-surface/90 border-slate-100 dark:border-dark-border ${c.modeBorder} hover:shadow-lg`,
+                            ].join(' ')}
                         >
-                            <div className={`absolute top-0 right-0 w-40 h-40 lg:w-52 lg:h-52 ${c.modeGlow} rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none -mr-12 -mt-12`} />
+                            <div className={`absolute top-0 right-0 w-40 h-40 lg:w-52 lg:h-52 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none -mr-12 -mt-12 ${fastEntry ? 'bg-amber-100 dark:bg-amber-900/40' : c.modeGlow}`} />
 
                             {/* Icon row */}
                             <div className="flex items-center gap-3 md:gap-4 mb-5 md:mb-6">
-                                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-transform duration-300 ease-out will-change-transform group-hover:scale-110 ${c.cardIconBase} ${c.cardIconHover} shadow-sm`}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="m9 18 6-6-6-6" />
-                                    </svg>
+                                <div className={[
+                                    'w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-all duration-300 ease-out will-change-transform group-hover:scale-110 shadow-sm',
+                                    fastEntry
+                                        ? 'bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/50 dark:to-amber-800/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 group-hover:from-amber-500 group-hover:to-amber-600 group-hover:text-white group-hover:border-amber-500'
+                                        : `${c.cardIconBase} ${c.cardIconHover}`,
+                                ].join(' ')}>
+                                    {fastEntry ? (
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                    ) : (
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                                    )}
                                 </div>
                                 <div>
-                                    <h3 className={`text-lg md:text-xl font-black leading-none ${c.modeTitleSweep}`}>Step-by-Step</h3>
-                                    <p className="text-xs md:text-sm text-slate-400 dark:text-slate-500 font-medium mt-1">Guided wizard</p>
+                                    <h3 className={[
+                                        'text-lg md:text-xl font-black leading-none bg-[length:200%_100%] bg-right group-hover:bg-left bg-clip-text text-transparent transition-[background-position] duration-300 ease-out',
+                                        fastEntry
+                                            ? 'bg-gradient-to-r from-amber-600 dark:from-amber-400 to-amber-900 dark:to-amber-200'
+                                            : c.modeTitleSweep,
+                                    ].join(' ')}>Step-by-Step</h3>
+                                    <p className="text-xs md:text-sm text-slate-400 dark:text-slate-500 font-medium mt-1">
+                                        {fastEntry ? 'Guided fast entry' : 'Guided wizard'}
+                                    </p>
                                 </div>
                             </div>
 
                             {/* Feature list */}
                             <ul className="space-y-2 md:space-y-2.5 mb-6 md:mb-7">
-                                {['One section at a time', 'Progress tracking', 'Great for first-timers'].map(f => (
+                                {(fastEntry
+                                    ? ['One step at a time', 'Upload PDF at the end', 'Fastest guided path']
+                                    : ['One section at a time', 'Progress tracking', 'Great for first-timers']
+                                ).map(f => (
                                     <li key={f} className="flex items-center gap-2.5 text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M20 6 9 17l-5-5" className={c.accent} />
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 ${fastEntry ? 'text-amber-500' : c.accent}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M20 6 9 17l-5-5" />
                                         </svg>
                                         {f}
                                     </li>
@@ -429,8 +523,8 @@ export const ViewModeSelector = ({
                             </ul>
 
                             {/* CTA */}
-                            <div className={`inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl transition-colors duration-200 ease-out ${c.modeCta}`}>
-                                <span>Start Wizard</span>
+                            <div className={`inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl transition-colors duration-200 ease-out ${fastEntry ? 'text-amber-600 bg-amber-100 group-hover:bg-amber-500 group-hover:text-white dark:text-amber-400 dark:bg-amber-900/40 dark:group-hover:bg-amber-600 dark:group-hover:text-white' : c.modeCta}`}>
+                                <span>{fastEntry ? '⚡ Step-by-Step' : 'Start Wizard'}</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
                                 </svg>
@@ -439,32 +533,52 @@ export const ViewModeSelector = ({
 
                         {/* Full Form */}
                         <button
-                            onClick={() => onStart('full', selected)}
-                            className="group bg-white/90 dark:bg-dark-surface/90 backdrop-blur-sm rounded-2xl lg:rounded-3xl border-2 border-slate-100 dark:border-dark-border hover:border-slate-300 dark:hover:border-slate-500 hover:shadow-lg hover:shadow-slate-200/40 p-6 md:p-7 lg:p-8 text-left transition-all duration-300 ease-out shadow-sm active:scale-[0.97] overflow-hidden relative"
+                            onClick={() => onStart('full', selected, { fastEntry })}
+                            className={[
+                                'group backdrop-blur-sm rounded-2xl lg:rounded-3xl border-2 p-6 md:p-7 lg:p-8 text-left transition-all duration-300 ease-out shadow-sm active:scale-[0.97] overflow-hidden relative',
+                                fastEntry
+                                    ? 'bg-amber-50/80 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/60 hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-lg hover:shadow-amber-100/60 dark:hover:shadow-amber-900/30'
+                                    : 'bg-white/90 dark:bg-dark-surface/90 border-slate-100 dark:border-dark-border hover:border-slate-300 dark:hover:border-slate-500 hover:shadow-lg hover:shadow-slate-200/40',
+                            ].join(' ')}
                         >
-                            <div className="absolute top-0 right-0 w-40 h-40 lg:w-52 lg:h-52 bg-slate-100 dark:bg-dark-border rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none -mr-12 -mt-12" />
+                            <div className={`absolute top-0 right-0 w-40 h-40 lg:w-52 lg:h-52 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none -mr-12 -mt-12 ${fastEntry ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-slate-100 dark:bg-dark-border'}`} />
 
                             {/* Icon row */}
                             <div className="flex items-center gap-3 md:gap-4 mb-5 md:mb-6">
-                                <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-transform duration-300 ease-out will-change-transform group-hover:scale-110 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-dark-border dark:to-dark-border text-slate-500 dark:text-slate-400 border-slate-200 dark:border-dark-border group-hover:from-slate-500 group-hover:to-slate-600 group-hover:text-white group-hover:border-slate-500 shadow-sm">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                                        <line x1="3" x2="21" y1="9" y2="9" />
-                                        <line x1="9" x2="9" y1="21" y2="9" />
-                                    </svg>
+                                <div className={[
+                                    'w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-all duration-300 ease-out will-change-transform group-hover:scale-110 shadow-sm',
+                                    fastEntry
+                                        ? 'bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/50 dark:to-amber-800/40 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 group-hover:from-amber-500 group-hover:to-amber-600 group-hover:text-white group-hover:border-amber-500'
+                                        : 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-dark-border dark:to-dark-border text-slate-500 dark:text-slate-400 border-slate-200 dark:border-dark-border group-hover:from-slate-500 group-hover:to-slate-600 group-hover:text-white group-hover:border-slate-500',
+                                ].join(' ')}>
+                                    {fastEntry ? (
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                    ) : (
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><line x1="3" x2="21" y1="9" y2="9" /><line x1="9" x2="9" y1="21" y2="9" /></svg>
+                                    )}
                                 </div>
                                 <div>
-                                    <h3 className="text-lg md:text-xl font-black leading-none bg-gradient-to-r from-slate-600 dark:from-slate-300 to-slate-900 dark:to-slate-100 bg-[length:200%_100%] bg-right group-hover:bg-left bg-clip-text text-transparent transition-[background-position] duration-300 ease-out">Full Form</h3>
-                                    <p className="text-xs md:text-sm text-slate-400 dark:text-slate-500 font-medium mt-1">Classic layout</p>
+                                    <h3 className={[
+                                        'text-lg md:text-xl font-black leading-none bg-[length:200%_100%] bg-right group-hover:bg-left bg-clip-text text-transparent transition-[background-position] duration-300 ease-out',
+                                        fastEntry
+                                            ? 'bg-gradient-to-r from-amber-600 dark:from-amber-400 to-amber-900 dark:to-amber-200'
+                                            : 'bg-gradient-to-r from-slate-600 dark:from-slate-300 to-slate-900 dark:to-slate-100',
+                                    ].join(' ')}>Full Form</h3>
+                                    <p className="text-xs md:text-sm text-slate-400 dark:text-slate-500 font-medium mt-1">
+                                        {fastEntry ? 'All at once, fast' : 'Classic layout'}
+                                    </p>
                                 </div>
                             </div>
 
                             {/* Feature list */}
                             <ul className="space-y-2 md:space-y-2.5 mb-6 md:mb-7">
-                                {['All sections at once', 'Quick scroll navigation', 'Familiar paper layout'].map(f => (
+                                {(fastEntry
+                                    ? ['All fields visible at once', 'Upload PDF & submit', 'Quickest path to done']
+                                    : ['All sections at once', 'Quick scroll navigation', 'Familiar paper layout']
+                                ).map(f => (
                                     <li key={f} className="flex items-center gap-2.5 text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M20 6 9 17l-5-5" className="text-slate-400 dark:text-slate-500" />
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 ${fastEntry ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M20 6 9 17l-5-5" />
                                         </svg>
                                         {f}
                                     </li>
@@ -472,13 +586,14 @@ export const ViewModeSelector = ({
                             </ul>
 
                             {/* CTA */}
-                            <div className="inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 group-hover:bg-slate-600 group-hover:text-white dark:group-hover:bg-slate-600 dark:group-hover:text-white transition-colors duration-200 ease-out">
-                                <span>Open Form</span>
+                            <div className={`inline-flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl transition-colors duration-200 ease-out ${fastEntry ? 'text-amber-600 bg-amber-100 group-hover:bg-amber-500 group-hover:text-white dark:text-amber-400 dark:bg-amber-900/40 dark:group-hover:bg-amber-600 dark:group-hover:text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 group-hover:bg-slate-600 group-hover:text-white dark:group-hover:bg-slate-600 dark:group-hover:text-white'}`}>
+                                <span>{fastEntry ? '⚡ Full Entry' : 'Open Form'}</span>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
                                 </svg>
                             </div>
                         </button>
+
                     </div>
                 </div>
             </div>

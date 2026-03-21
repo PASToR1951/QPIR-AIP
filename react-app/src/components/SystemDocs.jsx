@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
 import GithubSlugger from 'github-slugger';
-import { ArrowLeft, BookOpen, Tag, List, X, Menu } from 'lucide-react';
+import { ArrowLeft, BookOpen, Tag, List, X, List as Menu } from '@phosphor-icons/react';
 import { CURRENT_VERSION } from '../version';
 import docsContent from '../../../docs/SYSTEM_DOCUMENTATION_THESIS.md?raw';
 import ERDDiagram from './ui/ERDDiagram';
@@ -113,7 +113,7 @@ export default function SystemDocs() {
         <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/" className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all">
-              <ArrowLeft size={17} strokeWidth={2.5} />
+              <ArrowLeft size={17} weight="bold" />
             </Link>
             <div>
               <h1 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">System Documentation</h1>
@@ -122,16 +122,16 @@ export default function SystemDocs() {
           </div>
           <div className="flex items-center gap-2">
             <Link to="/changelog" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-dark-base text-slate-600 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-dark-border hover:bg-slate-100 dark:hover:bg-dark-border transition-colors">
-              <Tag size={12} strokeWidth={3} /> Version Control
+              <Tag size={12} /> Version Control
             </Link>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-200">
-              <BookOpen size={12} strokeWidth={3} /> v{CURRENT_VERSION}
+              <BookOpen size={12} /> v{CURRENT_VERSION}
             </span>
             <button
               className="lg:hidden w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-all"
               onClick={() => setIsMobileTocOpen(!isMobileTocOpen)}
             >
-              {isMobileTocOpen ? <X size={18} strokeWidth={2.5} /> : <Menu size={18} strokeWidth={2.5} />}
+              {isMobileTocOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
