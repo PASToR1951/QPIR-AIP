@@ -90,7 +90,7 @@ export default function Login() {
           <form className="space-y-6" onSubmit={handleLogin}>
             {error && (
               <div className="text-red-600 dark:text-red-400 text-sm font-semibold text-center bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 p-3 rounded-xl flex items-center justify-center gap-2">
-                <AlertCircle size={16} />
+                <AlertCircle size={18} />
                 {error}
               </div>
             )}
@@ -128,7 +128,7 @@ export default function Login() {
                     className="focus:outline-none hover:text-indigo-600 focus:text-indigo-600 flex items-center justify-center p-1"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 }
               />
@@ -141,7 +141,7 @@ export default function Login() {
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="animate-spin" size={16} />
+                  <Loader2 className="animate-spin" size={18} />
                   Signing in...
                 </>
               ) : (
@@ -179,9 +179,9 @@ export default function Login() {
             {/* 2. Middle Info (Address & Copyright) */}
             <div className="flex flex-col items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 font-medium text-center">
               <div className="flex flex-wrap justify-center items-center gap-2">
-                <span className="flex items-center gap-1"><MapPin size={10} className="text-slate-300" /> Osmeña Avenue, City of Guihulngan, Negros Oriental</span>
+                <span className="flex items-center gap-1"><MapPin size={12} className="text-slate-300" /> Osmeña Avenue, City of Guihulngan, Negros Oriental</span>
                 <span className="hidden lg:inline text-slate-300">•</span>
-                <span className="flex items-center gap-1"><Phone size={10} className="text-slate-300" /> (035) 410-4069 • (035) 410-4066 • 0956-964-7346</span>
+                <span className="flex items-center gap-1"><Phone size={12} className="text-slate-300" /> (035) 410-4069 • (035) 410-4066 • 0956-964-7346</span>
               </div>
               <div className="text-slate-400 font-normal tracking-tight text-[9px]">
                 © {new Date().getFullYear()} DepEd Division of Guihulngan City. All rights reserved.
@@ -191,11 +191,11 @@ export default function Login() {
             {/* 3. Social Media Pilled Buttons */}
             <div className="flex items-center justify-center gap-3">
               <a href="mailto:guihulngan.city@deped.gov.ph" className="flex items-center gap-2 px-4 py-2 bg-pink-500 border border-pink-500 rounded-full text-[10px] font-bold text-white hover:bg-pink-600 hover:border-pink-600 transition-all shadow-sm">
-                <Mail size={14} />
+                <Mail size={16} />
                 <span className="hidden lg:inline">Email Us</span>
               </a>
               <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-blue-600 border border-blue-600 rounded-full text-[10px] font-bold text-white hover:bg-blue-700 hover:border-blue-700 transition-all shadow-sm">
-                <Facebook size={14} />
+                <Facebook size={16} />
                 <span className="hidden lg:inline">Facebook</span>
               </a>
             </div>

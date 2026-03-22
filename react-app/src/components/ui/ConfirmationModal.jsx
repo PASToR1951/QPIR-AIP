@@ -42,7 +42,7 @@ export const ConfirmationModal = ({
                             onClick={onClose}
                             className="absolute top-6 right-6 p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark-border rounded-full transition-colors"
                         >
-                            <X size={20} />
+                            <X size={22} />
                         </button>
 
                         <div className="flex flex-col items-center text-center relative z-10">
@@ -65,11 +65,8 @@ export const ConfirmationModal = ({
                                 >
                                     {cancelText}
                                 </button>
-                                <button 
-                                    onClick={() => {
-                                        onConfirm();
-                                        onClose();
-                                    }}
+                                <button
+                                    onClick={() => { onConfirm(); }}
                                     className={`flex-1 px-6 py-4 rounded-2xl font-bold text-white transition-all active:scale-95 shadow-lg ${confirmColors[type]}`}
                                 >
                                     {confirmText}

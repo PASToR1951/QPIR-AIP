@@ -72,23 +72,9 @@ export const ViewModeSelector = ({
     completedPrograms: rawCompletedPrograms = [],
     theme = "pink",
 }) => {
-    // ── SIMULATION: demo data shown when no real programs are passed ──────────
-    const _DEMO = {
-        programs: [
-            'Alternative Learning System (ALS)',
-            'Senior High School (SHS) Program',
-            'Kindergarten Education Program',
-            'Special Education (SPED)',
-            'Basic Education Research Fund (BERF)',
-        ],
-        draftProgram: 'Senior High School (SHS) Program',
-        completedPrograms: ['Alternative Learning System (ALS)', 'Basic Education Research Fund (BERF)'],
-    };
-    const _isDemo = rawPrograms.length === 0;
-    const programs         = _isDemo ? _DEMO.programs          : rawPrograms;
-    const draftProgram     = _isDemo ? _DEMO.draftProgram      : rawDraftProgram;
-    const completedPrograms = _isDemo ? _DEMO.completedPrograms : rawCompletedPrograms;
-    // ─────────────────────────────────────────────────────────────────────────
+    const programs         = rawPrograms;
+    const draftProgram     = rawDraftProgram;
+    const completedPrograms = rawCompletedPrograms;
     const [stage, setStage] = useState('program');
     const [selected, setSelected] = useState(null);
     const [search, setSearch] = useState('');
@@ -152,13 +138,6 @@ export const ViewModeSelector = ({
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, [completedPrograms, onStart]);
 
-    useEffect(() => {
-        if (stage === 'mode' && selected) {
-            if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                onStart('wizard', selected);
-            }
-        }
-    }, [stage, selected, onStart]);
 
     const Background = () => (
         <>
@@ -390,7 +369,7 @@ export const ViewModeSelector = ({
                     <div className="bg-white/90 dark:bg-dark-surface/90 fast-mode:bg-[#161208]/90 backdrop-blur-sm rounded-2xl lg:rounded-3xl border border-slate-200/80 dark:border-dark-border fast-mode:border-[#2C2410]/80 shadow-sm p-6 md:p-8 lg:p-10 mb-5 md:mb-6">
                         <div className="flex items-start gap-4 lg:gap-5 mb-5 md:mb-6">
                             <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border shrink-0 ${c.cardIconBase}`}>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 md:w-7 md:h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
                                 </svg>
                             </div>
@@ -489,9 +468,9 @@ export const ViewModeSelector = ({
                                         : `${c.cardIconBase} ${c.cardIconHover}`,
                                 ].join(' ')}>
                                     {fastEntry ? (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 md:w-7 md:h-7" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                                     ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 md:w-7 md:h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                                     )}
                                 </div>
                                 <div>
@@ -514,7 +493,7 @@ export const ViewModeSelector = ({
                                     : ['One section at a time', 'Progress tracking', 'Great for first-timers']
                                 ).map(f => (
                                     <li key={f} className="flex items-center gap-2.5 text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 ${fastEntry ? 'text-amber-500' : c.accent}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 md:w-5 md:h-5 shrink-0 ${fastEntry ? 'text-amber-500' : c.accent}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M20 6 9 17l-5-5" />
                                         </svg>
                                         {f}
@@ -552,9 +531,9 @@ export const ViewModeSelector = ({
                                         : 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-dark-border dark:to-dark-border text-slate-500 dark:text-slate-400 border-slate-200 dark:border-dark-border group-hover:from-slate-500 group-hover:to-slate-600 group-hover:text-white group-hover:border-slate-500',
                                 ].join(' ')}>
                                     {fastEntry ? (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 md:w-7 md:h-7" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
                                     ) : (
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><line x1="3" x2="21" y1="9" y2="9" /><line x1="9" x2="9" y1="21" y2="9" /></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 md:w-7 md:h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /><line x1="3" x2="21" y1="9" y2="9" /><line x1="9" x2="9" y1="21" y2="9" /></svg>
                                     )}
                                 </div>
                                 <div>
@@ -577,7 +556,7 @@ export const ViewModeSelector = ({
                                     : ['All sections at once', 'Quick scroll navigation', 'Familiar paper layout']
                                 ).map(f => (
                                     <li key={f} className="flex items-center gap-2.5 text-xs md:text-sm text-slate-500 dark:text-slate-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 ${fastEntry ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 md:w-5 md:h-5 shrink-0 ${fastEntry ? 'text-amber-500' : 'text-slate-400 dark:text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                             <path d="M20 6 9 17l-5-5" />
                                         </svg>
                                         {f}

@@ -405,8 +405,8 @@ export default function App() {
                 type: 'warning',
                 title: 'Submission Failed',
                 message: error.response?.data?.error || 'An error occurred while saving the AIP. Please try again.',
-                confirmText: 'Try Again',
-                onConfirm: () => { }
+                confirmText: 'Dismiss',
+                onConfirm: closeModal
             });
         }
     };

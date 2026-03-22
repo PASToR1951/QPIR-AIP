@@ -52,7 +52,7 @@ export const Input = React.forwardRef(({ label, className, endIcon, theme = "def
                     </label>
                     {helpText && (
                         <div className="relative group/tip">
-                            <Info className="w-3 h-3 text-slate-300 hover:text-slate-500 cursor-help transition-colors" />
+                            <Info className="w-3.5 h-3.5 text-slate-300 hover:text-slate-500 cursor-help transition-colors" />
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-slate-800 text-white text-[11px] leading-snug rounded-lg w-52 invisible group-hover/tip:visible opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 pointer-events-none shadow-xl">
                                 {helpText}
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
@@ -89,7 +89,7 @@ export const Input = React.forwardRef(({ label, className, endIcon, theme = "def
             </div>
             {error && errorMessage && (
                 <p id={`${props.id || props.name}-error`} className="flex items-center gap-1 text-[11px] text-red-500 font-medium mt-0.5 print:hidden">
-                    <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                     {errorMessage}
                 </p>
             )}

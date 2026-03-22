@@ -77,7 +77,7 @@ const TypeBadge = ({ type }) => {
     <span
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider border ${config.bg} ${config.text} ${config.border}`}
     >
-      <Icon size={12} />
+      <Icon size={14} />
       {config.label}
     </span>
   );
@@ -124,7 +124,7 @@ const ReleaseCard = ({ release, isLatest }) => {
                 : 'bg-white dark:bg-dark-surface border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500'
             }`}
           >
-            <Tag size={20} />
+            <Tag size={22} />
           </div>
         </div>
 
@@ -160,16 +160,16 @@ const ReleaseCard = ({ release, isLatest }) => {
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-300 font-mono font-bold text-xs hover:bg-slate-200 dark:hover:bg-dark-border transition-colors border border-slate-200 dark:border-dark-border"
                     title="Copy version"
                   >
-                    <GitBranch size={12} />
+                    <GitBranch size={14} />
                     v{release.version}
                     {copiedVersion ? (
-                      <Check size={12} className="text-emerald-500" />
+                      <Check size={14} className="text-emerald-500" />
                     ) : (
-                      <Copy size={12} className="text-slate-400" />
+                      <Copy size={14} className="text-slate-400" />
                     )}
                   </button>
                   <span className="inline-flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-xs font-medium">
-                    <Calendar size={12} />
+                    <Calendar size={14} />
                     {formattedDate}
                   </span>
                   <span className="text-slate-300 dark:text-slate-600 text-xs">•</span>
@@ -179,7 +179,7 @@ const ReleaseCard = ({ release, isLatest }) => {
                 </div>
               </div>
               <button className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors mt-1 shrink-0">
-                {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                {isExpanded ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
               </button>
             </div>
 
@@ -253,7 +253,7 @@ const Changelog = () => {
               to="/"
               className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all"
             >
-              <ArrowLeft size={18} weight="bold" />
+              <ArrowLeft size={20} weight="bold" />
             </Link>
             <div>
               <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">Changelog</h1>
@@ -261,7 +261,7 @@ const Changelog = () => {
             </div>
           </div>
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black border border-emerald-200">
-            <Tag size={12} />
+            <Tag size={14} />
             v{CURRENT_VERSION}
           </span>
         </div>
@@ -283,7 +283,7 @@ const Changelog = () => {
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                <BookOpen size={20} className="text-emerald-400" />
+                <BookOpen size={22} className="text-emerald-400" />
               </div>
               <div>
                 <h2 className="text-lg font-black tracking-tight">AIP-PIR Portal</h2>
@@ -341,7 +341,7 @@ const Changelog = () => {
           {filteredChangelog.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-16 h-16 bg-slate-100 dark:bg-dark-border rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Tag size={28} className="text-slate-300 dark:text-slate-600" />
+                <Tag size={32} className="text-slate-300 dark:text-slate-600" />
               </div>
               <p className="text-slate-400 dark:text-slate-500 font-bold text-sm">No releases match the current filter.</p>
             </div>

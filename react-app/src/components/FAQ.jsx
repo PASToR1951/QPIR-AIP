@@ -59,7 +59,7 @@ const FAQItem = ({ item }) => {
       >
         <span className="font-bold text-slate-800 dark:text-slate-100 pr-8">{item.q}</span>
         <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isOpen ? 'bg-pink-100 dark:bg-pink-950/30 text-pink-600' : 'bg-slate-200 dark:bg-dark-border text-slate-500 dark:text-slate-400'}`}>
-          {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          {isOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
         </div>
       </button>
       <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -89,7 +89,7 @@ export default function FAQ() {
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/" className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all">
-              <ArrowLeft size={18} weight="bold" />
+              <ArrowLeft size={20} weight="bold" />
             </Link>
             <div>
               <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">Help Center / FAQ</h1>
@@ -131,7 +131,7 @@ export default function FAQ() {
                 <div key={idx} className="bg-white dark:bg-dark-surface p-6 md:p-8 rounded-[2.5rem] border border-slate-200 dark:border-dark-border shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100 dark:border-indigo-900">
-                      <Icon size={24} />
+                      <Icon size={28} />
                     </div>
                     <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100">{category.category}</h2>
                   </div>
@@ -146,7 +146,7 @@ export default function FAQ() {
           ) : (
             <div className="text-center py-16 bg-white dark:bg-dark-surface rounded-[2.5rem] border border-slate-200 dark:border-dark-border shadow-sm">
               <div className="w-16 h-16 bg-slate-100 dark:bg-dark-border rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Search size={28} className="text-slate-300 dark:text-slate-600" />
+                <Search size={32} className="text-slate-300 dark:text-slate-600" />
               </div>
               <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">No results found</h3>
               <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto">

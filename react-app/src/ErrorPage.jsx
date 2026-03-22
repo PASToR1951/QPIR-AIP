@@ -7,19 +7,19 @@ const ErrorPage = ({ type = "500", title, message, onRetry }) => {
 
   const errorConfigs = {
     "403": {
-      icon: <Lock size={48} className="text-pink-600" />,
+      icon: <Lock size={56} className="text-pink-600" />,
       title: title || "Access Restricted",
       message: message || "You do not have the necessary administrative privileges to view this resource. Please contact the SDO IT department if you believe this is an error.",
       actionLabel: "Return to Dashboard",
-      actionIcon: <Home size={18} />,
+      actionIcon: <Home size={20} />,
       actionLink: "/"
     },
     "500": {
-      icon: <WifiOff size={48} className="text-blue-600" />,
+      icon: <WifiOff size={56} className="text-blue-600" />,
       title: title || "Server Connection Unavailable",
       message: message || "We are currently experiencing technical difficulties or the server is temporarily offline. Please try again shortly.",
       actionLabel: "Try Again",
-      actionIcon: <RefreshCcw size={18} />,
+      actionIcon: <RefreshCcw size={20} />,
       onClick: onRetry || (() => window.location.reload())
     }
   };
@@ -113,7 +113,7 @@ const ErrorPage = ({ type = "500", title, message, onRetry }) => {
                 onClick={() => navigate(-1)}
                 className="group flex items-center gap-3 bg-white dark:bg-dark-surface border-2 border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 px-10 py-4 rounded-[2rem] font-black text-sm tracking-widest uppercase hover:border-slate-900 dark:hover:border-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all active:scale-95 w-full sm:w-auto justify-center shadow-lg shadow-slate-100"
             >
-                <ArrowLeft size={18} weight="bold" />
+                <ArrowLeft size={20} weight="bold" />
                 Return Back
             </button>
         </div>
