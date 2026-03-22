@@ -29,10 +29,10 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
         <div className="flex items-center gap-1 shrink-0">
           {clearable && selected && (
             <span onClick={(e) => { e.stopPropagation(); onChange(null); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-              <X size={14} />
+              <X size={16} />
             </span>
           )}
-          <CaretDown size={14} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+          <CaretDown size={16} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
         </div>
       </button>
 
@@ -40,7 +40,7 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
         <div className="absolute z-50 top-full mt-1 w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl shadow-xl overflow-hidden">
           <div className="p-2 border-b border-slate-100 dark:border-dark-border">
             <div className="flex items-center gap-2 px-2">
-              <MagnifyingGlass size={14} className="text-slate-400 shrink-0" />
+              <MagnifyingGlass size={16} className="text-slate-400 shrink-0" />
               <input
                 autoFocus
                 value={query}

@@ -21,7 +21,7 @@ export const FormModal = ({ open, title, children, onSave, onCancel, loading = f
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-dark-border shrink-0">
               <h3 className="text-base font-black text-slate-900 dark:text-slate-100">{title}</h3>
               <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
