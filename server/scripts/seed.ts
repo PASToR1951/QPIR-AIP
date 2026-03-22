@@ -4,6 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import { parse } from "https://deno.land/std@0.224.0/csv/parse.ts";
 import * as path from "https://deno.land/std@0.224.0/path/mod.ts";
+import * as bcrypt from "bcrypt";
 
 const connectionString = Deno.env.get("DATABASE_URL");
 const pool = new pg.Pool({ connectionString });
@@ -88,6 +89,29 @@ async function main() {
     console.log('✅ Schools seeded.');
   } catch (e) {
     console.log(`⚠️ schools.csv not found or error parsing: ${e}`);
+  }
+
+  // 4. Seed default Admin user (bootstrap)
+  try {
+    const adminEmail = 'admin@qpir.local';
+    const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
+    if (!existing) {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash('admin123', salt);
+      await prisma.user.create({
+        data: {
+          email: adminEmail,
+          password: hashedPassword,
+          role: 'Admin',
+          name: 'System Administrator',
+        },
+      });
+      console.log('✅ Default admin user created (admin@qpir.local / admin123)');
+    } else {
+      console.log('ℹ️ Admin user already exists, skipping.');
+    }
+  } catch (e) {
+    console.log(`⚠️ Error seeding admin user: ${e}`);
   }
 
   console.log('🥳 Seeding finished.');
