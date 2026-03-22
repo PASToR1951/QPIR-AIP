@@ -7,6 +7,8 @@ import {
 import { DownloadSimple } from '@phosphor-icons/react';
 import { AdminLayout } from '../AdminLayout.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const API = import.meta.env.VITE_API_URL;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -19,6 +21,31 @@ const TABS = [
 ];
 
 async function downloadReport(type, format, year) {
+  if (format === 'pdf') {
+    const el = document.getElementById('report-content');
+    if (!el) return;
+    const canvas = await html2canvas(el, { scale: 1.5, useCORS: true });
+    const imgData = canvas.toDataURL('image/jpeg', 0.85);
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageW = 297;
+    const pageH = 210;
+    const imgW = pageW;
+    const imgH = (canvas.height * imgW) / canvas.width;
+    if (imgH <= pageH) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
+    } else {
+      let position = 0;
+      let remaining = imgH;
+      while (remaining > 0) {
+        pdf.addImage(imgData, 'JPEG', 0, -position, imgW, imgH);
+        remaining -= pageH;
+        position += pageH;
+        if (remaining > 0) pdf.addPage();
+      }
+    }
+    pdf.save(`${type}-report-${year}.pdf`);
+    return;
+  }
   const url = `${API}/api/admin/reports/${type}/export?format=${format}&year=${year}`;
   const blob = await fetch(url, { headers: authHeaders() }).then(r => r.blob());
   const a = document.createElement('a');
@@ -34,7 +61,7 @@ function ExportButtons({ type, year }) {
       {formats.map(fmt => (
         <button key={fmt} onClick={() => downloadReport(type, fmt, year)}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl hover:bg-slate-50 dark:hover:bg-dark-border transition-colors uppercase">
-          <DownloadSimple size={13} /> {fmt}
+          <DownloadSimple size={15} /> {fmt}
         </button>
       ))}
     </div>
@@ -170,14 +197,14 @@ function BudgetReport({ year }) {
 }
 
 // ─── Workload Tab ────────────────────────────────────────────────────────────
-function WorkloadReport() {
+function WorkloadReport({ year }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     setLoading(true);
-    axios.get(`${API}/api/admin/reports/workload`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/reports/workload?year=${year}`, { headers: authHeaders() })
       .then(r => setData(r.data)).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  }, [year]);
 
   if (loading) return <Spinner />;
   if (!data?.length) return <p className="text-center text-slate-400 py-16">No Division Personnel found.</p>;
@@ -216,7 +243,7 @@ export default function AdminReports() {
   const YEARS = [year - 1, year, year + 1];
 
   return (
-    <AdminLayout title="Reports" breadcrumbs={[{ label: 'Reports' }]}>
+    <AdminLayout>
       <div className="space-y-4">
 
         {/* Tab Bar + Year + Export */}
@@ -244,11 +271,11 @@ export default function AdminReports() {
         </div>
 
         {/* Content */}
-        <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
+        <div id="report-content" className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
           {tab === 'compliance' && <ComplianceReport year={year} />}
           {tab === 'quarterly' && <QuarterlyReport year={year} />}
           {tab === 'budget' && <BudgetReport year={year} />}
-          {tab === 'workload' && <WorkloadReport />}
+          {tab === 'workload' && <WorkloadReport year={year} />}
         </div>
 
         {/* Export Center */}
@@ -267,7 +294,7 @@ export default function AdminReports() {
                   {item.formats.map(fmt => (
                     <button key={fmt} onClick={() => downloadReport(item.type, fmt, year)}
                       className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 rounded-lg transition-colors uppercase">
-                      <DownloadSimple size={11} /> {fmt}
+                      <DownloadSimple size={13} /> {fmt}
                     </button>
                   ))}
                 </div>
