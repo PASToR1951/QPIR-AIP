@@ -6,30 +6,8 @@ import { prisma } from "../db/client.ts";
 const authRoutes = new Hono();
 const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
 
-authRoutes.post('/register', async (c) => {
-  const body = await c.req.json();
-  const { email, password, name, school_id } = body;
-
-  try {
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        role: 'School Head',
-        name,
-        school_id
-      }
-    });
-
-    return c.json({ message: 'User created successfully', user: { id: user.id, email: user.email } });
-  } catch (error) {
-    console.error(error);
-    return c.json({ error: 'Failed to create user' }, 500);
-  }
-});
+// Self-registration is disabled. All accounts are created by an Admin via /api/admin/users.
+authRoutes.post('/register', (c) => c.json({ error: 'Registration is disabled. Contact your administrator.' }, 403));
 
 authRoutes.post('/login', async (c) => {
   const body = await c.req.json();
