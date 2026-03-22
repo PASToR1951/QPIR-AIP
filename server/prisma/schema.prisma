@@ -23,10 +23,11 @@ model Cluster {
 }
 
 model School {
-  id         Int      @id @default(autoincrement())
-  name       String
-  level      String   // "Elementary", "Secondary", "Both"
-  cluster_id Int
+  id           Int     @id @default(autoincrement())
+  name         String
+  abbreviation String? // Short name / acronym, e.g. "SNES"
+  level        String  // "Elementary", "Secondary", "Both"
+  cluster_id   Int
   
   // Relations
   cluster    Cluster  @relation(fields: [cluster_id], references: [id], onDelete: Cascade)
