@@ -46,7 +46,7 @@ export const Select = React.forwardRef(({ label, options, className, theme = "de
                     </label>
                     {helpText && (
                         <div className="relative group/tip">
-                            <Info className="w-3 h-3 text-slate-300 hover:text-slate-500 cursor-help transition-colors" />
+                            <Info className="w-3.5 h-3.5 text-slate-300 hover:text-slate-500 cursor-help transition-colors" />
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-slate-800 text-white text-[11px] leading-snug rounded-lg w-52 invisible group-hover/tip:visible opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 pointer-events-none shadow-xl">
                                 {helpText}
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />

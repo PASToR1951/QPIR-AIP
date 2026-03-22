@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SignOut as LogOut, CaretDown as ChevronDown, User, BookOpen, ChatCircle as MessageCircle, ClockCounterClockwise as History, Tag } from '@phosphor-icons/react';
+import { SignOut as LogOut, CaretDown as ChevronDown, BookOpen, ChatCircle as MessageCircle, Tag, IdentificationCard, ListBullets } from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NotificationBell } from './NotificationBell.jsx';
@@ -44,7 +44,6 @@ export const DashboardHeader = ({ user, onLogout }) => {
 
                 {/* Right Side Actions */}
                 <div className="flex items-center gap-1">
-                <NotificationBell />
 
                 {/* Profile Dropdown */}
                 <div className="flex items-center relative" ref={dropdownRef}>
@@ -63,7 +62,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                         <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-black border border-pink-200 uppercase">
                             {user?.school_name?.[0] || user?.name?.[0] || 'U'}
                         </div>
-                        <ChevronDown size={16} className={`text-slate-400 dark:text-slate-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={18} className={`text-slate-400 dark:text-slate-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Dropdown Menu */}
@@ -82,27 +81,29 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                 </div>
                                 
                                 <div className="px-2 py-1">
-                                    <a href="#" onClick={(e) => { e.preventDefault(); setIsDropdownOpen(false); }} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
-                                        <User size={16} />
+                                    <div className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 dark:text-slate-600 rounded-xl cursor-not-allowed select-none">
+                                        <IdentificationCard size={18} />
                                         Profile
-                                    </a>
-                                    <Link to="/faq" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
-                                        <MessageCircle size={16} />
-                                        FAQ
-                                    </Link>
-                                    <Link to="/docs" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
-                                        <BookOpen size={16} />
-                                        User Manual
-                                    </Link>
+                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Alpha</span>
+                                    </div>
+                                    <div className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 dark:text-slate-600 rounded-xl cursor-not-allowed select-none">
+                                        <ListBullets size={18} />
+                                        User Logs
+                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Alpha</span>
+                                    </div>
                                 </div>
 
                                 <div className="px-2 py-1 border-t border-slate-100 dark:border-dark-border">
-                                    <a href="#" onClick={(e) => { e.preventDefault(); setIsDropdownOpen(false); }} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 rounded-xl transition-colors">
-                                        <History size={16} />
-                                        User Logs
-                                    </a>
-                                    <Link to="/changelog" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-xl transition-colors">
-                                        <Tag size={16} />
+                                    <Link to="/faq" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
+                                        <MessageCircle size={18} />
+                                        FAQ
+                                    </Link>
+                                    <Link to="/docs" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
+                                        <BookOpen size={18} />
+                                        User Manual
+                                    </Link>
+                                    <Link to="/changelog" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
+                                        <Tag size={18} />
                                         Change Logs
                                     </Link>
                                 </div>
@@ -112,7 +113,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                         onClick={() => { setIsDropdownOpen(false); onLogout(); }}
                                         className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors"
                                     >
-                                        <LogOut size={16} />
+                                        <LogOut size={18} />
                                         Logout
                                     </button>
                                 </div>
@@ -120,6 +121,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                         )}
                     </AnimatePresence>
                 </div>
+                <NotificationBell />
                 </div>{/* end Right Side Actions */}
             </div>
         </nav>

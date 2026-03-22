@@ -110,7 +110,7 @@ export default function DashboardStats({ data, loading }) {
             <div className={`bg-white dark:bg-dark-surface border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allAipDone ? 'border-emerald-200 dark:border-emerald-700' : 'border-slate-200 dark:border-dark-border'}`}>
                 <div className="flex items-center gap-3 mb-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allAipDone ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400' : 'bg-pink-100 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400'}`}>
-                        <FileText size={18} />
+                        <FileText size={20} />
                     </div>
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">AIP Progress</span>
                 </div>
@@ -132,7 +132,7 @@ export default function DashboardStats({ data, loading }) {
             <div className={`bg-white dark:bg-dark-surface border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allPirDone ? 'border-emerald-200 dark:border-emerald-700' : noPirNeeded ? 'border-slate-200 dark:border-dark-border' : 'border-amber-100 dark:border-amber-800/50'}`}>
                 <div className="flex items-center gap-3 mb-3">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allPirDone ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400' : noPirNeeded ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500' : 'bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400'}`}>
-                        <BarChart3 size={18} />
+                        <BarChart3 size={20} />
                     </div>
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Q{currentQuarter} Reviews</span>
                 </div>
@@ -161,7 +161,7 @@ export default function DashboardStats({ data, loading }) {
                         urgency.level === 'attention' ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400' :
                         'bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400'
                     }`}>
-                        <Clock size={18} />
+                        <Clock size={20} />
                     </div>
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Q{currentQuarter} Deadline</span>
                     {urgency.level === 'urgent' && (

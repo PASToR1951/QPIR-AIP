@@ -136,7 +136,7 @@ export default function AccessibilityPanel() {
                     {/* Header */}
                     <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 dark:border-dark-border">
                         <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                            <Accessibility className={`w-3.5 h-3.5 ${t.icon}`} />
+                            <Accessibility className={`w-4 h-4 ${t.icon}`} />
                             Accessibility
                         </h3>
                         <button
@@ -144,7 +144,7 @@ export default function AccessibilityPanel() {
                             className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
                             aria-label="Close accessibility panel"
                         >
-                            <X className="w-4 h-4" />
+                            <X className="w-5 h-5" />
                         </button>
                     </div>
 
@@ -158,7 +158,7 @@ export default function AccessibilityPanel() {
                                 <ToggleRow
                                     label="Dark Mode"
                                     description="Reduce eye strain with darker colors"
-                                    icon={<Moon className="w-4 h-4" />}
+                                    icon={<Moon className="w-5 h-5" />}
                                     value={settings.darkMode}
                                     onChange={v => update('darkMode', v)}
                                     theme={themeName}
@@ -166,14 +166,14 @@ export default function AccessibilityPanel() {
                                 <ToggleRow
                                     label="High Contrast"
                                     description="Stronger borders and colors"
-                                    icon={<Sun className="w-4 h-4" />}
+                                    icon={<Sun className="w-5 h-5" />}
                                     value={settings.highContrast}
                                     onChange={v => update('highContrast', v)}
                                     theme={themeName}
                                 />
                                 <div>
                                     <div className="flex items-center gap-2 mb-2">
-                                        <Type className={`w-4 h-4 ${settings.fontSize !== 'normal' ? t.icon : 'text-slate-400'}`} />
+                                        <Type className={`w-5 h-5 ${settings.fontSize !== 'normal' ? t.icon : 'text-slate-400'}`} />
                                         <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Font Size</span>
                                     </div>
                                     <div className="flex gap-1">
@@ -201,7 +201,7 @@ export default function AccessibilityPanel() {
                                 <ToggleRow
                                     label="Reduce Motion"
                                     description="Minimize animations and transitions"
-                                    icon={<ZapOff className="w-4 h-4" />}
+                                    icon={<ZapOff className="w-5 h-5" />}
                                     value={settings.reduceMotion}
                                     onChange={v => update('reduceMotion', v)}
                                     theme={themeName}
@@ -209,14 +209,14 @@ export default function AccessibilityPanel() {
                                 <ToggleRow
                                     label="OpenDyslexic Font"
                                     description="Switch to OpenDyslexic typeface"
-                                    icon={<BookOpen className="w-4 h-4" />}
+                                    icon={<BookOpen className="w-5 h-5" />}
                                     value={settings.dyslexicFont}
                                     onChange={v => update('dyslexicFont', v)}
                                     theme={themeName}
                                 />
                                 <div>
                                     <div className="flex items-center gap-2 mb-2">
-                                        <AlignLeft className={`w-4 h-4 ${settings.lineSpacing !== 'normal' ? t.icon : 'text-slate-400'}`} />
+                                        <AlignLeft className={`w-5 h-5 ${settings.lineSpacing !== 'normal' ? t.icon : 'text-slate-400'}`} />
                                         <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Line Spacing</span>
                                     </div>
                                     <div className="flex gap-1">
@@ -234,7 +234,7 @@ export default function AccessibilityPanel() {
                                 <ToggleRow
                                     label="Wide Letter Spacing"
                                     description="Increase space between characters"
-                                    icon={<Type className="w-4 h-4" />}
+                                    icon={<Type className="w-5 h-5" />}
                                     value={settings.letterSpacing === 'wide'}
                                     onChange={v => update('letterSpacing', v ? 'wide' : 'normal')}
                                     theme={themeName}
@@ -248,7 +248,7 @@ export default function AccessibilityPanel() {
                             onClick={reset}
                             className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-dark-border rounded-xl transition-colors"
                         >
-                            <RotateCcw className="w-3 h-3" />
+                            <RotateCcw className="w-3.5 h-3.5" />
                             Reset to defaults
                         </button>
                     </div>
@@ -267,7 +267,7 @@ export default function AccessibilityPanel() {
                 aria-label="Open accessibility options"
                 aria-expanded={isOpen}
             >
-                <Accessibility className="w-5 h-5" />
+                <Accessibility className="w-6 h-6" />
             </button>
         </div>
     );

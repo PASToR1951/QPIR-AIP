@@ -113,7 +113,7 @@ export default function SystemDocs() {
         <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link to="/" className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all">
-              <ArrowLeft size={17} weight="bold" />
+              <ArrowLeft size={19} weight="bold" />
             </Link>
             <div>
               <h1 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">System Documentation</h1>
@@ -122,16 +122,16 @@ export default function SystemDocs() {
           </div>
           <div className="flex items-center gap-2">
             <Link to="/changelog" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-dark-base text-slate-600 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-dark-border hover:bg-slate-100 dark:hover:bg-dark-border transition-colors">
-              <Tag size={12} /> Version Control
+              <Tag size={14} /> Version Control
             </Link>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-200">
-              <BookOpen size={12} /> v{CURRENT_VERSION}
+              <BookOpen size={14} /> v{CURRENT_VERSION}
             </span>
             <button
               className="lg:hidden w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-all"
               onClick={() => setIsMobileTocOpen(!isMobileTocOpen)}
             >
-              {isMobileTocOpen ? <X size={18} /> : <Menu size={18} />}
+              {isMobileTocOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function SystemDocs() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-4 py-3.5 border-b border-slate-100 dark:border-dark-border flex items-center gap-2 sticky top-0 bg-white dark:bg-dark-surface z-10">
-              <List size={15} className="text-indigo-500 shrink-0" />
+              <List size={17} className="text-indigo-500 shrink-0" />
               <span className="font-black text-slate-800 dark:text-slate-100 text-sm tracking-tight">Contents</span>
             </div>
             <div className="p-3">
@@ -162,7 +162,7 @@ export default function SystemDocs() {
           <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-[74px] self-start max-h-[calc(100vh-94px)]">
             <div className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-dark-border shadow-sm overflow-hidden flex flex-col h-full">
               <div className="px-4 py-3 border-b border-slate-100 dark:border-dark-border flex items-center gap-2 shrink-0">
-                <List size={14} className="text-indigo-500 shrink-0" />
+                <List size={16} className="text-indigo-500 shrink-0" />
                 <span className="font-black text-slate-800 dark:text-slate-100 text-sm tracking-tight">Contents</span>
                 <span className="ml-auto text-[10px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-dark-border px-1.5 py-0.5 rounded-full tabular-nums">{headings.length}</span>
               </div>

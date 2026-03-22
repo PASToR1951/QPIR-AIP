@@ -39,7 +39,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                         className="p-2 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 shrink-0"
                         title="Go Back"
                     >
-                        <ArrowLeft size={20} weight="bold" />
+                        <ArrowLeft size={22} weight="bold" />
                     </button>
 
                     <div className="flex flex-col min-w-0">
@@ -76,7 +76,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 border border-emerald-100 dark:border-emerald-900/50`}
                             >
-                                <CheckCircle size={16} />
+                                <CheckCircle size={18} />
                                 <span className="hidden sm:inline">Saved {lastSavedTime}</span>
                                 <span className="sm:hidden">Saved</span>
                             </motion.div>
@@ -93,7 +93,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
                                 ) : (
-                                    <Save size={16} />
+                                    <Save size={18} />
                                 )}
                                 <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Draft'}</span>
                                 <span className="sm:hidden">{isSaving ? '...' : 'Save'}</span>
@@ -109,7 +109,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                                 className="p-2 bg-slate-50 dark:bg-dark-surface text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-dark-border hover:text-slate-600 dark:hover:text-slate-300 rounded-xl transition-colors hidden sm:flex"
                                 title="Home Dashboard"
                             >
-                                <Home size={18} />
+                                <Home size={20} />
                             </button>
                         </>
                     )}

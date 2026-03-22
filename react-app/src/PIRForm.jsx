@@ -53,9 +53,6 @@ export default function App() {
     const [isMobile, setIsMobile] = useState(false);
     const [programsWithAIPs, setProgramsWithAIPs] = useState([]);
     const [completedPrograms, setCompletedPrograms] = useState([]);
-    // schoolList/schoolMap only used for Division Personnel (manual school input if ever needed; currently unused)
-    const [schoolMap, setSchoolMap] = useState({}); // name -> id lookup (School Users only)
-
     const [quarterString] = useState(() => {
         const date = new Date();
         const month = date.getMonth();
@@ -83,21 +80,16 @@ export default function App() {
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { headers: authHeaders }),
                 ];
                 requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { headers: authHeaders }));
-                if (!isDivisionPersonnel && user?.school_id) {
-                    requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/schools`));
-                }
                 const results = await Promise.allSettled(requests);
-                const [withAIPsRes, withPIRsRes, draftRes, schoolsRes] = results;
+                const [withAIPsRes, withPIRsRes, draftRes] = results;
                 if (withAIPsRes.status === 'fulfilled') setProgramsWithAIPs(withAIPsRes.value.data.map(p => p.title));
                 if (withPIRsRes.status === 'fulfilled') setCompletedPrograms(withPIRsRes.value.data.map(p => p.title));
                 if (draftRes?.status === 'fulfilled' && draftRes.value.data.hasDraft) {
-                    setDraftInfo({ lastSaved: draftRes.value.data.lastSaved });
+                    setDraftInfo({ lastSaved: draftRes.value.data.lastSaved, draftProgram: draftRes.value.data.draftProgram });
                     setHasDraft(true);
-                    setLoadedDraftData(draftRes.value.data.draftData);
+                    if (draftRes.value.data.draftData) setLoadedDraftData(draftRes.value.data.draftData);
                 }
-                if (schoolsRes?.status === 'fulfilled') {
-                    setSchoolMap(Object.fromEntries(schoolsRes.value.data.map(s => [s.name, s.id])));
-                }
+
             } catch (error) {
                 console.error("Failed to initialise PIR:", error);
             } finally {
@@ -209,7 +201,7 @@ export default function App() {
         if (!program) return;
 
         // School Users need their school ID; Division Personnel use their user ID
-        const schoolId = isDivisionPersonnel ? null : (user?.school_id || schoolMap[school] || null);
+        const schoolId = isDivisionPersonnel ? null : (user?.school_id || null);
         if (!isDivisionPersonnel && !schoolId) return;
 
         const yearMatch = quarterString.match(/CY (\d{4})/);
@@ -260,7 +252,7 @@ export default function App() {
         };
 
         fetchAIPActivities();
-    }, [program, school, schoolMap, quarterString, isDivisionPersonnel]);
+    }, [program, school, quarterString, isDivisionPersonnel]);
 
     // Called when the user picks program + mode in the splash
     const handleStart = async (mode, selectedProgram) => {
@@ -480,8 +472,8 @@ export default function App() {
                 type: 'warning',
                 title: 'Submission Failed',
                 message: error.response?.data?.error || 'An error occurred while saving the PIR. Please ensure the associated AIP exists.',
-                confirmText: 'Try Again',
-                onConfirm: () => { }
+                confirmText: 'Dismiss',
+                onConfirm: closeModal
             });
         }
     };
