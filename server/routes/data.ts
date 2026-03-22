@@ -341,7 +341,23 @@ dataRoutes.get('/pirs/draft', async (c) => {
     const program_title = c.req.query('program_title');
     const quarter = c.req.query('quarter');
 
-    if (!program_title) return c.json({ hasDraft: false });
+    // When no program_title, return lightweight check for any draft owned by this user
+    if (!program_title) {
+      const aipWhere = tokenUser.role === 'School' && tokenUser.school_id
+        ? { school_id: tokenUser.school_id }
+        : { created_by_user_id: tokenUser.id, school_id: null };
+      const anyDraft = await prisma.pIR.findFirst({
+        where: { status: 'Draft', aip: aipWhere },
+        include: { aip: { include: { program: true } } },
+        orderBy: { created_at: 'desc' },
+      });
+      if (!anyDraft) return c.json({ hasDraft: false });
+      return c.json({
+        hasDraft: true,
+        draftProgram: anyDraft.aip.program.title,
+        lastSaved: anyDraft.created_at,
+      });
+    }
 
     const yearMatch = quarter?.match(/CY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
@@ -450,22 +466,12 @@ dataRoutes.delete('/pirs/draft', async (c) => {
   }
 });
 
-// GET all Clusters
-dataRoutes.get('/clusters', async (c) => {
-  try {
-    const clusters = await prisma.cluster.findMany({
-      include: { schools: true }
-    });
-    return c.json(clusters);
-  } catch (error) {
-    console.error(error);
-    return c.json({ error: 'Failed to fetch clusters' }, 500);
-  }
-});
-
-// GET all Schools
+// GET all Schools (authenticated users only)
 dataRoutes.get('/schools', async (c) => {
   try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
     const schools = await prisma.school.findMany({
       include: { cluster: true }
     });
@@ -549,15 +555,17 @@ dataRoutes.get('/programs/with-aips', async (c) => {
     const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
     const db = prisma.aIP as any;
+    // Only include AIPs that are Verified or Approved — Draft/Pending AIPs should not unlock PIR filing
+    const statusFilter = { status: { notIn: ['Draft', 'Pending'] } };
     let aips: any[];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
       aips = await db.findMany({
-        where: { school_id: tokenUser.school_id, year },
+        where: { school_id: tokenUser.school_id, year, ...statusFilter },
         include: { program: true }
       });
     } else {
       aips = await db.findMany({
-        where: { created_by_user_id: tokenUser.id, school_id: null, year },
+        where: { created_by_user_id: tokenUser.id, school_id: null, year, ...statusFilter },
         include: { program: true }
       });
     }
@@ -1051,6 +1059,22 @@ dataRoutes.post('/aips', async (c) => {
       });
     }
 
+    // Notify all admins that a new AIP was submitted
+    const schoolLabel = aip.school_id
+      ? (await prisma.school.findUnique({ where: { id: aip.school_id }, select: { name: true } }))?.name ?? 'A school'
+      : (tokenUser.name ?? tokenUser.email ?? 'Division Personnel');
+    const admins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
+    if (admins.length > 0) {
+      await prisma.notification.createMany({
+        data: admins.map(admin => ({
+          user_id: admin.id,
+          title: 'New AIP Submitted',
+          message: `${schoolLabel} submitted an AIP for ${program_title} (FY ${year}).`,
+          type: 'aip_submitted',
+        })),
+      });
+    }
+
     return c.json({ message: 'AIP created successfully', aip });
   } catch (error) {
     console.error(error);
@@ -1183,6 +1207,22 @@ dataRoutes.post('/pirs', async (c) => {
           factors: { create: factorData },
           activity_reviews: { create: reviewData }
         }
+      });
+    }
+
+    // Notify all admins that a new PIR was submitted
+    const pirSchoolLabel = aip.school_id
+      ? (await prisma.school.findUnique({ where: { id: aip.school_id }, select: { name: true } }))?.name ?? 'A school'
+      : (tokenUser.name ?? tokenUser.email ?? 'Division Personnel');
+    const pirAdmins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
+    if (pirAdmins.length > 0) {
+      await prisma.notification.createMany({
+        data: pirAdmins.map(admin => ({
+          user_id: admin.id,
+          title: 'New PIR Submitted',
+          message: `${pirSchoolLabel} submitted a PIR for ${program_title} (${quarter}).`,
+          type: 'pir_submitted',
+        })),
       });
     }
 
@@ -1385,60 +1425,8 @@ dataRoutes.get('/dashboard', async (c) => {
 // ==========================================
 // DEADLINES
 // ==========================================
-
-// GET /api/deadlines?year=YYYY — returns all 4 quarters with custom or default dates
-dataRoutes.get('/deadlines', async (c) => {
-  try {
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
-    const dbDeadlines = await prisma.deadline.findMany({ where: { year } });
-
-    const result = [1, 2, 3, 4].map(q => {
-      const custom = dbDeadlines.find(d => d.quarter === q);
-      return {
-        quarter: q,
-        date: buildDeadline(year, q, custom?.date).toISOString(),
-        isCustom: !!custom
-      };
-    });
-
-    return c.json(result);
-  } catch (error) {
-    console.error('Deadlines GET error:', error);
-    return c.json({ error: 'Failed to fetch deadlines' }, 500);
-  }
-});
-
-// POST /api/deadlines — upsert a deadline for a given year + quarter (Division Personnel only)
-dataRoutes.post('/deadlines', async (c) => {
-  try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
-    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
-    if (tokenUser.role !== 'Division Personnel') return c.json({ error: 'Forbidden' }, 403);
-
-    const { year, quarter, date } = await c.req.json();
-
-    if (!year || !quarter || !date) {
-      return c.json({ error: 'year, quarter, and date are required' }, 400);
-    }
-
-    const deadline = await prisma.deadline.upsert({
-      where: {
-        year_quarter: { year: parseInt(year), quarter: parseInt(quarter) }
-      },
-      update: { date: new Date(date) },
-      create: {
-        year: parseInt(year),
-        quarter: parseInt(quarter),
-        date: new Date(date)
-      }
-    });
-
-    return c.json(deadline);
-  } catch (error) {
-    console.error('Deadlines POST error:', error);
-    return c.json({ error: 'Failed to save deadline' }, 500);
-  }
-});
+// NOTE: Legacy /api/deadlines GET and POST routes removed (SYS-15).
+// Deadline management is handled exclusively via /api/admin/deadlines (admin.ts).
 
 // ==========================================
 // AIP VERIFICATION (Division Personnel)
@@ -1483,7 +1471,9 @@ dataRoutes.get('/aips/pending', async (c) => {
 // GET /api/aips/:id/document — serve the uploaded PDF for verification
 dataRoutes.get('/aips/:id/document', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    // Support both Authorization header and ?token= query param (for iframe embeds)
+    const authHeader = c.req.header('Authorization') || (c.req.query('token') ? `Bearer ${c.req.query('token')}` : undefined);
+    const tokenUser = getUserFromToken(authHeader);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
     if (tokenUser.role !== 'Division Personnel') {
       return c.json({ error: 'Division Personnel access required' }, 403);
