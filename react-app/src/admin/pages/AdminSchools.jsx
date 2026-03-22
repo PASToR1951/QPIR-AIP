@@ -11,13 +11,6 @@ const API = import.meta.env.VITE_API_URL;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const LEVELS = ['Elementary', 'Secondary', 'Both'];
 
-function compliancePct(school, year) {
-  if (!school.aips?.length) return 0;
-  const yearAips = school.aips.filter(a => a.year === year);
-  if (yearAips.length === 0) return 0;
-  return 100;
-}
-
 export default function AdminSchools() {
   const [clusters, setClusters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +25,7 @@ export default function AdminSchools() {
   const [addClusterOpen, setAddClusterOpen] = useState(false);
 
   // School modals
-  const [schoolForm, setSchoolForm] = useState({ name: '', level: 'Elementary', cluster_id: null });
+  const [schoolForm, setSchoolForm] = useState({ name: '', abbreviation: '', level: 'Elementary', cluster_id: null });
   const [editSchool, setEditSchool] = useState(null);
   const [deleteSchool, setDeleteSchool] = useState(null);
   const [addSchoolOpen, setAddSchoolOpen] = useState(false);
@@ -40,6 +33,7 @@ export default function AdminSchools() {
   const [restrictedIds, setRestrictedIds] = useState([]);
 
   const [actionLoading, setActionLoading] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const fetchAll = useCallback(() => {
     setLoading(true);
@@ -59,22 +53,31 @@ export default function AdminSchools() {
   const handleAddCluster = async () => {
     setActionLoading(true);
     try {
+      setFormError('');
       await axios.post(`${API}/api/admin/clusters`, { cluster_number: Number(clusterForm.cluster_number), name: clusterForm.name }, { headers: authHeaders() });
       setAddClusterOpen(false); setClusterForm({ cluster_number: '', name: '' }); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
   const handleEditCluster = async () => {
     setActionLoading(true);
     try {
+      setFormError('');
       await axios.patch(`${API}/api/admin/clusters/${editCluster.id}`, { name: clusterForm.name }, { headers: authHeaders() });
       setEditCluster(null); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
   const handleDeleteCluster = async () => {
     setActionLoading(true);
     try {
+      setFormError('');
       await axios.delete(`${API}/api/admin/clusters/${deleteCluster.id}`, { headers: authHeaders() });
       setDeleteCluster(null); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
@@ -82,47 +85,59 @@ export default function AdminSchools() {
   const handleAddSchool = async () => {
     setActionLoading(true);
     try {
+      setFormError('');
       await axios.post(`${API}/api/admin/schools`, schoolForm, { headers: authHeaders() });
-      setAddSchoolOpen(false); setSchoolForm({ name: '', level: 'Elementary', cluster_id: null }); fetchAll();
+      setAddSchoolOpen(false); setSchoolForm({ name: '', abbreviation: '', level: 'Elementary', cluster_id: null }); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
   const handleEditSchool = async () => {
     setActionLoading(true);
     try {
-      await axios.patch(`${API}/api/admin/schools/${editSchool.id}`, { name: schoolForm.name, level: schoolForm.level, cluster_id: schoolForm.cluster_id }, { headers: authHeaders() });
+      setFormError('');
+      await axios.patch(`${API}/api/admin/schools/${editSchool.id}`, { name: schoolForm.name, abbreviation: schoolForm.abbreviation, level: schoolForm.level, cluster_id: schoolForm.cluster_id }, { headers: authHeaders() });
       setEditSchool(null); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
   const handleDeleteSchool = async () => {
     setActionLoading(true);
     try {
+      setFormError('');
       await axios.delete(`${API}/api/admin/schools/${deleteSchool.id}`, { headers: authHeaders() });
       setDeleteSchool(null); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
   const handleSaveRestrictions = async () => {
     setActionLoading(true);
     try {
+      setFormError('');
       await axios.patch(`${API}/api/admin/schools/${restrictSchool.id}/restrictions`, { restricted_program_ids: restrictedIds }, { headers: authHeaders() });
       setRestrictSchool(null); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
   const allSchools = clusters.flatMap(c => c.schools || []);
 
   return (
-    <AdminLayout title="Schools" breadcrumbs={[{ label: 'Schools' }]}>
+    <AdminLayout>
       <div className="space-y-4">
 
         {/* Actions */}
         <div className="flex items-center gap-2 justify-end">
           <button onClick={() => { setAddSchoolOpen(true); setSchoolForm({ name: '', level: 'Elementary', cluster_id: null }); }}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors">
-            <Plus size={15} /> Add School
+            <Plus size={17} /> Add School
           </button>
           <button onClick={() => { setAddClusterOpen(true); setClusterForm({ cluster_number: '', name: '' }); }}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border hover:bg-slate-50 dark:hover:bg-dark-border rounded-xl transition-colors">
-            <Plus size={15} /> Add Cluster
+            <Plus size={17} /> Add Cluster
           </button>
         </div>
 
@@ -145,9 +160,9 @@ export default function AdminSchools() {
                     <span className="text-xs text-slate-400 dark:text-slate-500 font-bold">{schoolCount} schools</span>
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">AIP: {compliantCount}/{schoolCount}</span>
                     <div className="ml-auto flex items-center gap-2">
-                      <button onClick={(e) => { e.stopPropagation(); setEditCluster(cl); setClusterForm({ cluster_number: cl.cluster_number, name: cl.name }); }} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={15} /></button>
-                      <button onClick={(e) => { e.stopPropagation(); setDeleteCluster(cl); }} className={`p-1.5 rounded-lg transition-colors ${schoolCount > 0 ? 'text-slate-200 dark:text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30'}`} disabled={schoolCount > 0} title={schoolCount > 0 ? 'Remove all schools first' : 'Delete cluster'}><Trash size={15} /></button>
-                      {isOpen ? <CaretDown size={16} className="text-slate-400" /> : <CaretRight size={16} className="text-slate-400" />}
+                      <button onClick={(e) => { e.stopPropagation(); setEditCluster(cl); setClusterForm({ cluster_number: cl.cluster_number, name: cl.name }); }} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={17} /></button>
+                      <button onClick={(e) => { e.stopPropagation(); setDeleteCluster(cl); }} className={`p-1.5 rounded-lg transition-colors ${schoolCount > 0 ? 'text-slate-200 dark:text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30'}`} disabled={schoolCount > 0} title={schoolCount > 0 ? 'Remove all schools first' : 'Delete cluster'}><Trash size={17} /></button>
+                      {isOpen ? <CaretDown size={18} className="text-slate-400" /> : <CaretRight size={18} className="text-slate-400" />}
                     </div>
                   </div>
 
@@ -157,8 +172,13 @@ export default function AdminSchools() {
                       {cl.schools?.map(school => (
                         <div key={school.id} className="border border-slate-200 dark:border-dark-border rounded-xl p-4 bg-slate-50 dark:bg-dark-base space-y-2">
                           <div className="flex items-center justify-between">
-                            <p className="font-black text-slate-900 dark:text-slate-100 text-sm truncate">{school.name}</p>
-                            <button onClick={() => { setEditSchool(school); setSchoolForm({ name: school.name, level: school.level, cluster_id: school.cluster_id }); }} className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors shrink-0"><PencilSimple size={14} /></button>
+                            <div className="min-w-0">
+                              <p className="font-black text-slate-900 dark:text-slate-100 text-sm truncate">{school.name}</p>
+                              {school.abbreviation && (
+                                <p className="text-xs font-bold text-indigo-500 dark:text-indigo-400">{school.abbreviation}</p>
+                              )}
+                            </div>
+                            <button onClick={() => { setEditSchool(school); setSchoolForm({ name: school.name, abbreviation: school.abbreviation || '', level: school.level, cluster_id: school.cluster_id }); }} className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors shrink-0"><PencilSimple size={16} /></button>
                           </div>
                           <p className="text-xs font-bold text-slate-500 dark:text-slate-400">{school.level}</p>
                           <div className="flex items-center justify-between text-xs">
@@ -192,7 +212,7 @@ export default function AdminSchools() {
       </div>
 
       {/* Add Cluster */}
-      <FormModal open={addClusterOpen} title="Add Cluster" onSave={handleAddCluster} onCancel={() => setAddClusterOpen(false)} loading={actionLoading}>
+      <FormModal open={addClusterOpen} title="Add Cluster" onSave={handleAddCluster} onCancel={() => { setAddClusterOpen(false); setFormError(''); }} loading={actionLoading}>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Cluster Number</label>
@@ -204,15 +224,19 @@ export default function AdminSchools() {
             <input value={clusterForm.name} onChange={e => setClusterForm(f => ({ ...f, name: e.target.value }))}
               className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400" />
           </div>
+          {formError && <p className="text-xs text-red-500 font-bold">{formError}</p>}
         </div>
       </FormModal>
 
       {/* Edit Cluster */}
-      <FormModal open={!!editCluster} title="Edit Cluster" onSave={handleEditCluster} onCancel={() => setEditCluster(null)} loading={actionLoading}>
-        <div>
-          <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Cluster Name</label>
-          <input value={clusterForm.name} onChange={e => setClusterForm(f => ({ ...f, name: e.target.value }))}
-            className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400" />
+      <FormModal open={!!editCluster} title="Edit Cluster" onSave={handleEditCluster} onCancel={() => { setEditCluster(null); setFormError(''); }} loading={actionLoading}>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Cluster Name</label>
+            <input value={clusterForm.name} onChange={e => setClusterForm(f => ({ ...f, name: e.target.value }))}
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400" />
+          </div>
+          {formError && <p className="text-xs text-red-500 font-bold">{formError}</p>}
         </div>
       </FormModal>
 
@@ -221,11 +245,16 @@ export default function AdminSchools() {
         variant="danger" confirmLabel="Delete" onConfirm={handleDeleteCluster} onCancel={() => setDeleteCluster(null)} loading={actionLoading} />
 
       {/* Add School */}
-      <FormModal open={addSchoolOpen} title="Add School" onSave={handleAddSchool} onCancel={() => setAddSchoolOpen(false)} loading={actionLoading}>
+      <FormModal open={addSchoolOpen} title="Add School" onSave={handleAddSchool} onCancel={() => { setAddSchoolOpen(false); setFormError(''); }} loading={actionLoading}>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">School Name</label>
             <input value={schoolForm.name} onChange={e => setSchoolForm(f => ({ ...f, name: e.target.value }))}
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400" />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Abbreviation <span className="font-normal normal-case text-slate-400">(optional)</span></label>
+            <input value={schoolForm.abbreviation} onChange={e => setSchoolForm(f => ({ ...f, abbreviation: e.target.value }))} placeholder="e.g. SNES"
               className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400" />
           </div>
           <div>
@@ -236,15 +265,21 @@ export default function AdminSchools() {
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Cluster</label>
             <SearchableSelect options={clusters.map(c => ({ value: c.id, label: `Cluster ${c.cluster_number}: ${c.name}` }))} value={schoolForm.cluster_id} onChange={v => setSchoolForm(f => ({ ...f, cluster_id: v }))} />
           </div>
+          {formError && <p className="text-xs text-red-500 font-bold">{formError}</p>}
         </div>
       </FormModal>
 
       {/* Edit School */}
-      <FormModal open={!!editSchool} title="Edit School" onSave={handleEditSchool} onCancel={() => setEditSchool(null)} loading={actionLoading}>
+      <FormModal open={!!editSchool} title="Edit School" onSave={handleEditSchool} onCancel={() => { setEditSchool(null); setFormError(''); }} loading={actionLoading}>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">School Name</label>
             <input value={schoolForm.name} onChange={e => setSchoolForm(f => ({ ...f, name: e.target.value }))}
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400" />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Abbreviation <span className="font-normal normal-case text-slate-400">(optional)</span></label>
+            <input value={schoolForm.abbreviation} onChange={e => setSchoolForm(f => ({ ...f, abbreviation: e.target.value }))} placeholder="e.g. SNES"
               className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400" />
           </div>
           <div>
@@ -255,6 +290,7 @@ export default function AdminSchools() {
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Cluster</label>
             <SearchableSelect options={clusters.map(c => ({ value: c.id, label: `Cluster ${c.cluster_number}: ${c.name}` }))} value={schoolForm.cluster_id} onChange={v => setSchoolForm(f => ({ ...f, cluster_id: v }))} />
           </div>
+          {formError && <p className="text-xs text-red-500 font-bold">{formError}</p>}
         </div>
       </FormModal>
 
@@ -263,7 +299,8 @@ export default function AdminSchools() {
         variant="danger" confirmLabel="Delete" onConfirm={handleDeleteSchool} onCancel={() => setDeleteSchool(null)} loading={actionLoading} />
 
       {/* Program Restrictions */}
-      <FormModal open={!!restrictSchool} title={`Program Restrictions — ${restrictSchool?.name}`} onSave={handleSaveRestrictions} onCancel={() => setRestrictSchool(null)} loading={actionLoading} saveLabel="Save Restrictions">
+      <FormModal open={!!restrictSchool} title={`Program Restrictions — ${restrictSchool?.name}`} onSave={handleSaveRestrictions} onCancel={() => { setRestrictSchool(null); setFormError(''); }} loading={actionLoading} saveLabel="Save Restrictions">
+        {formError && <p className="text-xs text-red-500 font-bold mb-3">{formError}</p>}
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
           <strong>Checked</strong> = program is available to this school. <strong>Unchecked</strong> = restricted.
         </p>
