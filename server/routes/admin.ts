@@ -77,10 +77,11 @@ adminRoutes.get("/overview", async (c) => {
 
   const quarterPrefixes: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
 
-  const [totalSchools, totalUsers, totalPrograms, aipCount, pirCount, pirsByQuarter, schoolsWithAIP] = await Promise.all([
+  const [totalSchools, totalUsers, totalPrograms, totalProgramOwners, aipCount, pirCount, pirsByQuarter, schoolsWithAIP] = await Promise.all([
     prisma.school.count(),
     prisma.user.count({ where: { is_active: true } }),
     prisma.program.count(),
+    prisma.user.count({ where: { is_active: true, role: "Division Personnel" } }),
     prisma.aIP.count({ where: { year } }),
     prisma.pIR.count(),
     // PIR quarterly breakdown for the current year
@@ -167,14 +168,14 @@ adminRoutes.get("/overview", async (c) => {
     (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
 
-  // Recent submissions (PIR-heavy: 7 PIRs, 3 AIPs)
+  // Recent submissions (up to 20)
   const recentAIPs = await prisma.aIP.findMany({
-    take: 3,
+    take: 10,
     orderBy: { created_at: "desc" },
     include: { school: true, program: true, created_by: true },
   });
   const recentPIRs = await prisma.pIR.findMany({
-    take: 7,
+    take: 15,
     orderBy: { created_at: "desc" },
     include: { aip: { include: { school: true, program: true } }, created_by: true },
   });
@@ -206,7 +207,7 @@ adminRoutes.get("/overview", async (c) => {
       if (a.type !== b.type) return a.type === "PIR" ? -1 : 1;
       return new Date(b.submitted).getTime() - new Date(a.submitted).getTime();
     })
-    .slice(0, 10);
+    .slice(0, 20);
 
   // Cluster data for both AIP compliance and PIR status heatmaps
   const currentQPrefix = quarterPrefixes[currentQuarter];
@@ -240,22 +241,43 @@ adminRoutes.get("/overview", async (c) => {
   });
 
   // PIR submission status by cluster for the current quarter
+  // Count at the AIP (program) level for accuracy — each AIP needs its own PIR
   const pirClusterStatus = clusters.map((cl) => {
-    const totalSchoolsInCluster = cl.schools.length;
-    const schoolsWithPIR = cl.schools.filter((s) =>
-      s.aips.some((a) => a.pirs.some((p) => p.quarter.startsWith(currentQPrefix)))
-    ).length;
-    const approvedCount = cl.schools.filter((s) =>
-      s.aips.some((a) => a.pirs.some((p) => p.quarter.startsWith(currentQPrefix) && p.status === "Approved"))
-    ).length;
+    const totalSchools = cl.schools.length;
+    const allAips = cl.schools.flatMap((s) => s.aips);
+    const totalAips = allAips.length;
+    const pirsThisQ = allAips.flatMap((a) =>
+      a.pirs.filter((p) => p.quarter.startsWith(currentQPrefix))
+    );
+    const submittedAips = pirsThisQ.length;
+    const approvedAips = pirsThisQ.filter((p) => p.status === "Approved").length;
+
+    // School-level breakdown for drill-down
+    const schools = cl.schools.map((s) => {
+      const schoolAipCount = s.aips.length;
+      const schoolPirs = s.aips.flatMap((a) =>
+        a.pirs.filter((p) => p.quarter.startsWith(currentQPrefix))
+      );
+      return {
+        id: s.id,
+        name: s.name,
+        totalAips: schoolAipCount,
+        submitted: schoolPirs.length,
+        approved: schoolPirs.filter((p) => p.status === "Approved").length,
+        pct: schoolAipCount > 0 ? Math.round((schoolPirs.length / schoolAipCount) * 100) : 0,
+      };
+    }).sort((a, b) => a.pct - b.pct); // worst first so admins see who needs attention
+
     return {
       id: cl.id,
       name: cl.name,
       cluster_number: cl.cluster_number,
-      totalSchools: totalSchoolsInCluster,
-      submitted: schoolsWithPIR,
-      approved: approvedCount,
-      pct: totalSchoolsInCluster > 0 ? Math.round((schoolsWithPIR / totalSchoolsInCluster) * 100) : 0,
+      totalSchools,
+      totalAips,
+      submittedAips,
+      approvedAips,
+      pct: totalAips > 0 ? Math.round((submittedAips / totalAips) * 100) : 0,
+      schools,
     };
   });
 
@@ -264,6 +286,7 @@ adminRoutes.get("/overview", async (c) => {
       totalSchools,
       totalUsers,
       totalPrograms,
+      totalProgramOwners,
       aipCompliantCount,
       aipCompliancePct: totalSchools > 0 ? Math.round((aipCompliantCount / totalSchools) * 100) : 0,
       pirCount,
@@ -385,6 +408,7 @@ adminRoutes.get("/submissions", async (c) => {
   const normalizedPIRs = (pirs as Record<string, unknown>[]).map((p: Record<string, unknown>) => {
     const pir = p as {
       id: number; status: string; quarter: string; created_at: Date;
+      remarks?: string | null;
       aip: {
         year: number;
         school?: { id: number; name: string; cluster?: { id: number; cluster_number: number; name: string } } | null;
@@ -402,6 +426,7 @@ adminRoutes.get("/submissions", async (c) => {
       dateSubmitted: pir.created_at,
       submittedBy: (pir.created_by as { name?: string | null; email?: string } | null)?.name
         ?? (pir.created_by as { name?: string | null; email?: string } | null)?.email ?? "—",
+      has_remarks: !!(pir.remarks && pir.remarks.trim()),
     };
   });
 
@@ -481,7 +506,7 @@ adminRoutes.get("/submissions/export", async (c) => {
     });
   }
 
-  return c.json({ data: rows });
+  return c.json({ error: "Unsupported export format. Use 'csv'." }, 400);
 });
 
 adminRoutes.get("/submissions/:id", async (c) => {
@@ -791,9 +816,9 @@ adminRoutes.get("/schools", async (c) => {
 
 adminRoutes.post("/schools", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
-  const { name, level, cluster_id } = await c.req.json();
-  const school = await prisma.school.create({ data: { name, level, cluster_id } });
-  await writeAuditLog(admin.id, "created_school", "School", school.id, { name, level, cluster_id });
+  const { name, abbreviation, level, cluster_id } = await c.req.json();
+  const school = await prisma.school.create({ data: { name, abbreviation: abbreviation || null, level, cluster_id } });
+  await writeAuditLog(admin.id, "created_school", "School", school.id, { name, abbreviation, level, cluster_id });
   return c.json(school);
 });
 
@@ -801,10 +826,15 @@ adminRoutes.patch("/schools/:id", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const id = parseInt(c.req.param("id"));
   const body = await c.req.json();
-  const { name, level, cluster_id } = body;
+  const { name, abbreviation, level, cluster_id } = body;
   const school = await prisma.school.update({
     where: { id },
-    data: { ...(name && { name }), ...(level && { level }), ...(cluster_id && { cluster_id }) },
+    data: {
+      ...(name && { name }),
+      ...('abbreviation' in body && { abbreviation: abbreviation || null }),
+      ...(level && { level }),
+      ...(cluster_id && { cluster_id }),
+    },
   });
   await writeAuditLog(admin.id, "updated_school", "School", id, body);
   return c.json(school);
@@ -955,6 +985,7 @@ adminRoutes.get("/reports/compliance", async (c) => {
     where: clusterId ? { cluster_id: clusterId } : undefined,
     include: {
       aips: { where: { year }, include: { program: true } },
+      restricted_programs: { select: { id: true } },
     },
     orderBy: { name: "asc" },
   });
@@ -1023,12 +1054,13 @@ adminRoutes.get("/reports/budget", async (c) => {
 });
 
 adminRoutes.get("/reports/workload", async (c) => {
+  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   const personnel = await prisma.user.findMany({
     where: { role: "Division Personnel", is_active: true },
     include: {
       programs: true,
-      aips: true,
-      pirs: true,
+      aips: { where: { year } },
+      pirs: { where: { aip: { year } } },
     },
   });
 
@@ -1152,6 +1184,7 @@ adminRoutes.post("/announcements", async (c) => {
 // AUDIT LOG
 // ==========================================
 
+// NOTE: No frontend consumer yet — retained for future Admin Audit Log page
 adminRoutes.get("/audit-log", async (c) => {
   const page = parseInt(c.req.query("page") || "1");
   const limit = parseInt(c.req.query("limit") || "50");
@@ -1170,6 +1203,31 @@ adminRoutes.get("/audit-log", async (c) => {
 // ==========================================
 // SYSTEM SETTINGS
 // ==========================================
+
+// Lightweight endpoint for AdminLayout — avoids the full /overview query
+adminRoutes.get("/layout-info", async (c) => {
+  const year = new Date().getFullYear();
+  const month = new Date().getMonth() + 1;
+  const currentQuarter = Math.ceil(month / 3);
+
+  const deadline = await prisma.deadline.findUnique({
+    where: { year_quarter: { year, quarter: currentQuarter } },
+  });
+  const defaultDeadlines: Record<number, string> = {
+    1: `${year}-03-31`,
+    2: `${year}-06-30`,
+    3: `${year}-09-30`,
+    4: `${year}-12-31`,
+  };
+  const deadlineDate = deadline
+    ? deadline.date
+    : new Date(defaultDeadlines[currentQuarter]);
+  const daysLeft = Math.ceil(
+    (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  );
+
+  return c.json({ daysLeft, currentQuarter, deadlineDate });
+});
 
 adminRoutes.get("/settings/system-info", async (c) => {
   const [userCount, schoolCount, programCount] = await Promise.all([
