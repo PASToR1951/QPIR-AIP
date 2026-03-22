@@ -20,10 +20,10 @@ export const ConfirmModal = ({ open, title, message, variant = 'danger', confirm
             className="relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-2xl w-full max-w-md p-6"
           >
             <button onClick={onCancel} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-              <X size={18} />
+              <X size={20} />
             </button>
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${isDanger ? 'bg-rose-100 dark:bg-rose-950/40' : 'bg-indigo-100 dark:bg-indigo-950/40'}`}>
-              {isDanger ? <Trash size={22} className="text-rose-600 dark:text-rose-400" /> : <Warning size={22} className="text-indigo-600 dark:text-indigo-400" />}
+              {isDanger ? <Trash size={24} className="text-rose-600 dark:text-rose-400" /> : <Warning size={24} className="text-indigo-600 dark:text-indigo-400" />}
             </div>
             <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-2">{title}</h3>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">{message}</p>

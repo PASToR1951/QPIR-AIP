@@ -24,6 +24,7 @@ export default function AdminPrograms() {
   const [personnelProgram, setPersonnelProgram] = useState(null);
   const [assignedIds, setAssignedIds] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const fetchAll = useCallback(() => {
     setLoading(true);
@@ -40,32 +41,44 @@ export default function AdminPrograms() {
   const handleAdd = async () => {
     setActionLoading(true);
     try {
+      setFormError('');
       await axios.post(`${API}/api/admin/programs`, programForm, { headers: authHeaders() });
       setAddOpen(false); setProgramForm({ title: '', school_level_requirement: 'Both' }); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
   const handleEdit = async () => {
     setActionLoading(true);
     try {
+      setFormError('');
       await axios.patch(`${API}/api/admin/programs/${editProgram.id}`, { title: programForm.title, school_level_requirement: programForm.school_level_requirement }, { headers: authHeaders() });
       setEditProgram(null); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
   const handleDelete = async () => {
     setActionLoading(true);
     try {
+      setFormError('');
       await axios.delete(`${API}/api/admin/programs/${deleteProgram.id}`, { headers: authHeaders() });
       setDeleteProgram(null); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
   const handleSavePersonnel = async () => {
     setActionLoading(true);
     try {
+      setFormError('');
       await axios.patch(`${API}/api/admin/programs/${personnelProgram.id}/personnel`, { user_ids: assignedIds }, { headers: authHeaders() });
       setPersonnelProgram(null); fetchAll();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
@@ -77,7 +90,7 @@ export default function AdminPrograms() {
   const LEVEL_PILLS = ['All', ...LEVELS];
 
   return (
-    <AdminLayout title="Programs" breadcrumbs={[{ label: 'Programs' }]}>
+    <AdminLayout>
       <div className="space-y-4">
 
         {/* Top Bar */}
@@ -94,7 +107,7 @@ export default function AdminPrograms() {
           </div>
           <button onClick={() => { setAddOpen(true); setProgramForm({ title: '', school_level_requirement: 'Both' }); }}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors ml-auto">
-            <Plus size={15} /> Add Program
+            <Plus size={17} /> Add Program
           </button>
         </div>
 
@@ -112,8 +125,8 @@ export default function AdminPrograms() {
                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{prog.school_level_requirement}</span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => { setEditProgram(prog); setProgramForm({ title: prog.title, school_level_requirement: prog.school_level_requirement }); }} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={14} /></button>
-                    <button onClick={() => setDeleteProgram(prog)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><Trash size={14} /></button>
+                    <button onClick={() => { setEditProgram(prog); setProgramForm({ title: prog.title, school_level_requirement: prog.school_level_requirement }); }} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={16} /></button>
+                    <button onClick={() => setDeleteProgram(prog)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><Trash size={16} /></button>
                   </div>
                 </div>
 
@@ -135,7 +148,7 @@ export default function AdminPrograms() {
                   <span className="text-xs text-slate-400 dark:text-slate-500">{prog._count?.aips ?? 0} AIPs filed</span>
                   <button onClick={() => { setPersonnelProgram(prog); setAssignedIds(prog.personnel?.map(p => p.id) ?? []); }}
                     className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                    <Users size={13} /> Manage Personnel
+                    <Users size={15} /> Manage Personnel
                   </button>
                 </div>
               </div>
@@ -150,7 +163,7 @@ export default function AdminPrograms() {
       {/* Add/Edit Program */}
       <FormModal open={addOpen || !!editProgram} title={editProgram ? 'Edit Program' : 'Add Program'}
         onSave={editProgram ? handleEdit : handleAdd}
-        onCancel={() => { setAddOpen(false); setEditProgram(null); }} loading={actionLoading}>
+        onCancel={() => { setAddOpen(false); setEditProgram(null); setFormError(''); }} loading={actionLoading}>
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Program Title</label>
@@ -161,6 +174,7 @@ export default function AdminPrograms() {
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">School Level Requirement</label>
             <SearchableSelect options={LEVELS.map(l => ({ value: l, label: l }))} value={programForm.school_level_requirement} onChange={v => setProgramForm(f => ({ ...f, school_level_requirement: v }))} />
           </div>
+          {formError && <p className="text-xs text-red-500 font-bold">{formError}</p>}
         </div>
       </FormModal>
 
@@ -169,7 +183,8 @@ export default function AdminPrograms() {
         variant="danger" confirmLabel="Delete" onConfirm={handleDelete} onCancel={() => setDeleteProgram(null)} loading={actionLoading} />
 
       {/* Personnel Assignment */}
-      <FormModal open={!!personnelProgram} title={`Assign Personnel — ${personnelProgram?.title}`} onSave={handleSavePersonnel} onCancel={() => setPersonnelProgram(null)} loading={actionLoading} wide saveLabel="Save">
+      <FormModal open={!!personnelProgram} title={`Assign Personnel — ${personnelProgram?.title}`} onSave={handleSavePersonnel} onCancel={() => { setPersonnelProgram(null); setFormError(''); }} loading={actionLoading} wide saveLabel="Save">
+        {formError && <p className="text-xs text-red-500 font-bold mb-3">{formError}</p>}
         <div className="grid grid-cols-2 gap-4 min-h-[240px]">
           {/* Available */}
           <div>
@@ -179,7 +194,7 @@ export default function AdminPrograms() {
                 <button key={p.id} onClick={() => setAssignedIds(ids => [...ids, p.id])}
                   className="w-full flex items-center justify-between px-3 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg transition-colors">
                   <span className="truncate">{p.name ?? p.email}</span>
-                  <ArrowRight size={14} weight="bold" className="text-slate-400 shrink-0" />
+                  <ArrowRight size={16} weight="bold" className="text-slate-400 shrink-0" />
                 </button>
               ))}
               {allPersonnel.filter(p => !assignedIds.includes(p.id)).length === 0 && (
@@ -194,7 +209,7 @@ export default function AdminPrograms() {
               {allPersonnel.filter(p => assignedIds.includes(p.id)).map(p => (
                 <button key={p.id} onClick={() => setAssignedIds(ids => ids.filter(i => i !== p.id))}
                   className="w-full flex items-center justify-between px-3 py-2 text-sm font-bold text-indigo-700 dark:text-indigo-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors">
-                  <ArrowLeft size={14} weight="bold" className="shrink-0" />
+                  <ArrowLeft size={16} weight="bold" className="shrink-0" />
                   <span className="truncate">{p.name ?? p.email}</span>
                 </button>
               ))}

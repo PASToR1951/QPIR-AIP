@@ -36,19 +36,19 @@ export const MultiSelect = ({ options = [], selected = [], onChange, placeholder
             <span key={o.value} className="flex items-center gap-1 bg-indigo-100 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 text-xs font-bold px-2 py-0.5 rounded-lg">
               {o.label}
               <span onClick={(e) => { e.stopPropagation(); toggle(o.value); }} className="hover:text-indigo-900 dark:hover:text-indigo-200">
-                <X size={10} />
+                <X size={12} />
               </span>
             </span>
           ))
         )}
-        <CaretDown size={14} className={`ml-auto text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <CaretDown size={16} className={`ml-auto text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
         <div className="absolute z-50 top-full mt-1 w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl shadow-xl overflow-hidden">
           <div className="p-2 border-b border-slate-100 dark:border-dark-border">
             <div className="flex items-center gap-2 px-2">
-              <MagnifyingGlass size={14} className="text-slate-400 shrink-0" />
+              <MagnifyingGlass size={16} className="text-slate-400 shrink-0" />
               <input
                 autoFocus
                 value={query}

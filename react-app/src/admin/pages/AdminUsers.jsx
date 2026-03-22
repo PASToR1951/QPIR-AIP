@@ -47,7 +47,7 @@ function UserForm({ form, setForm, schools, programs }) {
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">School</label>
           <SearchableSelect
-            options={schools.map(s => ({ value: s.id, label: s.name }))}
+            options={schools.filter(s => !s.user || s.id === form.school_id).map(s => ({ value: s.id, label: s.name }))}
             value={form.school_id}
             onChange={v => setForm(f => ({ ...f, school_id: v }))}
             placeholder="Select school"
@@ -169,10 +169,10 @@ export default function AdminUsers() {
     {
       key: 'id', label: 'Actions', render: (_, row) => (
         <div className="flex items-center gap-1">
-          <button onClick={() => { setEditUser(row); setForm({ name: row.name || '', email: row.email, password: '', role: row.role, school_id: row.school?.id ?? null, program_ids: row.programs?.map(p => p.id) ?? [] }); setFormError(''); }} title="Edit" className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={15} /></button>
-          <button onClick={() => setResetUser(row)} title="Reset Password" className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"><Key size={15} /></button>
-          <button onClick={() => setToggleUser(row)} title={row.is_active ? 'Disable' : 'Enable'} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"><Prohibit size={15} /></button>
-          <button onClick={() => setDeleteUser(row)} title="Delete" className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><Trash size={15} /></button>
+          <button onClick={() => { setEditUser(row); setForm({ name: row.name || '', email: row.email, password: '', role: row.role, school_id: row.school?.id ?? null, program_ids: row.programs?.map(p => p.id) ?? [] }); setFormError(''); }} title="Edit" className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={17} /></button>
+          <button onClick={() => setResetUser(row)} title="Reset Password" className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"><Key size={17} /></button>
+          <button onClick={() => setToggleUser(row)} title={row.is_active ? 'Disable' : 'Enable'} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"><Prohibit size={17} /></button>
+          <button onClick={() => setDeleteUser(row)} title="Delete" className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><Trash size={17} /></button>
         </div>
       )
     },
@@ -181,13 +181,13 @@ export default function AdminUsers() {
   const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'Admin'];
 
   return (
-    <AdminLayout title="Users" breadcrumbs={[{ label: 'Users' }]}>
+    <AdminLayout>
       <div className="space-y-4">
 
         {/* Top Bar */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-48">
-            <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <MagnifyingGlass size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search by name or email…"
@@ -206,7 +206,7 @@ export default function AdminUsers() {
             onClick={() => { setCreateOpen(true); setForm(emptyForm); setFormError(''); }}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors ml-auto"
           >
-            <Plus size={15} /> Add User
+            <Plus size={17} /> Add User
           </button>
         </div>
 
@@ -258,7 +258,7 @@ export default function AdminUsers() {
               <code className="flex-1 font-mono text-lg font-black text-slate-900 dark:text-slate-100 tracking-wider">{tempPassword}</code>
               <button onClick={() => { navigator.clipboard.writeText(tempPassword); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
                 className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                {copied ? <Check size={18} className="text-emerald-500" /> : <Copy size={18} />}
+                {copied ? <Check size={20} className="text-emerald-500" /> : <Copy size={20} />}
               </button>
             </div>
             <button onClick={() => { setTempPassword(null); setCopied(false); }}

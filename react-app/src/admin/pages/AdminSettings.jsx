@@ -28,6 +28,7 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [previewEnabled, setPreviewEnabled] = useState(false);
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -44,16 +45,19 @@ export default function AdminSettings() {
   const handleSaveAnnouncement = async () => {
     setSaving(true);
     try {
+      setFormError('');
       await axios.post(`${API}/api/admin/announcements`, announcement, { headers: authHeaders() });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setSaving(false); }
   };
 
   const currentYear = new Date().getFullYear();
 
   return (
-    <AdminLayout title="Settings" breadcrumbs={[{ label: 'Settings' }]}>
+    <AdminLayout>
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />
@@ -101,7 +105,7 @@ export default function AdminSettings() {
                 onClick={() => setPreviewEnabled(!previewEnabled)}
                 className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
               >
-                <Eye size={14} /> Preview
+                <Eye size={16} /> Preview
               </button>
             </div>
 
@@ -112,13 +116,15 @@ export default function AdminSettings() {
               </div>
             )}
 
+            {formError && <p className="text-xs text-red-500 font-bold">{formError}</p>}
+
             <div className="flex items-center gap-3">
               <button
                 onClick={handleSaveAnnouncement}
                 disabled={saving}
                 className="flex items-center gap-1.5 px-5 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 rounded-xl transition-colors"
               >
-                <FloppyDisk size={15} />
+                <FloppyDisk size={17} />
                 {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Announcement'}
               </button>
             </div>
@@ -149,7 +155,7 @@ export default function AdminSettings() {
                 ].map(item => (
                   <div key={item.label} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-dark-base rounded-xl">
                     <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-lg flex items-center justify-center shrink-0">
-                      <item.icon size={16} weight="bold" />
+                      <item.icon size={18} weight="bold" />
                     </div>
                     <div>
                       <p className="text-lg font-black text-slate-900 dark:text-slate-100 leading-none">{item.value}</p>

@@ -27,6 +27,7 @@ export default function AdminDeadlines() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(null);
   const [localDates, setLocalDates] = useState({});
+  const [formError, setFormError] = useState('');
 
   const fetchDeadlines = useCallback(() => {
     setLoading(true);
@@ -46,8 +47,11 @@ export default function AdminDeadlines() {
   const handleSave = async (quarter) => {
     setSaving(quarter);
     try {
+      setFormError('');
       await axios.post(`${API}/api/admin/deadlines`, { year, quarter, date: localDates[quarter] }, { headers: authHeaders() });
       fetchDeadlines();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setSaving(null); }
   };
 
@@ -55,8 +59,11 @@ export default function AdminDeadlines() {
     if (!deadline.id) return;
     setSaving(deadline.quarter);
     try {
+      setFormError('');
       await axios.delete(`${API}/api/admin/deadlines/${deadline.id}`, { headers: authHeaders() });
       fetchDeadlines();
+    } catch (e) {
+      setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setSaving(null); }
   };
 
@@ -78,7 +85,7 @@ export default function AdminDeadlines() {
   const YEARS = [year - 1, year, year + 1];
 
   return (
-    <AdminLayout title="Deadlines" breadcrumbs={[{ label: 'Deadlines' }]}>
+    <AdminLayout>
       <div className="space-y-6">
 
         {/* Year Selector */}
@@ -100,6 +107,8 @@ export default function AdminDeadlines() {
           </div>
         ) : (
           <>
+            {formError && <p className="text-xs text-red-500 font-bold">{formError}</p>}
+
             {/* Quarter Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {deadlines.map((d, i) => {
@@ -117,7 +126,7 @@ export default function AdminDeadlines() {
 
                     <div>
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                        <CalendarBlank size={11} className="inline mr-1" />Deadline
+                        <CalendarBlank size={13} className="inline mr-1" />Deadline
                       </label>
                       <input
                         type="date"
@@ -139,13 +148,13 @@ export default function AdminDeadlines() {
                         disabled={!dateChanged(d.quarter) || saving === d.quarter}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 rounded-xl transition-colors"
                       >
-                        <FloppyDisk size={13} />
+                        <FloppyDisk size={15} />
                         {saving === d.quarter ? 'Saving…' : 'Save'}
                       </button>
                       {d.isCustom && (
                         <button onClick={() => handleReset(d)} disabled={saving === d.quarter}
                           className="flex items-center gap-1 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
-                          <ArrowCounterClockwise size={13} /> Reset
+                          <ArrowCounterClockwise size={15} /> Reset
                         </button>
                       )}
                     </div>

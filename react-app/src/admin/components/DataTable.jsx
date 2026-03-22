@@ -62,7 +62,7 @@ export const DataTable = ({
                   <div className="flex items-center gap-1">
                     {col.label}
                     {col.sortable && sortKey === col.key && (
-                      sortDir === 'asc' ? <ArrowUp size={12} weight="bold" /> : <ArrowDown size={12} weight="bold" />
+                      sortDir === 'asc' ? <ArrowUp size={14} weight="bold" /> : <ArrowDown size={14} weight="bold" />
                     )}
                   </div>
                 </th>
@@ -102,7 +102,7 @@ export const DataTable = ({
           <div className="flex items-center gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
               className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-dark-border disabled:opacity-30 transition-colors">
-              <CaretLeft size={16} />
+              <CaretLeft size={18} />
             </button>
             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
               const pg = page <= 3 ? i + 1 : page >= totalPages - 2 ? totalPages - 4 + i : page - 2 + i;
@@ -116,7 +116,7 @@ export const DataTable = ({
             })}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
               className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-dark-border disabled:opacity-30 transition-colors">
-              <CaretRight size={16} />
+              <CaretRight size={18} />
             </button>
           </div>
         </div>
