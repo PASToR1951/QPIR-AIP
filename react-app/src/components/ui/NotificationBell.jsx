@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, X } from '@phosphor-icons/react';
+import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API = import.meta.env.VITE_API_URL;
@@ -112,7 +112,7 @@ export function NotificationBell() {
                   </button>
                 )}
                 <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                  <X size={16} />
+                  <XCircle size={18} weight="fill" />
                 </button>
               </div>
             </div>

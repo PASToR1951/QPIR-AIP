@@ -32,7 +32,7 @@ model School {
   // Relations
   cluster    Cluster  @relation(fields: [cluster_id], references: [id], onDelete: Cascade)
   aips       AIP[]
-  user       User?
+  users      User[]
   restricted_programs Program[] @relation("RestrictedPrograms")
 
   @@map("schools")
@@ -40,15 +40,18 @@ model School {
 
 
 model Program {
-  id                       Int    @id @default(autoincrement())
-  title                    String @unique
-  school_level_requirement String // "Elementary", "Secondary", "Both", "Select Schools"
-  
+  id                       Int     @id @default(autoincrement())
+  title                    String
+  abbreviation             String? // Short name / acronym, e.g. "SPED"
+  category                 String? // KRA grouping: "ACCESS", "EQUITY", "QUALITY", "WELL-BEING & RESILIENCY", "GOVERNANCE"
+  school_level_requirement String  // "Elementary", "Secondary", "Both", "Select Schools", "Division"
+
   // Relations
   aips                     AIP[]
   personnel                User[] @relation("UserPrograms")
   restricted_schools       School[] @relation("RestrictedPrograms")
 
+  @@unique([title, school_level_requirement])
   @@map("programs")
 }
 
@@ -56,12 +59,15 @@ model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
   password  String    // Hashed password
-  role      String    // "School", "Division Personnel", or "Admin"
-  name      String?
-  is_active Boolean   @default(true)
+  role            String    // "School", "Division Personnel", or "Admin"
+  name            String?
+  first_name      String?
+  middle_initial  String?
+  last_name       String?
+  is_active       Boolean   @default(true)
 
   // Relation to School (For School Role Users)
-  school_id Int?      @unique
+  school_id Int?
   school    School?   @relation(fields: [school_id], references: [id])
 
   // Relation to Programs (For Division Personnel Users)
@@ -138,6 +144,7 @@ model PIR {
   fund_source        String
   status             String   @default("Submitted") // "Draft" | "Submitted" | "Under Review" | "Approved" | "Returned"
   remarks            String?  // Admin remarks/annotations on this PIR
+  presented          Boolean  @default(false) // Admin-toggled: whether school presented this PIR
   created_at         DateTime @default(now())
 
   // Relations
@@ -158,6 +165,7 @@ model PIRActivityReview {
   physical_accomplished  Decimal  @default(0.0)
   financial_accomplished Decimal  @default(0.0)
   actions_to_address_gap String?
+  admin_notes            String?     // Admin per-activity evaluation notes
 
   // Relations
   pir                    PIR         @relation(fields: [pir_id], references: [id], onDelete: Cascade)
@@ -205,13 +213,14 @@ model Deadline {
 }
 
 model Announcement {
-  id         Int      @id @default(autoincrement())
-  message    String
-  type       String   @default("info") // "info" | "warning" | "critical"
-  is_active  Boolean  @default(true)
-  created_by Int
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  message     String
+  type        String   @default("info") // "info" | "warning" | "critical"
+  is_active   Boolean  @default(true)
+  dismissible Boolean  @default(true)
+  created_by  Int
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   @@map("announcements")
 }

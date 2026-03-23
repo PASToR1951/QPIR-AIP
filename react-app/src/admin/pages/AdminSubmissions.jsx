@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, Check, ArrowBendUpLeft, DownloadSimple, X, Funnel, NotePencil } from '@phosphor-icons/react';
+import { Eye, Check, ArrowBendUpLeft, DownloadSimple, XCircle, Funnel } from '@phosphor-icons/react';
 import { AdminLayout } from '../AdminLayout.jsx';
 import { DataTable } from '../components/DataTable.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
-import { PIRRemarksModal } from '../components/PIRRemarksModal.jsx';
+import { PIRReviewDrawer } from '../components/PIRReviewDrawer.jsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -19,7 +20,9 @@ function relativeDate(d) {
 }
 
 export default function AdminSubmissions() {
-  const [tab, setTab] = useState('all'); // 'all' | 'aip' | 'pir'
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('type') || 'all'; // 'all' | 'aip' | 'pir'
+  const setTab = (key) => { setSearchParams(prev => { prev.set('type', key); return prev; }); setPage(1); };
   const [submissions, setSubmissions] = useState([]);
   const [totals, setTotals] = useState({ aipTotal: 0, pirTotal: 0, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -40,9 +43,9 @@ export default function AdminSubmissions() {
   const [returnItem, setReturnItem] = useState(null);
   const [returnFeedback, setReturnFeedback] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [remarksItem, setRemarksItem] = useState(null);
-  // Track which PIR ids have remarks (for indicator badge)
-  const [remarkedIds, setRemarkedIds] = useState(new Set());
+  const [reviewItem, setReviewItem] = useState(null);
+
+  const underReviewTimerRef = useRef(null);
 
   // Selected rows for bulk
   const [selectedIds, setSelectedIds] = useState([]);
@@ -77,12 +80,6 @@ export default function AdminSubmissions() {
       .then(r => {
         setSubmissions(r.data.data);
         setTotals({ aipTotal: r.data.aipTotal, pirTotal: r.data.pirTotal, total: r.data.total });
-        // Track PIR rows that already have remarks (server includes has_remarks flag or we derive from local state)
-        setRemarkedIds(prev => {
-          const next = new Set(prev);
-          r.data.data.forEach(row => { if (row.type === 'PIR' && row.has_remarks) next.add(row.id); });
-          return next;
-        });
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -90,17 +87,35 @@ export default function AdminSubmissions() {
 
   useEffect(() => { fetchSubmissions(); }, [fetchSubmissions]);
 
+  const closeView = () => {
+    clearTimeout(underReviewTimerRef.current);
+    underReviewTimerRef.current = null;
+    setViewItem(null);
+    setViewData(null);
+  };
+
   const openView = async (item) => {
+    clearTimeout(underReviewTimerRef.current);
+    underReviewTimerRef.current = null;
+
     setViewItem(item);
     setViewLoading(true);
     try {
       const r = await axios.get(`${API}/api/admin/submissions/${item.id}?type=${item.type.toLowerCase()}`, { headers: authHeaders() });
       setViewData(r.data);
+
+      if (item.type === 'PIR' && item.status === 'Submitted') {
+        underReviewTimerRef.current = setTimeout(() => {
+          handleStatusUpdate(item.id, item.type, 'Under Review');
+        }, 2 * 60 * 1000);
+      }
     } catch { setViewData(null); }
     finally { setViewLoading(false); }
   };
 
   const handleStatusUpdate = async (id, type, status, feedback = '') => {
+    clearTimeout(underReviewTimerRef.current);
+    underReviewTimerRef.current = null;
     setActionLoading(true);
     try {
       await axios.patch(`${API}/api/admin/submissions/${id}/status`, { type: type.toLowerCase(), status, feedback }, { headers: authHeaders() });
@@ -171,7 +186,7 @@ export default function AdminSubmissions() {
   const clearFilters = () => setFilters({ cluster: null, school: null, program: null, quarter: null, year: null, status: null });
 
   const TABS = [
-    { key: 'all', label: 'All', count: totals.total },
+    { key: 'all', label: 'All', count: totals.aipTotal + totals.pirTotal },
     { key: 'aip', label: 'AIPs', count: totals.aipTotal },
     { key: 'pir', label: 'PIRs', count: totals.pirTotal },
   ];
@@ -192,22 +207,16 @@ export default function AdminSubmissions() {
     { key: 'status', label: 'Status', render: v => <StatusBadge status={v} size="xs" /> },
     {
       key: 'id', label: 'Actions', render: (_, row) => (
-        <div className="flex items-center gap-1">
-          <button onClick={() => openView(row)} title="View" className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><Eye size={17} /></button>
+        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => row.type === 'PIR' ? setReviewItem(row) : openView(row)}
+            title={row.type === 'PIR' ? 'Review PIR' : 'View'}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
+          >
+            <Eye size={17} />
+          </button>
           <button onClick={() => setApproveItem(row)} title="Approve" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"><Check size={17} /></button>
           <button onClick={() => { setReturnItem(row); setReturnFeedback(''); }} title="Return" className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"><ArrowBendUpLeft size={17} /></button>
-          {row.type === 'PIR' && (
-            <button
-              onClick={() => setRemarksItem(row)}
-              title="Add Remarks"
-              className={`relative p-1.5 rounded-lg transition-colors ${remarkedIds.has(row.id) ? 'text-accent hover:bg-rose-950/20' : 'text-slate-400 hover:text-accent hover:bg-rose-950/20'}`}
-            >
-              <NotePencil size={17} />
-              {remarkedIds.has(row.id) && (
-                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-accent" />
-              )}
-            </button>
-          )}
           <button onClick={() => { openView(row).then(() => new Promise(r => setTimeout(r, 500))).then(() => handleExportPDF()); }} title="Download PDF" className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><DownloadSimple size={17} /></button>
         </div>
       )
@@ -221,7 +230,7 @@ export default function AdminSubmissions() {
         {/* Tabs */}
         <div className="flex items-center gap-1 border-b border-slate-200 dark:border-dark-border">
           {TABS.map(t => (
-            <button key={t.key} onClick={() => { setTab(t.key); setPage(1); }}
+            <button key={t.key} onClick={() => setTab(t.key)}
               className={`px-4 py-2.5 text-sm font-bold transition-colors relative flex items-center gap-2 ${tab === t.key ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
             >
               {t.label}
@@ -312,6 +321,8 @@ export default function AdminSubmissions() {
             selectable
             selectedIds={selectedIds}
             onSelectChange={setSelectedIds}
+            onRowClick={(row) => { if (row.type === 'PIR') setReviewItem(row); else openView(row); }}
+            getRowClassName={(row) => row.type === 'PIR' ? 'cursor-pointer' : ''}
             emptyMessage="No submissions match the current filters."
           />
         )}
@@ -354,7 +365,7 @@ export default function AdminSubmissions() {
       {/* View Detail Modal */}
       {viewItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => { setViewItem(null); setViewData(null); }} />
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeView} />
           <div className="relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-dark-border shrink-0">
@@ -363,8 +374,8 @@ export default function AdminSubmissions() {
                 <StatusBadge status={viewItem.type} />
                 <StatusBadge status={viewItem.status} />
               </div>
-              <button onClick={() => { setViewItem(null); setViewData(null); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <X size={20} />
+              <button onClick={closeView} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <XCircle size={22} weight="fill" />
               </button>
             </div>
 
@@ -376,7 +387,7 @@ export default function AdminSubmissions() {
                 </div>
               ) : viewData ? (
                 <div className="space-y-4 text-sm">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Program</p>
                       <p className="font-bold text-slate-800 dark:text-slate-200">{viewData.program?.title ?? viewData.aip?.program?.title ?? '—'}</p>
@@ -440,7 +451,7 @@ export default function AdminSubmissions() {
                 <button onClick={handleExportPDF} className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors">
                   <DownloadSimple size={17} /> PDF
                 </button>
-                <button onClick={() => { setViewItem(null); setViewData(null); }} className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors">
+                <button onClick={closeView} className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors">
                   Close
                 </button>
               </div>
@@ -448,19 +459,11 @@ export default function AdminSubmissions() {
           </div>
         </div>
       )}
-      {/* PIR Remarks Modal */}
-      <PIRRemarksModal
-        open={!!remarksItem}
-        pir={remarksItem}
-        onClose={() => setRemarksItem(null)}
-        onSaved={(text) => {
-          setRemarkedIds(prev => {
-            const next = new Set(prev);
-            if (text.trim()) next.add(remarksItem.id);
-            else next.delete(remarksItem.id);
-            return next;
-          });
-        }}
+      <PIRReviewDrawer
+        open={!!reviewItem}
+        pir={reviewItem}
+        onClose={() => setReviewItem(null)}
+        onStatusChange={fetchSubmissions}
       />
     </AdminLayout>
   );

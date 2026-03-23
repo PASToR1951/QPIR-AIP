@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { WarningCircle as AlertCircle, CheckCircle as CheckCircle2, X } from '@phosphor-icons/react';
+import { WarningCircle as AlertCircle, CheckCircle as CheckCircle2, XCircle } from '@phosphor-icons/react';
 
 export const ConfirmationModal = ({ 
     isOpen, 
@@ -42,7 +42,7 @@ export const ConfirmationModal = ({
                             onClick={onClose}
                             className="absolute top-6 right-6 p-2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark-border rounded-full transition-colors"
                         >
-                            <X size={22} />
+                            <XCircle size={22} weight="fill" />
                         </button>
 
                         <div className="flex flex-col items-center text-center relative z-10">

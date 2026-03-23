@@ -50,7 +50,7 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
               />
             </div>
           </div>
-          <div className="max-h-52 overflow-y-auto py-1">
+          <div className="max-h-64 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <p className="px-4 py-3 text-sm text-slate-400 dark:text-slate-500">No results</p>
             ) : filtered.map(o => (
@@ -58,7 +58,7 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
                 key={o.value}
                 type="button"
                 onClick={() => { onChange(o.value); setOpen(false); }}
-                className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors ${o.value === value ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-dark-border'}`}
+                className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors ${o.value === value ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-indigo-600 dark:hover:text-indigo-400'}`}
               >
                 {o.label}
               </button>

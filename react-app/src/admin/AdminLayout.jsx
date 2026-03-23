@@ -51,17 +51,17 @@ export const AdminLayout = ({ children }) => {
   })();
 
   const handleLogout = () => {
+    navigate('/login', { replace: true });
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    navigate('/login');
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-rose-50/30 dark:from-dark-base dark:via-[#1A1A2E] dark:to-[#0F3460]/20 relative">
+    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-rose-50/30 dark:bg-none dark:bg-dark-base relative select-none [&_input]:select-text [&_textarea]:select-text">
       {/* Ambient gradient blobs for glassmorphism depth */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#E94560]/[0.06] dark:bg-[#E94560]/[0.04] rounded-full blur-3xl" />
-        <div className="absolute top-1/3 -right-20 w-72 h-72 bg-blue-400/[0.05] dark:bg-blue-500/[0.03] rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -right-20 w-72 h-72 bg-blue-400/[0.05] dark:bg-[#E94560]/[0.02] rounded-full blur-3xl" />
         <div className="absolute -bottom-20 left-1/4 w-80 h-80 bg-violet-300/[0.05] dark:bg-violet-500/[0.02] rounded-full blur-3xl" />
       </div>
       <AdminSidebar

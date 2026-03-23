@@ -45,6 +45,22 @@ async function writeAuditLog(
   });
 }
 
+function buildSubmittedBy(u: {
+  role?: string | null;
+  first_name?: string | null;
+  middle_initial?: string | null;
+  last_name?: string | null;
+  name?: string | null;
+  email?: string | null;
+} | null | undefined): string {
+  if (!u) return "—";
+  if (u.role === "Division Personnel" && u.first_name && u.last_name) {
+    const mi = u.middle_initial ? ` ${u.middle_initial}.` : "";
+    return `${u.first_name}${mi} ${u.last_name}`;
+  }
+  return u.name ?? u.email ?? "—";
+}
+
 function toCSV(rows: Record<string, unknown>[]): string {
   if (!rows.length) return "";
   const headers = Object.keys(rows[0]);
@@ -189,7 +205,7 @@ adminRoutes.get("/overview", async (c) => {
       quarter: null,
       submitted: a.created_at,
       status: a.status,
-      submittedBy: a.created_by?.name ?? a.created_by?.email ?? "—",
+      submittedBy: buildSubmittedBy(a.created_by),
     })),
     ...recentPIRs.map((p) => ({
       id: p.id,
@@ -199,7 +215,7 @@ adminRoutes.get("/overview", async (c) => {
       quarter: p.quarter,
       submitted: p.created_at,
       status: p.status,
-      submittedBy: p.created_by?.name ?? p.created_by?.email ?? "—",
+      submittedBy: buildSubmittedBy(p.created_by),
     })),
   ]
     .sort((a, b) => {
@@ -335,54 +351,53 @@ adminRoutes.get("/submissions", async (c) => {
     ? { cluster_id: clusterId }
     : undefined;
 
-  // Build AIP results
-  let aips: unknown[] = [];
-  let aipTotal = 0;
-  if (!type || type === "aip" || type === "all") {
-    const where = {
+  // Always build both filter objects (needed for counts regardless of active tab)
+  const aipWhere = {
+    ...(year && { year }),
+    ...(programId && { program_id: programId }),
+    ...(status && { status }),
+    ...(schoolFilter && { school: schoolFilter }),
+  };
+  const pirWhere = {
+    ...(quarter && { quarter: { contains: `${quarter}` } }),
+    ...(status && { status }),
+    aip: {
       ...(year && { year }),
       ...(programId && { program_id: programId }),
-      ...(status && { status }),
       ...(schoolFilter && { school: schoolFilter }),
-    };
-    [aips, aipTotal] = await Promise.all([
-      prisma.aIP.findMany({
-        where,
-        skip: type === "aip" ? skip : 0,
-        take: type === "aip" ? limit : 100,
-        orderBy: { created_at: "desc" },
-        include: { school: { include: { cluster: true } }, program: true, created_by: true },
-      }),
-      prisma.aIP.count({ where }),
-    ]);
+    },
+  };
+
+  // Always count both so tab badges stay correct regardless of which tab is active
+  const [aipTotal, pirTotal] = await Promise.all([
+    prisma.aIP.count({ where: aipWhere }),
+    prisma.pIR.count({ where: pirWhere }),
+  ]);
+
+  // Fetch full records only for the active tab
+  let aips: unknown[] = [];
+  if (!type || type === "aip" || type === "all") {
+    aips = await prisma.aIP.findMany({
+      where: aipWhere,
+      skip: type === "aip" ? skip : 0,
+      take: type === "aip" ? limit : 100,
+      orderBy: { created_at: "desc" },
+      include: { school: { include: { cluster: true } }, program: true, created_by: true },
+    });
   }
 
-  // Build PIR results
   let pirs: unknown[] = [];
-  let pirTotal = 0;
   if (!type || type === "pir" || type === "all") {
-    const where = {
-      ...(quarter && { quarter: { contains: `${quarter}` } }),
-      ...(status && { status }),
-      aip: {
-        ...(year && { year }),
-        ...(programId && { program_id: programId }),
-        ...(schoolFilter && { school: schoolFilter }),
+    pirs = await prisma.pIR.findMany({
+      where: pirWhere,
+      skip: type === "pir" ? skip : 0,
+      take: type === "pir" ? limit : 100,
+      orderBy: { created_at: "desc" },
+      include: {
+        aip: { include: { school: { include: { cluster: true } }, program: true } },
+        created_by: true,
       },
-    };
-    [pirs, pirTotal] = await Promise.all([
-      prisma.pIR.findMany({
-        where,
-        skip: type === "pir" ? skip : 0,
-        take: type === "pir" ? limit : 100,
-        orderBy: { created_at: "desc" },
-        include: {
-          aip: { include: { school: { include: { cluster: true } }, program: true } },
-          created_by: true,
-        },
-      }),
-      prisma.pIR.count({ where }),
-    ]);
+    });
   }
 
   const normalizedAIPs = (aips as Record<string, unknown>[]).map((a: Record<string, unknown>) => {
@@ -390,7 +405,7 @@ adminRoutes.get("/submissions", async (c) => {
       id: number; status: string; year: number; created_at: Date;
       school?: { id: number; name: string; cluster?: { id: number; cluster_number: number; name: string } } | null;
       program: { id: number; title: string };
-      created_by?: { name?: string | null; email?: string } | null;
+      created_by?: { role?: string | null; name?: string | null; first_name?: string | null; middle_initial?: string | null; last_name?: string | null; email?: string } | null;
     };
     return {
       id: aip.id, type: "AIP", status: aip.status, year: aip.year,
@@ -400,8 +415,7 @@ adminRoutes.get("/submissions", async (c) => {
       clusterId: aip.school?.cluster?.id ?? null,
       program: aip.program.title, programId: aip.program.id,
       dateSubmitted: aip.created_at,
-      submittedBy: (aip.created_by as { name?: string | null; email?: string } | null)?.name
-        ?? (aip.created_by as { name?: string | null; email?: string } | null)?.email ?? "—",
+      submittedBy: buildSubmittedBy(aip.created_by),
     };
   });
 
@@ -414,7 +428,7 @@ adminRoutes.get("/submissions", async (c) => {
         school?: { id: number; name: string; cluster?: { id: number; cluster_number: number; name: string } } | null;
         program: { id: number; title: string };
       };
-      created_by?: { name?: string | null; email?: string } | null;
+      created_by?: { role?: string | null; name?: string | null; first_name?: string | null; middle_initial?: string | null; last_name?: string | null; email?: string } | null;
     };
     return {
       id: pir.id, type: "PIR", status: pir.status, year: pir.aip.year,
@@ -424,8 +438,7 @@ adminRoutes.get("/submissions", async (c) => {
       clusterId: pir.aip.school?.cluster?.id ?? null,
       program: pir.aip.program.title, programId: pir.aip.program.id,
       dateSubmitted: pir.created_at,
-      submittedBy: (pir.created_by as { name?: string | null; email?: string } | null)?.name
-        ?? (pir.created_by as { name?: string | null; email?: string } | null)?.email ?? "—",
+      submittedBy: buildSubmittedBy(pir.created_by),
       has_remarks: !!(pir.remarks && pir.remarks.trim()),
     };
   });
@@ -482,7 +495,7 @@ adminRoutes.get("/submissions/export", async (c) => {
       Quarter: "—",
       Status: a.status,
       "Date Submitted": a.created_at.toISOString().slice(0, 10),
-      "Submitted By": a.created_by?.name ?? a.created_by?.email ?? "—",
+      "Submitted By": buildSubmittedBy(a.created_by),
     })),
     ...pirs.map((p) => ({
       Type: "PIR",
@@ -493,7 +506,7 @@ adminRoutes.get("/submissions/export", async (c) => {
       Quarter: p.quarter,
       Status: p.status,
       "Date Submitted": p.created_at.toISOString().slice(0, 10),
-      "Submitted By": p.created_by?.name ?? p.created_by?.email ?? "—",
+      "Submitted By": buildSubmittedBy(p.created_by),
     })),
   ];
 
@@ -517,7 +530,7 @@ adminRoutes.get("/submissions/:id", async (c) => {
     const pir = await prisma.pIR.findUnique({
       where: { id },
       include: {
-        aip: { include: { school: true, program: true, activities: true } },
+        aip: { include: { school: { include: { cluster: true } }, program: true, activities: true } },
         activity_reviews: { include: { aip_activity: true } },
         factors: true,
         created_by: true,
@@ -616,6 +629,45 @@ adminRoutes.patch("/pirs/:id/remarks", async (c) => {
   return c.json({ success: true, remarks: pir.remarks });
 });
 
+adminRoutes.patch("/pirs/:id/presented", async (c) => {
+  const admin = getUserFromToken(c.req.header("Authorization"))!;
+  const id = parseInt(c.req.param("id"));
+
+  const pir = await prisma.pIR.findUnique({ where: { id } });
+  if (!pir) return c.json({ error: "PIR not found" }, 404);
+
+  const updated = await prisma.pIR.update({
+    where: { id },
+    data: { presented: !pir.presented },
+  });
+
+  await writeAuditLog(admin.id, "toggle_presented", "PIR", id, { presented: updated.presented });
+
+  return c.json({ success: true, presented: updated.presented });
+});
+
+adminRoutes.patch("/pirs/:id/activity-notes", async (c) => {
+  const admin = getUserFromToken(c.req.header("Authorization"))!;
+  const pirId = parseInt(c.req.param("id"));
+  const { activity_review_id, notes } = await c.req.json();
+
+  if (!activity_review_id || typeof notes !== "string") {
+    return c.json({ error: "activity_review_id and notes are required" }, 400);
+  }
+
+  await prisma.pIRActivityReview.update({
+    where: { id: activity_review_id },
+    data: { admin_notes: notes },
+  });
+
+  await writeAuditLog(admin.id, "update_activity_notes", "PIR", pirId, {
+    activity_review_id,
+    notes,
+  });
+
+  return c.json({ ok: true });
+});
+
 // ==========================================
 // USERS
 // ==========================================
@@ -625,42 +677,87 @@ adminRoutes.get("/users", async (c) => {
   const role = c.req.query("role");
   const status = c.req.query("status");
 
-  const users = await prisma.user.findMany({
-    where: {
-      ...(role && role !== "All" && { role }),
-      ...(status === "active" && { is_active: true }),
-      ...(status === "disabled" && { is_active: false }),
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } },
-        ],
-      }),
-    },
-    include: { school: { include: { cluster: true } }, programs: true },
-    orderBy: { created_at: "desc" },
-  });
+  const [users, allPrograms] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        ...(role && role !== "All" && { role }),
+        ...(status === "active" && { is_active: true }),
+        ...(status === "disabled" && { is_active: false }),
+        ...(search && {
+          OR: [
+            { name:       { contains: search, mode: "insensitive" } },
+            { first_name: { contains: search, mode: "insensitive" } },
+            { last_name:  { contains: search, mode: "insensitive" } },
+            { email:      { contains: search, mode: "insensitive" } },
+          ],
+        }),
+      },
+      include: { school: { include: { cluster: true } }, programs: true },
+      orderBy: { created_at: "desc" },
+    }),
+    prisma.program.findMany({
+      where: { school_level_requirement: { not: "Division" } },
+      select: { id: true, title: true, school_level_requirement: true, restricted_schools: { select: { id: true } } },
+      orderBy: { title: "asc" },
+    }),
+  ]);
 
   return c.json(
-    users.map((u) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      is_active: u.is_active,
-      school: u.school ? { id: u.school.id, name: u.school.name } : null,
-      programs: u.programs.map((p) => ({ id: p.id, title: p.title })),
-      created_at: u.created_at,
-    }))
+    users.map((u) => {
+      let programs;
+      if (u.role === "School" && u.school) {
+        const sl = u.school.level; // "Elementary" | "Secondary" | "Both"
+        const schoolId = u.school.id;
+        programs = allPrograms
+          .filter(p => {
+            const restricted = p.restricted_schools;
+            // "Select Schools" — only if this school is explicitly listed
+            if (p.school_level_requirement === "Select Schools") {
+              return restricted.some(s => s.id === schoolId);
+            }
+            // Level match
+            const levelMatch =
+              p.school_level_requirement === "Both" ||
+              p.school_level_requirement === sl ||
+              (sl === "Both" && ["Elementary", "Secondary"].includes(p.school_level_requirement));
+            if (!levelMatch) return false;
+            // If program has restrictions, only include this school if it's listed
+            if (restricted.length > 0) return restricted.some(s => s.id === schoolId);
+            return true;
+          })
+          .map(p => ({ id: p.id, title: p.title }));
+      } else {
+        programs = u.programs.map(p => ({ id: p.id, title: p.title }));
+      }
+      return {
+        id: u.id,
+        name: u.name,
+        first_name: u.first_name,
+        middle_initial: u.middle_initial,
+        last_name: u.last_name,
+        email: u.email,
+        role: u.role,
+        is_active: u.is_active,
+        school: u.school ? { id: u.school.id, name: u.school.name } : null,
+        programs,
+        created_at: u.created_at,
+      };
+    })
   );
 });
 
 adminRoutes.post("/users", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
-  const { name, email, password, role, school_id, program_ids } = await c.req.json();
+  const { name, first_name, middle_initial, last_name, email, password, role, school_id, program_ids } = await c.req.json();
 
-  if (!name || !email || !password || !role) {
-    return c.json({ error: "name, email, password, role are required" }, 400);
+  if (role === "Admin" && !name) {
+    return c.json({ error: "name is required for Admin users" }, 400);
+  }
+  if (role === "Division Personnel" && (!first_name || !last_name)) {
+    return c.json({ error: "first_name and last_name are required for Division Personnel" }, 400);
+  }
+  if (!email || !password || !role) {
+    return c.json({ error: "email, password, role are required" }, 400);
   }
 
   const salt = await bcrypt.genSalt(10);
@@ -669,7 +766,10 @@ adminRoutes.post("/users", async (c) => {
   try {
     const user = await prisma.user.create({
       data: {
-        name,
+        ...(name            !== undefined && { name }),
+        ...(first_name      !== undefined && { first_name }),
+        ...(middle_initial  !== undefined && { middle_initial }),
+        ...(last_name       !== undefined && { last_name }),
         email,
         password: hashed,
         role,
@@ -679,7 +779,7 @@ adminRoutes.post("/users", async (c) => {
         }),
       },
     });
-    await writeAuditLog(admin.id, "created_user", "User", user.id, { name, email, role });
+    await writeAuditLog(admin.id, "created_user", "User", user.id, { name, first_name, last_name, email, role });
     return c.json({ id: user.id, email: user.email, role: user.role });
   } catch {
     return c.json({ error: "Email already exists" }, 409);
@@ -690,12 +790,15 @@ adminRoutes.patch("/users/:id", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const id = parseInt(c.req.param("id"));
   const body = await c.req.json();
-  const { name, role, school_id, program_ids, is_active } = body;
+  const { name, first_name, middle_initial, last_name, role, school_id, program_ids, is_active } = body;
 
   const updateData: Record<string, unknown> = {};
-  if (name !== undefined) updateData.name = name;
-  if (role !== undefined) updateData.role = role;
-  if (is_active !== undefined) updateData.is_active = is_active;
+  if (name            !== undefined) updateData.name            = name;
+  if (first_name      !== undefined) updateData.first_name      = first_name;
+  if (middle_initial  !== undefined) updateData.middle_initial  = middle_initial;
+  if (last_name       !== undefined) updateData.last_name       = last_name;
+  if (role            !== undefined) updateData.role            = role;
+  if (is_active       !== undefined) updateData.is_active       = is_active;
 
   // Handle school_id carefully
   if (role === "School" && school_id !== undefined) {
@@ -704,18 +807,23 @@ adminRoutes.patch("/users/:id", async (c) => {
     updateData.school_id = null;
   }
 
-  const user = await prisma.user.update({
-    where: { id },
-    data: {
-      ...updateData,
-      ...(program_ids !== undefined && {
-        programs: { set: program_ids.map((pid: number) => ({ id: pid })) },
-      }),
-    },
-  });
+  try {
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        ...updateData,
+        ...(program_ids !== undefined && {
+          programs: { set: program_ids.map((pid: number) => ({ id: pid })) },
+        }),
+      },
+    });
 
-  await writeAuditLog(admin.id, "updated_user", "User", id, body);
-  return c.json({ id: user.id, email: user.email, role: user.role, is_active: user.is_active });
+    await writeAuditLog(admin.id, "updated_user", "User", id, body);
+    return c.json({ id: user.id, email: user.email, role: user.role, is_active: user.is_active });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return c.json({ error: msg }, 500);
+  }
 });
 
 adminRoutes.delete("/users/:id", async (c) => {
@@ -760,7 +868,7 @@ adminRoutes.get("/clusters", async (c) => {
       schools: {
         include: {
           aips: { select: { id: true, year: true, status: true } },
-          user: { select: { id: true, email: true, name: true } },
+          users: { select: { id: true, email: true, name: true, first_name: true, last_name: true } },
           restricted_programs: { select: { id: true, title: true } },
         },
       },
@@ -773,18 +881,30 @@ adminRoutes.get("/clusters", async (c) => {
 adminRoutes.post("/clusters", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const { cluster_number, name } = await c.req.json();
-  const cluster = await prisma.cluster.create({ data: { cluster_number, name } });
-  await writeAuditLog(admin.id, "created_cluster", "Cluster", cluster.id, { cluster_number, name });
-  return c.json(cluster);
+  if (!cluster_number) return c.json({ error: "Cluster number is required" }, 400);
+  try {
+    const cluster = await prisma.cluster.create({ data: { cluster_number: Number(cluster_number), name } });
+    await writeAuditLog(admin.id, "created_cluster", "Cluster", cluster.id, { cluster_number, name });
+    return c.json(cluster);
+  } catch (e: any) {
+    if (e?.code === "P2002") return c.json({ error: `Cluster ${cluster_number} already exists` }, 409);
+    throw e;
+  }
 });
 
 adminRoutes.patch("/clusters/:id", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const id = parseInt(c.req.param("id"));
-  const body = await c.req.json();
-  const cluster = await prisma.cluster.update({ where: { id }, data: body });
-  await writeAuditLog(admin.id, "updated_cluster", "Cluster", id, body);
-  return c.json(cluster);
+  const { cluster_number, name } = await c.req.json();
+  if (!cluster_number) return c.json({ error: "Cluster number is required" }, 400);
+  try {
+    const cluster = await prisma.cluster.update({ where: { id }, data: { cluster_number: Number(cluster_number), name } });
+    await writeAuditLog(admin.id, "updated_cluster", "Cluster", id, { cluster_number, name });
+    return c.json(cluster);
+  } catch (e: any) {
+    if (e?.code === "P2002") return c.json({ error: `Cluster ${cluster_number} already exists` }, 409);
+    throw e;
+  }
 });
 
 adminRoutes.delete("/clusters/:id", async (c) => {
@@ -805,7 +925,7 @@ adminRoutes.get("/schools", async (c) => {
     where: clusterId ? { cluster_id: clusterId } : undefined,
     include: {
       cluster: true,
-      user: { select: { id: true, email: true, name: true } },
+      users: { select: { id: true, email: true, name: true, first_name: true, last_name: true } },
       restricted_programs: { select: { id: true, title: true } },
       aips: { select: { id: true, year: true, status: true } },
     },
@@ -871,7 +991,7 @@ adminRoutes.patch("/schools/:id/restrictions", async (c) => {
 adminRoutes.get("/programs", async (c) => {
   const programs = await prisma.program.findMany({
     include: {
-      personnel: { select: { id: true, name: true, email: true } },
+      personnel: { select: { id: true, name: true, email: true, first_name: true, last_name: true, middle_initial: true } },
       restricted_schools: { select: { id: true, name: true } },
       _count: { select: { aips: true } },
     },
@@ -882,19 +1002,32 @@ adminRoutes.get("/programs", async (c) => {
 
 adminRoutes.post("/programs", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
-  const { title, school_level_requirement } = await c.req.json();
-  const program = await prisma.program.create({ data: { title, school_level_requirement } });
-  await writeAuditLog(admin.id, "created_program", "Program", program.id, { title });
-  return c.json(program);
+  const { title, abbreviation, category, school_level_requirement } = await c.req.json();
+  try {
+    const program = await prisma.program.create({ data: { title, abbreviation: abbreviation || null, category: category || null, school_level_requirement } });
+    await writeAuditLog(admin.id, "created_program", "Program", program.id, { title });
+    return c.json(program);
+  } catch (e: any) {
+    if (e?.code === "P2002") return c.json({ error: "A program with that title already exists for that applicability level." }, 409);
+    throw e;
+  }
 });
 
 adminRoutes.patch("/programs/:id", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const id = parseInt(c.req.param("id"));
-  const body = await c.req.json();
-  const program = await prisma.program.update({ where: { id }, data: body });
-  await writeAuditLog(admin.id, "updated_program", "Program", id, body);
-  return c.json(program);
+  const { title, abbreviation, category, school_level_requirement } = await c.req.json();
+  try {
+    const program = await prisma.program.update({
+      where: { id },
+      data: { title, abbreviation: abbreviation || null, category: category || null, school_level_requirement },
+    });
+    await writeAuditLog(admin.id, "updated_program", "Program", id, { title, abbreviation, school_level_requirement });
+    return c.json(program);
+  } catch (e: any) {
+    if (e?.code === "P2002") return c.json({ error: "A program with that title already exists for that applicability level." }, 409);
+    throw e;
+  }
 });
 
 adminRoutes.delete("/programs/:id", async (c) => {
@@ -989,7 +1122,10 @@ adminRoutes.get("/reports/compliance", async (c) => {
     },
     orderBy: { name: "asc" },
   });
-  const programs = await prisma.program.findMany({ orderBy: { title: "asc" } });
+  const programs = await prisma.program.findMany({
+    where: { school_level_requirement: { not: "Division" } },
+    orderBy: { title: "asc" },
+  });
 
   const matrix = schools.map((s) => {
     const row: Record<string, unknown> = { schoolId: s.id, school: s.name, level: s.level };
@@ -1076,6 +1212,167 @@ adminRoutes.get("/reports/workload", async (c) => {
   );
 });
 
+adminRoutes.get("/reports/accomplishment", async (c) => {
+  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+
+  const reviews = await prisma.pIRActivityReview.findMany({
+    where: { pir: { aip: { year } } },
+    include: {
+      pir: {
+        include: {
+          aip: { include: { school: { include: { cluster: true } } } },
+        },
+      },
+    },
+  });
+
+  const bySchool: Record<string, { school: string; cluster: string; physSum: number; physCount: number; finSum: number; finCount: number }> = {};
+
+  for (const r of reviews) {
+    const school = r.pir.aip.school?.name ?? "Division";
+    const cluster = r.pir.aip.school?.cluster?.name ?? "Division";
+    if (!bySchool[school]) bySchool[school] = { school, cluster, physSum: 0, physCount: 0, finSum: 0, finCount: 0 };
+    const physTarget = Number(r.physical_target);
+    const finTarget = Number(r.financial_target);
+    if (physTarget > 0) {
+      bySchool[school].physSum += (Number(r.physical_accomplished) / physTarget) * 100;
+      bySchool[school].physCount += 1;
+    }
+    if (finTarget > 0) {
+      bySchool[school].finSum += (Number(r.financial_accomplished) / finTarget) * 100;
+      bySchool[school].finCount += 1;
+    }
+  }
+
+  const data = Object.values(bySchool).map((s) => ({
+    school: s.school,
+    cluster: s.cluster,
+    physicalRate: s.physCount > 0 ? Math.round(s.physSum / s.physCount) : 0,
+    financialRate: s.finCount > 0 ? Math.round(s.finSum / s.finCount) : 0,
+  }));
+
+  return c.json({ data, year });
+});
+
+adminRoutes.get("/reports/factors", async (c) => {
+  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+
+  const factors = await prisma.pIRFactor.findMany({
+    where: { pir: { aip: { year } } },
+  });
+
+  const TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
+  const data = TYPES.map((t) => {
+    const matching = factors.filter((f) => f.factor_type.trim() === t);
+    return {
+      type: t,
+      facilitating: matching.filter((f) => f.facilitating_factors?.trim()).length,
+      hindering: matching.filter((f) => f.hindering_factors?.trim()).length,
+    };
+  });
+
+  return c.json({ data, year });
+});
+
+adminRoutes.get("/reports/aip-funnel", async (c) => {
+  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+
+  const aips = await prisma.aIP.findMany({
+    where: { year },
+    select: { status: true },
+  });
+
+  const STATUSES = ["Draft", "Submitted", "Pending", "Verified", "Under Review", "Approved", "Returned"];
+  const data = STATUSES.map((s) => ({
+    status: s,
+    count: aips.filter((a) => a.status === s).length,
+  })).filter((d) => d.count > 0);
+
+  return c.json({ data, year });
+});
+
+adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
+  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const quarter = parseInt(c.req.query("quarter") || "1");
+  const clusterId = c.req.query("cluster") ? parseInt(c.req.query("cluster")!) : undefined;
+
+  if (!clusterId) return c.json({ error: "cluster parameter is required" }, 400);
+
+  const quarterPrefixes: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
+  const qPrefix = quarterPrefixes[quarter];
+  if (!qPrefix) return c.json({ error: "quarter must be 1-4" }, 400);
+
+  const programs = await prisma.program.findMany({
+    where: { school_level_requirement: { not: "Division" } },
+    orderBy: [{ category: "asc" }, { title: "asc" }],
+  });
+
+  const schools = await prisma.school.findMany({
+    where: { cluster_id: clusterId },
+    include: { restricted_programs: { select: { id: true } } },
+    orderBy: { name: "asc" },
+  });
+
+  const aips = await prisma.aIP.findMany({
+    where: {
+      year,
+      school_id: { in: schools.map((s) => s.id) },
+    },
+    include: {
+      pirs: { where: { quarter: { startsWith: qPrefix } } },
+    },
+  });
+
+  // Build lookup: aipMap[schoolId][programId] = { pirId, presented }
+  const aipMap: Record<number, Record<number, { pirId: number; presented: boolean }>> = {};
+  for (const aip of aips) {
+    if (!aip.school_id) continue;
+    if (!aipMap[aip.school_id]) aipMap[aip.school_id] = {};
+    const pir = aip.pirs[0];
+    if (pir) {
+      aipMap[aip.school_id][aip.program_id] = { pirId: pir.id, presented: pir.presented };
+    }
+  }
+
+  // Build matrix and totals
+  const matrix: Record<string, { eligible: boolean; pirExists: boolean; pirId: number | null; presented: boolean }> = {};
+  const totals: Record<number, { pirTool: number; presented: number }> = {};
+
+  for (const school of schools) {
+    totals[school.id] = { pirTool: 0, presented: 0 };
+    for (const prog of programs) {
+      const eligible =
+        prog.school_level_requirement === "Both" ||
+        prog.school_level_requirement === school.level ||
+        (prog.school_level_requirement === "Select Schools" &&
+          !school.restricted_programs?.some((r) => r.id === prog.id));
+
+      const pirData = aipMap[school.id]?.[prog.id];
+      const pirExists = !!pirData;
+      const presented = pirData?.presented ?? false;
+
+      matrix[`${school.id}_${prog.id}`] = {
+        eligible,
+        pirExists,
+        pirId: pirData?.pirId ?? null,
+        presented,
+      };
+
+      if (eligible && pirExists) totals[school.id].pirTool++;
+      if (eligible && presented) totals[school.id].presented++;
+    }
+  }
+
+  return c.json({
+    programs: programs.map((p) => ({ id: p.id, title: p.title, abbreviation: p.abbreviation, category: p.category })),
+    schools: schools.map((s) => ({ id: s.id, name: s.name, abbreviation: s.abbreviation })),
+    matrix,
+    totals,
+    year,
+    quarter,
+  });
+});
+
 adminRoutes.get("/reports/:type/export", async (c) => {
   const type = c.req.param("type");
   const format = c.req.query("format") || "csv";
@@ -1160,7 +1457,7 @@ adminRoutes.get("/announcements", async (c) => {
 
 adminRoutes.post("/announcements", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
-  const { message, type, is_active } = await c.req.json();
+  const { message, type, is_active, dismissible } = await c.req.json();
 
   // Upsert: only ever keep one announcement (update most recent or create new)
   const existing = await prisma.announcement.findFirst({ orderBy: { created_at: "desc" } });
@@ -1168,15 +1465,15 @@ adminRoutes.post("/announcements", async (c) => {
   if (existing) {
     announcement = await prisma.announcement.update({
       where: { id: existing.id },
-      data: { message, type: type ?? "info", is_active: is_active ?? true },
+      data: { message, type: type ?? "info", is_active: is_active ?? true, dismissible: dismissible ?? true },
     });
   } else {
     announcement = await prisma.announcement.create({
-      data: { message, type: type ?? "info", is_active: is_active ?? true, created_by: admin.id },
+      data: { message, type: type ?? "info", is_active: is_active ?? true, dismissible: dismissible ?? true, created_by: admin.id },
     });
   }
 
-  await writeAuditLog(admin.id, "updated_announcement", "Announcement", announcement.id, { message, type, is_active });
+  await writeAuditLog(admin.id, "updated_announcement", "Announcement", announcement.id, { message, type, is_active, dismissible });
   return c.json(announcement);
 });
 

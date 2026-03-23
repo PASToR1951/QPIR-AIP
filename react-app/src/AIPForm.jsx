@@ -124,7 +124,6 @@ export default function App() {
                     setLoadedDraftData(draftRes.value.data.draftData);
                 }
             } catch (error) {
-                console.error("Failed to initialise AIP:", error);
             } finally {
                 setIsLoading(false);
             }
@@ -161,7 +160,6 @@ export default function App() {
                 setApprovedByTitle(d.approvedByTitle || "");
                 if (d.activities) setActivities(d.activities);
             } catch (e) {
-                console.error("Failed to load submitted AIP:", e);
                 return; // stay on splash if fetch fails
             }
             setAppMode('readonly');
@@ -183,7 +181,6 @@ export default function App() {
                 setApprovedByTitle(draft.approvedByTitle || "");
                 if (draft.activities) setActivities(draft.activities);
             } catch (e) {
-                console.error("Failed to load draft:", e);
             }
         }
         setAppMode(mode);
@@ -248,7 +245,6 @@ export default function App() {
                 activities
             }, { headers: authHeaders });
         } catch (e) {
-            console.error("Failed to save draft:", e);
         }
 
         saveTimerRef.current = setTimeout(() => {
@@ -399,7 +395,6 @@ export default function App() {
                 onConfirm: () => navigate('/')
             });
         } catch (error) {
-            console.error("Failed to submit AIP:", error);
             setModal({
                 isOpen: true,
                 type: 'warning',

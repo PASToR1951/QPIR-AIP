@@ -18,7 +18,7 @@ authRoutes.post('/login', async (c) => {
       where: { email },
       include: { school: true }
     });
-    if (!user) {
+    if (!user || !user.is_active) {
       return c.json({ error: 'Invalid credentials' }, 401);
     }
 
@@ -29,7 +29,17 @@ authRoutes.post('/login', async (c) => {
 
     // Issue JWT
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, school_id: user.school_id, school_name: user.school?.name, name: user.name },
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        school_id: user.school_id,
+        school_name: user.school?.name,
+        name: user.name,
+        first_name: user.first_name,
+        middle_initial: user.middle_initial,
+        last_name: user.last_name,
+      },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -43,7 +53,10 @@ authRoutes.post('/login', async (c) => {
         role: user.role,
         school_id: user.school_id,
         school_name: user.school?.name,
-        name: user.name
+        name: user.name,
+        first_name: user.first_name,
+        middle_initial: user.middle_initial,
+        last_name: user.last_name,
       }
     });
   } catch (error) {
