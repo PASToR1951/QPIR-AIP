@@ -97,9 +97,9 @@ export default function VerifyAIPs() {
         : null;
 
     const handleLogout = () => {
+        window.location.href = '/login';
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
     };
 
     return (

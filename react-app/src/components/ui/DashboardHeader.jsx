@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SignOut as LogOut, CaretDown as ChevronDown, BookOpen, ChatCircle as MessageCircle, Tag, IdentificationCard, ListBullets } from '@phosphor-icons/react';
+import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageCircle, TagIcon, IdentificationCardIcon, ListBulletsIcon, BookOpenUserIcon, BooksIcon } from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NotificationBell } from './NotificationBell.jsx';
@@ -19,8 +19,14 @@ export const DashboardHeader = ({ user, onLogout }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Helper text for role (using email as proxy if role isn't explicitly defined)
     const displayRole = user?.role || (user?.email?.includes('deped.gov.ph') ? 'DepEd Personnel' : 'User');
+    const displayName =
+      user?.role === 'School'
+        ? (user?.school_name || 'User')
+        : user?.role === 'Division Personnel'
+          ? (user?.first_name || user?.email?.split('@')[0] || 'User')
+          : /* Admin */
+            (user?.name || user?.email?.split('@')[0] || 'User');
 
     return (
         <nav className="bg-white/80 dark:bg-dark-base/80 backdrop-blur-md border-b border-slate-200 dark:border-dark-border sticky top-0 z-50 shadow-sm print:hidden">
@@ -53,14 +59,14 @@ export const DashboardHeader = ({ user, onLogout }) => {
                     >
                         <div className="hidden md:flex flex-col items-end text-right">
                             <span className="text-sm font-black text-slate-900 dark:text-slate-100 leading-none truncate max-w-[150px]">
-                                {user?.school_name || user?.name || 'User'}
+                                {displayName}
                             </span>
                             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-widest">
                                 {displayRole}
                             </span>
                         </div>
                         <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-black border border-pink-200 uppercase">
-                            {user?.school_name?.[0] || user?.name?.[0] || 'U'}
+                            {displayName[0] || 'U'}
                         </div>
                         <ChevronDown size={18} className={`text-slate-400 dark:text-slate-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
@@ -76,18 +82,18 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                 className="absolute top-14 right-0 w-64 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border shadow-xl rounded-2xl py-2 z-50 transform origin-top-right"
                             >
                                 <div className="px-4 py-3 border-b border-slate-100 dark:border-dark-border md:hidden">
-                                    <p className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">{user?.school_name || user?.name || 'User'}</p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">{displayName}</p>
                                     <p className="text-xs text-slate-400 dark:text-slate-500 font-bold truncate">{user?.email}</p>
                                 </div>
                                 
                                 <div className="px-2 py-1">
                                     <div className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 dark:text-slate-600 rounded-xl cursor-not-allowed select-none">
-                                        <IdentificationCard size={18} />
+                                        <IdentificationCardIcon size={18} />
                                         Profile
                                         <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Alpha</span>
                                     </div>
                                     <div className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 dark:text-slate-600 rounded-xl cursor-not-allowed select-none">
-                                        <ListBullets size={18} />
+                                        <ListBulletsIcon size={18} />
                                         User Logs
                                         <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Alpha</span>
                                     </div>
@@ -98,12 +104,17 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                         <MessageCircle size={18} />
                                         FAQ
                                     </Link>
-                                    <Link to="/docs" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
-                                        <BookOpen size={18} />
+                                    <div className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 dark:text-slate-600 rounded-xl cursor-not-allowed select-none">
+                                        <BookOpenUserIcon size={18} />
                                         User Manual
+                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Alpha</span>
+                                    </div>
+                                    <Link to="/docs" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
+                                        <BooksIcon size={18} />
+                                        Documentation
                                     </Link>
                                     <Link to="/changelog" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
-                                        <Tag size={18} />
+                                        <TagIcon size={18} />
                                         Change Logs
                                     </Link>
                                 </div>

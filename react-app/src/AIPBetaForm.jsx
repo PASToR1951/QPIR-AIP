@@ -184,7 +184,6 @@ export default function AIPBetaForm() {
                     setPdfFile(renamedFile(compressed));
                 }
             } catch (err) {
-                console.error('PDF compression failed:', err);
                 setPdfError(`Compression failed: ${err.message ?? 'Unknown error'}. Please reduce the file size manually.`);
                 setPdfFile(null);
             } finally {

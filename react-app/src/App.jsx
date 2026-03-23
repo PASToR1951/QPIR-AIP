@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { useAccessibility } from './context/AccessibilityContext';
 import axios from 'axios';
@@ -15,6 +15,7 @@ import Changelog from './components/Changelog';
 import SystemDocs from './components/SystemDocs';
 import FAQ from './components/FAQ';
 import { DashboardHeader } from './components/ui/DashboardHeader';
+import { AnnouncementBanner } from './components/ui/AnnouncementBanner';
 import Footer from './components/ui/Footer';
 import PageTransition from './components/ui/PageTransition';
 import PageLoader from './components/ui/PageLoader';
@@ -128,6 +129,7 @@ const PIRRouteGuard = ({ children }) => {
 };
 
 function Dashboard() {
+  const navigate = useNavigate();
   const userStr = localStorage.getItem('user');
   let user = null;
   try {
@@ -180,9 +182,9 @@ function Dashboard() {
   const actionPrompt = dashboardData ? getActionPrompt(dashboardData, aipStatus) : '';
 
   const handleLogout = () => {
+    navigate('/login', { replace: true });
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = '/login';
   };
 
   return (
@@ -199,6 +201,7 @@ function Dashboard() {
       ></div>
 
       <DashboardHeader user={user} onLogout={handleLogout} />
+      <AnnouncementBanner />
 
       <main className="flex-1 w-full max-w-6xl mx-auto mt-6 px-4 pb-12 relative z-10">
         {/* Welcome Section */}
@@ -222,7 +225,13 @@ function Dashboard() {
 
               <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-2">
                 Welcome back, <br />
-                <span className="text-pink-600">{user?.school_name || user?.name || 'User'}</span>
+                <span className="text-pink-600">
+                  {user?.role === 'School'
+                    ? (user?.school_name || 'User')
+                    : user?.role === 'Division Personnel'
+                      ? (user?.first_name || 'User')
+                      : (user?.name || 'User')}
+                </span>
               </h1>
 
               <p className="text-slate-500 dark:text-slate-400 font-medium max-w-md text-sm md:text-base leading-relaxed mb-8">
@@ -264,11 +273,8 @@ function Dashboard() {
                   <NotePencil size={36} className="relative z-10 group-hover:text-white transition-colors duration-300" />
                 </div>
                 {dashboardData && dashboardData.aipCompletion.total > 0 && (
-                  <div className="relative overflow-hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm bg-pink-50 dark:bg-pink-950/40 text-pink-700 dark:text-pink-400 border-pink-200 dark:border-pink-700/60 group-hover:border-pink-500 dark:group-hover:border-pink-500 transition-colors duration-300">
-                    <span className="absolute inset-0 -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out bg-pink-500/75 backdrop-blur-sm rounded-full" />
-                    <span className="relative z-10 group-hover:text-white transition-colors duration-300">
-                      {dashboardData.aipCompletion.completed}/{dashboardData.aipCompletion.total} Programs
-                    </span>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-pink-500 text-white shadow-sm">
+                    {dashboardData.aipCompletion.completed}/{dashboardData.aipCompletion.total} Programs
                   </div>
                 )}
               </div>

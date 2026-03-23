@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Printer, DownloadSimple as Download, Eye, FileText, CaretRight as ChevronRight } from '@phosphor-icons/react';
+import { XCircle, Printer, DownloadSimple as Download, Eye, FileText, CaretRight as ChevronRight } from '@phosphor-icons/react';
 
 export const DocumentPreviewModal = ({ 
     isOpen, 
@@ -82,7 +82,7 @@ export const DocumentPreviewModal = ({
                                     className="p-2.5 bg-slate-100 dark:bg-dark-border text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-dark-border rounded-xl transition-all active:scale-95"
                                     title="Close Preview"
                                 >
-                                    <X size={22} />
+                                    <XCircle size={22} weight="fill" />
                                 </button>
                             </div>
                         </div>

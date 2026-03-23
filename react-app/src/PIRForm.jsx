@@ -296,9 +296,9 @@ export default function App() {
     };
 
     const hasInputtedData = () => {
-        return program || school || owner || fundSource || rawBudget || 
-               activities.some(a => a.name || a.physTarget || a.finTarget || a.physAcc || a.finAcc || a.actions) ||
-               Object.values(factors).some(f => f.facilitating || f.hindering);
+        return program || school || owner || fundSource || rawBudget ||
+            activities.some(a => a.name || a.physTarget || a.finTarget || a.physAcc || a.finAcc || a.actions) ||
+            Object.values(factors).some(f => f.facilitating || f.hindering);
     };
 
     const handleBack = () => {
@@ -485,50 +485,87 @@ export default function App() {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-dark-base">
-        <AnimatePresence mode="wait">
-            {appMode === 'splash' ? (
-                <motion.div key="splash" {...motionProps}>
-                    <FormHeader
-                        title="Quarterly Performance Review"
-                        programName={program}
-                        onBack={handleBack}
-                        theme="blue"
-                    />
-                    <ViewModeSelector
-                        programs={programsWithAIPs}
-                        onStart={handleStart}
-                        hasDraft={hasDraft}
-                        draftInfo={draftInfo}
-                        draftProgram={loadedDraftData?.program || null}
-                        completedPrograms={completedPrograms}
-                        theme="blue"
-                    />
-                </motion.div>
-            ) : appMode === 'readonly' ? (
-                <motion.div key="readonly" {...motionProps}>
-                    <FormHeader title="Quarterly Performance Review" programName={program} onBack={() => setAppMode('splash')} theme="blue" />
-                    <div className="bg-slate-50 dark:bg-dark-base min-h-screen font-sans print:bg-white">
-                        {/* Lock banner */}
-                        <div className="max-w-5xl mx-auto px-4 pt-8 pb-4 print:hidden">
-                            <div className="flex items-center gap-3 px-5 py-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 shrink-0">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                </svg>
-                                <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex-1">This form has been submitted and is read-only.</span>
-                                <button
-                                    onClick={() => window.print()}
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+            <AnimatePresence mode="wait">
+                {appMode === 'splash' ? (
+                    <motion.div key="splash" {...motionProps}>
+                        <FormHeader
+                            title="Quarterly Performance Review"
+                            programName={program}
+                            onBack={handleBack}
+                            theme="blue"
+                        />
+                        <ViewModeSelector
+                            programs={programsWithAIPs}
+                            onStart={handleStart}
+                            hasDraft={hasDraft}
+                            draftInfo={draftInfo}
+                            draftProgram={loadedDraftData?.program || null}
+                            completedPrograms={completedPrograms}
+                            theme="blue"
+                        />
+                    </motion.div>
+                ) : appMode === 'readonly' ? (
+                    <motion.div key="readonly" {...motionProps}>
+                        <FormHeader title="Quarterly Performance Review" programName={program} onBack={() => setAppMode('splash')} theme="blue" />
+                        <div className="bg-slate-50 dark:bg-dark-base min-h-screen font-sans print:bg-white">
+                            {/* Lock banner */}
+                            <div className="max-w-5xl mx-auto px-4 pt-8 pb-4 print:hidden">
+                                <div className="flex items-center gap-3 px-5 py-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl shadow-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 shrink-0">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                                     </svg>
-                                    Print / Save PDF
-                                </button>
+                                    <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex-1">This form has been submitted and is read-only.</span>
+                                    <button
+                                        onClick={() => window.print()}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" />
+                                        </svg>
+                                        Print / Save PDF
+                                    </button>
+                                </div>
+                            </div>
+                            {/* Document */}
+                            <div className="max-w-5xl mx-auto px-4 pb-12">
+                                <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border p-8 print:shadow-none print:border-none print:p-0 print:rounded-none">
+                                    <PIRDocument
+                                        quarter={quarterString}
+                                        program={program}
+                                        school={school}
+                                        owner={owner}
+                                        budget={rawBudget}
+                                        fundSource={fundSource}
+                                        activities={activities}
+                                        factors={factors}
+                                    />
+                                </div>
                             </div>
                         </div>
-                        {/* Document */}
-                        <div className="max-w-5xl mx-auto px-4 pb-12">
-                            <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border p-8 print:shadow-none print:border-none print:p-0 print:rounded-none">
+                    </motion.div>
+                ) : (
+                    <motion.div key="form" {...motionProps}>
+                        <div className="bg-slate-50 dark:bg-dark-base min-h-screen flex flex-col text-slate-800 dark:text-slate-100 font-sans relative print:py-0 print:bg-white print:text-black">
+                            <FormHeader
+                                title="Quarterly Performance Review"
+                                programName={program}
+                                onSave={handleSaveForLater}
+                                onBack={handleBack}
+                                onHome={handleHome}
+                                isSaving={isSaving}
+                                isSaved={isSaved}
+                                lastSavedTime={lastSavedTime}
+                                theme="blue"
+                                appMode={appMode}
+                                toggleAppMode={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
+                            />
+
+                            <DocumentPreviewModal
+                                isOpen={isPreviewOpen}
+                                onClose={() => setIsPreviewOpen(false)}
+                                title="PIR Document Preview"
+                                subtitle="Quarterly Program Implementation Review"
+                            >
                                 <PIRDocument
                                     quarter={quarterString}
                                     program={program}
@@ -539,81 +576,44 @@ export default function App() {
                                     activities={activities}
                                     factors={factors}
                                 />
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
-            ) : (
-                <motion.div key="form" {...motionProps}>
-                    <div className="bg-slate-50 dark:bg-dark-base min-h-screen flex flex-col text-slate-800 dark:text-slate-100 font-sans relative print:py-0 print:bg-white print:text-black">
-            <FormHeader
-                title="Quarterly Performance Review"
-                programName={program}
-                onSave={handleSaveForLater}
-                onBack={handleBack}
-                onHome={handleHome}
-                isSaving={isSaving}
-                isSaved={isSaved}
-                lastSavedTime={lastSavedTime}
-                theme="blue"
-                appMode={appMode}
-                toggleAppMode={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
-            />
+                            </DocumentPreviewModal>
 
-            <DocumentPreviewModal
-                isOpen={isPreviewOpen}
-                onClose={() => setIsPreviewOpen(false)}
-                title="PIR Document Preview"
-                subtitle="Quarterly Program Implementation Review"
-            >
-                <PIRDocument
-                    quarter={quarterString}
-                    program={program}
-                    school={school}
-                    owner={owner}
-                    budget={rawBudget}
-                    fundSource={fundSource}
-                    activities={activities}
-                    factors={factors}
-                />
-            </DocumentPreviewModal>
+                            <DocumentPreviewModal
+                                isOpen={isAIPPreviewOpen}
+                                onClose={() => setIsAIPPreviewOpen(false)}
+                                title="Annual Implementation Plan"
+                                subtitle={`AIP Reference — ${program}`}
+                            >
+                                {aipDocumentData && (
+                                    <AIPDocument
+                                        year={String(aipDocumentData.year)}
+                                        outcome={aipDocumentData.outcome}
+                                        depedProgram={aipDocumentData.depedProgram}
+                                        sipTitle={aipDocumentData.sipTitle}
+                                        projectCoord={aipDocumentData.projectCoord}
+                                        objectives={aipDocumentData.objectives}
+                                        indicators={aipDocumentData.indicators}
+                                        activities={aipDocumentData.activities}
+                                        preparedByName={aipDocumentData.preparedByName}
+                                        preparedByTitle={aipDocumentData.preparedByTitle}
+                                        approvedByName={aipDocumentData.approvedByName}
+                                        approvedByTitle={aipDocumentData.approvedByTitle}
+                                    />
+                                )}
+                            </DocumentPreviewModal>
 
-            <DocumentPreviewModal
-                isOpen={isAIPPreviewOpen}
-                onClose={() => setIsAIPPreviewOpen(false)}
-                title="Annual Implementation Plan"
-                subtitle={`AIP Reference — ${program}`}
-            >
-                {aipDocumentData && (
-                    <AIPDocument
-                        year={String(aipDocumentData.year)}
-                        outcome={aipDocumentData.outcome}
-                        depedProgram={aipDocumentData.depedProgram}
-                        sipTitle={aipDocumentData.sipTitle}
-                        projectCoord={aipDocumentData.projectCoord}
-                        objectives={aipDocumentData.objectives}
-                        indicators={aipDocumentData.indicators}
-                        activities={aipDocumentData.activities}
-                        preparedByName={aipDocumentData.preparedByName}
-                        preparedByTitle={aipDocumentData.preparedByTitle}
-                        approvedByName={aipDocumentData.approvedByName}
-                        approvedByTitle={aipDocumentData.approvedByTitle}
-                    />
-                )}
-            </DocumentPreviewModal>
+                            {/* Floating AIP reference button */}
+                            {program && (
+                                <button
+                                    onClick={handleViewAIP}
+                                    className="fixed bottom-6 left-6 z-50 print:hidden flex items-center gap-2.5 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl font-bold text-sm transition-all active:scale-95"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
+                                    View AIP
+                                </button>
+                            )}
 
-            {/* Floating AIP reference button */}
-            {program && (
-                <button
-                    onClick={handleViewAIP}
-                    className="fixed bottom-6 left-6 z-50 print:hidden flex items-center gap-2.5 px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl font-bold text-sm transition-all active:scale-95"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    View AIP
-                </button>
-            )}
-
-            <style>{`
+                            <style>{`
                 @media print {
                     @page { margin: 1cm; }
                     body { background-color: white !important; color: black !important; }
@@ -623,258 +623,258 @@ export default function App() {
 
 
 
-            {/* Modal */}
-            <ConfirmationModal
-                isOpen={modal.isOpen}
-                onClose={closeModal}
-                onConfirm={modal.onConfirm}
-                type={modal.type}
-                title={modal.title}
-                message={modal.message}
-                confirmText={modal.confirmText}
-            />
-
-            {/* MAIN CONTAINER */}
-            <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0">
-
-                {/* Independent Header Card (Wizard View) */}
-                {appMode === 'wizard' && (
-                    <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-6 shadow-md mb-6">
-                        <FormBoxHeader
-                            title="Quarterly Performance Review"
-                            badge={quarterString}
-                            compact={true}
-                        />
-                    </div>
-                )}
-
-                <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2.5rem] p-6 md:p-12 shadow-xl relative">
-
-                    {/* FULL VIEW HEADER */}
-                    {appMode === 'full' && (
-                        <FormBoxHeader
-                            title="Quarterly Performance Review"
-                            subtitle="Division Monitoring Evaluation and Adjustment"
-                            badge={quarterString}
-                        />
-                    )}
-                    {/* ============================================================== */}
-                    {/* WIZARD MODE: STEPPER & CARDS */}
-                    {/* ============================================================== */}
-                    {appMode === 'wizard' && (
-                        <WizardStepper 
-                            steps={[
-                                { num: 1, label: "Profile" },
-                                { num: 2, label: "Financials" },
-                                { num: 3, label: "M&E Progress" },
-                                { num: 4, label: "Factors" },
-                                { num: 5, label: "Signatures" },
-                                { num: 6, label: "Finalize" }
-                            ]}
-                            currentStep={currentStep}
-                            theme="blue"
-                        />
-                    )}
-
-                    <form onSubmit={(e) => e.preventDefault()}>
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={appMode}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.15 }}
-                            >
-                                <div className="min-h-[300px]">
-
-                            {/* -------------------------------------------------------- */}
-                            {/* SECTION 1: PROFILE (Shared by both Wizard Step 1 and Full Form) */}
-                            {/* -------------------------------------------------------- */}
-                            <PIRProfileSection
-                                appMode={appMode}
-                                currentStep={currentStep}
-                                program={program}
-                                isDivisionPersonnel={isDivisionPersonnel}
-                                school={school}
-                                user={user}
-                                quarterString={quarterString}
-                                owner={owner}
-                                setOwner={setOwner}
-                                ownerLocked={ownerLocked}
-                                isBudgetFocused={isBudgetFocused}
-                                setIsBudgetFocused={setIsBudgetFocused}
-                                displayBudget={displayBudget}
-                                rawBudget={rawBudget}
-                                setRawBudget={setRawBudget}
-                                budgetLocked={budgetLocked}
-                                fundSource={fundSource}
-                                setFundSource={setFundSource}
-                                fundSourceLocked={fundSourceLocked}
+                            {/* Modal */}
+                            <ConfirmationModal
+                                isOpen={modal.isOpen}
+                                onClose={closeModal}
+                                onConfirm={modal.onConfirm}
+                                type={modal.type}
+                                title={modal.title}
+                                message={modal.message}
+                                confirmText={modal.confirmText}
                             />
 
-                            {/* -------------------------------------------------------- */}
-                            {/* SECTION 2: FINANCIAL INFORMATION (Wizard Step 2 Only) */}
-                            {/* -------------------------------------------------------- */}
-                            <PIRFinancialsSection
-                                appMode={appMode}
-                                currentStep={currentStep}
-                                isBudgetFocused={isBudgetFocused}
-                                setIsBudgetFocused={setIsBudgetFocused}
-                                displayBudget={displayBudget}
-                                rawBudget={rawBudget}
-                                setRawBudget={setRawBudget}
-                                budgetLocked={budgetLocked}
-                                fundSource={fundSource}
-                                setFundSource={setFundSource}
-                                fundSourceLocked={fundSourceLocked}
-                            />
+                            {/* MAIN CONTAINER */}
+                            <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0">
 
-                            {/* -------------------------------------------------------- */}
-                            {/* WIZARD ONLY: ACTIVITY CARDS (Step 3) */}
-                            {/* -------------------------------------------------------- */}
-                            <PIRMonitoringEvaluationSection 
-                                appMode={appMode}
-                                currentStep={currentStep}
-                                isLoadingActivities={isLoadingActivities}
-                                activities={activities}
-                                expandedActivityId={expandedActivityId}
-                                setExpandedActivityId={setExpandedActivityId}
-                                calculateGap={calculateGap}
-                                handleRemoveActivity={handleRemoveActivity}
-                                handleActivityChange={handleActivityChange}
-                                handleAddActivity={handleAddActivity}
-                                isAddingActivity={isAddingActivity}
-                            />
-
-                            {/* -------------------------------------------------------- */}
-                            {/* SECTION 4: FACTORS (Wizard Step 4 / Full Form) */}
-                            {/* -------------------------------------------------------- */}
-                            <PIRFactorsSection 
-                                appMode={appMode}
-                                currentStep={currentStep}
-                                FACTOR_TYPES={FACTOR_TYPES}
-                                factors={factors}
-                                handleFactorChange={handleFactorChange}
-                            />
-
-                            {/* -------------------------------------------------------- */}
-                            {/* SECTION 4: SIGNATURES (Shared) */}
-                            {/* -------------------------------------------------------- */}
-                            <div className={`${(appMode === 'full' || currentStep === 5) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
-                                <SectionHeader 
-                                    icon={<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>}
-                                    title="Signatures"
-                                    subtitle="Finalize with necessary approvals."
-                                    theme="blue"
-                                    appMode={appMode}
-                                />
-
-                                <div className="bg-white dark:bg-dark-surface p-8 md:p-12 rounded-3xl border border-slate-200 dark:border-dark-border shadow-sm mb-2 relative overflow-hidden">
-                                        <svg className="absolute inset-0 h-full w-full opacity-20 dark:opacity-40 stroke-slate-300 dark:stroke-dark-border" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 30%)' }} xmlns="http://www.w3.org/2000/svg"><defs><pattern id="diagonal-lines-pir" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="20" strokeWidth="2"></line></pattern></defs><rect width="100%" height="100%" fill="url(#diagonal-lines-pir)"></rect></svg>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 relative z-10">
-                                        <SignatureBlock 
-                                            label="Prepared by" 
-                                            name={owner} 
-                                            title="Program Owner" 
-                                            onNameChange={setOwner} 
-                                            namePlaceholder="NAME OF PROGRAM OWNER" 
-                                            theme="blue" 
+                                {/* Independent Header Card (Wizard View) */}
+                                {appMode === 'wizard' && (
+                                    <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-6 shadow-md mb-6">
+                                        <FormBoxHeader
+                                            title="Quarterly Performance Review"
+                                            badge={quarterString}
+                                            compact={true}
                                         />
-                                        <SignatureBlock 
-                                            label="Noted" 
-                                            name="DR. ENRIQUE Q. RETES, EdD" 
-                                            title="Chief Education Supervisor" 
-                                            readOnly 
-                                            theme="blue" 
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* -------------------------------------------------------- */}
-                            {/* SECTION 6: FINAL REVIEW & SUBMIT */}
-                            {/* -------------------------------------------------------- */}
-                            {(appMode === 'full' || currentStep === 6) && (
-                                <div className="animate-in fade-in slide-in-from-bottom-4 duration-200 mt-6">
-                                    {appMode === 'wizard' && (
-                                        <FinalizeCard 
-                                            isSubmitted={isSubmitted} 
-                                            onSubmit={handleConfirmSubmit} 
-                                            onPreview={() => setIsPreviewOpen(true)}
-                                            theme="blue" 
-                                        />
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Navigation Buttons for Wizard Mode */}
-                        {appMode === 'wizard' && (
-                            <div className="mt-12 pt-6 border-t border-slate-200 dark:border-dark-border flex justify-between items-center">
-                                <button
-                                    type="button"
-                                    onClick={prevStep}
-                                    disabled={currentStep === 1}
-                                    className={`group relative inline-flex h-12 items-center justify-center rounded-xl px-6 font-medium transition-colors gap-2 ${currentStep === 1
-                                            ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                                            : 'text-slate-600 dark:text-slate-300 bg-white dark:bg-dark-surface shadow-sm border border-slate-200 dark:border-dark-border hover:bg-slate-50 dark:hover:bg-dark-base active:scale-95'
-                                        }`}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                                    Back
-                                </button>
-
-                                {currentStep < totalSteps && (
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={nextStep}
-                                            className="group relative inline-flex h-12 items-center justify-center rounded-xl bg-slate-900 px-8 font-bold text-white shadow-md transition-colors active:scale-95 hover:bg-slate-800 gap-2"
-                                        >
-                                            Continue
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-1"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                                        </button>
                                     </div>
                                 )}
-                            </div>
-                        )}
 
-                        {/* FINAL ACTION BUTTONS (Below Full Form Only) */}
-                        {appMode === 'full' && (
-                            <div className="mt-12 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
-                                <h3 className="text-slate-800 dark:text-slate-100 font-bold text-xl mb-6">Ready to finalize your review?</h3>
+                                <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2.5rem] p-6 md:p-12 shadow-xl relative">
 
-                                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsPreviewOpen(true)}
-                                        className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-white dark:bg-dark-surface border-2 border-slate-200 dark:border-dark-border px-8 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-dark-base transition-colors active:scale-95 w-full sm:w-auto shadow-sm"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                        Preview Layout
-                                    </button>
+                                    {/* FULL VIEW HEADER */}
+                                    {appMode === 'full' && (
+                                        <FormBoxHeader
+                                            title="Quarterly Performance Review"
+                                            subtitle="Division Monitoring Evaluation and Adjustment"
+                                            badge={quarterString}
+                                        />
+                                    )}
+                                    {/* ============================================================== */}
+                                    {/* WIZARD MODE: STEPPER & CARDS */}
+                                    {/* ============================================================== */}
+                                    {appMode === 'wizard' && (
+                                        <WizardStepper
+                                            steps={[
+                                                { num: 1, label: "Profile" },
+                                                { num: 2, label: "Financials" },
+                                                { num: 3, label: "M&E" },
+                                                { num: 4, label: "Factors" },
+                                                { num: 5, label: "Signatures" },
+                                                { num: 6, label: "Finalize" }
+                                            ]}
+                                            currentStep={currentStep}
+                                            theme="blue"
+                                        />
+                                    )}
 
-                                    <button
-                                        type="button"
-                                        onClick={handleConfirmSubmit}
-                                        disabled={isSubmitted}
-                                        className="inline-flex h-14 items-center justify-center rounded-2xl bg-blue-600 px-8 py-1 text-sm font-bold text-white transition-colors gap-3 hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-md"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                                        {isSubmitted ? "Submitted" : "Confirm & Submit"}
-                                    </button>
+                                    <form onSubmit={(e) => e.preventDefault()}>
+                                        <AnimatePresence mode="wait">
+                                            <motion.div
+                                                key={appMode}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, y: -10 }}
+                                                transition={{ duration: 0.15 }}
+                                            >
+                                                <div className="min-h-[300px]">
+
+                                                    {/* -------------------------------------------------------- */}
+                                                    {/* SECTION 1: PROFILE (Shared by both Wizard Step 1 and Full Form) */}
+                                                    {/* -------------------------------------------------------- */}
+                                                    <PIRProfileSection
+                                                        appMode={appMode}
+                                                        currentStep={currentStep}
+                                                        program={program}
+                                                        isDivisionPersonnel={isDivisionPersonnel}
+                                                        school={school}
+                                                        user={user}
+                                                        quarterString={quarterString}
+                                                        owner={owner}
+                                                        setOwner={setOwner}
+                                                        ownerLocked={ownerLocked}
+                                                        isBudgetFocused={isBudgetFocused}
+                                                        setIsBudgetFocused={setIsBudgetFocused}
+                                                        displayBudget={displayBudget}
+                                                        rawBudget={rawBudget}
+                                                        setRawBudget={setRawBudget}
+                                                        budgetLocked={budgetLocked}
+                                                        fundSource={fundSource}
+                                                        setFundSource={setFundSource}
+                                                        fundSourceLocked={fundSourceLocked}
+                                                    />
+
+                                                    {/* -------------------------------------------------------- */}
+                                                    {/* SECTION 2: FINANCIAL INFORMATION (Wizard Step 2 Only) */}
+                                                    {/* -------------------------------------------------------- */}
+                                                    <PIRFinancialsSection
+                                                        appMode={appMode}
+                                                        currentStep={currentStep}
+                                                        isBudgetFocused={isBudgetFocused}
+                                                        setIsBudgetFocused={setIsBudgetFocused}
+                                                        displayBudget={displayBudget}
+                                                        rawBudget={rawBudget}
+                                                        setRawBudget={setRawBudget}
+                                                        budgetLocked={budgetLocked}
+                                                        fundSource={fundSource}
+                                                        setFundSource={setFundSource}
+                                                        fundSourceLocked={fundSourceLocked}
+                                                    />
+
+                                                    {/* -------------------------------------------------------- */}
+                                                    {/* WIZARD ONLY: ACTIVITY CARDS (Step 3) */}
+                                                    {/* -------------------------------------------------------- */}
+                                                    <PIRMonitoringEvaluationSection
+                                                        appMode={appMode}
+                                                        currentStep={currentStep}
+                                                        isLoadingActivities={isLoadingActivities}
+                                                        activities={activities}
+                                                        expandedActivityId={expandedActivityId}
+                                                        setExpandedActivityId={setExpandedActivityId}
+                                                        calculateGap={calculateGap}
+                                                        handleRemoveActivity={handleRemoveActivity}
+                                                        handleActivityChange={handleActivityChange}
+                                                        handleAddActivity={handleAddActivity}
+                                                        isAddingActivity={isAddingActivity}
+                                                    />
+
+                                                    {/* -------------------------------------------------------- */}
+                                                    {/* SECTION 4: FACTORS (Wizard Step 4 / Full Form) */}
+                                                    {/* -------------------------------------------------------- */}
+                                                    <PIRFactorsSection
+                                                        appMode={appMode}
+                                                        currentStep={currentStep}
+                                                        FACTOR_TYPES={FACTOR_TYPES}
+                                                        factors={factors}
+                                                        handleFactorChange={handleFactorChange}
+                                                    />
+
+                                                    {/* -------------------------------------------------------- */}
+                                                    {/* SECTION 4: SIGNATURES (Shared) */}
+                                                    {/* -------------------------------------------------------- */}
+                                                    <div className={`${(appMode === 'full' || currentStep === 5) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
+                                                        <SectionHeader
+                                                            icon={<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>}
+                                                            title="Signatures"
+                                                            subtitle="Finalize with necessary approvals."
+                                                            theme="blue"
+                                                            appMode={appMode}
+                                                        />
+
+                                                        <div className="bg-white dark:bg-dark-surface p-8 md:p-12 rounded-3xl border border-slate-200 dark:border-dark-border shadow-sm mb-2 relative overflow-hidden">
+                                                            <svg className="absolute inset-0 h-full w-full opacity-20 dark:opacity-40 stroke-slate-300 dark:stroke-dark-border" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 30%)' }} xmlns="http://www.w3.org/2000/svg"><defs><pattern id="diagonal-lines-pir" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="20" strokeWidth="2"></line></pattern></defs><rect width="100%" height="100%" fill="url(#diagonal-lines-pir)"></rect></svg>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 relative z-10">
+                                                                <SignatureBlock
+                                                                    label="Prepared by"
+                                                                    name={owner}
+                                                                    title="Program Owner"
+                                                                    onNameChange={setOwner}
+                                                                    namePlaceholder="NAME OF PROGRAM OWNER"
+                                                                    theme="blue"
+                                                                />
+                                                                <SignatureBlock
+                                                                    label="Noted"
+                                                                    name="DR. ENRIQUE Q. RETES, EdD"
+                                                                    title="Chief Education Supervisor"
+                                                                    readOnly
+                                                                    theme="blue"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* -------------------------------------------------------- */}
+                                                    {/* SECTION 6: FINAL REVIEW & SUBMIT */}
+                                                    {/* -------------------------------------------------------- */}
+                                                    {(appMode === 'full' || currentStep === 6) && (
+                                                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-200 mt-6">
+                                                            {appMode === 'wizard' && (
+                                                                <FinalizeCard
+                                                                    isSubmitted={isSubmitted}
+                                                                    onSubmit={handleConfirmSubmit}
+                                                                    onPreview={() => setIsPreviewOpen(true)}
+                                                                    theme="blue"
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Navigation Buttons for Wizard Mode */}
+                                                {appMode === 'wizard' && (
+                                                    <div className="mt-12 pt-6 border-t border-slate-200 dark:border-dark-border flex justify-between items-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={prevStep}
+                                                            disabled={currentStep === 1}
+                                                            className={`group relative inline-flex h-12 items-center justify-center rounded-xl px-6 font-medium transition-colors gap-2 ${currentStep === 1
+                                                                ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                                                                : 'text-slate-600 dark:text-slate-300 bg-white dark:bg-dark-surface shadow-sm border border-slate-200 dark:border-dark-border hover:bg-slate-50 dark:hover:bg-dark-base active:scale-95'
+                                                                }`}
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                                            Back
+                                                        </button>
+
+                                                        {currentStep < totalSteps && (
+                                                            <div className="flex items-center gap-3">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={nextStep}
+                                                                    className="group relative inline-flex h-12 items-center justify-center rounded-xl bg-slate-900 px-8 font-bold text-white shadow-md transition-colors active:scale-95 hover:bg-slate-800 gap-2"
+                                                                >
+                                                                    Continue
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-1"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* FINAL ACTION BUTTONS (Below Full Form Only) */}
+                                                {appMode === 'full' && (
+                                                    <div className="mt-12 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
+                                                        <h3 className="text-slate-800 dark:text-slate-100 font-bold text-xl mb-6">Ready to finalize your review?</h3>
+
+                                                        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setIsPreviewOpen(true)}
+                                                                className="inline-flex h-14 items-center justify-center gap-3 rounded-2xl bg-white dark:bg-dark-surface border-2 border-slate-200 dark:border-dark-border px-8 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-dark-base transition-colors active:scale-95 w-full sm:w-auto shadow-sm"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                                                Preview Layout
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleConfirmSubmit}
+                                                                disabled={isSubmitted}
+                                                                className="inline-flex h-14 items-center justify-center rounded-2xl bg-blue-600 px-8 py-1 text-sm font-bold text-white transition-colors gap-3 hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-md"
+                                                            >
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                                                                {isSubmitted ? "Submitted" : "Confirm & Submit"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </motion.div>
+                                        </AnimatePresence>
+                                    </form>
                                 </div>
                             </div>
-                        )}
-                        </motion.div>
-                        </AnimatePresence>
-                    </form>
-                </div>
-            </div>
-        </div>
-                </motion.div>
-            )}
-        </AnimatePresence>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

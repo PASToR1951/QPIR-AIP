@@ -7,8 +7,13 @@ export const DataTable = ({
   selectable = false,
   selectedIds = [],
   onSelectChange,
+  onRowClick,
+  onRowMouseEnter,
+  onRowMouseLeave,
+  getRowClassName,
   pageSize = 25,
   emptyMessage = 'No data found.',
+  fillHeight = false,
 }) => {
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
@@ -42,10 +47,10 @@ export const DataTable = ({
   };
 
   return (
-    <div>
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-dark-border">
+    <div className={fillHeight ? 'flex flex-col h-full' : ''}>
+      <div className={`overflow-x-auto rounded-2xl border border-slate-200 dark:border-dark-border ${fillHeight ? 'flex-1 min-h-0 overflow-y-auto' : ''}`}>
         <table className="w-full text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="bg-slate-50 dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border">
               {selectable && (
                 <th className="px-4 py-3 w-10">
@@ -74,7 +79,13 @@ export const DataTable = ({
               <tr><td colSpan={columns.length + (selectable ? 1 : 0)} className="px-4 py-10 text-center text-slate-400 dark:text-slate-600 font-bold">{emptyMessage}</td></tr>
             ) : (
               pageData.map((row, i) => (
-                <tr key={row.id ?? i} className="bg-white dark:bg-dark-surface hover:bg-slate-50 dark:hover:bg-dark-border/30 transition-colors">
+                <tr
+                  key={row.id ?? i}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  onMouseEnter={onRowMouseEnter ? (e) => onRowMouseEnter(row, e) : undefined}
+                  onMouseLeave={onRowMouseLeave ?? undefined}
+                  className={`bg-white dark:bg-dark-surface hover:bg-slate-50 dark:hover:bg-dark-border/30 transition-colors ${onRowClick ? 'cursor-pointer' : ''} ${getRowClassName ? getRowClassName(row) : ''}`}
+                >
                   {selectable && (
                     <td className="px-4 py-3 w-10">
                       <input type="checkbox" checked={selectedIds.includes(row.id)} onChange={() => toggleRow(row.id)}
@@ -95,7 +106,7 @@ export const DataTable = ({
 
       {/* Pagination */}
       {sorted.length > pageSize && (
-        <div className="flex items-center justify-between mt-4 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-4 text-sm">
           <span className="text-slate-500 dark:text-slate-400">
             Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, sorted.length)} of {sorted.length}
           </span>
