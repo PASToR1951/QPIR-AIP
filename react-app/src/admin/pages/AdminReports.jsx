@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTermConfig } from '../../context/TermConfigContext.jsx';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -506,6 +507,10 @@ const KRA_COLORS = {
 };
 
 function ClusterPIRSummary({ year }) {
+  // Bug fix: was hardcoded to [1,2,3,4], which breaks trimester/custom term configs.
+  // Now derives period count and labels from termConfig so Q buttons always match
+  // the active term system and send the correct period number to the API.
+  const termConfig = useTermConfig();
   const [clusters, setClusters] = useState([]);
   const [clusterId, setClusterId] = useState('');
   const [quarter, setQuarter] = useState(1);
@@ -579,8 +584,9 @@ function ClusterPIRSummary({ year }) {
     }
   }
 
-  const clusterOptions = clusters.map(c => ({ value: String(c.id), label: `Cluster ${c.cluster_number}: ${c.name}` }));
-  const QUARTERS = [1, 2, 3, 4];
+  // CONSTRAINT: Clusters have no meaningful name — display by number only. Never append c.name; it mirrors the number and produces "Cluster 1: Cluster 1".
+  const clusterOptions = clusters.map(c => ({ value: String(c.id), label: `Cluster ${c.cluster_number}` }));
+  const periods = termConfig.periods ?? [];
 
   return (
     <div className="space-y-4">
@@ -595,10 +601,10 @@ function ClusterPIRSummary({ year }) {
           />
         </div>
         <div className="flex items-center gap-1">
-          {QUARTERS.map(q => (
-            <button key={q} onClick={() => setQuarter(q)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${q === quarter ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400'}`}>
-              Q{q}
+          {periods.map((p, i) => (
+            <button key={i + 1} onClick={() => setQuarter(i + 1)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${i + 1 === quarter ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400'}`}>
+              {p.ordinal}
             </button>
           ))}
         </div>

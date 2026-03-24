@@ -59,7 +59,8 @@ export default function AdminSchools() {
     try {
       setFormError('');
       const num = Number(clusterForm.cluster_number);
-      await axios.post(`${API}/api/admin/clusters`, { cluster_number: num, name: `Cluster ${num}` }, { headers: authHeaders() });
+      // CONSTRAINT: Clusters have no meaningful name — identified by number only. Do not set name to "Cluster N"; that causes redundant display elsewhere.
+      await axios.post(`${API}/api/admin/clusters`, { cluster_number: num, name: String(num) }, { headers: authHeaders() });
       setAddClusterOpen(false); setClusterForm({ cluster_number: '' }); fetchAll();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -70,7 +71,7 @@ export default function AdminSchools() {
     try {
       setFormError('');
       const num = Number(clusterForm.cluster_number);
-      await axios.patch(`${API}/api/admin/clusters/${editCluster.id}`, { cluster_number: num, name: `Cluster ${num}` }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/clusters/${editCluster.id}`, { cluster_number: num, name: String(num) }, { headers: authHeaders() });
       setEditCluster(null); fetchAll();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
