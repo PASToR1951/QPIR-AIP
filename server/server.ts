@@ -20,12 +20,29 @@ app.get('/api/health', (c) => {
 
 // Public: active announcement for user dashboard banner
 import { prisma as _prisma } from "./db/client.ts";
+import { getTermConfig, toTermConfigResponse, type TermType } from "./lib/termConfig.ts";
+
 app.get('/api/announcement', async (c) => {
   const a = await _prisma.announcement.findFirst({
     where: { is_active: true },
     orderBy: { updated_at: 'desc' },
   });
   return c.json(a ?? null);
+});
+
+// Public: active term structure config (used by PIRForm and dashboard)
+app.get('/api/term-config', async (c) => {
+  const [termRow, supervisorNameRow, supervisorTitleRow] = await Promise.all([
+    _prisma.systemConfig.findUnique({ where: { key: 'term_type' } }),
+    _prisma.systemConfig.findUnique({ where: { key: 'supervisor_name' } }),
+    _prisma.systemConfig.findUnique({ where: { key: 'supervisor_title' } }),
+  ]);
+  const type = (termRow?.value ?? 'Trimester') as TermType;
+  return c.json({
+    ...toTermConfigResponse(getTermConfig(type)),
+    supervisorName:  supervisorNameRow?.value  ?? 'DR. ENRIQUE Q. RETES, EdD',
+    supervisorTitle: supervisorTitleRow?.value ?? 'Chief Education Supervisor',
+  });
 });
 
 // Mount modular routes

@@ -3,9 +3,14 @@ import { prisma } from "../db/client.ts";
 import { ensureDir } from "https://deno.land/std@0.224.0/fs/mod.ts";
 import * as path from "https://deno.land/std@0.224.0/path/mod.ts";
 import jwt from "jsonwebtoken";
+import {
+  getSYBounds, getCurrentPeriod, getPeriodLabel,
+  activityOverlapsPeriod, buildPeriodDeadline,
+} from "../lib/termConfig.ts";
+import { loadTermConfig } from "../lib/loadTermConfig.ts";
+import { JWT_SECRET } from "../lib/config.ts";
 
 const dataRoutes = new Hono();
-const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
 
 // ==========================================
 // AUTH HELPER
@@ -326,7 +331,10 @@ dataRoutes.post('/pirs/draft', async (c) => {
     }
 
     return c.json({ message: 'PIR draft saved successfully', pir });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      return c.json({ error: 'A PIR already exists for this quarter' }, 409);
+    }
     console.error('Failed to save PIR draft:', error);
     return c.json({ error: 'Failed to save PIR draft' }, 500);
   }
@@ -359,7 +367,7 @@ dataRoutes.get('/pirs/draft', async (c) => {
       });
     }
 
-    const yearMatch = quarter?.match(/CY (\d{4})/);
+    const yearMatch = quarter?.match(/SY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
     const program = await prisma.program.findUnique({ where: { title: program_title } });
@@ -432,7 +440,7 @@ dataRoutes.delete('/pirs/draft', async (c) => {
 
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter required' }, 400);
 
-    const yearMatch = quarter.match(/CY (\d{4})/);
+    const yearMatch = quarter.match(/SY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
     const program = await prisma.program.findUnique({ where: { title: program_title } });
@@ -810,7 +818,7 @@ dataRoutes.get('/pirs', async (c) => {
 
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
-    const yearMatch = quarter.match(/CY (\d{4})/);
+    const yearMatch = quarter.match(/SY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
     const program = await prisma.program.findUnique({ where: { title: program_title } });
@@ -1234,34 +1242,11 @@ dataRoutes.post('/pirs', async (c) => {
 });
 
 // ==========================================
-// QUARTER / DEADLINE HELPERS
+// TRIMESTER / DEADLINE HELPERS
 // ==========================================
-
-function activityOverlapsQuarter(startMonth: number, endMonth: number, quarter: number): boolean {
-  const qStart = (quarter - 1) * 3 + 1; // Q1=1, Q2=4, Q3=7, Q4=10
-  const qEnd = quarter * 3;              // Q1=3, Q2=6, Q3=9, Q4=12
-  return startMonth <= qEnd && endMonth >= qStart;
-}
-
-function getQuarterLabel(quarter: number, year: number): string {
-  const ordinals: Record<number, string> = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };
-  return `${ordinals[quarter]} Quarter CY ${year}`;
-}
-
-function buildDeadline(year: number, quarter: number, customDate?: Date): Date {
-  if (customDate) {
-    const d = new Date(customDate);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  }
-  const defaults: Record<number, Date> = {
-    1: new Date(year, 2,  31, 23, 59, 59, 999), // Mar 31
-    2: new Date(year, 5,  30, 23, 59, 59, 999), // Jun 30
-    3: new Date(year, 8,  30, 23, 59, 59, 999), // Sep 30
-    4: new Date(year, 11, 31, 23, 59, 59, 999), // Dec 31
-  };
-  return defaults[quarter];
-}
+// Helpers are now imported from server/lib/termConfig.ts and loaded from DB
+// via loadTermConfig(). The helpers below are retained as thin wrappers for
+// any call sites that use the old signatures within this file.
 
 // ==========================================
 // DASHBOARD
@@ -1273,14 +1258,20 @@ dataRoutes.get('/dashboard', async (c) => {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
     const today = new Date();
-    const currentQuarter = Math.ceil((today.getMonth() + 1) / 3);
+    const termCfg = await loadTermConfig();
+    const sy = getSYBounds(today);
+    // Allow override via ?year= (interpreted as SY start year)
+    const syStartParam = c.req.query('year');
+    const syStart = syStartParam ? parseInt(syStartParam) : sy.start;
+    const syEnd = syStart + 1;
 
-    // Load any admin-set deadlines for this year
-    const customDeadlines = await prisma.deadline.findMany({ where: { year } });
-    const getDeadline = (q: number) =>
-      buildDeadline(year, q, customDeadlines.find(d => d.quarter === q)?.date);
+    const currentTrimester = getCurrentPeriod(termCfg, today);
+
+    // Load any admin-set deadlines for this SY start year
+    const customDeadlines = await prisma.deadline.findMany({ where: { year: syStart } });
+    const getDeadline = (t: number) =>
+      buildPeriodDeadline(termCfg, syStart, t, customDeadlines.find(d => d.quarter === t)?.date);
 
     // ── Active Programs ──────────────────────────────────
     let activePrograms = 0;
@@ -1307,7 +1298,7 @@ dataRoutes.get('/dashboard', async (c) => {
       activePrograms = await prisma.program.count({
         where: {
           id: { notIn: restrictedIds },
-          school_level_requirement: { in: levelFilter }
+          school_level_requirement: { in: levelFilter as string[] }
         }
       });
     }
@@ -1316,11 +1307,11 @@ dataRoutes.get('/dashboard', async (c) => {
     let aipCompleted = 0;
     if (tokenUser.role === 'Division Personnel') {
       aipCompleted = await prisma.aIP.count({
-        where: { created_by_user_id: tokenUser.id, school_id: null, year }
+        where: { created_by_user_id: tokenUser.id, school_id: null, year: syStart }
       });
     } else if (tokenUser.school_id) {
       aipCompleted = await prisma.aIP.count({
-        where: { school_id: tokenUser.school_id, year }
+        where: { school_id: tokenUser.school_id, year: syStart }
       });
     }
     const aipTotal = activePrograms;
@@ -1329,8 +1320,8 @@ dataRoutes.get('/dashboard', async (c) => {
     // ── PIR Submitted (timeline-aware) ──────────────────
     const userAIPsWithActivities = await (prisma.aIP as any).findMany({
       where: tokenUser.role === 'Division Personnel'
-        ? { created_by_user_id: tokenUser.id, school_id: null, year }
-        : { school_id: tokenUser.school_id, year },
+        ? { created_by_user_id: tokenUser.id, school_id: null, year: syStart }
+        : { school_id: tokenUser.school_id, year: syStart },
       select: {
         id: true,
         activities: { select: { period_start_month: true, period_end_month: true, budget_amount: true } }
@@ -1338,25 +1329,25 @@ dataRoutes.get('/dashboard', async (c) => {
     });
     const allAipIds: number[] = userAIPsWithActivities.map((a: any) => a.id);
 
-    // Helper: check if an AIP has activities in a given quarter
-    const aipHasActivitiesInQuarter = (aip: any, q: number) =>
+    // Helper: check if an AIP has activities in a given period
+    const aipHasActivitiesInTrimester = (aip: any, t: number) =>
       aip.activities.some((a: any) =>
         a.period_start_month && a.period_end_month
-          ? activityOverlapsQuarter(a.period_start_month, a.period_end_month, q)
+          ? activityOverlapsPeriod(termCfg, a.period_start_month, a.period_end_month, t)
           : true // Legacy data without structured months — assume relevant
       );
 
-    // Current quarter: only count AIPs with activities this quarter
-    const aipsRelevantThisQuarter = userAIPsWithActivities.filter(
-      (aip: any) => aipHasActivitiesInQuarter(aip, currentQuarter)
+    // Current period: only count AIPs with activities this period
+    const aipsRelevantThisTrimester = userAIPsWithActivities.filter(
+      (aip: any) => aipHasActivitiesInTrimester(aip, currentTrimester)
     );
-    const pirTotal = aipsRelevantThisQuarter.length;
-    const relevantAipIds: number[] = aipsRelevantThisQuarter.map((a: any) => a.id);
+    const pirTotal = aipsRelevantThisTrimester.length;
+    const relevantAipIds: number[] = aipsRelevantThisTrimester.map((a: any) => a.id);
 
-    const currentQuarterLabel = getQuarterLabel(currentQuarter, year);
+    const currentTrimesterLabel = getPeriodLabel(termCfg, currentTrimester, syStart);
     const pirSubmittedCount = relevantAipIds.length > 0
       ? await prisma.pIR.count({
-          where: { aip_id: { in: relevantAipIds }, quarter: currentQuarterLabel }
+          where: { aip_id: { in: relevantAipIds }, quarter: currentTrimesterLabel }
         })
       : 0;
 
@@ -1365,54 +1356,54 @@ dataRoutes.get('/dashboard', async (c) => {
       sum + aip.activities.reduce((s: number, a: any) => s + (parseFloat(a.budget_amount) || 0), 0)
     , 0);
 
-    // ── Quarters (timeline-aware) ─────────────────────────
-    const quarters = await Promise.all([1, 2, 3, 4].map(async (q) => {
-      const deadline = getDeadline(q);
-      const label = getQuarterLabel(q, year);
+    // ── Periods (timeline-aware, config-driven) ─────────────
+    const quarters = await Promise.all(termCfg.periods.map(async (pd) => {
+      const t = pd.number;
+      const deadline = getDeadline(t);
+      const label = getPeriodLabel(termCfg, t, syStart);
 
-      // Check if any AIPs have activities in this quarter
+      // Check if any AIPs have activities in this period
       const hasActivities = userAIPsWithActivities.some(
-        (aip: any) => aipHasActivitiesInQuarter(aip, q)
+        (aip: any) => aipHasActivitiesInTrimester(aip, t)
       );
 
-      // Count relevant AIPs and submitted PIRs for this quarter
+      // Count relevant AIPs and submitted PIRs for this period
       const relevantIds = userAIPsWithActivities
-        .filter((aip: any) => aipHasActivitiesInQuarter(aip, q))
+        .filter((aip: any) => aipHasActivitiesInTrimester(aip, t))
         .map((a: any) => a.id);
-      const qTotal = relevantIds.length;
-      const qSubmitted = qTotal > 0
+      const tTotal = relevantIds.length;
+      const tSubmitted = tTotal > 0
         ? await prisma.pIR.count({ where: { aip_id: { in: relevantIds }, quarter: label } })
         : 0;
 
       let status: string;
       if (!hasActivities && allAipIds.length > 0) {
         status = 'No Activities';
-      } else if (q > currentQuarter) {
+      } else if (t > currentTrimester) {
         status = 'Locked';
-      } else if (q === currentQuarter && today <= deadline) {
+      } else if (t === currentTrimester && today <= deadline) {
         status = 'In Progress';
       } else {
-        // Past quarter or deadline has passed
-        status = qSubmitted >= qTotal && qTotal > 0 ? 'Submitted' : (qTotal > 0 ? 'Missed' : 'No Activities');
+        status = tSubmitted >= tTotal && tTotal > 0 ? 'Submitted' : (tTotal > 0 ? 'Missed' : 'No Activities');
       }
 
       return {
-        name: `Q${q}`,
+        name: `${pd.prefix}${t}`,
         status,
         deadline: deadline.toISOString(),
-        submitted: qSubmitted,
-        total: qTotal
+        submitted: tSubmitted,
+        total: tTotal
       };
     }));
 
-    const currentDeadline = getDeadline(currentQuarter);
+    const currentDeadline = getDeadline(currentTrimester);
 
     return c.json({
       activePrograms,
       aipCompletion: { completed: aipCompleted, total: aipTotal, percentage: aipPercentage },
       pirSubmitted: { submitted: pirSubmittedCount, total: pirTotal },
       totalPlannedBudget,
-      currentQuarter,
+      currentQuarter: currentTrimester,
       deadline: currentDeadline.toISOString(),
       quarters
     });

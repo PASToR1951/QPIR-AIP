@@ -4,13 +4,16 @@ import { IconContext } from '@phosphor-icons/react'
 import './index.css'
 import App from './App.jsx'
 import { AccessibilityProvider } from './context/AccessibilityContext.jsx'
+import { TermConfigProvider } from './context/TermConfigContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <IconContext.Provider value={{ weight: 'fill' }}>
-      <AccessibilityProvider>
-        <App />
-      </AccessibilityProvider>
+      <TermConfigProvider>
+        <AccessibilityProvider>
+          <App />
+        </AccessibilityProvider>
+      </TermConfigProvider>
     </IconContext.Provider>
   </StrictMode>,
 )
