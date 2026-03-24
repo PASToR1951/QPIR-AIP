@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, Check, ArrowBendUpLeft, DownloadSimple, XCircle, Funnel } from '@phosphor-icons/react';
+import { Eye, Check, ArrowBendUpLeft, DownloadSimple, XCircle, Funnel, CalendarDots, Warning, CheckCircle, FloppyDisk } from '@phosphor-icons/react';
 import { AdminLayout } from '../AdminLayout.jsx';
 import { DataTable } from '../components/DataTable.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
@@ -16,7 +16,25 @@ import html2canvas from 'html2canvas';
 const API = import.meta.env.VITE_API_URL;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
+const TERM_OPTIONS = [
+  { type: 'Trimester', label: 'Trimester', periodCount: 3 },
+  { type: 'Quarterly', label: 'Quarterly', periodCount: 4 },
+  { type: 'Bimester',  label: 'Bimester',  periodCount: 2 },
+];
+
+const MONTHS = [
+  { value: 1,  label: 'January' },  { value: 2,  label: 'February' },
+  { value: 3,  label: 'March' },    { value: 4,  label: 'April' },
+  { value: 5,  label: 'May' },      { value: 6,  label: 'June' },
+  { value: 7,  label: 'July' },     { value: 8,  label: 'August' },
+  { value: 9,  label: 'September' },{ value: 10, label: 'October' },
+  { value: 11, label: 'November' }, { value: 12, label: 'December' },
+];
+
+// Bug fix: guard against null/undefined — new Date(null) returns epoch (Jan 1 1970),
+// new Date(undefined) returns Invalid Date. Show a dash for missing dates instead.
 function relativeDate(d) {
+  if (!d) return '—';
   return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
@@ -46,6 +64,57 @@ export default function AdminSubmissions() {
   const [returnFeedback, setReturnFeedback] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [reviewItem, setReviewItem] = useState(null);
+  // Tracks which row's PDF is currently being generated to prevent double-clicks
+  const [pdfLoadingId, setPdfLoadingId] = useState(null);
+
+  // Term structure switcher
+  const [pendingTermType, setPendingTermType] = useState(null);
+  const [periodMonths, setPeriodMonths] = useState([]); // [{start: number, end: number}]
+  const [termSaving, setTermSaving] = useState(false);
+  const [termSaved, setTermSaved] = useState(false);
+  const [termError, setTermError] = useState('');
+
+  // Seed period months from the live term config once it loads
+  useEffect(() => {
+    if (termConfig.periods?.length) {
+      setPeriodMonths(termConfig.periods.map(p => ({ start: p.startMonth, end: p.endMonth })));
+    }
+  }, [termConfig.periods]);
+
+  // Selecting a term type pre-fills months from current config (if same type) or clears them (new type)
+  const handleTermTypeSelect = (type) => {
+    setPendingTermType(type);
+    if (type === termConfig.termType) {
+      setPeriodMonths(termConfig.periods.map(p => ({ start: p.startMonth, end: p.endMonth })));
+    } else {
+      const count = TERM_OPTIONS.find(o => o.type === type)?.periodCount ?? 0;
+      setPeriodMonths(Array.from({ length: count }, () => ({ start: '', end: '' })));
+    }
+  };
+
+  const handleTermSave = async () => {
+    if (!pendingTermType || pendingTermType === termConfig.termType) return;
+    if (periodMonths.some(m => !m.start || !m.end)) {
+      setTermError('Assign start and end months for every period.');
+      return;
+    }
+    setTermSaving(true);
+    setTermError('');
+    try {
+      await axios.patch(
+        `${API}/api/admin/term-config`,
+        { termType: pendingTermType, periods: periodMonths.map((m, i) => ({ period: i + 1, startMonth: m.start, endMonth: m.end })) },
+        { headers: authHeaders() }
+      );
+      setTermSaved(true);
+      setPendingTermType(null);
+      setTimeout(() => { setTermSaved(false); window.location.reload(); }, 1200);
+    } catch (e) {
+      setTermError(e.response?.data?.error || 'Failed to update term structure');
+    } finally {
+      setTermSaving(false);
+    }
+  };
 
   const underReviewTimerRef = useRef(null);
 
@@ -160,9 +229,12 @@ export default function AdminSubmissions() {
     a.click();
   };
 
-  const handleExportPDF = async () => {
+  // Bug fix: accepts `item` directly instead of reading `viewItem` from state.
+  // Previously, calling this via a .then() chain captured a stale viewItem=null
+  // from the render at click time, causing the export to always bail out early.
+  const handleExportPDF = async (item) => {
     const el = document.getElementById('submission-detail-body');
-    if (!el || !viewItem) return;
+    if (!el || !item) return;
     const canvas = await html2canvas(el, { scale: 1.5, useCORS: true });
     const imgData = canvas.toDataURL('image/jpeg', 0.85);
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -182,7 +254,7 @@ export default function AdminSubmissions() {
         if (remaining > 0) pdf.addPage();
       }
     }
-    pdf.save(`${viewItem.type}-${viewItem.id}.pdf`);
+    pdf.save(`${item.type}-${item.id}.pdf`);
   };
 
   const clearFilters = () => setFilters({ cluster: null, school: null, program: null, quarter: null, year: null, status: null });
@@ -219,7 +291,23 @@ export default function AdminSubmissions() {
           </button>
           <button onClick={() => setApproveItem(row)} title="Approve" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"><Check size={17} /></button>
           <button onClick={() => { setReturnItem(row); setReturnFeedback(''); }} title="Return" className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"><ArrowBendUpLeft size={17} /></button>
-          <button onClick={() => { openView(row).then(() => new Promise(r => setTimeout(r, 500))).then(() => handleExportPDF()); }} title="Download PDF" className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><DownloadSimple size={17} /></button>
+          {/* Bug fix: pass row directly so handleExportPDF isn't affected by stale viewItem state.
+              pdfLoadingId guards against multiple simultaneous export clicks. */}
+          <button
+            disabled={pdfLoadingId === row.id}
+            onClick={async () => {
+              setPdfLoadingId(row.id);
+              try {
+                await openView(row);
+                await new Promise(r => setTimeout(r, 500));
+                await handleExportPDF(row);
+              } finally {
+                setPdfLoadingId(null);
+              }
+            }}
+            title="Download PDF"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+          ><DownloadSimple size={17} /></button>
         </div>
       )
     },
@@ -254,8 +342,9 @@ export default function AdminSubmissions() {
         {showFilters && (
           <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {/* CONSTRAINT: Clusters have no meaningful name — display by number only. Never use c.name here; it mirrors the number and produces "Cluster 1: Cluster 1". */}
               <SearchableSelect
-                options={clusters.map(c => ({ value: c.id, label: `Cluster ${c.cluster_number}: ${c.name}` }))}
+                options={clusters.map(c => ({ value: c.id, label: `Cluster ${c.cluster_number}` }))}
                 value={filters.cluster}
                 onChange={v => setFilters(f => ({ ...f, cluster: v, school: null }))}
                 placeholder="Cluster"
@@ -298,6 +387,90 @@ export default function AdminSubmissions() {
               />
             </div>
             <button onClick={clearFilters} className="mt-3 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">Clear filters</button>
+
+            {/* Term Structure */}
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-dark-border space-y-3">
+              <div className="flex items-center gap-2">
+                <CalendarDots size={14} className="text-violet-500 dark:text-violet-400" />
+                <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Term Structure</span>
+              </div>
+
+              <div className="flex items-start gap-2.5 px-3 py-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl text-[11px] text-amber-800 dark:text-amber-300">
+                <Warning size={13} weight="fill" className="shrink-0 mt-px" />
+                <span>Existing PIR records keep their original period labels. Only new submissions are affected.</span>
+              </div>
+
+              {/* Type selector */}
+              <div className="flex flex-wrap gap-2">
+                {TERM_OPTIONS.map(opt => {
+                  const activeType = pendingTermType ?? termConfig.termType;
+                  const isActive = activeType === opt.type;
+                  return (
+                    <button
+                      key={opt.type}
+                      onClick={() => handleTermTypeSelect(opt.type)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all ${
+                        isActive
+                          ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 ring-2 ring-violet-500/20'
+                          : 'border-slate-200 dark:border-dark-border bg-white dark:bg-dark-base text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                      }`}
+                    >
+                      {isActive && <CheckCircle size={12} weight="fill" className="text-violet-500 dark:text-violet-400" />}
+                      {opt.label}
+                      <span className="text-[10px] font-bold opacity-60">{opt.periodCount} periods</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Month assignment — appears when a type is selected */}
+              {pendingTermType && periodMonths.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                    Which months does each period cover?
+                  </p>
+                  {periodMonths.map((pm, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 w-16 shrink-0">Period {i + 1}</span>
+                      <select
+                        value={pm.start}
+                        onChange={e => setPeriodMonths(prev => prev.map((m, j) => j === i ? { ...m, start: Number(e.target.value) } : m))}
+                        className="flex-1 text-xs bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-lg px-2 py-1.5 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-violet-400 dark:focus:border-violet-500"
+                      >
+                        <option value="">Start month…</option>
+                        {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      </select>
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">to</span>
+                      <select
+                        value={pm.end}
+                        onChange={e => setPeriodMonths(prev => prev.map((m, j) => j === i ? { ...m, end: Number(e.target.value) } : m))}
+                        className="flex-1 text-xs bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-lg px-2 py-1.5 text-slate-700 dark:text-slate-300 focus:outline-none focus:border-violet-400 dark:focus:border-violet-500"
+                      >
+                        <option value="">End month…</option>
+                        {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Apply row */}
+              <div className="flex items-center justify-between pt-1">
+                <div>{termError && <span className="text-[11px] text-rose-500 font-bold">{termError}</span>}</div>
+                <button
+                  onClick={handleTermSave}
+                  disabled={termSaving || !pendingTermType || pendingTermType === termConfig.termType}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    termSaved ? 'bg-emerald-500 text-white' : 'bg-violet-600 hover:bg-violet-700 text-white'
+                  }`}
+                >
+                  {termSaved
+                    ? <><CheckCircle size={12} weight="fill" /> Applied</>
+                    : <><FloppyDisk size={12} weight="bold" /> {termSaving ? 'Saving…' : 'Apply'}</>
+                  }
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
