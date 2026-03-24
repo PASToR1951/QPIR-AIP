@@ -1,0 +1,13 @@
+# Dependencies — installed fresh during build
+node_modules/
+
+# Previous build output
+dist/
+
+# Local env file — VITE_API_URL is passed as a build arg instead
+.env
+.env.*
+
+# Dev / editor artifacts
+*.log
+.DS_Store
