@@ -1,0 +1,18 @@
+# Node modules — rebuilt inside container
+node_modules/
+
+# Prisma generated client — regenerated during build
+generated/
+
+# Local env file — values injected by Docker at runtime
+.env
+
+# Deno cache
+.deno/
+
+# Logs and runtime files
+*.log
+*.pid
+
+# Scripts not needed at runtime
+scripts/

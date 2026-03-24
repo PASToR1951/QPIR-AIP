@@ -1,0 +1,84 @@
+# =============================================================================
+# QPIR-AIP — Docker Compose
+#
+# Quick start:
+#   1. cp .env.docker .env
+#   2. Edit .env — set POSTGRES_PASSWORD, JWT_SECRET, and VITE_API_URL
+#   3. docker compose up -d --build
+#
+# Services:
+#   frontend  →  http://<host>:${FRONTEND_PORT:-80}
+#   backend   →  http://<host>:3001
+#   devtools  →  http://<host>:3456
+# =============================================================================
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-pir_system}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-pir_system}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Uncomment to expose the DB port to the host for external access:
+    # ports:
+    #   - "5432:5432"
+
+  # ── Backend (Deno + Prisma) ─────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pir_system}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      PORT: 3001
+    ports:
+      - "3001:3001"
+
+  # ── Frontend (React → Nginx) ────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./react-app
+      dockerfile: Dockerfile
+      args:
+        # Must be the URL that browsers (not Docker) use to reach the backend.
+        # Example: http://192.168.1.100:3001 or https://api.yourdomain.com
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+
+  # ── Claude DevTools ──────────────────────────────────────────────────────────
+  devtools:
+    build:
+      context: ./claude-devtools
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ${CLAUDE_DIR:-~/.claude}:/data/.claude:ro
+    environment:
+      NODE_ENV: production
+      CLAUDE_ROOT: /data/.claude
+      HOST: 0.0.0.0
+      PORT: 3456
+    ports:
+      - "3456:3456"
+
+volumes:
+  db_data:
