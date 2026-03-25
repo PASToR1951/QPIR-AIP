@@ -12,9 +12,243 @@ export default React.memo(function PIRMonitoringEvaluationSection({
     handleRemoveActivity,
     handleActivityChange,
     handleAddActivity,
+    handleAddUnplannedActivity,
     isAddingActivity
 }) {
     if (appMode !== 'full' && currentStep !== 3) return null;
+
+    const renderActivityCard = (act, index) => {
+        const physGap = calculateGap(act.physTarget, act.physAcc);
+        const finGap = calculateGap(act.finTarget, act.finAcc);
+        const isExpanded = expandedActivityId === act.id;
+
+        if (!isExpanded) {
+            return (
+                <div
+                    key={act.id}
+                    onClick={() => setExpandedActivityId(act.id)}
+                    className="relative group bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition-colors cursor-pointer flex items-center justify-between"
+                >
+                    <div className="flex items-center gap-4 overflow-hidden pr-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border text-slate-500 dark:text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                            <span className="font-bold text-sm">{index + 1}</span>
+                        </div>
+                        <div className="flex flex-col truncate">
+                            <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                                {act.name || <span className="text-slate-400 dark:text-slate-500 italic font-normal">Untitled Activity...</span>}
+                            </span>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
+                                {act.implementation_period && (
+                                    <span className="flex items-center gap-1 whitespace-nowrap text-blue-500 normal-case font-semibold tracking-normal">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                        {act.implementation_period}
+                                    </span>
+                                )}
+                                {act.implementation_period && <span className="text-slate-300 dark:text-slate-600 hidden sm:block">|</span>}
+                                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                                    Physical Gap: <span className={physGap < 0 ? 'text-red-500' : 'text-emerald-500'}>{physGap.toFixed(2)}%</span>
+                                </span>
+                                <span className="text-slate-300 dark:text-slate-600 hidden sm:block">|</span>
+                                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                                    Financial Gap: <span className={finGap < 0 ? 'text-red-500' : 'text-emerald-500'}>{finGap.toFixed(2)}%</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {activities.length > 1 && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleRemoveActivity(act.id); }}
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                title="Delete"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                            </button>
+                        )}
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // EXPANDED CARD
+        return (
+            <div key={act.id} className="relative group bg-white dark:bg-dark-surface border-2 border-blue-200 dark:border-dark-border rounded-3xl shadow-md overflow-hidden ring-4 ring-blue-50 dark:ring-blue-950/20">
+                <div
+                    onClick={() => setExpandedActivityId(null)}
+                    className="flex items-center justify-between p-5 md:px-8 bg-slate-50/80 dark:bg-dark-base/80 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors border-b border-slate-100 dark:border-dark-border cursor-pointer"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
+                            <span className="font-bold text-xs">{index + 1}</span>
+                        </div>
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">Editing Activity</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {activities.length > 1 && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleRemoveActivity(act.id); }}
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                title="Remove Activity"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                            </button>
+                        )}
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full text-blue-600 bg-blue-100 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 md:p-8 flex flex-col gap-6">
+                    <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Activity Name / Description</label>
+                            {act.fromAIP && act.implementation_period && (
+                                <span className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 px-2.5 py-1 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    {act.implementation_period}
+                                </span>
+                            )}
+                        </div>
+                        {act.fromAIP ? (
+                            <p className="text-lg font-semibold text-slate-700 dark:text-slate-200 py-1 border-b border-slate-200 dark:border-dark-border">
+                                {act.name}
+                            </p>
+                        ) : (
+                            <TextareaAuto
+                                placeholder="Describe the activity here..."
+                                className="w-full text-lg font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 border-b border-transparent focus:border-blue-500 transition-colors py-1"
+                                value={act.name}
+                                onChange={(e) => handleActivityChange(act.id, 'name', e.target.value)}
+                            />
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-dark-base p-5 rounded-2xl border border-slate-200 dark:border-dark-border">
+                        <div className="flex flex-col gap-4">
+                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                Physical Targets
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-white dark:bg-dark-surface rounded-xl border border-slate-200 dark:border-dark-border p-3 shadow-sm focus-within:border-blue-300 transition-colors group/input">
+                                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1 group-focus-within/input:text-blue-600">Target</label>
+                                    <input type="number" inputMode="decimal" className="w-full bg-transparent outline-none font-mono text-base font-semibold text-slate-800 dark:text-slate-100" placeholder="0" value={act.physTarget} onChange={(e) => handleActivityChange(act.id, 'physTarget', e.target.value.replace(/[^0-9.]/g, ''))} />
+                                </div>
+                                <div className="bg-white dark:bg-dark-surface rounded-xl border border-slate-200 dark:border-dark-border p-3 shadow-sm focus-within:border-blue-300 transition-colors group/input">
+                                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1 group-focus-within/input:text-blue-600">Accomplished</label>
+                                    <input type="number" inputMode="decimal" className="w-full bg-transparent outline-none font-mono text-base font-semibold text-slate-800 dark:text-slate-100" placeholder="0" value={act.physAcc} onChange={(e) => handleActivityChange(act.id, 'physAcc', e.target.value.replace(/[^0-9.]/g, ''))} />
+                                </div>
+                            </div>
+                            <div className={`flex justify-between items-center px-4 py-2.5 rounded-xl border ${physGap < 0 ? 'bg-red-50 dark:bg-red-950/30 border-red-100' : 'bg-slate-100 dark:bg-dark-border border-slate-200 dark:border-dark-border'}`}>
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Physical Gap</span>
+                                <span className={`font-mono text-sm font-bold ${physGap < 0 ? 'text-red-600' : 'text-slate-600 dark:text-slate-300'}`}>{physGap.toFixed(2)}%</span>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col gap-4 relative">
+                            <div className="hidden md:block absolute -left-3 top-2 bottom-2 w-px bg-slate-200 dark:bg-dark-border"></div>
+                            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                Financial Targets
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-white dark:bg-dark-surface rounded-xl border border-slate-200 dark:border-dark-border p-3 shadow-sm focus-within:border-emerald-300 transition-colors group/input">
+                                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1 group-focus-within/input:text-emerald-600">Target</label>
+                                    <input type="number" inputMode="decimal" className="w-full bg-transparent outline-none font-mono text-base font-semibold text-slate-800 dark:text-slate-100" placeholder="0" value={act.finTarget} onChange={(e) => handleActivityChange(act.id, 'finTarget', e.target.value.replace(/[^0-9.]/g, ''))} />
+                                </div>
+                                <div className="bg-white dark:bg-dark-surface rounded-xl border border-slate-200 dark:border-dark-border p-3 shadow-sm focus-within:border-emerald-300 transition-colors group/input">
+                                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1 group-focus-within/input:text-emerald-600">Accomplished</label>
+                                    <input type="number" inputMode="decimal" className="w-full bg-transparent outline-none font-mono text-base font-semibold text-slate-800 dark:text-slate-100" placeholder="0" value={act.finAcc} onChange={(e) => handleActivityChange(act.id, 'finAcc', e.target.value.replace(/[^0-9.]/g, ''))} />
+                                </div>
+                            </div>
+                            <div className={`flex justify-between items-center px-4 py-2.5 rounded-xl border ${finGap < 0 ? 'bg-red-50 dark:bg-red-950/30 border-red-100' : 'bg-slate-100 dark:bg-dark-border border-slate-200 dark:border-dark-border'}`}>
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Financial Gap</span>
+                                <span className={`font-mono text-sm font-bold ${finGap < 0 ? 'text-red-600' : 'text-slate-600 dark:text-slate-300'}`}>{finGap.toFixed(2)}%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-50 transition-colors">
+                        <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                            Actions to Address Gap
+                        </label>
+                        <TextareaAuto
+                            placeholder="What steps will be taken?"
+                            className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[40px]"
+                            value={act.actions}
+                            onChange={(e) => handleActivityChange(act.id, 'actions', e.target.value)}
+                        />
+                    </div>
+
+                    {/* Complied toggle — AIP activities only */}
+                    {act.fromAIP && (
+                        <div>
+                            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2.5">Compliance with AIP</label>
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    className={`px-4 py-2 rounded-full text-sm font-bold border-2 transition-colors ${act.complied === true ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500 hover:border-emerald-300'}`}
+                                    onClick={() => handleActivityChange(act.id, 'complied', act.complied === true ? null : true)}
+                                >✓ Complied</button>
+                                <button
+                                    type="button"
+                                    className={`px-4 py-2 rounded-full text-sm font-bold border-2 transition-colors ${act.complied === false ? 'bg-red-500 border-red-500 text-white' : 'border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500 hover:border-red-300'}`}
+                                    onClick={() => handleActivityChange(act.id, 'complied', act.complied === false ? null : false)}
+                                >✗ Not Complied</button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* v4 detail fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-50 dark:focus-within:ring-blue-950/20 transition-colors">
+                            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">Actual Tasks Conducted</label>
+                            <TextareaAuto
+                                placeholder="What tasks were actually conducted?"
+                                className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[40px]"
+                                value={act.actualTasksConducted}
+                                onChange={(e) => handleActivityChange(act.id, 'actualTasksConducted', e.target.value)}
+                            />
+                        </div>
+                        <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-50 dark:focus-within:ring-blue-950/20 transition-colors">
+                            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">Contributory Performance Indicators</label>
+                            <TextareaAuto
+                                placeholder="Indicators this activity contributes to..."
+                                className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[40px]"
+                                value={act.contributoryIndicators}
+                                onChange={(e) => handleActivityChange(act.id, 'contributoryIndicators', e.target.value)}
+                            />
+                        </div>
+                        <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-50 dark:focus-within:ring-blue-950/20 transition-colors">
+                            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">MOVs / Expected Outputs</label>
+                            <TextareaAuto
+                                placeholder="Means of verification and expected outputs..."
+                                className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[40px]"
+                                value={act.movsExpectedOutputs}
+                                onChange={(e) => handleActivityChange(act.id, 'movsExpectedOutputs', e.target.value)}
+                            />
+                        </div>
+                        <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-50 dark:focus-within:ring-blue-950/20 transition-colors">
+                            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">Adjustments</label>
+                            <TextareaAuto
+                                placeholder="Any adjustments made to the activity..."
+                                className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[40px]"
+                                value={act.adjustments}
+                                onChange={(e) => handleActivityChange(act.id, 'adjustments', e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className={`${(appMode === 'full' || currentStep === 3) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
@@ -44,181 +278,9 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                         }
                     />
 
+                    {/* AIP / planned activities */}
                     <div className="space-y-4">
-                        {activities.map((act, index) => {
-                            const physGap = calculateGap(act.physTarget, act.physAcc);
-                            const finGap = calculateGap(act.finTarget, act.finAcc);
-                            const isExpanded = expandedActivityId === act.id;
-
-                            if (!isExpanded) {
-                                // COMPACT CARD VIEW
-                                return (
-                                    <div
-                                        key={act.id}
-                                        onClick={() => setExpandedActivityId(act.id)}
-                                        className="relative group bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition-colors cursor-pointer flex items-center justify-between"
-                                    >
-                                        <div className="flex items-center gap-4 overflow-hidden pr-4">
-                                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border text-slate-500 dark:text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                                                <span className="font-bold text-sm">{index + 1}</span>
-                                            </div>
-                                            <div className="flex flex-col truncate">
-                                                <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                                                    {act.name || <span className="text-slate-400 dark:text-slate-500 italic font-normal">Untitled Activity...</span>}
-                                                </span>
-                                                <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">
-                                                    {act.implementation_period && (
-                                                        <span className="flex items-center gap-1 whitespace-nowrap text-blue-500 normal-case font-semibold tracking-normal">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                                            {act.implementation_period}
-                                                        </span>
-                                                    )}
-                                                    {act.implementation_period && <span className="text-slate-300 dark:text-slate-600 hidden sm:block">|</span>}
-                                                    <span className="flex items-center gap-1.5 whitespace-nowrap">
-                                                        Physical Gap: <span className={physGap < 0 ? 'text-red-500' : 'text-emerald-500'}>{physGap.toFixed(2)}%</span>
-                                                    </span>
-                                                    <span className="text-slate-300 dark:text-slate-600 hidden sm:block">|</span>
-                                                    <span className="flex items-center gap-1.5 whitespace-nowrap">
-                                                        Financial Gap: <span className={finGap < 0 ? 'text-red-500' : 'text-emerald-500'}>{finGap.toFixed(2)}%</span>
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            {activities.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.stopPropagation(); handleRemoveActivity(act.id); }}
-                                                    className="flex h-8 w-8 items-center justify-center rounded-full text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                                                    title="Delete"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
-                                                </button>
-                                            )}
-                                            <div className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            }
-
-                            // EXPANDED CARD VIEW
-                            return (
-                                <div key={act.id} className="relative group bg-white dark:bg-dark-surface border-2 border-blue-200 dark:border-dark-border rounded-3xl shadow-md overflow-hidden ring-4 ring-blue-50 dark:ring-blue-950/20">
-                                    <div
-                                        onClick={() => setExpandedActivityId(null)}
-                                        className="flex items-center justify-between p-5 md:px-8 bg-slate-50/80 dark:bg-dark-base/80 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors border-b border-slate-100 dark:border-dark-border cursor-pointer"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm">
-                                                <span className="font-bold text-xs">{index + 1}</span>
-                                            </div>
-                                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-widest">Editing Activity</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {activities.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.stopPropagation(); handleRemoveActivity(act.id); }}
-                                                    className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                                                    title="Remove Activity"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
-                                                </button>
-                                            )}
-                                            <div className="flex h-8 w-8 items-center justify-center rounded-full text-blue-600 bg-blue-100 transition-colors">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-6 md:p-8 flex flex-col gap-6">
-                                        <div>
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Activity Name / Description</label>
-                                                {act.fromAIP && act.implementation_period && (
-                                                    <span className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 px-2.5 py-1 rounded-full">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                                        {act.implementation_period}
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {act.fromAIP ? (
-                                                <p className="text-lg font-semibold text-slate-700 dark:text-slate-200 py-1 border-b border-slate-200 dark:border-dark-border">
-                                                    {act.name}
-                                                </p>
-                                            ) : (
-                                                <TextareaAuto
-                                                    placeholder="Describe the activity here..."
-                                                    className="w-full text-lg font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600 border-b border-transparent focus:border-blue-500 transition-colors py-1"
-                                                    value={act.name}
-                                                    onChange={(e) => handleActivityChange(act.id, 'name', e.target.value)}
-                                                />
-                                            )}
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-dark-base p-5 rounded-2xl border border-slate-200 dark:border-dark-border">
-                                            <div className="flex flex-col gap-4">
-                                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                                    Physical Targets
-                                                </h4>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="bg-white dark:bg-dark-surface rounded-xl border border-slate-200 dark:border-dark-border p-3 shadow-sm focus-within:border-blue-300 transition-colors group/input">
-                                                        <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1 group-focus-within/input:text-blue-600">Target</label>
-                                                        <input type="number" inputMode="decimal" className="w-full bg-transparent outline-none font-mono text-base font-semibold text-slate-800 dark:text-slate-100" placeholder="0" value={act.physTarget} onChange={(e) => handleActivityChange(act.id, 'physTarget', e.target.value.replace(/[^0-9.]/g, ''))} />
-                                                    </div>
-                                                    <div className="bg-white dark:bg-dark-surface rounded-xl border border-slate-200 dark:border-dark-border p-3 shadow-sm focus-within:border-blue-300 transition-colors group/input">
-                                                        <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1 group-focus-within/input:text-blue-600">Accomplished</label>
-                                                        <input type="number" inputMode="decimal" className="w-full bg-transparent outline-none font-mono text-base font-semibold text-slate-800 dark:text-slate-100" placeholder="0" value={act.physAcc} onChange={(e) => handleActivityChange(act.id, 'physAcc', e.target.value.replace(/[^0-9.]/g, ''))} />
-                                                    </div>
-                                                </div>
-                                                <div className={`flex justify-between items-center px-4 py-2.5 rounded-xl border ${physGap < 0 ? 'bg-red-50 dark:bg-red-950/30 border-red-100' : 'bg-slate-100 dark:bg-dark-border border-slate-200 dark:border-dark-border'}`}>
-                                                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Physical Gap</span>
-                                                    <span className={`font-mono text-sm font-bold ${physGap < 0 ? 'text-red-600' : 'text-slate-600 dark:text-slate-300'}`}>{physGap.toFixed(2)}%</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-col gap-4 relative">
-                                                <div className="hidden md:block absolute -left-3 top-2 bottom-2 w-px bg-slate-200 dark:bg-dark-border"></div>
-                                                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                                                    Financial Targets
-                                                </h4>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="bg-white dark:bg-dark-surface rounded-xl border border-slate-200 dark:border-dark-border p-3 shadow-sm focus-within:border-emerald-300 transition-colors group/input">
-                                                        <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1 group-focus-within/input:text-emerald-600">Target</label>
-                                                        <input type="number" inputMode="decimal" className="w-full bg-transparent outline-none font-mono text-base font-semibold text-slate-800 dark:text-slate-100" placeholder="0" value={act.finTarget} onChange={(e) => handleActivityChange(act.id, 'finTarget', e.target.value.replace(/[^0-9.]/g, ''))} />
-                                                    </div>
-                                                    <div className="bg-white dark:bg-dark-surface rounded-xl border border-slate-200 dark:border-dark-border p-3 shadow-sm focus-within:border-emerald-300 transition-colors group/input">
-                                                        <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1 group-focus-within/input:text-emerald-600">Accomplished</label>
-                                                        <input type="number" inputMode="decimal" className="w-full bg-transparent outline-none font-mono text-base font-semibold text-slate-800 dark:text-slate-100" placeholder="0" value={act.finAcc} onChange={(e) => handleActivityChange(act.id, 'finAcc', e.target.value.replace(/[^0-9.]/g, ''))} />
-                                                    </div>
-                                                </div>
-                                                <div className={`flex justify-between items-center px-4 py-2.5 rounded-xl border ${finGap < 0 ? 'bg-red-50 dark:bg-red-950/30 border-red-100' : 'bg-slate-100 dark:bg-dark-border border-slate-200 dark:border-dark-border'}`}>
-                                                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Financial Gap</span>
-                                                    <span className={`font-mono text-sm font-bold ${finGap < 0 ? 'text-red-600' : 'text-slate-600 dark:text-slate-300'}`}>{finGap.toFixed(2)}%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-50 transition-colors">
-                                            <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-2">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-                                                Actions to Address Gap
-                                            </label>
-                                            <TextareaAuto
-                                                placeholder="What steps will be taken?"
-                                                className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 min-h-[40px]"
-                                                value={act.actions}
-                                                onChange={(e) => handleActivityChange(act.id, 'actions', e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                        {activities.filter(a => !a.isUnplanned).map((act, index) => renderActivityCard(act, index))}
                     </div>
 
                     <div className="mt-8 flex justify-center">
@@ -242,6 +304,31 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                                 </>
                             )}
                         </button>
+                    </div>
+
+                    {/* Unplanned activities sub-section */}
+                    <div className="mt-8 pt-6 border-t-2 border-dashed border-slate-200 dark:border-dark-border">
+                        <h3 className="font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            Activities Conducted But Not Included in AIP
+                        </h3>
+
+                        {activities.filter(a => a.isUnplanned).length > 0 && (
+                            <div className="space-y-4 mb-4">
+                                {activities.filter(a => a.isUnplanned).map((act, index) => renderActivityCard(act, index))}
+                            </div>
+                        )}
+
+                        <div className="flex justify-center">
+                            <button
+                                type="button"
+                                onClick={handleAddUnplannedActivity}
+                                className="group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-2xl px-8 font-bold shadow-sm border-2 active:scale-95 transition-colors gap-2 bg-white dark:bg-dark-surface text-slate-600 dark:text-slate-300 border-slate-200 dark:border-dark-border hover:border-slate-400 hover:bg-slate-50 dark:hover:bg-dark-base"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                Add Unplanned Activity
+                            </button>
+                        </div>
                     </div>
                 </>
             )}

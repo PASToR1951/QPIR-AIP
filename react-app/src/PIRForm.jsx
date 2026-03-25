@@ -419,6 +419,12 @@ export default function App() {
         setTimeout(() => setIsAddingActivity(false), 1200);
     }, []);
 
+    const handleAddUnplannedActivity = useCallback(() => {
+        const newId = crypto.randomUUID();
+        setActivities(prev => [...prev, { id: newId, name: "", implementation_period: "", period_start_month: null, period_end_month: null, aip_activity_id: null, fromAIP: false, isUnplanned: true, complied: null, actualTasksConducted: "", contributoryIndicators: "", movsExpectedOutputs: "", adjustments: "", physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }]);
+        setExpandedActivityId(newId);
+    }, []);
+
     const executeDelete = useCallback((id) => {
         setActivities(prev => {
             const newActivities = prev.filter(a => a.id !== id);
@@ -798,6 +804,7 @@ export default function App() {
                                                         handleRemoveActivity={handleRemoveActivity}
                                                         handleActivityChange={handleActivityChange}
                                                         handleAddActivity={handleAddActivity}
+                                                        handleAddUnplannedActivity={handleAddUnplannedActivity}
                                                         isAddingActivity={isAddingActivity}
                                                     />
 
