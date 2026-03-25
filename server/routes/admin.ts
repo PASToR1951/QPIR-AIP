@@ -1473,7 +1473,9 @@ adminRoutes.get("/announcements", async (c) => {
 
 adminRoutes.post("/announcements", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
-  const { message, type, is_active, dismissible } = await c.req.json();
+  const { message, type, is_active, dismissible, expires_at } = await c.req.json();
+
+  const expiresAtDate = expires_at ? new Date(expires_at) : null;
 
   // Upsert: only ever keep one announcement (update most recent or create new)
   const existing = await prisma.announcement.findFirst({ orderBy: { created_at: "desc" } });
@@ -1481,11 +1483,11 @@ adminRoutes.post("/announcements", async (c) => {
   if (existing) {
     announcement = await prisma.announcement.update({
       where: { id: existing.id },
-      data: { message, type: type ?? "info", is_active: is_active ?? true, dismissible: dismissible ?? true },
+      data: { message, type: type ?? "info", is_active: is_active ?? true, dismissible: dismissible ?? true, expires_at: expiresAtDate },
     });
   } else {
     announcement = await prisma.announcement.create({
-      data: { message, type: type ?? "info", is_active: is_active ?? true, dismissible: dismissible ?? true, created_by: admin.id },
+      data: { message, type: type ?? "info", is_active: is_active ?? true, dismissible: dismissible ?? true, expires_at: expiresAtDate, created_by: admin.id },
     });
   }
 
@@ -1558,29 +1560,87 @@ adminRoutes.get("/term-config", async (c) => {
   return c.json(toTermConfigResponse(getTermConfig(type)));
 });
 
-// PATCH /api/admin/term-config — switches the active term type
-// Body: { termType: "Trimester" | "Quarterly" | "Bimester" }
+// PATCH /api/admin/term-config — switches the active term type and saves custom period month ranges
+// Body: {
+//   termType: "Trimester" | "Quarterly" | "Bimester",
+//   customPeriods: Array<{ number: number; startMonth: number; endMonth: number }> | null
+// }
 // Existing PIR records are NOT modified — only new submissions use the new format.
+// Automatically creates a 3-day warning announcement visible to all users.
 adminRoutes.patch("/term-config", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
-  const { termType } = await c.req.json();
+  const { termType, customPeriods } = await c.req.json();
 
   const VALID: TermType[] = ["Trimester", "Quarterly", "Bimester"];
   if (!VALID.includes(termType)) {
     return c.json({ error: `termType must be one of: ${VALID.join(", ")}` }, 400);
   }
 
-  const previous = await prisma.systemConfig.findUnique({ where: { key: "term_type" } });
+  if (customPeriods !== null && customPeriods !== undefined) {
+    if (!Array.isArray(customPeriods)) {
+      return c.json({ error: "customPeriods must be an array or null" }, 400);
+    }
+    for (const p of customPeriods) {
+      if (
+        typeof p.number !== "number" ||
+        typeof p.startMonth !== "number" || p.startMonth < 1 || p.startMonth > 12 ||
+        typeof p.endMonth   !== "number" || p.endMonth   < 1 || p.endMonth   > 12
+      ) {
+        return c.json({ error: "Each period must have number, startMonth (1–12), endMonth (1–12)" }, 400);
+      }
+    }
+  }
 
+  // 1. Fetch previous term type for the announcement message
+  const previousRow = await prisma.systemConfig.findUnique({ where: { key: "term_type" } });
+  const previousType = previousRow?.value ?? "Trimester";
+
+  // 2. Persist new term_type
   await prisma.systemConfig.upsert({
     where:  { key: "term_type" },
     update: { value: termType },
     create: { key: "term_type", value: termType },
   });
 
+  // 3. Persist custom_periods — merge into existing map so other term types' overrides survive
+  const customRow = await prisma.systemConfig.findUnique({ where: { key: "custom_periods" } });
+  let customMap: Record<string, unknown> = {};
+  try { if (customRow?.value) customMap = JSON.parse(customRow.value); } catch { /* ignore */ }
+  customMap[termType] = customPeriods ?? null;
+  await prisma.systemConfig.upsert({
+    where:  { key: "custom_periods" },
+    update: { value: JSON.stringify(customMap) },
+    create: { key: "custom_periods", value: JSON.stringify(customMap) },
+  });
+
+  // 4. Auto-create a warning announcement that expires in 3 days
+  const today = new Date();
+  const sy = getSYBounds(today);
+  const expiresAt = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+  const effectiveDate = today.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
+  const message = `The reporting term has changed from ${previousType} to ${termType} effective ${effectiveDate} (SY ${sy.start}-${sy.end}). Please check your submission deadlines.`;
+
+  // Deactivate the existing announcement first, then create a fresh one
+  const existingAnn = await prisma.announcement.findFirst({ orderBy: { created_at: "desc" } });
+  if (existingAnn) {
+    await prisma.announcement.update({ where: { id: existingAnn.id }, data: { is_active: false } });
+  }
+  const newAnnouncement = await prisma.announcement.create({
+    data: {
+      message,
+      type:        "warning",
+      is_active:   true,
+      dismissible: true,
+      expires_at:  expiresAt,
+      created_by:  admin.id,
+    },
+  });
+
   await writeAuditLog(admin.id, "changed_term_config", "SystemConfig", 0, {
-    previousTermType: previous?.value ?? null,
-    newTermType: termType,
+    previousTermType: previousType,
+    newTermType:      termType,
+    customPeriods:    customPeriods ?? null,
+    announcementId:   newAnnouncement.id,
   });
 
   return c.json({ success: true, termType });

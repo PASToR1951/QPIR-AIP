@@ -3,9 +3,8 @@ import axios from 'axios';
 import {
   FloppyDisk, Buildings, Users, BookOpen, Database,
   Info, Warning, WarningCircle, Megaphone, XCircle, LockSimple,
-  Gear, CheckCircle, CalendarDots,
+  Gear, CheckCircle,
 } from '@phosphor-icons/react';
-import { useTermConfig } from '../../context/TermConfigContext.jsx';
 import { AdminLayout } from '../AdminLayout.jsx';
 import { CURRENT_VERSION } from '../../version.js';
 
@@ -129,65 +128,13 @@ function StatTile({ icon: Icon, label, value, sub }) {
 }
 
 /* ─── Main component ─────────────────────────────────────────────── */
-const TERM_OPTIONS = [
-  {
-    type:        'Trimester',
-    label:       'Trimester',
-    periods:     '3 periods',
-    description: 'T1 Jun–Sep · T2 Oct–Dec · T3 Jan–Mar',
-    yearBasis:   'SY YYYY-YYYY',
-  },
-  {
-    type:        'Quarterly',
-    label:       'Quarterly',
-    periods:     '4 periods',
-    description: 'Q1 Jan–Mar · Q2 Apr–Jun · Q3 Jul–Sep · Q4 Oct–Dec',
-    yearBasis:   'SY YYYY-YYYY',
-  },
-  {
-    type:        'Bimester',
-    label:       'Bimester',
-    periods:     '2 periods',
-    description: 'B1 Jun–Oct · B2 Nov–Mar',
-    yearBasis:   'SY YYYY-YYYY',
-  },
-];
-
 export default function AdminSettings() {
-  const termConfig = useTermConfig();
-
   const [announcement, setAnnouncement] = useState({ message: '', type: 'info', is_active: true, dismissible: true });
   const [sysInfo, setSysInfo]           = useState(null);
   const [loading, setLoading]           = useState(true);
   const [saving, setSaving]             = useState(false);
   const [saved, setSaved]               = useState(false);
   const [formError, setFormError]       = useState('');
-
-  // ── Term structure ───────────────────────────────────────────────
-  const [pendingTermType, setPendingTermType] = useState(null);
-  const [termSaving,      setTermSaving]      = useState(false);
-  const [termSaved,       setTermSaved]       = useState(false);
-  const [termError,       setTermError]       = useState('');
-
-  const handleTermSave = async () => {
-    if (!pendingTermType || pendingTermType === termConfig.termType) return;
-    setTermSaving(true);
-    setTermError('');
-    try {
-      await axios.patch(`${API}/api/admin/term-config`, { termType: pendingTermType }, { headers: authHeaders() });
-      setTermSaved(true);
-      setPendingTermType(null);
-      setTimeout(() => {
-        setTermSaved(false);
-        // Reload so TermConfigContext re-fetches the new config
-        window.location.reload();
-      }, 1200);
-    } catch (e) {
-      setTermError(e.response?.data?.error || 'Failed to update term structure');
-    } finally {
-      setTermSaving(false);
-    }
-  };
 
   useEffect(() => {
     setLoading(true);
@@ -372,75 +319,6 @@ export default function AdminSettings() {
                   </button>
                 </div>
               </div>
-            </div>
-          </SettingsCard>
-
-          {/* ── Term Structure ──────────────────────────── */}
-          <SettingsCard
-            icon={CalendarDots}
-            iconBg="bg-violet-100 dark:bg-violet-950/50"
-            iconColor="text-violet-600 dark:text-violet-400"
-            title="Term Structure"
-            description="Set how the school year is divided for AIP/PIR reporting. Takes effect immediately for new submissions."
-          >
-            {/* Warning */}
-            <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl text-xs text-amber-800 dark:text-amber-300">
-              <Warning size={14} weight="fill" className="shrink-0 mt-0.5" />
-              <p>
-                Existing PIR records keep their original period labels. Switching term type only affects new submissions and the Deadlines page.
-                Deadline records for removed periods are hidden but not deleted.
-              </p>
-            </div>
-
-            {/* Option cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {TERM_OPTIONS.map(opt => {
-                const activeType = pendingTermType ?? termConfig.termType;
-                const isActive   = activeType === opt.type;
-                return (
-                  <button
-                    key={opt.type}
-                    onClick={() => setPendingTermType(opt.type)}
-                    className={`relative flex flex-col items-start gap-1.5 p-3.5 rounded-xl border text-left transition-all ${
-                      isActive
-                        ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/40 ring-2 ring-violet-500/30'
-                        : 'border-slate-200 dark:border-dark-border bg-white dark:bg-dark-base hover:border-slate-300 dark:hover:border-slate-600'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 w-full">
-                      <div className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'bg-violet-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
-                      <span className={`text-xs font-black ${isActive ? 'text-violet-700 dark:text-violet-300' : 'text-slate-600 dark:text-slate-400'}`}>
-                        {opt.label}
-                      </span>
-                      <span className="ml-auto text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{opt.periods}</span>
-                      {isActive && <CheckCircle size={13} weight="fill" className="text-violet-500 dark:text-violet-400 shrink-0" />}
-                    </div>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-snug pl-4">{opt.description}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-500 pl-4 font-mono">{opt.yearBasis}</p>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Save row */}
-            <div className="flex items-center justify-between pt-1">
-              <div>
-                {termError && <p className="text-xs text-red-500 font-bold">{termError}</p>}
-              </div>
-              <button
-                onClick={handleTermSave}
-                disabled={termSaving || !pendingTermType || pendingTermType === termConfig.termType}
-                className={`flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed ${
-                  termSaved
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-violet-600 hover:bg-violet-700 text-white'
-                }`}
-              >
-                {termSaved
-                  ? <><CheckCircle size={15} weight="fill" /> Applied</>
-                  : <><FloppyDisk size={15} weight="bold" /> {termSaving ? 'Saving…' : 'Apply'}</>
-                }
-              </button>
             </div>
           </SettingsCard>
 

@@ -23,8 +23,15 @@ import { prisma as _prisma } from "./db/client.ts";
 import { getTermConfig, toTermConfigResponse, type TermType } from "./lib/termConfig.ts";
 
 app.get('/api/announcement', async (c) => {
+  const now = new Date();
   const a = await _prisma.announcement.findFirst({
-    where: { is_active: true },
+    where: {
+      is_active: true,
+      OR: [
+        { expires_at: null },
+        { expires_at: { gt: now } },
+      ],
+    },
     orderBy: { updated_at: 'desc' },
   });
   return c.json(a ?? null);
