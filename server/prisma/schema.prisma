@@ -213,14 +213,15 @@ model Deadline {
 }
 
 model Announcement {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   message     String
-  type        String   @default("info") // "info" | "warning" | "critical"
-  is_active   Boolean  @default(true)
-  dismissible Boolean  @default(true)
+  type        String    @default("info") // "info" | "warning" | "critical"
+  is_active   Boolean   @default(true)
+  dismissible Boolean   @default(true)
+  expires_at  DateTime?                  // null = never expires; set for auto-expiring announcements
   created_by  Int
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
 
   @@map("announcements")
 }

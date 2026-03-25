@@ -42,6 +42,8 @@ export function AnnouncementBanner() {
       .then(r => r.json())
       .then(data => {
         if (!data?.is_active) return;
+        // Guard: if the announcement has an expiry and it has passed, don't show
+        if (data.expires_at && new Date(data.expires_at) <= new Date()) return;
         // Only respect prior dismissal if the announcement allows it
         if (data.dismissible !== false) {
           const key = `ann-dismissed-${data.id}`;
