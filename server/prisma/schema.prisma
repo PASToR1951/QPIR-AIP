@@ -135,17 +135,21 @@ model AIPActivity {
 }
 
 model PIR {
-  id                 Int      @id @default(autoincrement())
-  aip_id             Int
-  created_by_user_id Int?     // Nullable for backward-compat; set on all new records
-  quarter            String   // "1st Quarter CY 2026", etc.
-  program_owner      String
-  total_budget       Decimal  @default(0.0)
-  fund_source        String
-  status             String   @default("Submitted") // "Draft" | "Submitted" | "Under Review" | "Approved" | "Returned"
-  remarks            String?  // Admin remarks/annotations on this PIR
-  presented          Boolean  @default(false) // Admin-toggled: whether school presented this PIR
-  created_at         DateTime @default(now())
+  id                          Int      @id @default(autoincrement())
+  aip_id                      Int
+  created_by_user_id          Int?     // Nullable for backward-compat; set on all new records
+  quarter                     String   // "1st Quarter CY 2026", etc.
+  program_owner               String
+  budget_from_division        Decimal  @default(0.0)
+  budget_from_co_psf          Decimal  @default(0.0)
+  indicator_quarterly_targets Json     @default("[]")
+  // Shape: [{description: string, annual_target: string, quarterly_target: string}]
+  action_items                Json     @default("[]")
+  // Shape: [{action: string, response_asds: string, response_sds: string}]
+  status                      String   @default("Submitted") // "Draft" | "Submitted" | "Under Review" | "Approved" | "Returned"
+  remarks                     String?  // Admin remarks/annotations on this PIR
+  presented                   Boolean  @default(false) // Admin-toggled: whether school presented this PIR
+  created_at                  DateTime @default(now())
 
   // Relations
   aip                AIP                 @relation(fields: [aip_id], references: [id], onDelete: Cascade)
@@ -157,32 +161,39 @@ model PIR {
 }
 
 model PIRActivityReview {
-  id                     Int      @id @default(autoincrement())
-  pir_id                 Int
-  aip_activity_id        Int
-  physical_target        Decimal  @default(0.0)
-  financial_target       Decimal  @default(0.0)
-  physical_accomplished  Decimal  @default(0.0)
-  financial_accomplished Decimal  @default(0.0)
-  actions_to_address_gap String?
-  admin_notes            String?     // Admin per-activity evaluation notes
+  id                                   Int      @id @default(autoincrement())
+  pir_id                               Int
+  aip_activity_id                      Int?     // Nullable for unplanned activities
+  complied                             Boolean? // null=unplanned activity; true=✓, false=✗
+  actual_tasks_conducted               String   @default("")
+  contributory_performance_indicators  String   @default("")
+  movs_expected_outputs                String   @default("")
+  adjustments                          String   @default("")
+  is_unplanned                         Boolean  @default(false)
+  physical_target                      Decimal  @default(0.0)
+  financial_target                     Decimal  @default(0.0)
+  physical_accomplished                Decimal  @default(0.0)
+  financial_accomplished               Decimal  @default(0.0)
+  actions_to_address_gap               String?
+  admin_notes                          String?  // Admin per-activity evaluation notes
 
   // Relations
-  pir                    PIR         @relation(fields: [pir_id], references: [id], onDelete: Cascade)
-  aip_activity           AIPActivity @relation(fields: [aip_activity_id], references: [id], onDelete: Cascade)
+  pir                    PIR          @relation(fields: [pir_id], references: [id], onDelete: Cascade)
+  aip_activity           AIPActivity? @relation(fields: [aip_activity_id], references: [id], onDelete: Cascade)
 
-  @@unique([pir_id, aip_activity_id]) // Ensure an activity is reviewed only once per PIR
+  @@unique([pir_id, aip_activity_id]) // Ensure a planned activity is reviewed only once per PIR (NULLs allowed for unplanned)
 }
 
 model PIRFactor {
-  id                  Int    @id @default(autoincrement())
-  pir_id              Int
-  factor_type         String // "Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"
+  id                   Int    @id @default(autoincrement())
+  pir_id               Int
+  factor_type          String // "Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"
   facilitating_factors String
-  hindering_factors   String
+  hindering_factors    String
+  recommendations      String @default("")
 
   // Relations
-  pir                 PIR    @relation(fields: [pir_id], references: [id], onDelete: Cascade)
+  pir                  PIR    @relation(fields: [pir_id], references: [id], onDelete: Cascade)
 
   @@unique([pir_id, factor_type]) // Only one record per factor type per PIR
 }
