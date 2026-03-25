@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarSlash, CalendarBlank, ArrowCounterClockwise, FloppyDisk,
   ClockCountdown, CaretDown, Hourglass, Warning, Info,
-  CalendarDots, ArrowsLeftRight, CheckCircle, X,
 } from '@phosphor-icons/react';
 import { AdminLayout } from '../AdminLayout.jsx';
 
@@ -82,226 +81,6 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
-// ─── Term Change Constants ────────────────────────────────────────────────────
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-const TERM_OPTIONS = [
-  {
-    type: 'Trimester', label: 'Trimester', periods: '3 periods',
-    description: 'T1 Jun–Sep · T2 Oct–Dec · T3 Jan–Mar',
-    defaultPeriods: [
-      { number: 1, ordinal: '1st', startMonth: 6,  endMonth: 9  },
-      { number: 2, ordinal: '2nd', startMonth: 10, endMonth: 12 },
-      { number: 3, ordinal: '3rd', startMonth: 1,  endMonth: 3  },
-    ],
-  },
-  {
-    type: 'Quarterly', label: 'Quarterly', periods: '4 periods',
-    description: 'Q1 Jan–Mar · Q2 Apr–Jun · Q3 Jul–Sep · Q4 Oct–Dec',
-    defaultPeriods: [
-      { number: 1, ordinal: '1st', startMonth: 1,  endMonth: 3  },
-      { number: 2, ordinal: '2nd', startMonth: 4,  endMonth: 6  },
-      { number: 3, ordinal: '3rd', startMonth: 7,  endMonth: 9  },
-      { number: 4, ordinal: '4th', startMonth: 10, endMonth: 12 },
-    ],
-  },
-  {
-    type: 'Bimester', label: 'Bimester', periods: '2 periods',
-    description: 'B1 Jun–Oct · B2 Nov–Mar',
-    defaultPeriods: [
-      { number: 1, ordinal: '1st', startMonth: 6,  endMonth: 10 },
-      { number: 2, ordinal: '2nd', startMonth: 11, endMonth: 3  },
-    ],
-  },
-];
-
-// ─── Term Change Modal ────────────────────────────────────────────────────────
-
-function TermChangeModal({ isOpen, onClose, currentTermType, syStart, onConfirm, saving, error }) {
-  const [selectedType, setSelectedType]   = useState(currentTermType);
-  const [customPeriods, setCustomPeriods] = useState({});
-
-  // Reset selected type when modal opens
-  useEffect(() => {
-    if (isOpen) setSelectedType(currentTermType);
-  }, [isOpen, currentTermType]);
-
-  // Lazily seed custom periods from defaults when a type is first selected
-  useEffect(() => {
-    if (!selectedType) return;
-    if (customPeriods[selectedType]) return;
-    const termOpt = TERM_OPTIONS.find(t => t.type === selectedType);
-    if (!termOpt) return;
-    setCustomPeriods(cp => ({ ...cp, [selectedType]: termOpt.defaultPeriods.map(p => ({ ...p })) }));
-  }, [selectedType]);
-
-  const hasChanged = selectedType !== currentTermType;
-  const periodsForSelected = customPeriods[selectedType] ?? [];
-
-  const updateMonth = (periodNumber, field, monthIndex) => {
-    setCustomPeriods(cp => ({
-      ...cp,
-      [selectedType]: (cp[selectedType] ?? []).map(p =>
-        p.number === periodNumber ? { ...p, [field]: monthIndex } : p
-      ),
-    }));
-  };
-
-  const handleConfirm = () => {
-    if (!hasChanged) { onClose(); return; }
-    onConfirm({ termType: selectedType, customPeriods: periodsForSelected });
-  };
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50">
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-          />
-          <div className="relative z-10 flex items-start justify-center min-h-full p-4 py-10 pointer-events-none">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 12 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="pointer-events-auto bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-2xl w-full max-w-lg"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 dark:border-dark-border">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-                    <CalendarDots size={18} weight="fill" className="text-violet-600 dark:text-violet-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-slate-900 dark:text-slate-100 leading-none">Change Term Structure</h3>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">SY {syStart}-{syStart + 1}</p>
-                  </div>
-                </div>
-                <button onClick={onClose} className="text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-300 transition-colors">
-                  <X size={20} weight="bold" />
-                </button>
-              </div>
-
-              <div className="px-6 py-5 space-y-5">
-                {/* Warning */}
-                <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
-                  <Warning size={14} weight="fill" className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-                  <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                    Switching term type only affects new submissions. Existing PIR records keep their original period labels. A system-wide announcement will be posted automatically and expires in 3 days.
-                  </p>
-                </div>
-
-                {/* Term type selector */}
-                <div>
-                  <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Term Type</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {TERM_OPTIONS.map(opt => {
-                      const isActive = selectedType === opt.type;
-                      const isCurrent = opt.type === currentTermType;
-                      return (
-                        <button
-                          key={opt.type}
-                          onClick={() => setSelectedType(opt.type)}
-                          className={`flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition-all ${
-                            isActive
-                              ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/40 ring-2 ring-violet-500/30'
-                              : 'border-slate-200 dark:border-dark-border bg-white dark:bg-dark-base hover:border-slate-300 dark:hover:border-slate-600'
-                          }`}
-                        >
-                          <div className="flex items-center gap-1.5 w-full">
-                            <div className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'bg-violet-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
-                            <span className={`text-xs font-black ${isActive ? 'text-violet-700 dark:text-violet-300' : 'text-slate-600 dark:text-slate-400'}`}>
-                              {opt.label}
-                            </span>
-                            {isActive && <CheckCircle size={12} weight="fill" className="ml-auto text-violet-500" />}
-                          </div>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 pl-3.5 leading-snug">{opt.periods}</p>
-                          {isCurrent && !isActive && (
-                            <p className="text-[10px] text-indigo-500 dark:text-indigo-400 pl-3.5 font-bold">Current</p>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Month range editor */}
-                {selectedType && periodsForSelected.length > 0 && (
-                  <div>
-                    <p className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
-                      Customize Month Ranges
-                    </p>
-                    <div className="space-y-2">
-                      {periodsForSelected.map(p => (
-                        <div key={p.number} className="flex items-center gap-3 px-3 py-2.5 bg-slate-50 dark:bg-dark-base rounded-xl border border-slate-100 dark:border-dark-border">
-                          <span className="w-8 text-xs font-black text-slate-500 dark:text-slate-400 shrink-0">{p.ordinal}</span>
-                          <select
-                            value={p.startMonth}
-                            onChange={e => updateMonth(p.number, 'startMonth', Number(e.target.value))}
-                            className="flex-1 px-2.5 py-1.5 text-xs font-bold bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-all"
-                          >
-                            {MONTH_NAMES.map((name, idx) => (
-                              <option key={idx + 1} value={idx + 1}>{name}</option>
-                            ))}
-                          </select>
-                          <ArrowsLeftRight size={14} className="text-slate-300 dark:text-slate-600 shrink-0" />
-                          <select
-                            value={p.endMonth}
-                            onChange={e => updateMonth(p.number, 'endMonth', Number(e.target.value))}
-                            className="flex-1 px-2.5 py-1.5 text-xs font-bold bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-lg text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-400 transition-all"
-                          >
-                            {MONTH_NAMES.map((name, idx) => (
-                              <option key={idx + 1} value={idx + 1}>{name}</option>
-                            ))}
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5">
-                      Wrap-around periods (e.g. Nov–Mar) are supported.
-                    </p>
-                  </div>
-                )}
-
-                {error && (
-                  <p className="text-xs text-red-500 font-bold bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40 rounded-xl px-4 py-2">
-                    {error}
-                  </p>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-dark-border bg-slate-50 dark:bg-dark-base rounded-b-2xl">
-                <button
-                  onClick={onClose}
-                  disabled={saving}
-                  className="px-4 py-2 text-sm font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors disabled:opacity-60"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirm}
-                  disabled={!hasChanged || saving}
-                  className="px-5 py-2 text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                >
-                  {saving ? 'Applying…' : 'Apply & Announce'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminDeadlines() {
@@ -313,12 +92,6 @@ export default function AdminDeadlines() {
   const [localDates, setLocalDates] = useState({});
   const [formError, setFormError] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
-
-  // Term change state
-  const [termModalOpen, setTermModalOpen] = useState(false);
-  const [termSaving,    setTermSaving]    = useState(false);
-  const [termSaved,     setTermSaved]     = useState(false);
-  const [termError,     setTermError]     = useState('');
 
   const fetchDeadlines = useCallback(() => {
     setLoading(true);
@@ -373,25 +146,6 @@ export default function AdminDeadlines() {
     const diffDays = Math.round((newDate - origDate) / 86400000);
     if (diffDays < 0) return { type: 'warning', msg: `⚠ Moving deadline earlier by ${Math.abs(diffDays)} days` };
     return { type: 'ok', msg: `✓ Extends deadline by ${diffDays} days` };
-  };
-
-  const handleTermChange = async ({ termType, customPeriods }) => {
-    setTermSaving(true);
-    setTermError('');
-    try {
-      await axios.patch(
-        `${API}/api/admin/term-config`,
-        { termType, customPeriods },
-        { headers: authHeaders() },
-      );
-      setTermModalOpen(false);
-      setTermSaved(true);
-      setTimeout(() => { setTermSaved(false); window.location.reload(); }, 1400);
-    } catch (e) {
-      setTermError(e.response?.data?.error || 'Failed to update term structure');
-    } finally {
-      setTermSaving(false);
-    }
   };
 
   // Summary stats
