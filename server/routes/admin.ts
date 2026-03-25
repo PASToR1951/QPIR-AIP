@@ -71,6 +71,41 @@ function toCSV(rows: Record<string, unknown>[]): string {
 }
 
 // Wrap every admin handler with auth check
+// PATCH /admin/pirs/:id/management-response — accessible by Admin or Reviewer
+// Registered before the admin-only middleware so Reviewer tokens are not blocked
+adminRoutes.patch('/pirs/:id/management-response', async (c) => {
+  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
+  if (tokenUser.role !== 'Admin' && tokenUser.role !== 'Reviewer') {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+
+  const pirId = parseInt(c.req.param('id'));
+  const body = await c.req.json();
+
+  const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
+  if (!pir) return c.json({ error: 'PIR not found' }, 404);
+
+  const existingItems = (pir.action_items as any[]) ?? [];
+  const incomingItems = (body.action_items as any[]) ?? [];
+
+  // Merge: preserve program owner's action, only update response fields
+  const merged = existingItems.map((item: any, idx: number) => ({
+    action: item.action,
+    response_asds: incomingItems[idx]?.response_asds ?? item.response_asds ?? '',
+    response_sds: incomingItems[idx]?.response_sds ?? item.response_sds ?? '',
+  }));
+
+  const updated = await prisma.pIR.update({
+    where: { id: pirId },
+    data: { action_items: merged },
+  });
+
+  await writeAuditLog(tokenUser.id, 'management_response_updated', 'PIR', pirId, { pirId });
+
+  return c.json({ message: 'Management response saved', pir: updated });
+});
+
 adminRoutes.use("*", async (c, next) => {
   try {
     requireAdmin(c.req.header("Authorization"));

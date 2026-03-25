@@ -227,8 +227,8 @@ dataRoutes.post('/pirs/draft', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const body = await c.req.json();
-    const { program_title, quarter, program_owner, total_budget, fund_source,
-            activity_reviews, factors } = body;
+    const { program_title, quarter, program_owner, budget_from_division, budget_from_co_psf,
+            indicator_quarterly_targets, action_items, activity_reviews, factors } = body;
 
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
@@ -264,8 +264,10 @@ dataRoutes.post('/pirs/draft', async (c) => {
 
     const pirData = {
       program_owner: program_owner || '',
-      total_budget: parseFloat(total_budget || 0),
-      fund_source: fund_source || '',
+      budget_from_division: parseFloat(budget_from_division) || 0,
+      budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+      indicator_quarterly_targets: indicator_quarterly_targets ?? [],
+      action_items: action_items ?? [],
       status: 'Draft',
     };
 
@@ -282,17 +284,24 @@ dataRoutes.post('/pirs/draft', async (c) => {
             create: factors ? Object.entries(factors).map(([type, data]: [string, any]) => ({
               factor_type: type,
               facilitating_factors: data.facilitating || '',
-              hindering_factors: data.hindering || ''
+              hindering_factors: data.hindering || '',
+              recommendations: data.recommendations || '',
             })) : []
           },
           activity_reviews: {
             create: (activity_reviews || []).map((rev: any) => ({
-              aip_activity_id: parseInt(rev.aip_activity_id) || aip!.activities[0]?.id,
+              aip_activity_id: rev.aip_activity_id ? parseInt(rev.aip_activity_id) : null,
+              complied: rev.complied ?? null,
+              actual_tasks_conducted: rev.actual_tasks_conducted ?? '',
+              contributory_performance_indicators: rev.contributory_performance_indicators ?? '',
+              movs_expected_outputs: rev.movs_expected_outputs ?? '',
+              adjustments: rev.adjustments ?? '',
+              is_unplanned: rev.is_unplanned ?? false,
               physical_target: parseFloat(rev.physTarget || 0),
               financial_target: parseFloat(rev.finTarget || 0),
               physical_accomplished: parseFloat(rev.physAcc || 0),
               financial_accomplished: parseFloat(rev.finAcc || 0),
-              actions_to_address_gap: rev.actions || ''
+              actions_to_address_gap: rev.actions || '',
             }))
           }
         }
@@ -308,17 +317,24 @@ dataRoutes.post('/pirs/draft', async (c) => {
             create: factors ? Object.entries(factors).map(([type, data]: [string, any]) => ({
               factor_type: type,
               facilitating_factors: data.facilitating || '',
-              hindering_factors: data.hindering || ''
+              hindering_factors: data.hindering || '',
+              recommendations: data.recommendations || '',
             })) : []
           },
           activity_reviews: {
             create: (activity_reviews || []).map((rev: any) => ({
-              aip_activity_id: parseInt(rev.aip_activity_id) || aip!.activities[0]?.id,
+              aip_activity_id: rev.aip_activity_id ? parseInt(rev.aip_activity_id) : null,
+              complied: rev.complied ?? null,
+              actual_tasks_conducted: rev.actual_tasks_conducted ?? '',
+              contributory_performance_indicators: rev.contributory_performance_indicators ?? '',
+              movs_expected_outputs: rev.movs_expected_outputs ?? '',
+              adjustments: rev.adjustments ?? '',
+              is_unplanned: rev.is_unplanned ?? false,
               physical_target: parseFloat(rev.physTarget || 0),
               financial_target: parseFloat(rev.finTarget || 0),
               physical_accomplished: parseFloat(rev.physAcc || 0),
               financial_accomplished: parseFloat(rev.finAcc || 0),
-              actions_to_address_gap: rev.actions || ''
+              actions_to_address_gap: rev.actions || '',
             }))
           }
         }
@@ -392,7 +408,11 @@ dataRoutes.get('/pirs/draft', async (c) => {
 
     const factorsMap: Record<string, any> = {};
     for (const f of pir.factors) {
-      factorsMap[f.factor_type] = { facilitating: f.facilitating_factors, hindering: f.hindering_factors };
+      factorsMap[f.factor_type] = {
+        facilitating: f.facilitating_factors,
+        hindering: f.hindering_factors,
+        recommendations: (f as any).recommendations ?? '',
+      };
     }
 
     return c.json({
@@ -401,15 +421,23 @@ dataRoutes.get('/pirs/draft', async (c) => {
         program: program_title,
         quarter: pir.quarter,
         owner: pir.program_owner,
-        fundSource: pir.fund_source,
-        rawBudget: String(pir.total_budget),
+        budgetFromDivision: String((pir as any).budget_from_division ?? 0),
+        budgetFromCoPSF: String((pir as any).budget_from_co_psf ?? 0),
+        indicatorQuarterlyTargets: (pir as any).indicator_quarterly_targets as any[] ?? [],
+        actionItems: (pir as any).action_items as any[] ?? [],
         activities: pir.activity_reviews.map((r: any) => ({
           aip_activity_id: r.aip_activity_id,
-          physTarget: r.physical_target,
-          finTarget: r.financial_target,
-          physAcc: r.physical_accomplished,
-          finAcc: r.financial_accomplished,
-          actions: r.actions_to_address_gap || ''
+          complied: r.complied,
+          actualTasksConducted: r.actual_tasks_conducted ?? '',
+          contributoryIndicators: r.contributory_performance_indicators ?? '',
+          movsExpectedOutputs: r.movs_expected_outputs ?? '',
+          adjustments: r.adjustments ?? '',
+          isUnplanned: r.is_unplanned ?? false,
+          physTarget: String(r.physical_target),
+          finTarget: String(r.financial_target),
+          physAcc: String(r.physical_accomplished),
+          finAcc: String(r.financial_accomplished),
+          actions: r.actions_to_address_gap || '',
         })),
         factors: factorsMap
       },
@@ -555,17 +583,15 @@ dataRoutes.get('/programs/with-aips', async (c) => {
     const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
     const db = prisma.aIP as any;
-    // Only include AIPs that are Verified or Approved — Draft/Pending AIPs should not unlock PIR filing
-    const statusFilter = { status: { notIn: ['Draft', 'Pending'] } };
     let aips: any[];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
       aips = await db.findMany({
-        where: { school_id: tokenUser.school_id, year, ...statusFilter },
+        where: { school_id: tokenUser.school_id, year },
         include: { program: true }
       });
     } else {
       aips = await db.findMany({
-        where: { created_by_user_id: tokenUser.id, school_id: null, year, ...statusFilter },
+        where: { created_by_user_id: tokenUser.id, school_id: null, year },
         include: { program: true }
       });
     }
@@ -711,10 +737,6 @@ dataRoutes.get('/aips/activities', async (c) => {
       return c.json({ error: 'No AIP found for this program and year' }, 404);
     }
 
-    if (aip.status === 'Pending') {
-      return c.json({ error: 'This AIP is pending verification and cannot be used for PIR yet.' }, 403);
-    }
-
     const totalBudget = aip.activities.reduce((sum: number, a: any) => sum + (parseFloat(a.budget_amount) || 0), 0);
     const fundSources = [...new Set(aip.activities.map((a: any) => a.budget_source).filter(Boolean))].join(' / ');
 
@@ -723,6 +745,7 @@ dataRoutes.get('/aips/activities', async (c) => {
       project_coordinator: aip.project_coordinator || '',
       total_budget: totalBudget,
       fund_source: fundSources,
+      indicators: aip.indicators as any[],
       activities: aip.activities.map((a: any) => ({
         id: a.id,
         activity_name: a.activity_name,
@@ -730,7 +753,9 @@ dataRoutes.get('/aips/activities', async (c) => {
         period_start_month: a.period_start_month,
         period_end_month: a.period_end_month,
         phase: a.phase,
-        budget_amount: a.budget_amount
+        budget_amount: a.budget_amount,
+        outputs: a.outputs,
+        persons_involved: a.persons_involved,
       }))
     });
   } catch (error) {
@@ -847,11 +872,12 @@ dataRoutes.get('/pirs', async (c) => {
       return c.json({ error: 'Forbidden' }, 403);
     }
 
-    const factorsMap: Record<string, { facilitating: string; hindering: string }> = {};
+    const factorsMap: Record<string, any> = {};
     for (const f of pir.factors) {
       factorsMap[f.factor_type] = {
         facilitating: f.facilitating_factors,
         hindering: f.hindering_factors,
+        recommendations: (f as any).recommendations ?? '',
       };
     }
 
@@ -860,14 +886,22 @@ dataRoutes.get('/pirs', async (c) => {
       program: aip.program.title,
       school: aip.school?.name ?? '',
       owner: pir.program_owner,
-      budget: pir.total_budget,
-      fundSource: pir.fund_source,
+      budgetFromDivision: (pir as any).budget_from_division,
+      budgetFromCoPSF: (pir as any).budget_from_co_psf,
+      indicatorQuarterlyTargets: (pir as any).indicator_quarterly_targets as any[] ?? [],
+      actionItems: (pir as any).action_items as any[] ?? [],
       activities: pir.activity_reviews.map((r: any) => ({
         id: r.id,
-        name: r.aip_activity.activity_name,
-        implementation_period: r.aip_activity.implementation_period,
-        period_start_month: r.aip_activity.period_start_month,
-        period_end_month: r.aip_activity.period_end_month,
+        name: r.aip_activity?.activity_name ?? '',
+        implementation_period: r.aip_activity?.implementation_period ?? '',
+        period_start_month: r.aip_activity?.period_start_month ?? null,
+        period_end_month: r.aip_activity?.period_end_month ?? null,
+        complied: r.complied,
+        actualTasksConducted: r.actual_tasks_conducted ?? '',
+        contributoryIndicators: r.contributory_performance_indicators ?? '',
+        movsExpectedOutputs: r.movs_expected_outputs ?? '',
+        adjustments: r.adjustments ?? '',
+        isUnplanned: r.is_unplanned ?? false,
         physTarget: r.physical_target,
         finTarget: r.financial_target,
         physAcc: r.physical_accomplished,
@@ -1090,8 +1124,10 @@ dataRoutes.post('/pirs', async (c) => {
       program_title,
       quarter,
       program_owner,
-      total_budget,
-      fund_source,
+      budget_from_division,
+      budget_from_co_psf,
+      indicator_quarterly_targets,
+      action_items,
       activity_reviews,
       factors
     } = body;
@@ -1150,30 +1186,27 @@ dataRoutes.post('/pirs', async (c) => {
       return c.json({ error: 'Access denied' }, 403);
     }
 
-    // Block PIR submission if the AIP is still Pending verification
-    if (aip.status === 'Pending') {
-      return c.json({ error: 'This AIP is pending verification by Division Personnel. PIR submission is not allowed until the AIP is verified.' }, 403);
-    }
-
     const factorData = Object.entries(factors).map(([type, data]: [string, any]) => ({
       factor_type: type,
-      facilitating_factors: data.facilitating,
-      hindering_factors: data.hindering
+      facilitating_factors: data.facilitating ?? '',
+      hindering_factors: data.hindering ?? '',
+      recommendations: data.recommendations ?? '',
     }));
 
-    const reviewData = activity_reviews.map((rev: any) => {
-      const aipActivityId = rev.aip_activity_id
-        ? parseInt(rev.aip_activity_id)
-        : aip!.activities.find(a => a.activity_name === rev.name)?.id || aip!.activities[0].id;
-      return {
-        aip_activity_id: aipActivityId,
-        physical_target: parseFloat(rev.physTarget || 0),
-        financial_target: parseFloat(rev.finTarget || 0),
-        physical_accomplished: parseFloat(rev.physAcc || 0),
-        financial_accomplished: parseFloat(rev.finAcc || 0),
-        actions_to_address_gap: rev.actions
-      };
-    });
+    const reviewData = activity_reviews.map((rev: any) => ({
+      aip_activity_id: rev.aip_activity_id ? parseInt(rev.aip_activity_id) : null,
+      complied: rev.complied ?? null,
+      actual_tasks_conducted: rev.actual_tasks_conducted ?? '',
+      contributory_performance_indicators: rev.contributory_performance_indicators ?? '',
+      movs_expected_outputs: rev.movs_expected_outputs ?? '',
+      adjustments: rev.adjustments ?? '',
+      is_unplanned: rev.is_unplanned ?? false,
+      physical_target: parseFloat(rev.physTarget || 0),
+      financial_target: parseFloat(rev.finTarget || 0),
+      physical_accomplished: parseFloat(rev.physAcc || 0),
+      financial_accomplished: parseFloat(rev.finAcc || 0),
+      actions_to_address_gap: rev.actions ?? '',
+    }));
 
     // Check if a Draft PIR exists — promote it instead of creating a new one
     const existingDraft = await prisma.pIR.findUnique({
@@ -1188,8 +1221,10 @@ dataRoutes.post('/pirs', async (c) => {
         where: { id: existingDraft.id },
         data: {
           program_owner,
-          total_budget: parseFloat(total_budget || 0),
-          fund_source,
+          budget_from_division: parseFloat(budget_from_division) || 0,
+          budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+          indicator_quarterly_targets: indicator_quarterly_targets ?? [],
+          action_items: action_items ?? [],
           status: 'Submitted',
           factors: { create: factorData },
           activity_reviews: { create: reviewData }
@@ -1202,8 +1237,10 @@ dataRoutes.post('/pirs', async (c) => {
           created_by_user_id: tokenUser.id,
           quarter,
           program_owner,
-          total_budget: parseFloat(total_budget || 0),
-          fund_source,
+          budget_from_division: parseFloat(budget_from_division) || 0,
+          budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+          indicator_quarterly_targets: indicator_quarterly_targets ?? [],
+          action_items: action_items ?? [],
           factors: { create: factorData },
           activity_reviews: { create: reviewData }
         }
