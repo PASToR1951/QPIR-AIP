@@ -106,6 +106,100 @@ adminRoutes.patch('/pirs/:id/management-response', async (c) => {
   return c.json({ message: 'Management response saved', pir: updated });
 });
 
+// GET /admin/pirs — list submitted PIRs (Admin + Reviewer)
+adminRoutes.get('/pirs', async (c) => {
+  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
+  if (tokenUser.role !== 'Admin' && tokenUser.role !== 'Reviewer') {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+
+  const quarter = c.req.query('quarter');
+  const pirs = await prisma.pIR.findMany({
+    where: {
+      status: { not: 'Draft' },
+      ...(quarter ? { quarter } : {}),
+    },
+    include: {
+      aip: { include: { program: true, school: true } },
+      created_by: { select: { name: true, first_name: true, last_name: true, email: true } },
+    },
+    orderBy: { created_at: 'desc' },
+  });
+
+  return c.json(pirs.map((p: any) => ({
+    id: p.id,
+    quarter: p.quarter,
+    status: p.status,
+    program: p.aip.program.title,
+    school: p.aip.school?.name ?? 'Division',
+    owner: p.program_owner,
+    submittedAt: p.created_at,
+    submittedBy: p.created_by
+      ? (p.created_by.name ?? [p.created_by.first_name, p.created_by.last_name].filter(Boolean).join(' '))
+      : null,
+  })));
+});
+
+// GET /admin/pirs/:id — single PIR with full data (Admin + Reviewer)
+adminRoutes.get('/pirs/:id', async (c) => {
+  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
+  if (tokenUser.role !== 'Admin' && tokenUser.role !== 'Reviewer') {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+
+  const pirId = parseInt(c.req.param('id'));
+  const pir = await prisma.pIR.findUnique({
+    where: { id: pirId },
+    include: {
+      aip: { include: { program: true, school: true } },
+      activity_reviews: { include: { aip_activity: true } },
+      factors: true,
+    },
+  });
+  if (!pir) return c.json({ error: 'PIR not found' }, 404);
+
+  const factorsMap: Record<string, any> = {};
+  for (const f of pir.factors) {
+    factorsMap[f.factor_type] = {
+      facilitating: f.facilitating_factors,
+      hindering: f.hindering_factors,
+      recommendations: (f as any).recommendations ?? '',
+    };
+  }
+
+  return c.json({
+    id: pir.id,
+    quarter: pir.quarter,
+    status: pir.status,
+    program: (pir as any).aip.program.title,
+    school: (pir as any).aip.school?.name ?? 'Division',
+    owner: pir.program_owner,
+    budgetFromDivision: (pir as any).budget_from_division,
+    budgetFromCoPSF: (pir as any).budget_from_co_psf,
+    indicatorQuarterlyTargets: (pir as any).indicator_quarterly_targets ?? [],
+    actionItems: (pir as any).action_items ?? [],
+    activities: pir.activity_reviews.map((r: any) => ({
+      id: r.id,
+      name: r.aip_activity?.activity_name ?? '',
+      implementation_period: r.aip_activity?.implementation_period ?? '',
+      complied: r.complied,
+      actualTasksConducted: r.actual_tasks_conducted ?? '',
+      contributoryIndicators: r.contributory_performance_indicators ?? '',
+      movsExpectedOutputs: r.movs_expected_outputs ?? '',
+      adjustments: r.adjustments ?? '',
+      isUnplanned: r.is_unplanned ?? false,
+      physTarget: r.physical_target,
+      finTarget: r.financial_target,
+      physAcc: r.physical_accomplished,
+      finAcc: r.financial_accomplished,
+      actions: r.actions_to_address_gap ?? '',
+    })),
+    factors: factorsMap,
+  });
+});
+
 adminRoutes.use("*", async (c, next) => {
   try {
     requireAdmin(c.req.header("Authorization"));

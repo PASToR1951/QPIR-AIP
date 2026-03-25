@@ -14,7 +14,7 @@ import { UserProfileModal } from '../components/UserProfileModal.jsx';
 const API = import.meta.env.VITE_API_URL;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
-const ROLES = ['School', 'Division Personnel', 'Admin'];
+const ROLES = ['School', 'Division Personnel', 'Admin', 'Reviewer'];
 
 const inputCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 
