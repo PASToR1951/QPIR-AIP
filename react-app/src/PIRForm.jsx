@@ -23,9 +23,10 @@ import SignatureBlock from './components/ui/SignatureBlock';
 import FinalizeCard from './components/ui/FinalizeCard';
 
 import PIRProfileSection from './components/forms/pir/PIRProfileSection';
-import PIRFinancialsSection from './components/forms/pir/PIRFinancialsSection';
+import PIRIndicatorsSection from './components/forms/pir/PIRIndicatorsSection';
 import PIRMonitoringEvaluationSection from './components/forms/pir/PIRMonitoringEvaluationSection';
 import PIRFactorsSection from './components/forms/pir/PIRFactorsSection';
+import PIRActionItemsSection from './components/forms/pir/PIRActionItemsSection';
 
 export default function App() {
     const navigate = useNavigate();
@@ -133,13 +134,19 @@ export default function App() {
     // Division Personnel: no school association
     const [school, setSchool] = useState(user?.school_name || "");
     const [owner, setOwner] = useState("");
-    const [fundSource, setFundSource] = useState("");
     const [ownerLocked, setOwnerLocked] = useState(false);
-    const [budgetLocked, setBudgetLocked] = useState(false);
-    const [fundSourceLocked, setFundSourceLocked] = useState(false);
 
-    const [rawBudget, setRawBudget] = useState("");
-    const [isBudgetFocused, setIsBudgetFocused] = useState(false);
+    // Budget split (v4)
+    const [budgetFromDivision, setBudgetFromDivision] = useState("");
+    const [budgetFromCoPSF, setBudgetFromCoPSF] = useState("");
+
+    // Section B — Performance Indicators
+    const [indicatorTargets, setIndicatorTargets] = useState([]);
+
+    // Section E — Action Items
+    const [actionItems, setActionItems] = useState(
+        Array(5).fill(null).map(() => ({ action: '', response_asds: '', response_sds: '' }))
+    );
 
     // Date Initialization & Resize Listener
     useEffect(() => {
@@ -161,15 +168,8 @@ export default function App() {
         };
     }, [appMode]);
 
-    const formatCurrency = (val) => {
-        if (!val) return "";
-        return `₱ ${parseFloat(val).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    };
-
-    const displayBudget = isBudgetFocused ? rawBudget : formatCurrency(rawBudget);
-
     const [activities, setActivities] = useState([
-        { id: crypto.randomUUID(), name: "", implementation_period: "", aip_activity_id: null, fromAIP: false, physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }
+        { id: crypto.randomUUID(), name: "", implementation_period: "", period_start_month: null, period_end_month: null, aip_activity_id: null, fromAIP: false, isUnplanned: false, complied: null, actualTasksConducted: "", contributoryIndicators: "", movsExpectedOutputs: "", adjustments: "", physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }
     ]);
     const [isLoadingActivities, setIsLoadingActivities] = useState(false);
 
@@ -177,7 +177,7 @@ export default function App() {
     const [expandedActivityId, setExpandedActivityId] = useState(activities[0].id);
 
     const initialFactors = FACTOR_TYPES.reduce((acc, type) => {
-        acc[type] = { facilitating: "", hindering: "" };
+        acc[type] = { facilitating: "", hindering: "", recommendations: "" };
         return acc;
     }, {});
     const [factors, setFactors] = useState(initialFactors);
@@ -191,8 +191,6 @@ export default function App() {
     // Reset AIP-prefilled lock flags and cached AIP doc when program changes
     useEffect(() => {
         setOwnerLocked(false);
-        setBudgetLocked(false);
-        setFundSourceLocked(false);
         setAipDocumentData(null);
     }, [program]);
 
@@ -230,17 +228,30 @@ export default function App() {
                         id: crypto.randomUUID(),
                         name: a.activity_name,
                         implementation_period: a.implementation_period,
+                        period_start_month: a.period_start_month ?? null,
+                        period_end_month: a.period_end_month ?? null,
                         aip_activity_id: a.id,
                         fromAIP: true,
+                        isUnplanned: false,
+                        complied: null,
+                        actualTasksConducted: "",
+                        contributoryIndicators: "",
+                        movsExpectedOutputs: a.outputs ?? "",
+                        adjustments: "",
                         physTarget: "",
-                        finTarget: "",
+                        finTarget: String(a.budget_amount ?? ""),
                         physAcc: "",
                         finAcc: "",
                         actions: ""
                     })));
-                    // Budget and fund source are always locked from AIP when activities load
-                    if (!rawBudget) { setRawBudget(res.data.total_budget > 0 ? String(res.data.total_budget) : ""); setBudgetLocked(true); }
-                    if (!fundSource) { setFundSource(res.data.fund_source || ""); setFundSourceLocked(true); }
+                }
+                // Populate indicator targets from AIP indicators
+                if (res.data.indicators?.length) {
+                    setIndicatorTargets(res.data.indicators.map(ind => ({
+                        description: ind.description,
+                        annual_target: String(ind.target ?? ''),
+                        quarterly_target: '',
+                    })));
                 }
                 // Owner/Coordinator is locked from AIP if not already populated
                 if (!owner && res.data.project_coordinator) { setOwner(res.data.project_coordinator); setOwnerLocked(true); }
@@ -267,8 +278,10 @@ export default function App() {
                 const d = res.data;
                 setSchool(d.school || "");
                 setOwner(d.owner || "");
-                setRawBudget(String(d.budget || ""));
-                setFundSource(d.fundSource || "");
+                setBudgetFromDivision(String(d.budgetFromDivision || ""));
+                setBudgetFromCoPSF(String(d.budgetFromCoPSF || ""));
+                if (d.indicatorQuarterlyTargets) setIndicatorTargets(d.indicatorQuarterlyTargets);
+                if (d.actionItems) setActionItems(d.actionItems);
                 if (d.activities) setActivities(d.activities);
                 if (d.factors) setFactors(d.factors);
             } catch (e) {
@@ -284,8 +297,15 @@ export default function App() {
                 const draft = loadedDraftData;
                 if (isDivisionPersonnel) setSchool(draft.school || "");
                 setOwner(draft.owner || "");
-                setFundSource(draft.fundSource || "");
-                setRawBudget(draft.rawBudget || "");
+                setBudgetFromDivision(draft.budgetFromDivision || "");
+                setBudgetFromCoPSF(draft.budgetFromCoPSF || "");
+                if (draft.indicatorQuarterlyTargets?.length) setIndicatorTargets(draft.indicatorQuarterlyTargets);
+                if (draft.actionItems?.length) {
+                    setActionItems(draft.actionItems.length >= 5
+                        ? draft.actionItems
+                        : [...draft.actionItems, ...Array(5 - draft.actionItems.length).fill(null).map(() => ({ action: '', response_asds: '', response_sds: '' }))]
+                    );
+                }
                 if (draft.activities) setActivities(draft.activities);
                 if (draft.factors) setFactors(draft.factors);
             } catch (e) {
@@ -296,9 +316,10 @@ export default function App() {
     };
 
     const hasInputtedData = () => {
-        return program || school || owner || fundSource || rawBudget ||
+        return program || school || owner || budgetFromDivision || budgetFromCoPSF ||
             activities.some(a => a.name || a.physTarget || a.finTarget || a.physAcc || a.finAcc || a.actions) ||
-            Object.values(factors).some(f => f.facilitating || f.hindering);
+            Object.values(factors).some(f => f.facilitating || f.hindering) ||
+            actionItems.some(item => item.action);
     };
 
     const handleBack = () => {
@@ -345,10 +366,31 @@ export default function App() {
                 program_title: program,
                 quarter: quarterString,
                 program_owner: owner,
-                total_budget: rawBudget,
-                fund_source: fundSource,
-                activity_reviews: activities,
-                factors
+                budget_from_division: budgetFromDivision,
+                budget_from_co_psf: budgetFromCoPSF,
+                indicator_quarterly_targets: indicatorTargets,
+                action_items: actionItems,
+                activity_reviews: activities.map(a => ({
+                    aip_activity_id: a.fromAIP ? a.aip_activity_id : null,
+                    complied: a.complied,
+                    actual_tasks_conducted: a.actualTasksConducted,
+                    contributory_performance_indicators: a.contributoryIndicators,
+                    movs_expected_outputs: a.movsExpectedOutputs,
+                    adjustments: a.adjustments,
+                    is_unplanned: a.isUnplanned,
+                    physTarget: a.physTarget,
+                    finTarget: a.finTarget,
+                    physAcc: a.physAcc,
+                    finAcc: a.finAcc,
+                    actions: a.actions,
+                })),
+                factors: Object.fromEntries(
+                    FACTOR_TYPES.map(type => [type, {
+                        facilitating: factors[type]?.facilitating ?? '',
+                        hindering: factors[type]?.hindering ?? '',
+                        recommendations: factors[type]?.recommendations ?? '',
+                    }])
+                ),
             }, { headers: authHeaders });
         } catch (e) {
             console.error("Failed to save draft:", e);
@@ -370,7 +412,7 @@ export default function App() {
 
     const handleAddActivity = useCallback(() => {
         const newId = crypto.randomUUID();
-        setActivities(prev => [...prev, { id: newId, name: "", implementation_period: "", aip_activity_id: null, fromAIP: false, physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }]);
+        setActivities(prev => [...prev, { id: newId, name: "", implementation_period: "", period_start_month: null, period_end_month: null, aip_activity_id: null, fromAIP: false, isUnplanned: false, complied: null, actualTasksConducted: "", contributoryIndicators: "", movsExpectedOutputs: "", adjustments: "", physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }]);
         setExpandedActivityId(newId);
 
         setIsAddingActivity(true);
@@ -447,10 +489,31 @@ export default function App() {
                     program_title: program,
                     quarter: quarterString,
                     program_owner: owner,
-                    total_budget: rawBudget,
-                    fund_source: fundSource,
-                    activity_reviews: activities,
-                    factors: factors
+                    budget_from_division: budgetFromDivision,
+                    budget_from_co_psf: budgetFromCoPSF,
+                    indicator_quarterly_targets: indicatorTargets,
+                    action_items: actionItems,
+                    activity_reviews: activities.map(a => ({
+                        aip_activity_id: a.fromAIP ? a.aip_activity_id : null,
+                        complied: a.complied,
+                        actual_tasks_conducted: a.actualTasksConducted,
+                        contributory_performance_indicators: a.contributoryIndicators,
+                        movs_expected_outputs: a.movsExpectedOutputs,
+                        adjustments: a.adjustments,
+                        is_unplanned: a.isUnplanned,
+                        physTarget: a.physTarget,
+                        finTarget: a.finTarget,
+                        physAcc: a.physAcc,
+                        finAcc: a.finAcc,
+                        actions: a.actions,
+                    })),
+                    factors: Object.fromEntries(
+                        FACTOR_TYPES.map(type => [type, {
+                            facilitating: factors[type]?.facilitating ?? '',
+                            hindering: factors[type]?.hindering ?? '',
+                            recommendations: factors[type]?.recommendations ?? '',
+                        }])
+                    ),
                 },
                 { headers: authHeaders }
             );
@@ -534,10 +597,12 @@ export default function App() {
                                         program={program}
                                         school={school}
                                         owner={owner}
-                                        budget={rawBudget}
-                                        fundSource={fundSource}
+                                        budgetFromDivision={budgetFromDivision}
+                                        budgetFromCoPSF={budgetFromCoPSF}
+                                        indicatorTargets={indicatorTargets}
                                         activities={activities}
                                         factors={factors}
+                                        actionItems={actionItems}
                                     />
                                 </div>
                             </div>
@@ -571,10 +636,12 @@ export default function App() {
                                     program={program}
                                     school={school}
                                     owner={owner}
-                                    budget={rawBudget}
-                                    fundSource={fundSource}
+                                    budgetFromDivision={budgetFromDivision}
+                                    budgetFromCoPSF={budgetFromCoPSF}
+                                    indicatorTargets={indicatorTargets}
                                     activities={activities}
                                     factors={factors}
+                                    actionItems={actionItems}
                                 />
                             </DocumentPreviewModal>
 
@@ -665,10 +732,10 @@ export default function App() {
                                         <WizardStepper
                                             steps={[
                                                 { num: 1, label: "Profile" },
-                                                { num: 2, label: "Financials" },
+                                                { num: 2, label: "Indicators" },
                                                 { num: 3, label: "M&E" },
                                                 { num: 4, label: "Factors" },
-                                                { num: 5, label: "Signatures" },
+                                                { num: 5, label: "Action Items" },
                                                 { num: 6, label: "Finalize" }
                                             ]}
                                             currentStep={currentStep}
@@ -701,32 +768,20 @@ export default function App() {
                                                         owner={owner}
                                                         setOwner={setOwner}
                                                         ownerLocked={ownerLocked}
-                                                        isBudgetFocused={isBudgetFocused}
-                                                        setIsBudgetFocused={setIsBudgetFocused}
-                                                        displayBudget={displayBudget}
-                                                        rawBudget={rawBudget}
-                                                        setRawBudget={setRawBudget}
-                                                        budgetLocked={budgetLocked}
-                                                        fundSource={fundSource}
-                                                        setFundSource={setFundSource}
-                                                        fundSourceLocked={fundSourceLocked}
+                                                        budgetFromDivision={budgetFromDivision}
+                                                        setBudgetFromDivision={setBudgetFromDivision}
+                                                        budgetFromCoPSF={budgetFromCoPSF}
+                                                        setBudgetFromCoPSF={setBudgetFromCoPSF}
                                                     />
 
                                                     {/* -------------------------------------------------------- */}
-                                                    {/* SECTION 2: FINANCIAL INFORMATION (Wizard Step 2 Only) */}
+                                                    {/* SECTION 2: PERFORMANCE INDICATORS (Wizard Step 2) */}
                                                     {/* -------------------------------------------------------- */}
-                                                    <PIRFinancialsSection
+                                                    <PIRIndicatorsSection
                                                         appMode={appMode}
                                                         currentStep={currentStep}
-                                                        isBudgetFocused={isBudgetFocused}
-                                                        setIsBudgetFocused={setIsBudgetFocused}
-                                                        displayBudget={displayBudget}
-                                                        rawBudget={rawBudget}
-                                                        setRawBudget={setRawBudget}
-                                                        budgetLocked={budgetLocked}
-                                                        fundSource={fundSource}
-                                                        setFundSource={setFundSource}
-                                                        fundSourceLocked={fundSourceLocked}
+                                                        indicatorTargets={indicatorTargets}
+                                                        setIndicatorTargets={setIndicatorTargets}
                                                     />
 
                                                     {/* -------------------------------------------------------- */}
@@ -758,9 +813,19 @@ export default function App() {
                                                     />
 
                                                     {/* -------------------------------------------------------- */}
-                                                    {/* SECTION 4: SIGNATURES (Shared) */}
+                                                    {/* SECTION 5: ACTION ITEMS (Wizard Step 5 / Full Form) */}
                                                     {/* -------------------------------------------------------- */}
-                                                    <div className={`${(appMode === 'full' || currentStep === 5) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
+                                                    <PIRActionItemsSection
+                                                        appMode={appMode}
+                                                        currentStep={currentStep}
+                                                        actionItems={actionItems}
+                                                        setActionItems={setActionItems}
+                                                    />
+
+                                                    {/* -------------------------------------------------------- */}
+                                                    {/* SECTION 6: SIGNATURES + FINALIZE */}
+                                                    {/* -------------------------------------------------------- */}
+                                                    <div className={`${(appMode === 'full' || currentStep === 6) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
                                                         <SectionHeader
                                                             icon={<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>}
                                                             title="Signatures"
@@ -791,19 +856,14 @@ export default function App() {
                                                         </div>
                                                     </div>
 
-                                                    {/* -------------------------------------------------------- */}
-                                                    {/* SECTION 6: FINAL REVIEW & SUBMIT */}
-                                                    {/* -------------------------------------------------------- */}
-                                                    {(appMode === 'full' || currentStep === 6) && (
+                                                    {appMode === 'wizard' && currentStep === 6 && (
                                                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-200 mt-6">
-                                                            {appMode === 'wizard' && (
-                                                                <FinalizeCard
-                                                                    isSubmitted={isSubmitted}
-                                                                    onSubmit={handleConfirmSubmit}
-                                                                    onPreview={() => setIsPreviewOpen(true)}
-                                                                    theme="blue"
-                                                                />
-                                                            )}
+                                                            <FinalizeCard
+                                                                isSubmitted={isSubmitted}
+                                                                onSubmit={handleConfirmSubmit}
+                                                                onPreview={() => setIsPreviewOpen(true)}
+                                                                theme="blue"
+                                                            />
                                                         </div>
                                                     )}
                                                 </div>

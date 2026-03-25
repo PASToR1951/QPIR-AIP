@@ -1,7 +1,6 @@
 import React from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { Input } from '../../ui/Input';
-import { Select } from '../../ui/Select';
 
 function LockedField({ label, value }) {
     return (
@@ -25,10 +24,8 @@ export default React.memo(function PIRProfileSection({
     user,
     quarterString,
     owner, setOwner, ownerLocked,
-    isBudgetFocused, setIsBudgetFocused,
-    displayBudget,
-    rawBudget, setRawBudget, budgetLocked,
-    fundSource, setFundSource, fundSourceLocked
+    budgetFromDivision, setBudgetFromDivision,
+    budgetFromCoPSF, setBudgetFromCoPSF,
 }) {
     return (
         <div className={`${(appMode === 'full' || currentStep === 1) ? 'block' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
@@ -73,18 +70,10 @@ export default React.memo(function PIRProfileSection({
                     : <Input theme="blue" label={isDivisionPersonnel ? "Program Owner" : "Coordinator"} placeholder={isDivisionPersonnel ? "Name of owner" : "Name of coordinator"} value={owner} onChange={(e) => setOwner(e.target.value)} />
                 }
 
-                {appMode === 'full' && (
-                    <div className="grid grid-cols-2 gap-4">
-                        {budgetLocked
-                            ? <LockedField label="Budget" value={displayBudget} />
-                            : <Input theme="blue" label="Budget" placeholder="₱ 0.00" inputMode="decimal" value={displayBudget} onFocus={() => setIsBudgetFocused(true)} onBlur={() => setIsBudgetFocused(false)} onChange={(e) => setRawBudget(e.target.value.replace(/[^0-9.]/g, ''))} />
-                        }
-                        {fundSourceLocked
-                            ? <LockedField label="Fund Source" value={fundSource} />
-                            : <Select theme="blue" label="Fund Source" placeholder="Select Source" options={["MOOE", "SARO"]} value={fundSource} onChange={(e) => setFundSource(e.target.value)} />
-                        }
-                    </div>
-                )}
+                <div className="grid grid-cols-2 gap-4">
+                    <Input theme="blue" label="Budget — From Division" placeholder="₱ 0.00" inputMode="decimal" value={budgetFromDivision} onChange={(e) => setBudgetFromDivision(e.target.value.replace(/[^0-9.]/g, ''))} />
+                    <Input theme="blue" label="Budget — From CO-PSF" placeholder="₱ 0.00" inputMode="decimal" value={budgetFromCoPSF} onChange={(e) => setBudgetFromCoPSF(e.target.value.replace(/[^0-9.]/g, ''))} />
+                </div>
             </div>
         </div>
     );

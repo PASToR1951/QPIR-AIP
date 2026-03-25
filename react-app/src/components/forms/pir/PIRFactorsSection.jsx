@@ -31,7 +31,7 @@ export default React.memo(function PIRFactorsSection({
                                     {type} Factors
                                 </h4>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest px-1">Facilitating</label>
                                         <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all">
@@ -55,6 +55,18 @@ export default React.memo(function PIRFactorsSection({
                                             />
                                         </div>
                                     </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-blue-600 uppercase tracking-widest px-1">Recommendations</label>
+                                        <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
+                                            <TextareaAuto
+                                                className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[80px]"
+                                                placeholder={`Recommendations for ${type.toLowerCase()}...`}
+                                                value={factors[type].recommendations ?? ''}
+                                                onChange={(e) => handleFactorChange(type, 'recommendations', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ))}
@@ -74,14 +86,15 @@ export default React.memo(function PIRFactorsSection({
                     </div>
 
                     <div className="overflow-x-auto pb-2">
-                        <div className="border border-slate-200 dark:border-dark-border rounded-2xl bg-white dark:bg-dark-surface shadow-sm overflow-hidden min-w-[600px]">
-                            <div className="grid grid-cols-2 bg-slate-50 dark:bg-dark-base border-b border-slate-200 dark:border-dark-border font-bold text-center text-sm uppercase tracking-wider">
+                        <div className="border border-slate-200 dark:border-dark-border rounded-2xl bg-white dark:bg-dark-surface shadow-sm overflow-hidden min-w-[800px]">
+                            <div className="grid grid-cols-3 bg-slate-50 dark:bg-dark-base border-b border-slate-200 dark:border-dark-border font-bold text-center text-sm uppercase tracking-wider">
                                 <div className="p-3 border-r border-slate-200 dark:border-dark-border text-emerald-700">Facilitating Factors</div>
-                                <div className="p-3 text-rose-700">Hindering Factors</div>
+                                <div className="p-3 border-r border-slate-200 dark:border-dark-border text-rose-700">Hindering Factors</div>
+                                <div className="p-3 text-blue-700">Recommendations</div>
                             </div>
 
                             {FACTOR_TYPES.map((type, idx) => (
-                                <div key={type} className={`grid grid-cols-2 bg-white dark:bg-dark-surface ${idx !== FACTOR_TYPES.length - 1 ? 'border-b border-slate-200 dark:border-dark-border' : ''}`}>
+                                <div key={type} className={`grid grid-cols-3 bg-white dark:bg-dark-surface ${idx !== FACTOR_TYPES.length - 1 ? 'border-b border-slate-200 dark:border-dark-border' : ''}`}>
                                     <div className="p-4 border-r border-slate-200 dark:border-dark-border relative group hover:bg-slate-50/50 dark:hover:bg-dark-base/50 transition-colors">
                                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 absolute top-3 left-4">{type}</span>
                                         <TextareaAuto
@@ -90,12 +103,20 @@ export default React.memo(function PIRFactorsSection({
                                             onChange={(e) => handleFactorChange(type, 'facilitating', e.target.value)}
                                         />
                                     </div>
-                                    <div className="p-4 relative group hover:bg-slate-50/50 dark:hover:bg-dark-base/50 transition-colors">
+                                    <div className="p-4 border-r border-slate-200 dark:border-dark-border relative group hover:bg-slate-50/50 dark:hover:bg-dark-base/50 transition-colors">
                                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 absolute top-3 left-4">{type}</span>
                                         <TextareaAuto
                                             className="mt-5 w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent p-1 focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded min-h-[40px]"
                                             value={factors[type].hindering}
                                             onChange={(e) => handleFactorChange(type, 'hindering', e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="p-4 relative group hover:bg-slate-50/50 dark:hover:bg-dark-base/50 transition-colors">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 dark:text-blue-500 absolute top-3 left-4">{type}</span>
+                                        <TextareaAuto
+                                            className="mt-5 w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent p-1 focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded min-h-[40px]"
+                                            value={factors[type].recommendations ?? ''}
+                                            onChange={(e) => handleFactorChange(type, 'recommendations', e.target.value)}
                                         />
                                     </div>
                                 </div>
