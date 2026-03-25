@@ -7,7 +7,6 @@ import {
   Warning, ChartBar, CurrencyCircleDollar, Checks, XCircle,
 } from '@phosphor-icons/react';
 import { StatusBadge } from './StatusBadge.jsx';
-import { FACTOR_TYPES } from '../../constants.js';
 
 const API = import.meta.env.VITE_API_URL;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -458,6 +457,7 @@ export function PIRReviewDrawer({ open, pir, onClose, onStatusChange }) {
   const status = data?.status ?? pir?.status ?? '—';
 
   const factors = data?.factors ?? [];
+  const FACTOR_TYPES = ['Institutional', 'Technical', 'Infrastructure', 'Learning Resources', 'Environmental', 'Others'];
 
   return (
     <AnimatePresence>

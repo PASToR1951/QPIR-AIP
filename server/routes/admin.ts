@@ -2,17 +2,9 @@ import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import jwt from "jsonwebtoken";
 import * as bcrypt from "bcrypt";
-import {
-  getTermConfig, toTermConfigResponse,
-  getSYBounds, getCurrentPeriod, getPeriodLabel,
-  activityOverlapsPeriod, buildPeriodDeadline,
-  type TermType,
-} from "../lib/termConfig.ts";
-import { loadTermConfig } from "../lib/loadTermConfig.ts";
-import { JWT_SECRET } from "../lib/config.ts";
-import { FACTOR_TYPES } from "../lib/constants.ts";
 
 const adminRoutes = new Hono();
+const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
 
 // ==========================================
 // AUTH HELPER
@@ -93,23 +85,22 @@ adminRoutes.use("*", async (c, next) => {
 // ==========================================
 
 adminRoutes.get("/overview", async (c) => {
-  const today = new Date();
-  const month = today.getMonth() + 1;
-  const syStart = parseInt(c.req.query("year") || String(month >= 6 ? today.getFullYear() : today.getFullYear() - 1));
-  const syEnd = syStart + 1;
-  const year = syStart; // AIP records use SY start year
+  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
 
-  const termCfg = await loadTermConfig();
-  const currentTrimester = getCurrentPeriod(termCfg, today);
+  // Current quarter (needed early for PIR queries)
+  const month = new Date().getMonth() + 1;
+  const currentQuarter = Math.ceil(month / 3);
 
-  const [totalSchools, totalUsers, totalPrograms, totalProgramOwners, aipCount, pirCount, pirsByTrimester, schoolsWithAIP] = await Promise.all([
+  const quarterPrefixes: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
+
+  const [totalSchools, totalUsers, totalPrograms, totalProgramOwners, aipCount, pirCount, pirsByQuarter, schoolsWithAIP] = await Promise.all([
     prisma.school.count(),
     prisma.user.count({ where: { is_active: true } }),
     prisma.program.count(),
     prisma.user.count({ where: { is_active: true, role: "Division Personnel" } }),
     prisma.aIP.count({ where: { year } }),
     prisma.pIR.count(),
-    // PIR period breakdown for the current SY
+    // PIR quarterly breakdown for the current year
     prisma.pIR.findMany({
       where: { aip: { year } },
       select: { quarter: true, status: true },
@@ -124,32 +115,28 @@ adminRoutes.get("/overview", async (c) => {
 
   const aipCompliantCount = schoolsWithAIP.length;
 
-  // Build PIR period summary using config-driven periods
-  const pirQuarterly = termCfg.periods.map((p) => {
-    const tPirs = pirsByTrimester.filter((pir) =>
-      pir.quarter.startsWith(`${p.ordinal} ${termCfg.termNoun}`)
-    );
+  // Build PIR quarterly summary
+  const pirQuarterly = [1, 2, 3, 4].map((q) => {
+    const prefix = quarterPrefixes[q];
+    const qPirs = pirsByQuarter.filter((p) => p.quarter.startsWith(prefix));
     return {
-      quarter: `${p.prefix}${p.number}`,
-      submitted:   tPirs.filter((pir) => pir.status === "Submitted").length,
-      approved:    tPirs.filter((pir) => pir.status === "Approved").length,
-      underReview: tPirs.filter((pir) => pir.status === "Under Review").length,
-      returned:    tPirs.filter((pir) => pir.status === "Returned").length,
+      quarter: `Q${q}`,
+      submitted: qPirs.filter((p) => p.status === "Submitted").length,
+      approved: qPirs.filter((p) => p.status === "Approved").length,
+      underReview: qPirs.filter((p) => p.status === "Under Review").length,
+      returned: qPirs.filter((p) => p.status === "Returned").length,
     };
   });
 
-  // Current-period PIR counts for stat cards
-  const currentPeriodDef = termCfg.periods.find(p => p.number === currentTrimester)!;
-  const currentQPirs = pirsByTrimester.filter((p) =>
-    p.quarter.startsWith(`${currentPeriodDef.ordinal} ${termCfg.termNoun}`)
-  );
+  // Current-quarter PIR counts for stat cards
+  const currentQPirs = pirsByQuarter.filter((p) => p.quarter.startsWith(quarterPrefixes[currentQuarter]));
   const pirSubmittedThisQ = currentQPirs.length;
-  const pirApprovedThisQ  = currentQPirs.filter((p) => p.status === "Approved").length;
-  const pirReturnedThisQ  = currentQPirs.filter((p) => p.status === "Returned").length;
+  const pirApprovedThisQ = currentQPirs.filter((p) => p.status === "Approved").length;
+  const pirReturnedThisQ = currentQPirs.filter((p) => p.status === "Returned").length;
 
   // PIR approval rate for the year
-  const pirTotalThisYear    = pirsByTrimester.length;
-  const pirApprovedThisYear = pirsByTrimester.filter((p) => p.status === "Approved").length;
+  const pirTotalThisYear = pirsByQuarter.length;
+  const pirApprovedThisYear = pirsByQuarter.filter((p) => p.status === "Approved").length;
   const pirApprovalRate = pirTotalThisYear > 0 ? Math.round((pirApprovedThisYear / pirTotalThisYear) * 100) : 0;
 
   // PIR accomplishment stats — physical & financial utilization rates
@@ -180,11 +167,19 @@ adminRoutes.get("/overview", async (c) => {
     avgFinancialRate = Math.round(totalFinancialRate / reviewsWithFinancialTarget.length);
   }
 
-  // Deadline for current period
+  // Deadline for current quarter
   const deadline = await prisma.deadline.findUnique({
-    where: { year_quarter: { year: syStart, quarter: currentTrimester } },
+    where: { year_quarter: { year, quarter: currentQuarter } },
   });
-  const deadlineDate = buildPeriodDeadline(termCfg, syStart, currentTrimester, deadline?.date);
+  const defaultDeadlines: Record<number, string> = {
+    1: `${year}-03-31`,
+    2: `${year}-06-30`,
+    3: `${year}-09-30`,
+    4: `${year}-12-31`,
+  };
+  const deadlineDate = deadline
+    ? deadline.date
+    : new Date(defaultDeadlines[currentQuarter]);
   const daysLeft = Math.ceil(
     (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
@@ -231,7 +226,7 @@ adminRoutes.get("/overview", async (c) => {
     .slice(0, 20);
 
   // Cluster data for both AIP compliance and PIR status heatmaps
-  const currentQPrefix = `${currentPeriodDef.ordinal} ${termCfg.termNoun}`;
+  const currentQPrefix = quarterPrefixes[currentQuarter];
   const clusters = await prisma.cluster.findMany({
     include: {
       schools: {
@@ -320,10 +315,10 @@ adminRoutes.get("/overview", async (c) => {
       avgPhysicalRate,
       avgFinancialRate,
       totalActivitiesReviewed: pirActivityReviews.length,
-      currentTrimester: currentTrimester,
+      currentQuarter,
       deadlineDate,
       daysLeft,
-      year: syStart,
+      year,
     },
     recentSubmissions,
     clusterCompliance,
@@ -1060,26 +1055,19 @@ adminRoutes.patch("/programs/:id/personnel", async (c) => {
 // ==========================================
 
 adminRoutes.get("/deadlines", async (c) => {
-  // year param is treated as SY start year (e.g. 2025 for SY 2025-2026)
-  const now = new Date();
-  const curMonth = now.getMonth() + 1;
-  const syStart = parseInt(c.req.query("year") || String(curMonth >= 6 ? now.getFullYear() : now.getFullYear() - 1));
-  const termCfg = await loadTermConfig();
-  const deadlines = await prisma.deadline.findMany({ where: { year: syStart } });
-
-  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-  const result = termCfg.periods.map((p) => {
-    const custom = deadlines.find((d) => d.quarter === p.number);
+  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const deadlines = await prisma.deadline.findMany({ where: { year } });
+  const defaults: Record<number, string> = {
+    1: `${year}-03-31`, 2: `${year}-06-30`, 3: `${year}-09-30`, 4: `${year}-12-31`,
+  };
+  const result = [1, 2, 3, 4].map((q) => {
+    const custom = deadlines.find((d) => d.quarter === q);
     return {
-      quarter:    p.number,
-      label:      `${p.prefix}${p.number}`,
-      rangeLabel: `${p.ordinal} · ${MONTH_NAMES[p.startMonth - 1]}–${MONTH_NAMES[p.endMonth - 1]}`,
-      termNoun:   termCfg.termNoun,
-      year:       syStart,
-      date:       custom ? custom.date : buildPeriodDeadline(termCfg, syStart, p.number),
-      isCustom:   !!custom,
-      id:         custom?.id ?? null,
+      quarter: q,
+      year,
+      date: custom ? custom.date : new Date(defaults[q]),
+      isCustom: !!custom,
+      id: custom?.id ?? null,
     };
   });
   return c.json(result);
@@ -1088,15 +1076,11 @@ adminRoutes.get("/deadlines", async (c) => {
 adminRoutes.post("/deadlines", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const { year, quarter, date } = await c.req.json();
-  const parsedDate = new Date(date);
-  if (isNaN(parsedDate.getTime())) {
-    return c.json({ error: "Invalid date value" }, 400);
-  }
   const existing = await prisma.deadline.findUnique({ where: { year_quarter: { year, quarter } } });
   const deadline = await prisma.deadline.upsert({
     where: { year_quarter: { year, quarter } },
-    update: { date: parsedDate },
-    create: { year, quarter, date: parsedDate },
+    update: { date: new Date(date) },
+    create: { year, quarter, date: new Date(date) },
   });
   await writeAuditLog(admin.id, "changed_deadline", "Deadline", deadline.id, {
     year, quarter, newDate: date, previousDate: existing?.date ?? null,
@@ -1161,28 +1145,27 @@ adminRoutes.get("/reports/compliance", async (c) => {
 });
 
 adminRoutes.get("/reports/quarterly", async (c) => {
-  // year param is treated as SY start year (e.g. 2025 for SY 2025-2026)
-  const syStart = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   const clusterId = c.req.query("cluster") ? parseInt(c.req.query("cluster")!) : undefined;
 
-  const termCfg = await loadTermConfig();
   const pirs = await prisma.pIR.findMany({
-    where: { aip: { year: syStart, ...(clusterId && { school: { cluster_id: clusterId } }) } },
+    where: { aip: { year, ...(clusterId && { school: { cluster_id: clusterId } }) } },
     include: { aip: { include: { school: true, program: true } } },
   });
 
-  const summary = termCfg.periods.map((p) => {
-    const periodPIRs = pirs.filter((pir) => pir.quarter.startsWith(`${p.ordinal} ${termCfg.termNoun}`));
+  const quarterLabels = ["1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter"];
+  const summary = quarterLabels.map((ql, i) => {
+    const quarterPIRs = pirs.filter((p) => p.quarter.startsWith(`${i + 1}`));
     return {
-      quarter: `${p.prefix}${p.number}`,
-      submitted: periodPIRs.filter((pir) => ["Submitted", "Under Review", "Approved"].includes(pir.status)).length,
-      pending:   periodPIRs.filter((pir) => pir.status === "Submitted").length,
-      approved:  periodPIRs.filter((pir) => pir.status === "Approved").length,
-      returned:  periodPIRs.filter((pir) => pir.status === "Returned").length,
+      quarter: `Q${i + 1}`,
+      submitted: quarterPIRs.filter((p) => ["Submitted", "Approved"].includes(p.status)).length,
+      pending: quarterPIRs.filter((p) => p.status === "Submitted").length,
+      approved: quarterPIRs.filter((p) => p.status === "Approved").length,
+      returned: quarterPIRs.filter((p) => p.status === "Returned").length,
     };
   });
 
-  return c.json({ summary, year: syStart });
+  return c.json({ summary, year });
 });
 
 adminRoutes.get("/reports/budget", async (c) => {
@@ -1278,7 +1261,8 @@ adminRoutes.get("/reports/factors", async (c) => {
     where: { pir: { aip: { year } } },
   });
 
-  const data = FACTOR_TYPES.map((t) => {
+  const TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
+  const data = TYPES.map((t) => {
     const matching = factors.filter((f) => f.factor_type.trim() === t);
     return {
       type: t,
@@ -1521,23 +1505,27 @@ adminRoutes.get("/audit-log", async (c) => {
 
 // Lightweight endpoint for AdminLayout — avoids the full /overview query
 adminRoutes.get("/layout-info", async (c) => {
-  const today = new Date();
-  const termCfg = await loadTermConfig();
-  const sy = getSYBounds(today);
-  const currentTrimester = getCurrentPeriod(termCfg, today);
+  const year = new Date().getFullYear();
+  const month = new Date().getMonth() + 1;
+  const currentQuarter = Math.ceil(month / 3);
 
   const deadline = await prisma.deadline.findUnique({
-    where: { year_quarter: { year: sy.start, quarter: currentTrimester } },
+    where: { year_quarter: { year, quarter: currentQuarter } },
   });
+  const defaultDeadlines: Record<number, string> = {
+    1: `${year}-03-31`,
+    2: `${year}-06-30`,
+    3: `${year}-09-30`,
+    4: `${year}-12-31`,
+  };
   const deadlineDate = deadline
     ? deadline.date
-    : buildPeriodDeadline(termCfg, sy.start, currentTrimester);
-
+    : new Date(defaultDeadlines[currentQuarter]);
   const daysLeft = Math.ceil(
     (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
 
-  return c.json({ daysLeft, currentTrimester, deadlineDate });
+  return c.json({ daysLeft, currentQuarter, deadlineDate });
 });
 
 adminRoutes.get("/settings/system-info", async (c) => {
@@ -1547,103 +1535,6 @@ adminRoutes.get("/settings/system-info", async (c) => {
     prisma.program.count(),
   ]);
   return c.json({ userCount, schoolCount, programCount });
-});
-
-// ==========================================
-// TERM CONFIG
-// ==========================================
-
-// GET /api/admin/term-config — returns active term type and its full definition
-adminRoutes.get("/term-config", async (c) => {
-  const row = await prisma.systemConfig.findUnique({ where: { key: "term_type" } });
-  const type = (row?.value ?? "Trimester") as TermType;
-  return c.json(toTermConfigResponse(getTermConfig(type)));
-});
-
-// PATCH /api/admin/term-config — switches the active term type and saves custom period month ranges
-// Body: {
-//   termType: "Trimester" | "Quarterly" | "Bimester",
-//   customPeriods: Array<{ number: number; startMonth: number; endMonth: number }> | null
-// }
-// Existing PIR records are NOT modified — only new submissions use the new format.
-// Automatically creates a 3-day warning announcement visible to all users.
-adminRoutes.patch("/term-config", async (c) => {
-  const admin = getUserFromToken(c.req.header("Authorization"))!;
-  const { termType, customPeriods } = await c.req.json();
-
-  const VALID: TermType[] = ["Trimester", "Quarterly", "Bimester"];
-  if (!VALID.includes(termType)) {
-    return c.json({ error: `termType must be one of: ${VALID.join(", ")}` }, 400);
-  }
-
-  if (customPeriods !== null && customPeriods !== undefined) {
-    if (!Array.isArray(customPeriods)) {
-      return c.json({ error: "customPeriods must be an array or null" }, 400);
-    }
-    for (const p of customPeriods) {
-      if (
-        typeof p.number !== "number" ||
-        typeof p.startMonth !== "number" || p.startMonth < 1 || p.startMonth > 12 ||
-        typeof p.endMonth   !== "number" || p.endMonth   < 1 || p.endMonth   > 12
-      ) {
-        return c.json({ error: "Each period must have number, startMonth (1–12), endMonth (1–12)" }, 400);
-      }
-    }
-  }
-
-  // 1. Fetch previous term type for the announcement message
-  const previousRow = await prisma.systemConfig.findUnique({ where: { key: "term_type" } });
-  const previousType = previousRow?.value ?? "Trimester";
-
-  // 2. Persist new term_type
-  await prisma.systemConfig.upsert({
-    where:  { key: "term_type" },
-    update: { value: termType },
-    create: { key: "term_type", value: termType },
-  });
-
-  // 3. Persist custom_periods — merge into existing map so other term types' overrides survive
-  const customRow = await prisma.systemConfig.findUnique({ where: { key: "custom_periods" } });
-  let customMap: Record<string, unknown> = {};
-  try { if (customRow?.value) customMap = JSON.parse(customRow.value); } catch { /* ignore */ }
-  customMap[termType] = customPeriods ?? null;
-  await prisma.systemConfig.upsert({
-    where:  { key: "custom_periods" },
-    update: { value: JSON.stringify(customMap) },
-    create: { key: "custom_periods", value: JSON.stringify(customMap) },
-  });
-
-  // 4. Auto-create a warning announcement that expires in 3 days
-  const today = new Date();
-  const sy = getSYBounds(today);
-  const expiresAt = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
-  const effectiveDate = today.toLocaleDateString("en-PH", { month: "long", day: "numeric", year: "numeric" });
-  const message = `The reporting term has changed from ${previousType} to ${termType} effective ${effectiveDate} (SY ${sy.start}-${sy.end}). Please check your submission deadlines.`;
-
-  // Deactivate the existing announcement first, then create a fresh one
-  const existingAnn = await prisma.announcement.findFirst({ orderBy: { created_at: "desc" } });
-  if (existingAnn) {
-    await prisma.announcement.update({ where: { id: existingAnn.id }, data: { is_active: false } });
-  }
-  const newAnnouncement = await prisma.announcement.create({
-    data: {
-      message,
-      type:        "warning",
-      is_active:   true,
-      dismissible: true,
-      expires_at:  expiresAt,
-      created_by:  admin.id,
-    },
-  });
-
-  await writeAuditLog(admin.id, "changed_term_config", "SystemConfig", 0, {
-    previousTermType: previousType,
-    newTermType:      termType,
-    customPeriods:    customPeriods ?? null,
-    announcementId:   newAnnouncement.id,
-  });
-
-  return c.json({ success: true, termType });
 });
 
 export default adminRoutes;
