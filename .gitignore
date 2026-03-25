@@ -9,7 +9,7 @@ TECH_DESIGN_PLAN.md
 instructions.md
 
 # ── Internal documentation (not for public/repo consumers) ───────────────────
-docs/
+/docs/
 unappended-changes.md
 
 # ── Generated schema exports ──────────────────────────────────────────────────
