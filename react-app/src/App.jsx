@@ -7,7 +7,6 @@ import { NotePencil, Table, LockKey as Lock, Warning as AlertTriangle, CaretCirc
 import Login from './Login';
 import AIPForm from './AIPForm';
 import AIPBetaForm from './AIPBetaForm';
-import VerifyAIPs from './VerifyAIPs';
 import PIRForm from './PIRForm';
 import NotFound from './NotFound';
 import ErrorPage from './ErrorPage';
@@ -438,14 +437,6 @@ function AnimatedRoutes() {
               <ProtectedRoute>
                 <PageTransition><AIPBetaForm /></PageTransition>
               </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/verify-aips"
-            element={
-              <AdminRouteGuard>
-                <PageTransition><VerifyAIPs /></PageTransition>
-              </AdminRouteGuard>
             }
           />
           <Route

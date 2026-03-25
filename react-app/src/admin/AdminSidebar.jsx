@@ -19,8 +19,7 @@ const NAV_GROUPS = [
   {
     label: 'Submissions & Data',
     items: [
-      { to: '/verify-aips', label: 'Verify AIPs', icon: Checks, badge: 'Beta' },
-      { to: '/admin/users', label: 'Users',        icon: Users },
+      { to: '/admin/users', label: 'Users', icon: Users },
     ],
   },
   {
