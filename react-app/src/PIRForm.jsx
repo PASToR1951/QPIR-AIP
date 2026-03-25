@@ -78,9 +78,10 @@ export default function App() {
     useEffect(() => {
         const init = async () => {
             try {
+                const syYear = getSYStart();
                 const requests = [
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { headers: authHeaders }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips?year=${syYear}`, { headers: authHeaders }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs?year=${syYear}`, { headers: authHeaders }),
                 ];
                 requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { headers: authHeaders }));
                 const results = await Promise.allSettled(requests);

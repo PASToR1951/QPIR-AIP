@@ -139,7 +139,7 @@ dataRoutes.get('/aips/draft', async (c) => {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
 
     let drafts: any[];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
@@ -200,7 +200,7 @@ dataRoutes.delete('/aips/draft', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title');
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
 
     let where: any = { status: 'Draft', year };
 
@@ -560,7 +560,7 @@ dataRoutes.get('/programs/with-aips', async (c) => {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
 
     const db = prisma.aIP as any;
     // Only include AIPs that are Verified or Approved — Draft/Pending AIPs should not unlock PIR filing
@@ -592,7 +592,7 @@ dataRoutes.get('/programs/with-pirs', async (c) => {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
 
     let pirs: any[];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
@@ -631,7 +631,7 @@ dataRoutes.get('/schools/:id/aip-status', async (c) => {
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
   const school_id = parseInt(c.req.param('id'));
-  const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+  const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
 
   // School users may only query their own school's status
   if (tokenUser.role === 'School' && tokenUser.school_id !== school_id) {
@@ -653,7 +653,7 @@ dataRoutes.get('/users/:id/aip-status', async (c) => {
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
   const user_id = parseInt(c.req.param('id'));
-  const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+  const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
 
   // Users may only query their own status
   if (tokenUser.id !== user_id) {
@@ -678,7 +678,7 @@ dataRoutes.get('/aips/activities', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
 
     if (!program_title) {
       return c.json({ error: 'program_title is required' }, 400);
@@ -754,7 +754,7 @@ dataRoutes.get('/aips', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
 
     if (!program_title) return c.json({ error: 'program_title is required' }, 400);
 
