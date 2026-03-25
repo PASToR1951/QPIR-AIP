@@ -2,9 +2,9 @@ import { Hono } from "hono";
 import * as bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { prisma } from "../db/client.ts";
-import { JWT_SECRET } from "../lib/config.ts";
 
 const authRoutes = new Hono();
+const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
 
 // Self-registration is disabled. All accounts are created by an Admin via /api/admin/users.
 authRoutes.post('/register', (c) => c.json({ error: 'Registration is disabled. Contact your administrator.' }, 403));

@@ -3,14 +3,9 @@ import { prisma } from "../db/client.ts";
 import { ensureDir } from "https://deno.land/std@0.224.0/fs/mod.ts";
 import * as path from "https://deno.land/std@0.224.0/path/mod.ts";
 import jwt from "jsonwebtoken";
-import {
-  getSYBounds, getCurrentPeriod, getPeriodLabel,
-  activityOverlapsPeriod, buildPeriodDeadline,
-} from "../lib/termConfig.ts";
-import { loadTermConfig } from "../lib/loadTermConfig.ts";
-import { JWT_SECRET } from "../lib/config.ts";
 
 const dataRoutes = new Hono();
+const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
 
 // ==========================================
 // AUTH HELPER
@@ -139,7 +134,7 @@ dataRoutes.get('/aips/draft', async (c) => {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
     let drafts: any[];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
@@ -200,7 +195,7 @@ dataRoutes.delete('/aips/draft', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title');
-    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
     let where: any = { status: 'Draft', year };
 
@@ -331,10 +326,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
     }
 
     return c.json({ message: 'PIR draft saved successfully', pir });
-  } catch (error: any) {
-    if (error?.code === 'P2002') {
-      return c.json({ error: 'A PIR already exists for this quarter' }, 409);
-    }
+  } catch (error) {
     console.error('Failed to save PIR draft:', error);
     return c.json({ error: 'Failed to save PIR draft' }, 500);
   }
@@ -367,7 +359,7 @@ dataRoutes.get('/pirs/draft', async (c) => {
       });
     }
 
-    const yearMatch = quarter?.match(/SY (\d{4})/);
+    const yearMatch = quarter?.match(/CY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
     const program = await prisma.program.findUnique({ where: { title: program_title } });
@@ -440,7 +432,7 @@ dataRoutes.delete('/pirs/draft', async (c) => {
 
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter required' }, 400);
 
-    const yearMatch = quarter.match(/SY (\d{4})/);
+    const yearMatch = quarter.match(/CY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
     const program = await prisma.program.findUnique({ where: { title: program_title } });
@@ -560,7 +552,7 @@ dataRoutes.get('/programs/with-aips', async (c) => {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
     const db = prisma.aIP as any;
     // Only include AIPs that are Verified or Approved — Draft/Pending AIPs should not unlock PIR filing
@@ -592,7 +584,7 @@ dataRoutes.get('/programs/with-pirs', async (c) => {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
     let pirs: any[];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
@@ -631,7 +623,7 @@ dataRoutes.get('/schools/:id/aip-status', async (c) => {
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
   const school_id = parseInt(c.req.param('id'));
-  const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
+  const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
   // School users may only query their own school's status
   if (tokenUser.role === 'School' && tokenUser.school_id !== school_id) {
@@ -653,7 +645,7 @@ dataRoutes.get('/users/:id/aip-status', async (c) => {
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
   const user_id = parseInt(c.req.param('id'));
-  const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
+  const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
   // Users may only query their own status
   if (tokenUser.id !== user_id) {
@@ -678,7 +670,7 @@ dataRoutes.get('/aips/activities', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
-    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
     if (!program_title) {
       return c.json({ error: 'program_title is required' }, 400);
@@ -754,7 +746,7 @@ dataRoutes.get('/aips', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
-    const year = parseInt(c.req.query('year') || String(getSYBounds(new Date()).start));
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
     if (!program_title) return c.json({ error: 'program_title is required' }, 400);
 
@@ -818,7 +810,7 @@ dataRoutes.get('/pirs', async (c) => {
 
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
-    const yearMatch = quarter.match(/SY (\d{4})/);
+    const yearMatch = quarter.match(/CY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
     const program = await prisma.program.findUnique({ where: { title: program_title } });
@@ -1242,11 +1234,34 @@ dataRoutes.post('/pirs', async (c) => {
 });
 
 // ==========================================
-// TRIMESTER / DEADLINE HELPERS
+// QUARTER / DEADLINE HELPERS
 // ==========================================
-// Helpers are now imported from server/lib/termConfig.ts and loaded from DB
-// via loadTermConfig(). The helpers below are retained as thin wrappers for
-// any call sites that use the old signatures within this file.
+
+function activityOverlapsQuarter(startMonth: number, endMonth: number, quarter: number): boolean {
+  const qStart = (quarter - 1) * 3 + 1; // Q1=1, Q2=4, Q3=7, Q4=10
+  const qEnd = quarter * 3;              // Q1=3, Q2=6, Q3=9, Q4=12
+  return startMonth <= qEnd && endMonth >= qStart;
+}
+
+function getQuarterLabel(quarter: number, year: number): string {
+  const ordinals: Record<number, string> = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };
+  return `${ordinals[quarter]} Quarter CY ${year}`;
+}
+
+function buildDeadline(year: number, quarter: number, customDate?: Date): Date {
+  if (customDate) {
+    const d = new Date(customDate);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  const defaults: Record<number, Date> = {
+    1: new Date(year, 2,  31, 23, 59, 59, 999), // Mar 31
+    2: new Date(year, 5,  30, 23, 59, 59, 999), // Jun 30
+    3: new Date(year, 8,  30, 23, 59, 59, 999), // Sep 30
+    4: new Date(year, 11, 31, 23, 59, 59, 999), // Dec 31
+  };
+  return defaults[quarter];
+}
 
 // ==========================================
 // DASHBOARD
@@ -1258,20 +1273,14 @@ dataRoutes.get('/dashboard', async (c) => {
     const tokenUser = getUserFromToken(c.req.header('Authorization'));
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
     const today = new Date();
-    const termCfg = await loadTermConfig();
-    const sy = getSYBounds(today);
-    // Allow override via ?year= (interpreted as SY start year)
-    const syStartParam = c.req.query('year');
-    const syStart = syStartParam ? parseInt(syStartParam) : sy.start;
-    const syEnd = syStart + 1;
+    const currentQuarter = Math.ceil((today.getMonth() + 1) / 3);
 
-    const currentTrimester = getCurrentPeriod(termCfg, today);
-
-    // Load any admin-set deadlines for this SY start year
-    const customDeadlines = await prisma.deadline.findMany({ where: { year: syStart } });
-    const getDeadline = (t: number) =>
-      buildPeriodDeadline(termCfg, syStart, t, customDeadlines.find(d => d.quarter === t)?.date);
+    // Load any admin-set deadlines for this year
+    const customDeadlines = await prisma.deadline.findMany({ where: { year } });
+    const getDeadline = (q: number) =>
+      buildDeadline(year, q, customDeadlines.find(d => d.quarter === q)?.date);
 
     // ── Active Programs ──────────────────────────────────
     let activePrograms = 0;
@@ -1298,7 +1307,7 @@ dataRoutes.get('/dashboard', async (c) => {
       activePrograms = await prisma.program.count({
         where: {
           id: { notIn: restrictedIds },
-          school_level_requirement: { in: levelFilter as string[] }
+          school_level_requirement: { in: levelFilter }
         }
       });
     }
@@ -1307,11 +1316,11 @@ dataRoutes.get('/dashboard', async (c) => {
     let aipCompleted = 0;
     if (tokenUser.role === 'Division Personnel') {
       aipCompleted = await prisma.aIP.count({
-        where: { created_by_user_id: tokenUser.id, school_id: null, year: syStart }
+        where: { created_by_user_id: tokenUser.id, school_id: null, year }
       });
     } else if (tokenUser.school_id) {
       aipCompleted = await prisma.aIP.count({
-        where: { school_id: tokenUser.school_id, year: syStart }
+        where: { school_id: tokenUser.school_id, year }
       });
     }
     const aipTotal = activePrograms;
@@ -1320,8 +1329,8 @@ dataRoutes.get('/dashboard', async (c) => {
     // ── PIR Submitted (timeline-aware) ──────────────────
     const userAIPsWithActivities = await (prisma.aIP as any).findMany({
       where: tokenUser.role === 'Division Personnel'
-        ? { created_by_user_id: tokenUser.id, school_id: null, year: syStart }
-        : { school_id: tokenUser.school_id, year: syStart },
+        ? { created_by_user_id: tokenUser.id, school_id: null, year }
+        : { school_id: tokenUser.school_id, year },
       select: {
         id: true,
         activities: { select: { period_start_month: true, period_end_month: true, budget_amount: true } }
@@ -1329,25 +1338,25 @@ dataRoutes.get('/dashboard', async (c) => {
     });
     const allAipIds: number[] = userAIPsWithActivities.map((a: any) => a.id);
 
-    // Helper: check if an AIP has activities in a given period
-    const aipHasActivitiesInTrimester = (aip: any, t: number) =>
+    // Helper: check if an AIP has activities in a given quarter
+    const aipHasActivitiesInQuarter = (aip: any, q: number) =>
       aip.activities.some((a: any) =>
         a.period_start_month && a.period_end_month
-          ? activityOverlapsPeriod(termCfg, a.period_start_month, a.period_end_month, t)
+          ? activityOverlapsQuarter(a.period_start_month, a.period_end_month, q)
           : true // Legacy data without structured months — assume relevant
       );
 
-    // Current period: only count AIPs with activities this period
-    const aipsRelevantThisTrimester = userAIPsWithActivities.filter(
-      (aip: any) => aipHasActivitiesInTrimester(aip, currentTrimester)
+    // Current quarter: only count AIPs with activities this quarter
+    const aipsRelevantThisQuarter = userAIPsWithActivities.filter(
+      (aip: any) => aipHasActivitiesInQuarter(aip, currentQuarter)
     );
-    const pirTotal = aipsRelevantThisTrimester.length;
-    const relevantAipIds: number[] = aipsRelevantThisTrimester.map((a: any) => a.id);
+    const pirTotal = aipsRelevantThisQuarter.length;
+    const relevantAipIds: number[] = aipsRelevantThisQuarter.map((a: any) => a.id);
 
-    const currentTrimesterLabel = getPeriodLabel(termCfg, currentTrimester, syStart);
+    const currentQuarterLabel = getQuarterLabel(currentQuarter, year);
     const pirSubmittedCount = relevantAipIds.length > 0
       ? await prisma.pIR.count({
-          where: { aip_id: { in: relevantAipIds }, quarter: currentTrimesterLabel }
+          where: { aip_id: { in: relevantAipIds }, quarter: currentQuarterLabel }
         })
       : 0;
 
@@ -1356,54 +1365,54 @@ dataRoutes.get('/dashboard', async (c) => {
       sum + aip.activities.reduce((s: number, a: any) => s + (parseFloat(a.budget_amount) || 0), 0)
     , 0);
 
-    // ── Periods (timeline-aware, config-driven) ─────────────
-    const quarters = await Promise.all(termCfg.periods.map(async (pd) => {
-      const t = pd.number;
-      const deadline = getDeadline(t);
-      const label = getPeriodLabel(termCfg, t, syStart);
+    // ── Quarters (timeline-aware) ─────────────────────────
+    const quarters = await Promise.all([1, 2, 3, 4].map(async (q) => {
+      const deadline = getDeadline(q);
+      const label = getQuarterLabel(q, year);
 
-      // Check if any AIPs have activities in this period
+      // Check if any AIPs have activities in this quarter
       const hasActivities = userAIPsWithActivities.some(
-        (aip: any) => aipHasActivitiesInTrimester(aip, t)
+        (aip: any) => aipHasActivitiesInQuarter(aip, q)
       );
 
-      // Count relevant AIPs and submitted PIRs for this period
+      // Count relevant AIPs and submitted PIRs for this quarter
       const relevantIds = userAIPsWithActivities
-        .filter((aip: any) => aipHasActivitiesInTrimester(aip, t))
+        .filter((aip: any) => aipHasActivitiesInQuarter(aip, q))
         .map((a: any) => a.id);
-      const tTotal = relevantIds.length;
-      const tSubmitted = tTotal > 0
+      const qTotal = relevantIds.length;
+      const qSubmitted = qTotal > 0
         ? await prisma.pIR.count({ where: { aip_id: { in: relevantIds }, quarter: label } })
         : 0;
 
       let status: string;
       if (!hasActivities && allAipIds.length > 0) {
         status = 'No Activities';
-      } else if (t > currentTrimester) {
+      } else if (q > currentQuarter) {
         status = 'Locked';
-      } else if (t === currentTrimester && today <= deadline) {
+      } else if (q === currentQuarter && today <= deadline) {
         status = 'In Progress';
       } else {
-        status = tSubmitted >= tTotal && tTotal > 0 ? 'Submitted' : (tTotal > 0 ? 'Missed' : 'No Activities');
+        // Past quarter or deadline has passed
+        status = qSubmitted >= qTotal && qTotal > 0 ? 'Submitted' : (qTotal > 0 ? 'Missed' : 'No Activities');
       }
 
       return {
-        name: `${pd.prefix}${t}`,
+        name: `Q${q}`,
         status,
         deadline: deadline.toISOString(),
-        submitted: tSubmitted,
-        total: tTotal
+        submitted: qSubmitted,
+        total: qTotal
       };
     }));
 
-    const currentDeadline = getDeadline(currentTrimester);
+    const currentDeadline = getDeadline(currentQuarter);
 
     return c.json({
       activePrograms,
       aipCompletion: { completed: aipCompleted, total: aipTotal, percentage: aipPercentage },
       pirSubmitted: { submitted: pirSubmittedCount, total: pirTotal },
       totalPlannedBudget,
-      currentQuarter: currentTrimester,
+      currentQuarter,
       deadline: currentDeadline.toISOString(),
       quarters
     });

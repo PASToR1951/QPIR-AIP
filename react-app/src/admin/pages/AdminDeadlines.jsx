@@ -7,7 +7,6 @@ import {
   CalendarDots, ArrowsLeftRight, CheckCircle, X,
 } from '@phosphor-icons/react';
 import { AdminLayout } from '../AdminLayout.jsx';
-import { useTermConfig, getCurrentPeriodFromConfig, getSYStart } from '../../context/TermConfigContext.jsx';
 
 const API = import.meta.env.VITE_API_URL;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
@@ -24,8 +23,32 @@ function Tip({ text }) {
   );
 }
 
-// Period labels and ranges are now driven by the API response (d.label, d.rangeLabel)
-// which in turn reflect the active term config set in AdminSettings.
+const QUARTER_LABELS = ['Q1 · Jan – Mar', 'Q2 · Apr – Jun', 'Q3 · Jul – Sep', 'Q4 · Oct – Dec'];
+const DEFAULT_MONTHS = [{ month: 3, day: 31 }, { month: 6, day: 30 }, { month: 9, day: 30 }, { month: 12, day: 31 }];
+
+const QUARTER_RANGES = [
+  { start: [2026, 1, 1],  end: [2026, 3, 31]  },
+  { start: [2026, 4, 1],  end: [2026, 6, 30]  },
+  { start: [2026, 7, 1],  end: [2026, 9, 30]  },
+  { start: [2026, 10, 1], end: [2026, 12, 31] },
+];
+
+function quarterProgress(i) {
+  const r = QUARTER_RANGES[i];
+  const start = new Date(r.start[0], r.start[1] - 1, r.start[2]).getTime();
+  const end   = new Date(r.end[0],   r.end[1] - 1,   r.end[2]).getTime();
+  const now   = Date.now();
+  if (now <= start) return 0;
+  if (now >= end)   return 100;
+  return Math.round(((now - start) / (end - start)) * 100);
+}
+
+function isCurrentQuarter(i) {
+  const r = QUARTER_RANGES[i];
+  const start = new Date(r.start[0], r.start[1] - 1, r.start[2]).getTime();
+  const end   = new Date(r.end[0],   r.end[1] - 1,   r.end[2] + 1).getTime();
+  return Date.now() >= start && Date.now() < end;
+}
 
 function urgencyStyle(daysLeft) {
   if (daysLeft < 0)    return 'border-rose-400 dark:border-rose-700 bg-rose-50/60 dark:bg-rose-950/10';
@@ -282,10 +305,7 @@ function TermChangeModal({ isOpen, onClose, currentTermType, syStart, onConfirm,
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminDeadlines() {
-  const termConfig = useTermConfig();
-  const currentPeriodNum = getCurrentPeriodFromConfig(termConfig, new Date());
-  const syStart = getSYStart();
-  const [year]          = useState(syStart);
+  const [year]          = useState(2026);
   const [deadlines, setDeadlines] = useState([]);
   const [history,   setHistory]   = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -407,10 +427,10 @@ export default function AdminDeadlines() {
                   </div>
                   <div>
                     <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">Deadlines</h1>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">SY {syStart}-{syStart + 1} · {termConfig.termNoun} Submission Windows</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">FY 2026 · Fiscal Year Submission Windows</p>
                   </div>
                 </div>
-                <span className="px-4 py-1.5 text-xs font-black rounded-xl bg-indigo-600 text-white tracking-widest uppercase">SY {syStart}-{syStart + 1}</span>
+                <span className="px-4 py-1.5 text-xs font-black rounded-xl bg-indigo-600 text-white tracking-widest uppercase">FY 2026</span>
               </div>
 
               {/* Summary stat row */}
@@ -422,7 +442,7 @@ export default function AdminDeadlines() {
                   </div>
                   <div>
                     <p className="text-xl font-black text-slate-900 dark:text-slate-100 leading-none tabular-nums">{overdueCount}</p>
-                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">Overdue <Tip text={`${termConfig.termNoun}s whose deadline date has already passed.`} /></p>
+                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">Overdue <Tip text="Quarters whose deadline date has already passed." /></p>
                   </div>
                 </div>
 
@@ -435,7 +455,7 @@ export default function AdminDeadlines() {
                     <p className="text-xl font-black text-slate-900 dark:text-slate-100 leading-none tabular-nums">
                       {nextDays !== null ? `${nextDays}d` : '—'}
                     </p>
-                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">Next Deadline <Tip text="Days remaining until the nearest upcoming trimester deadline." /></p>
+                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">Next Deadline <Tip text="Days remaining until the nearest upcoming quarter deadline." /></p>
                   </div>
                 </div>
 
@@ -446,92 +466,24 @@ export default function AdminDeadlines() {
                   </div>
                   <div>
                     <p className="text-xl font-black text-slate-900 dark:text-slate-100 leading-none tabular-nums">{customCount}</p>
-                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">Custom Set <Tip text={`${termConfig.termNoun}s where the default deadline has been manually overridden. Use Reset to restore defaults.`} /></p>
+                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">Custom Set <Tip text="Quarters where the default deadline has been manually overridden. Use Reset to restore defaults." /></p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Term Structure Card */}
-            <div className="bg-white/70 dark:bg-dark-surface/80 backdrop-blur-sm border border-white/60 dark:border-dark-border rounded-2xl overflow-hidden shadow-sm">
-              <div className="flex items-center justify-between px-6 py-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-950/50 flex items-center justify-center shrink-0">
-                    <CalendarDots size={20} weight="fill" className="text-violet-600 dark:text-violet-400" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-none">Term Structure</h2>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                      Currently: <span className="font-black text-violet-600 dark:text-violet-400">{termConfig.termType}</span>
-                      {' '}· {termConfig.periods.length} period{termConfig.periods.length !== 1 ? 's' : ''}
-                      {' '}· SY {syStart}-{syStart + 1}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {termSaved && (
-                    <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle size={14} weight="fill" /> Applied
-                    </span>
-                  )}
-                  <button
-                    onClick={() => { setTermError(''); setTermModalOpen(true); }}
-                    disabled={termSaving}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/40 hover:bg-violet-200 dark:hover:bg-violet-900/40 border border-violet-200 dark:border-violet-800/40 transition-colors disabled:opacity-60"
-                  >
-                    <ArrowsLeftRight size={14} weight="bold" />
-                    Change Term
-                  </button>
-                </div>
-              </div>
-
-              {/* Period pills */}
-              <div className="px-6 pb-5 flex flex-wrap gap-2">
-                {termConfig.periods.map(p => (
-                  <span
-                    key={p.number}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border ${
-                      p.number === currentPeriodNum
-                        ? 'bg-violet-100 dark:bg-violet-950/40 border-violet-200 dark:border-violet-800/40 text-violet-700 dark:text-violet-300'
-                        : 'bg-slate-100 dark:bg-dark-base border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-400'
-                    }`}
-                  >
-                    <span className="font-black text-slate-800 dark:text-slate-200">{p.label}</span>
-                    {MONTH_NAMES[p.startMonth - 1]}–{MONTH_NAMES[p.endMonth - 1]}
-                    {p.number === currentPeriodNum && (
-                      <span className="text-[10px] font-black text-violet-500 dark:text-violet-400 ml-0.5">· Active</span>
-                    )}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Term Change Modal */}
-            <TermChangeModal
-              isOpen={termModalOpen}
-              onClose={() => setTermModalOpen(false)}
-              currentTermType={termConfig.termType}
-              syStart={syStart}
-              onConfirm={handleTermChange}
-              saving={termSaving}
-              error={termError}
-            />
-
-            {/* Period Deadline Cards */}
+            {/* Quarter Cards */}
             <motion.div
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
             >
               {deadlines.map((d, i) => {
-                const days      = daysLeft(d.date);
-                const impact    = impactPreview(d.quarter);
-                const isCurrent = d.quarter === currentPeriodNum;
-                // Progress: past=100, current=rough estimate from deadline, future=0
-                const progress  = d.quarter < currentPeriodNum ? 100
-                  : isCurrent ? Math.min(100, Math.max(0, 100 - Math.round((new Date(d.date) - Date.now()) / (new Date(d.date) - Date.now() + 86400000 * 30) * 100)))
-                  : 0;
+                const days     = daysLeft(d.date);
+                const impact   = impactPreview(d.quarter);
+                const progress = quarterProgress(i);
+                const isCurrent = isCurrentQuarter(i);
 
                 return (
                   <motion.div
@@ -542,7 +494,7 @@ export default function AdminDeadlines() {
                     {/* Gradient tint overlay */}
                     <div className={`absolute inset-0 bg-gradient-to-b ${urgencyGradient(days)} pointer-events-none`} />
 
-                    {/* Active period accent bar */}
+                    {/* Active quarter accent bar */}
                     {isCurrent && (
                       <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-indigo-500 via-indigo-400 to-violet-500" />
                     )}
@@ -552,7 +504,7 @@ export default function AdminDeadlines() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">
-                            {d.rangeLabel ?? `${d.label}`}
+                            {QUARTER_LABELS[i]}
                           </p>
                           {d.isCustom && (
                             <span className="inline-block mt-1 text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg">
@@ -565,7 +517,7 @@ export default function AdminDeadlines() {
                             ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50'
                             : 'bg-slate-100 dark:bg-dark-base text-slate-400 dark:text-slate-500 border-slate-200 dark:border-dark-border'
                         }`}>
-                          {d.label ?? `${termConfig.periodPrefix}${d.quarter}`}
+                          Q{i + 1}
                         </span>
                       </div>
 
@@ -573,7 +525,7 @@ export default function AdminDeadlines() {
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                            {termConfig.termNoun} Progress
+                            Quarter Progress
                           </p>
                           <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
                             {progress}%
@@ -682,7 +634,7 @@ export default function AdminDeadlines() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-slate-100 dark:border-dark-border bg-slate-50/50 dark:bg-white/[0.02]">
-                              {[termConfig.termNoun, 'Previous', 'New Date', 'Changed By', 'Date'].map(h => (
+                              {['Quarter', 'Previous', 'New Date', 'Changed By', 'Date'].map(h => (
                                 <th key={h} className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wide first:pl-6 last:pr-6">
                                   {h}
                                 </th>
@@ -692,7 +644,7 @@ export default function AdminDeadlines() {
                           <tbody className="divide-y divide-slate-50 dark:divide-dark-border">
                             {history.slice(0, 20).map(log => (
                               <tr key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors">
-                                <td className="px-4 py-2.5 pl-6 font-bold text-slate-700 dark:text-slate-300">{termConfig.periodPrefix}{log.details?.quarter}</td>
+                                <td className="px-4 py-2.5 pl-6 font-bold text-slate-700 dark:text-slate-300">Q{log.details?.quarter}</td>
                                 <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.details?.previousDate ? new Date(log.details.previousDate).toLocaleDateString('en-PH') : '—'}</td>
                                 <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.details?.newDate ? new Date(log.details.newDate).toLocaleDateString('en-PH') : '—'}</td>
                                 <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.admin?.name ?? log.admin?.email}</td>

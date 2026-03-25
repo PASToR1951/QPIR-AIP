@@ -1,12 +1,8 @@
 import React from 'react';
 import { FormBoxHeader } from '../ui/FormBoxHeader';
-import { FACTOR_TYPES as DEFAULT_FACTOR_TYPES } from '../../constants.js';
 
-export const PIRDocument = ({
-    quarter = "1st Trimester SY 2025-2026",
-    termNoun = "Trimester",
-    supervisorName  = "DR. ENRIQUE Q. RETES, EdD",
-    supervisorTitle = "Chief Education Supervisor",
+export const PIRDocument = ({ 
+    quarter = "1st Quarter CY 2026",
     program,
     school,
     owner,
@@ -14,7 +10,7 @@ export const PIRDocument = ({
     fundSource,
     activities = [],
     factors = {},
-    factorTypes = DEFAULT_FACTOR_TYPES
+    factorTypes = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"]
 }) => {
     const formatCurrency = (val) => {
         if (!val) return "";
@@ -35,7 +31,7 @@ export const PIRDocument = ({
         <div className="pir-printable text-black font-sans print:p-0 print:m-0 print:bg-white min-h-screen">
             {/* Print Header */}
             <FormBoxHeader 
-                title={`${termNoun} Performance Review`}
+                title="Quarterly Performance Review"
                 subtitle="Division Monitoring Evaluation and Adjustment"
                 badge={quarter}
             />
@@ -164,9 +160,9 @@ export const PIRDocument = ({
                     <div className="text-center">
                         <p className="text-xs text-left mb-10 font-black uppercase tracking-widest leading-none">Noted:</p>
                         <div className="border-b-2 border-black font-black uppercase text-sm pb-1 min-h-[24px]">
-                            {supervisorName}
+                            DR. ENRIQUE Q. RETES, EdD
                         </div>
-                        <p className="text-[10px] mt-1.5 font-bold uppercase tracking-widest text-slate-500">{supervisorTitle}</p>
+                        <p className="text-[10px] mt-1.5 font-bold uppercase tracking-widest text-slate-500">Chief Education Supervisor</p>
                     </div>
                 </div>
             </div>

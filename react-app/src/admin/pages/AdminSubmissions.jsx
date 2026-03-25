@@ -9,7 +9,6 @@ import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import { PIRReviewDrawer } from '../components/PIRReviewDrawer.jsx';
-import { useTermConfig } from '../../context/TermConfigContext.jsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -39,7 +38,6 @@ function relativeDate(d) {
 }
 
 export default function AdminSubmissions() {
-  const termConfig = useTermConfig();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('type') || 'all'; // 'all' | 'aip' | 'pir'
   const setTab = (key) => { setSearchParams(prev => { prev.set('type', key); return prev; }); setPage(1); };
@@ -266,7 +264,7 @@ export default function AdminSubmissions() {
   ];
 
   const STATUS_OPTIONS = ['Submitted', 'Under Review', 'Approved', 'Returned'];
-  const QUARTER_OPTIONS = (termConfig.periods ?? []).map(p => `${p.ordinal} ${termConfig.termNoun}`);
+  const QUARTER_OPTIONS = ['1st Quarter', '2nd Quarter', '3rd Quarter', '4th Quarter'];
   const YEAR_OPTIONS = [2024, 2025, 2026, 2027].map(y => ({ value: y, label: String(y) }));
 
   const columns = [
@@ -274,7 +272,7 @@ export default function AdminSubmissions() {
     { key: 'cluster', label: 'Cluster', sortable: true, render: v => <span className="text-xs font-bold bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-lg">{v}</span> },
     { key: 'program', label: 'Program', sortable: true, render: v => <span className="truncate max-w-[180px] block text-slate-600 dark:text-slate-400">{v}</span> },
     { key: 'type', label: 'Type', render: (v) => <StatusBadge status={v} size="xs" /> },
-    { key: 'quarter', label: termConfig.termNoun, render: v => <span className="text-xs text-slate-500 dark:text-slate-400">{v ?? '—'}</span> },
+    { key: 'quarter', label: 'Quarter', render: v => <span className="text-xs text-slate-500 dark:text-slate-400">{v ?? '—'}</span> },
     { key: 'year', label: 'Year', sortable: true },
     { key: 'dateSubmitted', label: 'Date Submitted', sortable: true, render: v => <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">{relativeDate(v)}</span> },
     { key: 'submittedBy', label: 'Submitted By', render: v => <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px] block">{v}</span> },
@@ -368,7 +366,7 @@ export default function AdminSubmissions() {
                 options={QUARTER_OPTIONS.map((q, i) => ({ value: String(i + 1), label: q }))}
                 value={filters.quarter}
                 onChange={v => setFilters(f => ({ ...f, quarter: v }))}
-                placeholder={termConfig.termNoun}
+                placeholder="Quarter"
                 clearable
               />
               <SearchableSelect
@@ -573,7 +571,7 @@ export default function AdminSubmissions() {
                     </div>
                     {viewItem.type === 'PIR' && (
                       <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{termConfig.termNoun}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Quarter</p>
                         <p className="font-bold text-slate-800 dark:text-slate-200">{viewData.quarter}</p>
                       </div>
                     )}

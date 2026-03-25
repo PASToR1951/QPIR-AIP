@@ -226,14 +226,6 @@ model Announcement {
   @@map("announcements")
 }
 
-model SystemConfig {
-  key        String   @id           // e.g. "term_type"
-  value      String                 // e.g. "Trimester" | "Quarterly" | "Bimester"
-  updated_at DateTime @updatedAt
-
-  @@map("system_config")
-}
-
 model AuditLog {
   id          Int      @id @default(autoincrement())
   admin_id    Int

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { FACTOR_TYPES } from './constants.js';
+
+const FACTOR_TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
 
 import { Input } from './components/ui/Input';
 import { Select } from './components/ui/Select';
@@ -15,7 +16,6 @@ import { DocumentPreviewModal } from './components/ui/DocumentPreviewModal';
 import { PIRDocument } from './components/docs/PIRDocument';
 import { AIPDocument } from './components/docs/AIPDocument';
 import { useAccessibility } from './context/AccessibilityContext';
-import { useTermConfig, getCurrentPeriodFromConfig, getSYStart, buildPeriodLabel } from './context/TermConfigContext.jsx';
 import { PageLoader } from './components/ui/PageLoader';
 import WizardStepper from './components/ui/WizardStepper';
 import SectionHeader from './components/ui/SectionHeader';
@@ -30,7 +30,6 @@ import PIRFactorsSection from './components/forms/pir/PIRFactorsSection';
 export default function App() {
     const navigate = useNavigate();
     const { settings } = useAccessibility();
-    const termConfig = useTermConfig();
     const motionProps = useMemo(() => (
         settings.reduceMotion
             ? { initial: false, animate: false, exit: false, transition: { duration: 0 } }
@@ -54,34 +53,31 @@ export default function App() {
     const [isMobile, setIsMobile] = useState(false);
     const [programsWithAIPs, setProgramsWithAIPs] = useState([]);
     const [completedPrograms, setCompletedPrograms] = useState([]);
-    // Period string computed from the runtime term config (e.g. "1st Trimester SY 2025-2026")
-    const quarterString = useMemo(() => {
-        const today  = new Date();
-        const syStart = getSYStart(today);
-        const period  = getCurrentPeriodFromConfig(termConfig, today);
-        return buildPeriodLabel(termConfig, period, syStart);
-    }, [termConfig]);
+    const [quarterString] = useState(() => {
+        const date = new Date();
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        if (month <= 2) return `1st Quarter CY ${year}`;
+        if (month <= 5) return `2nd Quarter CY ${year}`;
+        if (month <= 8) return `3rd Quarter CY ${year}`;
+        return `4th Quarter CY ${year}`;
+    });
 
-    // SY start year extracted from the current quarter string
-    const currentYear = useMemo(() => {
-        const m = quarterString.match(/SY (\d{4})/);
-        return m ? m[1] : String(new Date().getFullYear());
-    }, [quarterString]);
-
-    // Current period number for activity filtering
-    const currentQuarterNum = useMemo(
-        () => getCurrentPeriodFromConfig(termConfig, new Date()),
-        [termConfig],
-    );
+    // Quarter number (1-4) for activity filtering
+    const currentQuarterNum = (() => {
+        if (quarterString.startsWith('1st')) return 1;
+        if (quarterString.startsWith('2nd')) return 2;
+        if (quarterString.startsWith('3rd')) return 3;
+        return 4;
+    })();
 
     // Fetch programs, PIR completion status, draft, and school map in parallel on mount
     useEffect(() => {
         const init = async () => {
             try {
-                const syYear = getSYStart();
                 const requests = [
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips?year=${syYear}`, { headers: authHeaders }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs?year=${syYear}`, { headers: authHeaders }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { headers: authHeaders }),
                 ];
                 requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { headers: authHeaders }));
                 const results = await Promise.allSettled(requests);
@@ -106,6 +102,7 @@ export default function App() {
     // UI State
     const [currentStep, setCurrentStep] = useState(1);
     const totalSteps = 6;
+    const [activeFactorTab, setActiveFactorTab] = useState(FACTOR_TYPES[0]);
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isAddingActivity, setIsAddingActivity] = useState(false);
     const [activityToDelete, setActivityToDelete] = useState(null);
@@ -207,24 +204,26 @@ export default function App() {
         const schoolId = isDivisionPersonnel ? null : (user?.school_id || null);
         if (!isDivisionPersonnel && !schoolId) return;
 
+        const yearMatch = quarterString.match(/CY (\d{4})/);
+        const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+
         const fetchAIPActivities = async () => {
             setIsLoadingActivities(true);
             try {
                 const params = isDivisionPersonnel
-                    ? { user_id: user?.id, program_title: program, year: currentYear }
-                    : { school_id: schoolId, program_title: program, year: currentYear };
+                    ? { user_id: user?.id, program_title: program, year }
+                    : { school_id: schoolId, program_title: program, year };
 
                 const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/activities`, { params });
                 const aipActivities = res.data.activities;
                 if (aipActivities && aipActivities.length > 0) {
-                    // Filter to activities relevant to the current period using config-driven month ranges
-                    const currentPeriod = termConfig.periods?.find(p => p.number === currentQuarterNum);
-                    const tStart = currentPeriod?.startMonth ?? 1;
-                    const tEnd   = currentPeriod?.endMonth   ?? 12;
+                    // Filter to activities relevant to the current quarter
+                    const qStart = (currentQuarterNum - 1) * 3 + 1;
+                    const qEnd = currentQuarterNum * 3;
                     const relevantActivities = aipActivities.filter(a =>
                         a.period_start_month && a.period_end_month
-                            ? (a.period_start_month <= tEnd && a.period_end_month >= tStart)
-                            : true // Legacy data without structured months — show in all periods
+                            ? (a.period_start_month <= qEnd && a.period_end_month >= qStart)
+                            : true // Legacy data without structured months — show in all quarters
                     );
                     const activitiesToUse = relevantActivities.length > 0 ? relevantActivities : aipActivities;
                     setActivities(activitiesToUse.map(a => ({
@@ -323,8 +322,10 @@ export default function App() {
     const handleViewAIP = async () => {
         if (!aipDocumentData) {
             try {
+                const yearMatch = quarterString.match(/CY (\d{4})/);
+                const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
                 const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips`, {
-                    params: { program_title: program, year: currentYear },
+                    params: { program_title: program, year },
                     headers: authHeaders
                 });
                 setAipDocumentData(res.data);
@@ -488,7 +489,7 @@ export default function App() {
                 {appMode === 'splash' ? (
                     <motion.div key="splash" {...motionProps}>
                         <FormHeader
-                            title="Program Implementation Review"
+                            title="Quarterly Performance Review"
                             programName={program}
                             onBack={handleBack}
                             theme="blue"
@@ -505,7 +506,7 @@ export default function App() {
                     </motion.div>
                 ) : appMode === 'readonly' ? (
                     <motion.div key="readonly" {...motionProps}>
-                        <FormHeader title="Program Implementation Review" programName={program} onBack={() => setAppMode('splash')} theme="blue" />
+                        <FormHeader title="Quarterly Performance Review" programName={program} onBack={() => setAppMode('splash')} theme="blue" />
                         <div className="bg-slate-50 dark:bg-dark-base min-h-screen font-sans print:bg-white">
                             {/* Lock banner */}
                             <div className="max-w-5xl mx-auto px-4 pt-8 pb-4 print:hidden">
@@ -546,7 +547,7 @@ export default function App() {
                     <motion.div key="form" {...motionProps}>
                         <div className="bg-slate-50 dark:bg-dark-base min-h-screen flex flex-col text-slate-800 dark:text-slate-100 font-sans relative print:py-0 print:bg-white print:text-black">
                             <FormHeader
-                                title="Program Implementation Review"
+                                title="Quarterly Performance Review"
                                 programName={program}
                                 onSave={handleSaveForLater}
                                 onBack={handleBack}
@@ -563,13 +564,10 @@ export default function App() {
                                 isOpen={isPreviewOpen}
                                 onClose={() => setIsPreviewOpen(false)}
                                 title="PIR Document Preview"
-                                subtitle={`${termConfig.termNoun} Program Implementation Review`}
+                                subtitle="Quarterly Program Implementation Review"
                             >
                                 <PIRDocument
                                     quarter={quarterString}
-                                    termNoun={termConfig.termNoun}
-                                    supervisorName={termConfig.supervisorName}
-                                    supervisorTitle={termConfig.supervisorTitle}
                                     program={program}
                                     school={school}
                                     owner={owner}
@@ -643,7 +641,7 @@ export default function App() {
                                 {appMode === 'wizard' && (
                                     <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-6 shadow-md mb-6">
                                         <FormBoxHeader
-                                            title="Program Implementation Review"
+                                            title="Quarterly Performance Review"
                                             badge={quarterString}
                                             compact={true}
                                         />
@@ -655,7 +653,7 @@ export default function App() {
                                     {/* FULL VIEW HEADER */}
                                     {appMode === 'full' && (
                                         <FormBoxHeader
-                                            title="Program Implementation Review"
+                                            title="Quarterly Performance Review"
                                             subtitle="Division Monitoring Evaluation and Adjustment"
                                             badge={quarterString}
                                         />
