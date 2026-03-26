@@ -364,6 +364,25 @@ export default function App() {
     };
 
     const handleConfirmSubmit = async () => {
+        const filledActivities = activities.filter(a => a.name.trim() !== '');
+
+        const validationErrors = [];
+        if (!outcome) validationErrors.push('Outcome Category is required.');
+        if (!sipTitle.trim()) validationErrors.push('SIP Title is required.');
+        if (filledActivities.length === 0) validationErrors.push('At least one activity with a name is required.');
+
+        if (validationErrors.length > 0) {
+            setModal({
+                isOpen: true,
+                type: 'warning',
+                title: 'Required Fields Missing',
+                message: validationErrors.join(' '),
+                confirmText: 'OK',
+                onConfirm: closeModal
+            });
+            return;
+        }
+
         try {
             await axios.post(
               `${import.meta.env.VITE_API_URL}/api/aips`,
@@ -379,7 +398,7 @@ export default function App() {
                 prepared_by_title: preparedByTitle,
                 approved_by_name: approvedByName,
                 approved_by_title: approvedByTitle,
-                activities
+                activities: filledActivities
               },
               { headers: authHeaders }
             );

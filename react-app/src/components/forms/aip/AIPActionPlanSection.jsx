@@ -54,6 +54,8 @@ export default React.memo(function AIPActionPlanSection({
     handleRemoveActivity,
     handleAddActivityPhase
 }) {
+    const budgetTotal = activities.reduce((sum, a) => sum + (parseFloat(a.budgetAmount) || 0), 0);
+
     return (
         <>
             <SectionHeader
@@ -66,7 +68,8 @@ export default React.memo(function AIPActionPlanSection({
 
             {/* WIZARD MODE: Activity Cards View */}
             {appMode === 'wizard' && (
-                <div className="space-y-4">
+                <>
+                    <div className="space-y-4">
                     {(currentStep === 3 ? AIP_PHASES.slice(0, 2) : AIP_PHASES.slice(2)).map((phase, pIdx) => {
                         const phaseActivities = activities.filter(a => a.phase === phase);
                         const actualIndex = currentStep === 3 ? pIdx + 1 : 3;
@@ -149,6 +152,15 @@ export default React.memo(function AIPActionPlanSection({
                         );
                     })}
                 </div>
+                {budgetTotal > 0 && (
+                    <div className="mt-3 flex justify-end">
+                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-pink-50 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-900/50 rounded-xl text-sm font-bold text-pink-800 dark:text-pink-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            Total: ₱ {budgetTotal.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    </div>
+                )}
+                </>
             )}
 
             {/* FULL MODE: Table View */}
@@ -235,6 +247,19 @@ export default React.memo(function AIPActionPlanSection({
                                     );
                                 })}
                             </tbody>
+                            {budgetTotal > 0 && (
+                                <tfoot>
+                                    <tr className="bg-slate-50 dark:bg-dark-base border-t-2 border-slate-200 dark:border-dark-border">
+                                        <td colSpan="4" className="p-3 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                            Total Budget
+                                        </td>
+                                        <td className="p-3 text-center font-mono font-bold text-slate-800 dark:text-slate-100 text-sm">
+                                            ₱ {budgetTotal.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </td>
+                                        <td colSpan="2" className="p-3"></td>
+                                    </tr>
+                                </tfoot>
+                            )}
                         </table>
                     </div>
                 </div>

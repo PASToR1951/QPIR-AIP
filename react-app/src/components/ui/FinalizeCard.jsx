@@ -35,7 +35,7 @@ export default function FinalizeCard({ isSubmitted, onSubmit, onPreview, theme =
                 </svg>
             </div>
             <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">Final Review</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 max-w-sm">Please ensure all required information is complete and accurate before submitting. This action will submit the form for approval.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 max-w-sm">Please ensure all required information is complete and accurate. Once submitted, the AIP will be recorded and you will not be able to make further edits.</p>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full justify-center relative z-10">
                 {onPreview && (
