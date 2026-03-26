@@ -3,7 +3,7 @@ import { ArrowLeft, FloppyDisk as Save, House as Home, CheckCircle } from '@phos
 import { motion, AnimatePresence } from 'framer-motion';
 import { ViewModeToggle } from './ViewModeToggle';
 
-export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, theme = "indigo", appMode, toggleAppMode }) => {
+export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, lastAutoSavedTime, theme = "indigo", appMode, toggleAppMode }) => {
     const userStr = localStorage.getItem('user');
     let user = null;
     try {
@@ -62,6 +62,21 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                 <div className="flex items-center gap-3">
                     <ViewModeToggle appMode={appMode} toggleAppMode={toggleAppMode} theme={theme} />
 
+                    <AnimatePresence>
+                        {lastAutoSavedTime && !isSaved && (
+                            <motion.span
+                                key="autosaved"
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                transition={{ duration: 0.25, ease: 'easeOut' }}
+                                className="hidden md:flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 select-none"
+                            >
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                                Auto-saved {lastAutoSavedTime}
+                            </motion.span>
+                        )}
+                    </AnimatePresence>
                     {lastSavedTime && !isSaved && (
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden md:block">
                             Last saved: {lastSavedTime}

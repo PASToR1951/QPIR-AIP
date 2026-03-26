@@ -97,6 +97,15 @@ export default function App() {
         { id: crypto.randomUUID(), phase: "Implementation", name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" },
         { id: crypto.randomUUID(), phase: "Monitoring and Evaluation", name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }
     ]);
+    const [expandedActivityId, setExpandedActivityId] = useState(null);
+
+    // Autocomplete / Suggestion State
+    const [coordinatorSuggestions, setCoordinatorSuggestions] = useState([]);
+    const [personsTerms, setPersonsTerms] = useState([]);
+
+    // Autosave State
+    const autosaveTimerRef = useRef(null);
+    const [lastAutoSavedTime, setLastAutoSavedTime] = useState(null);
 
     // Draft State Tracking for ViewModeSelector
     const [hasDraft, setHasDraft] = useState(false);
@@ -105,17 +114,60 @@ export default function App() {
 
     const [loadedDraftData, setLoadedDraftData] = useState(null);
 
+    // ==========================================
+    // FORM HELPERS
+    // ==========================================
+
+    const makeInitialActivities = () => [
+        { id: crypto.randomUUID(), phase: "Planning", name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" },
+        { id: crypto.randomUUID(), phase: "Implementation", name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" },
+        { id: crypto.randomUUID(), phase: "Monitoring and Evaluation", name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }
+    ];
+
+    const loadDraftIntoState = useCallback((draft) => {
+        if (!draft) return;
+        setOutcome(draft.outcome || "");
+        setYear(draft.year || String(new Date().getFullYear()));
+        setSipTitle(draft.sipTitle || "");
+        setProjectCoord(draft.projectCoord || "");
+        setObjectives(draft.objectives?.length ? draft.objectives : [""]);
+        setIndicators(draft.indicators?.length ? draft.indicators : [{ description: "", target: "" }]);
+        setPreparedByName(draft.preparedByName || "");
+        setPreparedByTitle(draft.preparedByTitle || "");
+        setApprovedByName(draft.approvedByName || "");
+        setApprovedByTitle(draft.approvedByTitle || "");
+        if (draft.activities?.length) setActivities(draft.activities);
+    }, []);
+
+    const resetFormState = useCallback(() => {
+        setOutcome("");
+        setSipTitle("");
+        setProjectCoord("");
+        setObjectives([""]);
+        setIndicators([{ description: "", target: "" }]);
+        setPreparedByName("");
+        setPreparedByTitle("");
+        setApprovedByName("");
+        setApprovedByTitle("");
+        setActivities(makeInitialActivities());
+        setCurrentStep(1);
+        setExpandedActivityId(null);
+    }, []);
+
     // Fetch programs, completed programs, and draft in parallel on mount
     useEffect(() => {
         const init = async () => {
             try {
+                const schoolOrUserId = user?.school_id || user?.id;
                 const requests = [
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { headers: authHeaders }),
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, { headers: authHeaders }),
+                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/coordinators`, { headers: authHeaders }) : Promise.resolve(null),
+                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/persons-terms`, { headers: authHeaders }) : Promise.resolve(null),
                 ];
-                requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, { headers: authHeaders }));
                 const results = await Promise.allSettled(requests);
-                const [programsRes, completedRes, draftRes] = results;
+                const [programsRes, completedRes, draftRes, coordsRes, termsRes] = results;
                 if (programsRes.status === 'fulfilled') setProgramList(programsRes.value.data.map(p => p.title).sort());
                 if (completedRes.status === 'fulfilled') setCompletedPrograms(completedRes.value.data.map(p => p.title));
                 if (draftRes?.status === 'fulfilled' && draftRes.value.data.hasDraft) {
@@ -123,6 +175,8 @@ export default function App() {
                     setHasDraft(true);
                     setLoadedDraftData(draftRes.value.data.draftData);
                 }
+                if (coordsRes?.status === 'fulfilled' && coordsRes.value?.data) setCoordinatorSuggestions(coordsRes.value.data);
+                if (termsRes?.status === 'fulfilled' && termsRes.value?.data) setPersonsTerms(termsRes.value.data);
             } catch (error) {
             } finally {
                 setIsLoading(false);
@@ -134,6 +188,7 @@ export default function App() {
     // Called when the user picks program + mode in the splash
     const handleStart = async (mode, selectedProgram, opts = {}) => {
         setDepedProgram(selectedProgram);
+        resetFormState();
 
         if (mode === 'readonly') {
             try {
@@ -161,22 +216,31 @@ export default function App() {
             return;
         }
 
-        if (hasDraft && loadedDraftData) {
+        // Check localStorage for an auto-saved draft first
+        const lsKey = `aip_draft_${selectedProgram}_${year}`;
+        const lsRaw = localStorage.getItem(lsKey);
+        if (lsRaw) {
             try {
-                const draft = loadedDraftData;
-                setOutcome(draft.outcome || "");
-                setYear(draft.year || String(new Date().getFullYear()));
-                setSipTitle(draft.sipTitle || "");
-                setProjectCoord(draft.projectCoord || "");
-                setObjectives(draft.objectives || [""]);
-                setIndicators(draft.indicators || [{ description: "", target: "" }]);
-                setPreparedByName(draft.preparedByName || "");
-                setPreparedByTitle(draft.preparedByTitle || "");
-                setApprovedByName(draft.approvedByName || "");
-                setApprovedByTitle(draft.approvedByTitle || "");
-                if (draft.activities) setActivities(draft.activities);
-            } catch (e) {
-            }
+                const lsData = JSON.parse(lsRaw);
+                setModal({
+                    isOpen: true,
+                    type: 'warning',
+                    title: 'Restore Auto-Save?',
+                    message: `An auto-saved draft was found from ${new Date(lsData.savedAt).toLocaleString()}. Restore it?`,
+                    confirmText: 'Yes, Restore',
+                    onConfirm: () => {
+                        loadDraftIntoState(lsData);
+                        closeModal();
+                        setAppMode(mode);
+                    }
+                });
+                return; // modal will trigger setAppMode on confirm
+            } catch { /* ignore malformed */ }
+        }
+
+        // Load server draft if it matches this program
+        if (hasDraft && loadedDraftData && loadedDraftData.depedProgram === selectedProgram) {
+            loadDraftIntoState(loadedDraftData);
         }
         setAppMode(mode);
     };
@@ -196,7 +260,7 @@ export default function App() {
     const removeIndicator = useCallback((index) => setIndicators(prev => prev.filter((_, i) => i !== index)), []);
 
     const hasInputtedData = () => {
-        return outcome || depedProgram || sipTitle || projectCoord ||
+        return outcome || sipTitle || projectCoord ||
                objectives.some(o => o.trim()) || indicators.some(i => i.description.trim() || i.target.trim()) ||
                preparedByName || approvedByName ||
                activities.some(a => a.name || a.period || a.persons || a.outputs || a.budgetAmount || a.budgetSource);
@@ -239,6 +303,7 @@ export default function App() {
                 approved_by_title: approvedByTitle,
                 activities
             }, { headers: authHeaders });
+            localStorage.removeItem(`aip_draft_${depedProgram}_${year}`);
         } catch (e) {
         }
 
@@ -252,9 +317,36 @@ export default function App() {
     };
 
     // Clean up save timers on unmount
-    useEffect(() => () => clearTimeout(saveTimerRef.current), []);
+    useEffect(() => () => {
+        clearTimeout(saveTimerRef.current);
+        clearTimeout(autosaveTimerRef.current);
+    }, []);
 
-    const [expandedActivityId, setExpandedActivityId] = useState(activities[0]?.id ?? null);
+    // localStorage autosave — debounced 15s, only in active edit modes
+    useEffect(() => {
+        if (appMode !== 'wizard' && appMode !== 'full') return;
+        if (!depedProgram) return;
+
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = setTimeout(() => {
+            try {
+                const key = `aip_draft_${depedProgram}_${year}`;
+                const snapshot = {
+                    outcome, depedProgram, sipTitle, projectCoord,
+                    objectives, indicators, activities,
+                    preparedByName, preparedByTitle, approvedByName, approvedByTitle,
+                    year,
+                    savedAt: new Date().toISOString()
+                };
+                localStorage.setItem(key, JSON.stringify(snapshot));
+                setLastAutoSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                setTimeout(() => setLastAutoSavedTime(null), 3000);
+            } catch { /* quota exceeded or private browsing — silently skip */ }
+        }, 15000);
+
+        return () => clearTimeout(autosaveTimerRef.current);
+    }, [appMode, depedProgram, year, outcome, sipTitle, projectCoord, objectives, indicators, activities,
+        preparedByName, preparedByTitle, approvedByName, approvedByTitle]);
 
     // Resize Listener
     useEffect(() => {
@@ -399,6 +491,7 @@ export default function App() {
             );
 
             setIsSubmitted(true);
+            localStorage.removeItem(`aip_draft_${depedProgram}_${year}`);
             // Draft is now promoted to Submitted in the backend — no separate delete needed
             setModal({
                 isOpen: true,
@@ -501,6 +594,7 @@ export default function App() {
                 isSaving={isSaving}
                 isSaved={isSaved}
                 lastSavedTime={lastSavedTime}
+                lastAutoSavedTime={lastAutoSavedTime}
                 theme="pink"
                 appMode={appMode}
                 toggleAppMode={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
@@ -604,7 +698,7 @@ export default function App() {
                             {/* SECTION 1: PROFILE / ALIGNMENT */}
                             {/* -------------------------------------------------------- */}
                             <div className={`${(appMode === 'full' || currentStep === 1) ? 'block' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
-                                <AIPProfileSection 
+                                <AIPProfileSection
                                     appMode={appMode}
                                     outcome={outcome}
                                     setOutcome={setOutcome}
@@ -615,6 +709,7 @@ export default function App() {
                                     setSipTitle={setSipTitle}
                                     projectCoord={projectCoord}
                                     setProjectCoord={setProjectCoord}
+                                    coordinatorSuggestions={coordinatorSuggestions}
                                 />
                             </div>
 
@@ -639,7 +734,7 @@ export default function App() {
                             {/* SECTION 3: ACTION PLAN & BUDGET */}
                             {/* -------------------------------------------------------- */}
                             <div className={`${(appMode === 'full' || currentStep === 3 || currentStep === 4) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
-                                <AIPActionPlanSection 
+                                <AIPActionPlanSection
                                     appMode={appMode}
                                     currentStep={currentStep}
                                     activities={activities}
@@ -648,6 +743,7 @@ export default function App() {
                                     handleActivityChange={handleActivityChange}
                                     handleRemoveActivity={handleRemoveActivity}
                                     handleAddActivityPhase={handleAddActivityPhase}
+                                    personsTerms={personsTerms}
                                 />
                             </div>
 
