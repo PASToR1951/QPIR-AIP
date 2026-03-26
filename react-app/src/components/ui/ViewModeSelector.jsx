@@ -130,15 +130,14 @@ export const ViewModeSelector = ({
 
     const Background = () => (
         <>
-            <div className={`fixed inset-0 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0 transition-all duration-300 ${fastEntry ? '' : 'bg-grid'}`}
-                style={{ backgroundColor: fastEntry ? '#0D0B06' : undefined }}>
+            <div className="fixed inset-0 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0 bg-grid">
                 <div
-                    className={`absolute inset-0 pointer-events-none grayscale mix-blend-multiply backdrop-blur-none transition-opacity duration-300 ${fastEntry ? 'opacity-20' : 'opacity-60'}`}
+                    className="absolute inset-0 pointer-events-none grayscale mix-blend-multiply backdrop-blur-none opacity-60"
                     style={{ backgroundImage: `url('/SDO_Facade.webp')`, backgroundSize: 'cover', backgroundPosition: 'center 25%', filter: 'blur(3px)', transform: 'scale(1.05)' }}
                 />
             </div>
-            <div className={`fixed top-1/4 left-1/4 w-[36rem] h-[36rem] rounded-full blur-[140px] pointer-events-none animate-pulse transition-colors duration-300 ${fastEntry ? 'bg-amber-500/10' : c.glow}`} style={{ animationDuration: '5000ms' }} />
-            <div className={`fixed bottom-1/3 right-1/4 w-[28rem] h-[28rem] rounded-full blur-[120px] pointer-events-none animate-pulse transition-colors duration-300 ${fastEntry ? 'bg-amber-700/8' : c.glowSecondary}`} style={{ animationDuration: '7000ms', animationDelay: '2s' }} />
+            <div className={`fixed top-1/4 left-1/4 w-[36rem] h-[36rem] rounded-full blur-[140px] pointer-events-none animate-pulse ${c.glow}`} style={{ animationDuration: '5000ms' }} />
+            <div className={`fixed bottom-1/3 right-1/4 w-[28rem] h-[28rem] rounded-full blur-[120px] pointer-events-none animate-pulse ${c.glowSecondary}`} style={{ animationDuration: '7000ms', animationDelay: '2s' }} />
         </>
     );
 
