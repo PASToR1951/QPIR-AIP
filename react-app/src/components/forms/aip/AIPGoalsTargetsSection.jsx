@@ -64,13 +64,17 @@ export default React.memo(function AIPGoalsTargetsSection({
                                 </div>
                                 <div className="w-full md:w-48 shrink-0">
                                     <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Annual Target</label>
-                                    <input
-                                        type="text"
-                                        className="w-full bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 transition-all outline-none"
-                                        placeholder="e.g. 100%"
-                                        value={ind.target}
-                                        onChange={(e) => handleIndicatorChange(i, 'target', e.target.value)}
-                                    />
+                                    <div className="relative flex items-center">
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            className="w-full bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg px-3 py-2 pr-7 text-sm text-slate-800 dark:text-slate-100 transition-all outline-none"
+                                            placeholder="0"
+                                            value={ind.target}
+                                            onChange={(e) => handleIndicatorChange(i, 'target', e.target.value.replace(/[^0-9.]/g, ''))}
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm pointer-events-none select-none">%</span>
+                                    </div>
                                 </div>
                                 {indicators.length > 1 && (
                                     <div className="flex items-end pb-1">

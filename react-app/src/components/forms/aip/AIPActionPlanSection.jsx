@@ -1,6 +1,7 @@
 import React from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
+import FuzzyAutocomplete from '../../ui/FuzzyAutocomplete';
 
 export const AIP_PHASES = ["Planning", "Implementation", "Monitoring and Evaluation"];
 
@@ -52,7 +53,8 @@ export default React.memo(function AIPActionPlanSection({
     setExpandedActivityId,
     handleActivityChange,
     handleRemoveActivity,
-    handleAddActivityPhase
+    handleAddActivityPhase,
+    personsTerms = []
 }) {
     const budgetTotal = activities.reduce((sum, a) => sum + (parseFloat(a.budgetAmount) || 0), 0);
 
@@ -88,15 +90,26 @@ export default React.memo(function AIPActionPlanSection({
                                                 <div className="flex items-start justify-between mb-3">
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-slate-400 dark:text-slate-500 text-xs">{actualIndex}.{aIdx + 1}</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setExpandedActivityId(expandedActivityId === act.id ? null : act.id)}
-                                                            className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-pink-600 transition-colors text-left"
-                                                        >
-                                                            {act.name || "Untitled Activity"}
-                                                        </button>
+                                                        {expandedActivityId === act.id ? (
+                                                            <input
+                                                                type="text"
+                                                                autoFocus
+                                                                className="text-sm font-semibold text-slate-700 dark:text-slate-200 bg-transparent border-b border-pink-300 dark:border-pink-700 outline-none focus:border-pink-500 w-full"
+                                                                placeholder="Activity name..."
+                                                                value={act.name}
+                                                                onChange={(e) => handleActivityChange(act.id, 'name', e.target.value)}
+                                                            />
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setExpandedActivityId(expandedActivityId === act.id ? null : act.id)}
+                                                                className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-pink-600 transition-colors text-left"
+                                                            >
+                                                                {act.name || "Untitled Activity"}
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                    {activities.length > 1 && (
+                                                    {activities.filter(a => a.phase === phase).length > 1 && (
                                                         <button
                                                             type="button"
                                                             onClick={() => handleRemoveActivity(act.id)}
@@ -119,8 +132,14 @@ export default React.memo(function AIPActionPlanSection({
                                                             />
                                                         </div>
                                                         <div>
-                                                            <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Persons Involved</label>
-                                                            <TextareaAuto placeholder="e.g. Teachers" className="w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100" value={act.persons} onChange={(e) => handleActivityChange(act.id, 'persons', e.target.value)} />
+                                                            <FuzzyAutocomplete
+                                                                label="Persons Involved"
+                                                                placeholder="e.g. Teachers"
+                                                                className="w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 outline-none resize-none"
+                                                                terms={personsTerms}
+                                                                value={act.persons}
+                                                                onChange={(v) => handleActivityChange(act.id, 'persons', v)}
+                                                            />
                                                         </div>
                                                         <div className="md:col-span-2">
                                                             <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Outputs</label>
@@ -128,11 +147,14 @@ export default React.memo(function AIPActionPlanSection({
                                                         </div>
                                                         <div>
                                                             <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Amount</label>
-                                                            <input type="text" inputMode="decimal" className="w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 font-mono" placeholder="₱ 0.00" value={act.budgetAmount} onChange={(e) => handleActivityChange(act.id, 'budgetAmount', e.target.value.replace(/[^0-9.]/g, ''))} />
+                                                            <div className="relative">
+                                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm pointer-events-none select-none">₱</span>
+                                                                <input type="text" inputMode="decimal" className="w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg pl-6 pr-3 py-2 text-sm text-slate-800 dark:text-slate-100 font-mono" placeholder="0.00" value={act.budgetAmount} onChange={(e) => handleActivityChange(act.id, 'budgetAmount', e.target.value.replace(/[^0-9.]/g, ''))} />
+                                                            </div>
                                                         </div>
                                                         <div>
                                                             <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Source</label>
-                                                            <input type="text" className="w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100" placeholder="Budget source" value={act.budgetSource} onChange={(e) => handleActivityChange(act.id, 'budgetSource', e.target.value)} />
+                                                            <input type="text" className="w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 transition-all rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100" placeholder="NONE" value={act.budgetSource} onChange={(e) => handleActivityChange(act.id, 'budgetSource', e.target.value)} />
                                                         </div>
                                                     </div>
                                                 )}
@@ -165,8 +187,8 @@ export default React.memo(function AIPActionPlanSection({
 
             {/* FULL MODE: Table View */}
             {appMode === 'full' && (
-                <div className="overflow-visible overflow-x-auto pb-4">
-                    <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-hidden min-w-[1000px]">
+                <div className="overflow-visible overflow-x-auto pb-4 pr-16">
+                    <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-visible min-w-[1000px]">
                         <table className="w-full border-collapse text-sm">
                             <thead>
                                 <tr className="text-left select-none bg-slate-50 dark:bg-dark-base border-b border-slate-200 dark:border-dark-border">
@@ -213,20 +235,29 @@ export default React.memo(function AIPActionPlanSection({
                                                         />
                                                     </td>
                                                     <td className="border-r border-slate-200 dark:border-dark-border p-2 align-top">
-                                                        <TextareaAuto placeholder="e.g. Teachers" className="font-medium text-slate-700 dark:text-slate-200 w-full bg-transparent p-1 text-center focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded" value={act.persons} onChange={(e) => handleActivityChange(act.id, 'persons', e.target.value)} />
+                                                        <FuzzyAutocomplete
+                                                            placeholder="e.g. Teachers"
+                                                            className="font-medium text-slate-700 dark:text-slate-200 w-full bg-transparent p-1 text-center focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded outline-none resize-none"
+                                                            terms={personsTerms}
+                                                            value={act.persons}
+                                                            onChange={(v) => handleActivityChange(act.id, 'persons', v)}
+                                                        />
                                                     </td>
                                                     <td className="border-r border-slate-200 dark:border-dark-border p-2 align-top">
                                                         <TextareaAuto placeholder="Expected output" className="font-medium text-slate-700 dark:text-slate-200 w-full bg-transparent p-1 text-center focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded" value={act.outputs} onChange={(e) => handleActivityChange(act.id, 'outputs', e.target.value)} />
                                                     </td>
                                                     <td className="border-r border-slate-200 dark:border-dark-border p-2 align-top bg-slate-50/30 dark:bg-dark-base/30">
-                                                        <input type="text" inputMode="decimal" className="w-full text-center outline-none font-mono text-sm font-semibold text-slate-700 dark:text-slate-200 bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded p-1" placeholder="0" value={act.budgetAmount} onChange={(e) => handleActivityChange(act.id, 'budgetAmount', e.target.value.replace(/[^0-9.]/g, ''))} />
+                                                        <div className="relative">
+                                                            <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm pointer-events-none select-none">₱</span>
+                                                            <input type="text" inputMode="decimal" className="w-full text-center outline-none font-mono text-sm font-semibold text-slate-700 dark:text-slate-200 bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded pl-5 pr-1 py-1" placeholder="0.00" value={act.budgetAmount} onChange={(e) => handleActivityChange(act.id, 'budgetAmount', e.target.value.replace(/[^0-9.]/g, ''))} />
+                                                        </div>
                                                     </td>
                                                     <td className="border-r border-slate-200 dark:border-dark-border p-2 align-top bg-slate-50/30 dark:bg-dark-base/30">
-                                                        <input type="text" className="w-full text-center outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded p-1" placeholder="Source" value={act.budgetSource} onChange={(e) => handleActivityChange(act.id, 'budgetSource', e.target.value)} />
+                                                        <input type="text" className="w-full text-center outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded p-1" placeholder="NONE" value={act.budgetSource} onChange={(e) => handleActivityChange(act.id, 'budgetSource', e.target.value)} />
                                                     </td>
                                                     <td className="border-none p-0 w-0 relative bg-white dark:bg-dark-surface">
-                                                        {activities.length > 1 && (
-                                                            <button type="button" onClick={() => handleRemoveActivity(act.id)} className="absolute -right-12 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500 shadow-sm hover:border-red-200 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 focus:outline-none transition-colors z-10 opacity-0 group-hover:opacity-100" title="Delete Row">
+                                                        {activities.filter(a => a.phase === act.phase).length > 1 && (
+                                                            <button type="button" onClick={() => handleRemoveActivity(act.id)} className="absolute -right-12 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500 shadow-sm hover:border-red-200 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 focus:outline-none transition-colors z-10 opacity-40 group-hover:opacity-100" title="Delete Row">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                                                             </button>
                                                         )}

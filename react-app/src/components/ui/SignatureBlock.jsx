@@ -34,17 +34,17 @@ export default function SignatureBlock({
                 />
             )}
             
-            {title ? (
+            {readOnly ? (
                 <p className="text-xs mt-3 select-none text-slate-500 dark:text-slate-400 text-center font-semibold uppercase tracking-widest">
                     {title}
                 </p>
             ) : (
-                <input 
-                    type="text" 
+                <input
+                    type="text"
                     className={`mt-2 w-full border-b-2 border-slate-100 dark:border-dark-border ${focusColor} transition-colors text-center text-xs font-semibold uppercase tracking-widest outline-none bg-transparent pb-1 text-slate-500 dark:text-slate-400 placeholder:text-slate-300`}
-                    placeholder={titlePlaceholder} 
-                    value={title} 
-                    onChange={onTitleChange ? (e) => onTitleChange(e.target.value) : undefined} 
+                    placeholder={titlePlaceholder}
+                    value={title}
+                    onChange={onTitleChange ? (e) => onTitleChange(e.target.value) : undefined}
                 />
             )}
         </div>

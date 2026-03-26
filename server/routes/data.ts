@@ -27,6 +27,22 @@ function getUserFromToken(authHeader: string | undefined): TokenPayload | null {
 }
 
 // ==========================================
+// NORMALIZATION HELPERS
+// ==========================================
+
+function normalizeBudgetSource(amount: number, source: string | undefined): string {
+  const empty = !source || ['none', 'n/a', '0', ''].includes(source.trim().toLowerCase());
+  return (amount === 0 && empty) ? 'NONE' : (source?.trim() || 'NONE');
+}
+
+function normalizeIndicators(indicators: any[]): any[] {
+  return (indicators || []).map((ind: any) => ({
+    description: ind.description || '',
+    target: ind.target?.toString().trim() || 'NONE'
+  }));
+}
+
+// ==========================================
 // DRAFTS (stored as AIP/PIR rows with status = "Draft")
 // ==========================================
 
@@ -73,7 +89,7 @@ dataRoutes.post('/aips/draft', async (c) => {
       sip_title: sip_title || '',
       project_coordinator: project_coordinator || '',
       objectives: objectives || [],
-      indicators: indicators || [],
+      indicators: normalizeIndicators(indicators),
       prepared_by_name: prepared_by_name || '',
       prepared_by_title: prepared_by_title || '',
       approved_by_name: approved_by_name || '',
@@ -81,17 +97,20 @@ dataRoutes.post('/aips/draft', async (c) => {
       status: 'Draft',
     };
 
-    const activityData = (activities || []).map((act: any) => ({
-      phase: act.phase || '',
-      activity_name: act.name || '',
-      implementation_period: act.period || '',
-      period_start_month: act.periodStartMonth ? parseInt(act.periodStartMonth) : null,
-      period_end_month: act.periodEndMonth ? parseInt(act.periodEndMonth) : null,
-      persons_involved: act.persons || '',
-      outputs: act.outputs || '',
-      budget_amount: parseFloat(act.budgetAmount || 0),
-      budget_source: act.budgetSource || ''
-    }));
+    const activityData = (activities || []).map((act: any) => {
+      const amount = parseFloat(act.budgetAmount || 0);
+      return {
+        phase: act.phase || '',
+        activity_name: act.name || '',
+        implementation_period: act.period || '',
+        period_start_month: act.periodStartMonth ? parseInt(act.periodStartMonth) : null,
+        period_end_month: act.periodEndMonth ? parseInt(act.periodEndMonth) : null,
+        persons_involved: act.persons || '',
+        outputs: act.outputs || '',
+        budget_amount: amount,
+        budget_source: normalizeBudgetSource(amount, act.budgetSource)
+      };
+    });
 
     let aip;
     if (existing) {
@@ -611,14 +630,15 @@ dataRoutes.get('/programs/with-pirs', async (c) => {
     const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
     let pirs: any[];
+    const FILED_STATUSES = ['Submitted', 'Under Review', 'Approved', 'Returned'];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
       pirs = await prisma.pIR.findMany({
-        where: { status: 'Submitted', aip: { school_id: tokenUser.school_id, year } },
+        where: { status: { in: FILED_STATUSES }, aip: { school_id: tokenUser.school_id, year } },
         include: { aip: { include: { program: true } } }
       });
     } else {
       pirs = await prisma.pIR.findMany({
-        where: { status: 'Submitted', aip: { created_by_user_id: tokenUser.id, school_id: null, year } },
+        where: { status: { in: FILED_STATUSES }, aip: { created_by_user_id: tokenUser.id, school_id: null, year } },
         include: { aip: { include: { program: true } } }
       });
     }
@@ -660,6 +680,79 @@ dataRoutes.get('/schools/:id/aip-status', async (c) => {
   } catch (error) {
     console.error(error);
     return c.json({ error: 'Failed to fetch AIP status' }, 500);
+  }
+});
+
+// GET /api/schools/:id/coordinators — distinct project coordinator names for autocomplete
+dataRoutes.get('/schools/:id/coordinators', async (c) => {
+  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+  const school_id = parseInt(c.req.param('id'));
+
+  if (tokenUser.role === 'School' && tokenUser.school_id !== school_id) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+
+  try {
+    let where: any = {};
+    if (tokenUser.role === 'School') {
+      where.school_id = school_id;
+    } else {
+      where.created_by_user_id = tokenUser.id;
+    }
+
+    const aips = await prisma.aIP.findMany({
+      where,
+      select: { project_coordinator: true },
+      distinct: ['project_coordinator'],
+    });
+
+    const coordinators = aips
+      .map((a: any) => a.project_coordinator)
+      .filter((v: any): v is string => typeof v === 'string' && v.trim() !== '');
+
+    return c.json(coordinators);
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to fetch coordinators' }, 500);
+  }
+});
+
+// GET /api/schools/:id/persons-terms — distinct persons_involved values for fuzzy autocomplete
+dataRoutes.get('/schools/:id/persons-terms', async (c) => {
+  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+  const school_id = parseInt(c.req.param('id'));
+
+  if (tokenUser.role === 'School' && tokenUser.school_id !== school_id) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+
+  try {
+    let aipWhere: any = {};
+    if (tokenUser.role === 'School') {
+      aipWhere.school_id = school_id;
+    } else {
+      aipWhere.created_by_user_id = tokenUser.id;
+    }
+
+    const activities = await prisma.aIPActivity.findMany({
+      where: { aip: aipWhere },
+      select: { persons_involved: true },
+      distinct: ['persons_involved'],
+      take: 100,
+    });
+
+    const terms = activities
+      .map((a: any) => a.persons_involved)
+      .filter((v: any): v is string => typeof v === 'string' && v.trim() !== '');
+
+    return c.json(terms);
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to fetch persons terms' }, 500);
   }
 });
 
@@ -957,7 +1050,7 @@ dataRoutes.post('/aips', async (c) => {
       sip_title,
       project_coordinator,
       objectives,
-      indicators,
+      indicators: normalizeIndicators(indicators),
       prepared_by_name: prepared_by_name || '',
       prepared_by_title: prepared_by_title || '',
       approved_by_name: approved_by_name || '',
@@ -965,17 +1058,20 @@ dataRoutes.post('/aips', async (c) => {
       status: 'Submitted',
     };
 
-    const activityFields = activities.map((act: any) => ({
-      phase: act.phase,
-      activity_name: act.name,
-      implementation_period: act.period,
-      period_start_month: act.periodStartMonth ? parseInt(act.periodStartMonth) : null,
-      period_end_month: act.periodEndMonth ? parseInt(act.periodEndMonth) : null,
-      persons_involved: act.persons,
-      outputs: act.outputs,
-      budget_amount: parseFloat(act.budgetAmount || 0),
-      budget_source: act.budgetSource
-    }));
+    const activityFields = activities.map((act: any) => {
+      const amount = parseFloat(act.budgetAmount || 0);
+      return {
+        phase: act.phase,
+        activity_name: act.name,
+        implementation_period: act.period,
+        period_start_month: act.periodStartMonth ? parseInt(act.periodStartMonth) : null,
+        period_end_month: act.periodEndMonth ? parseInt(act.periodEndMonth) : null,
+        persons_involved: act.persons,
+        outputs: act.outputs,
+        budget_amount: amount,
+        budget_source: normalizeBudgetSource(amount, act.budgetSource)
+      };
+    });
 
     // Check if a Draft AIP already exists — if so, update it instead of creating a new one
     let existingDraft: any = null;

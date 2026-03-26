@@ -2,6 +2,7 @@ import React from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { Select } from '../../ui/Select';
 import { Input } from '../../ui/Input';
+import AutocompleteInput from '../../ui/AutocompleteInput';
 
 export const OUTCOME_OPTIONS = [
     "Outcome 1: High Performing Teachers",
@@ -17,7 +18,8 @@ export default React.memo(function AIPProfileSection({
     year, setYear,
     depedProgram,
     sipTitle, setSipTitle,
-    projectCoord, setProjectCoord
+    projectCoord, setProjectCoord,
+    coordinatorSuggestions = []
 }) {
     return (
         <>
@@ -45,7 +47,7 @@ export default React.memo(function AIPProfileSection({
                     </div>
                 </div>
                 <Input theme="pink" label="School Improvement Project / Title" placeholder="Enter SIP Title..." value={sipTitle} onChange={(e) => setSipTitle(e.target.value)} />
-                <Input theme="pink" label="Project Coordinator" placeholder="Name of Coordinator..." value={projectCoord} onChange={(e) => setProjectCoord(e.target.value)} />
+                <AutocompleteInput theme="pink" label="Project Coordinator" placeholder="Name of Coordinator..." value={projectCoord} onChange={setProjectCoord} suggestions={coordinatorSuggestions} />
             </div>
         </>
     );
