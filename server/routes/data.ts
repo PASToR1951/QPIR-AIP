@@ -1079,6 +1079,12 @@ dataRoutes.post('/aips', async (c) => {
         },
         include: { activities: true }
       });
+    } else if (existingDraft) {
+      // AIP already exists with a non-Draft status — cannot overwrite
+      return c.json(
+        { error: `An AIP for this program and year already exists (status: ${existingDraft.status}).` },
+        409
+      );
     } else {
       aip = await prisma.aIP.create({
         data: {
