@@ -101,8 +101,7 @@ model AIP {
   prepared_by_title   String   @default("")
   approved_by_name    String   @default("")
   approved_by_title   String   @default("")
-  status              String   @default("Submitted") // "Draft" | "Submitted" | "Pending" | "Verified" | "Under Review" | "Approved" | "Returned"
-  verification_document_path String?  // Path to the uploaded signed PDF (fast-entry beta only)
+  status              String   @default("Submitted") // "Draft" | "Submitted" | "Verified" | "Under Review" | "Approved" | "Returned"
   created_at          DateTime @default(now())
 
   // Relations

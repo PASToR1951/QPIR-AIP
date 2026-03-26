@@ -1,7 +1,5 @@
 import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
-import { ensureDir } from "https://deno.land/std@0.224.0/fs/mod.ts";
-import * as path from "https://deno.land/std@0.224.0/path/mod.ts";
 import jwt from "jsonwebtoken";
 
 const dataRoutes = new Hono();
@@ -916,11 +914,7 @@ dataRoutes.get('/pirs', async (c) => {
   }
 });
 
-const AIP_DOCS_DIR = Deno.env.get("UPLOAD_DIR") || "/var/lib/qpir-aip/uploads/pdfs";
-const MAX_PDF_SIZE = 5 * 1024 * 1024; // 5 MB
-
 // POST a new AIP
-// Accepts both JSON (wizard/full mode) and multipart/form-data (beta mode with PDF upload)
 dataRoutes.post('/aips', async (c) => {
   try {
     // Get the requesting user from JWT
@@ -929,80 +923,10 @@ dataRoutes.post('/aips', async (c) => {
       return c.json({ error: 'Authentication required' }, 401);
     }
 
-    let program_title: string, year: string, outcome: string, sip_title: string,
-        project_coordinator: string, objectives: any, indicators: any,
-        prepared_by_name: string, prepared_by_title: string,
-        approved_by_name: string, approved_by_title: string,
-        activities: any[], isBetaSubmission = false;
-    let verificationDocPath: string | null = null;
-
-    const contentType = c.req.header('content-type') || '';
-
-    if (contentType.includes('multipart/form-data')) {
-      // Beta fast-entry submission with optional PDF
-      const formData = await c.req.formData();
-      program_title = formData.get('program_title') as string;
-      year = formData.get('year') as string;
-      outcome = formData.get('outcome') as string;
-      sip_title = formData.get('sip_title') as string;
-      project_coordinator = formData.get('project_coordinator') as string;
-      objectives = JSON.parse(formData.get('objectives') as string || '[]');
-      indicators = JSON.parse(formData.get('indicators') as string || '[]');
-      prepared_by_name = formData.get('prepared_by_name') as string || '';
-      prepared_by_title = formData.get('prepared_by_title') as string || '';
-      approved_by_name = formData.get('approved_by_name') as string || '';
-      approved_by_title = formData.get('approved_by_title') as string || '';
-      activities = JSON.parse(formData.get('activities') as string || '[]');
-      isBetaSubmission = true;
-
-      const pdfFile = formData.get('verification_document') as File | null;
-      if (pdfFile) {
-        // Validate PDF
-        if (!pdfFile.name.toLowerCase().endsWith('.pdf') && pdfFile.type !== 'application/pdf') {
-          return c.json({ error: 'Only PDF files are accepted for the verification document.' }, 400);
-        }
-        if (pdfFile.size > MAX_PDF_SIZE) {
-          return c.json({ error: 'Verification document exceeds 5 MB limit.' }, 400);
-        }
-
-        // Build organized directory path:
-        //   School users:    {base}/{cluster_number}/{level}/{school_name}/{program_name}/
-        //   Division Personnel: {base}/sdo/{program_name}/
-        const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_\-. ]/g, '').replace(/\s+/g, '_').toLowerCase();
-        let pdfSubDir: string;
-
-        if (tokenUser.role === 'School' && tokenUser.school_id) {
-          const school = await prisma.school.findUnique({
-            where: { id: tokenUser.school_id },
-            include: { cluster: true }
-          });
-          if (!school) return c.json({ error: 'School not found' }, 404);
-          pdfSubDir = path.join(
-            AIP_DOCS_DIR,
-            String(school.cluster.cluster_number),
-            sanitize(school.level),
-            sanitize(school.name),
-            sanitize(program_title)
-          );
-        } else {
-          pdfSubDir = path.join(AIP_DOCS_DIR, 'sdo', sanitize(program_title));
-        }
-
-        await ensureDir(pdfSubDir);
-        const uniqueId = crypto.randomUUID();
-        const fileName = `aip_doc_${uniqueId}.pdf`;
-        const filePath = path.join(pdfSubDir, fileName);
-        const buffer = await pdfFile.arrayBuffer();
-        await Deno.writeFile(filePath, new Uint8Array(buffer));
-        verificationDocPath = filePath;
-      }
-    } else {
-      // Standard JSON submission (wizard / full form)
-      const body = await c.req.json();
-      ({ program_title, year, outcome, sip_title, project_coordinator,
-         objectives, indicators, prepared_by_name, prepared_by_title,
-         approved_by_name, approved_by_title, activities } = body);
-    }
+    const body = await c.req.json();
+    const { program_title, year, outcome, sip_title, project_coordinator,
+            objectives, indicators, prepared_by_name, prepared_by_title,
+            approved_by_name, approved_by_title, activities } = body;
 
     // Look up program_id
     const program = await prisma.program.findUnique({
@@ -1027,7 +951,6 @@ dataRoutes.post('/aips', async (c) => {
 
     const school_id = tokenUser.role === 'School' ? tokenUser.school_id : null;
     const parsedYear = parseInt(year);
-    const newStatus = isBetaSubmission ? 'Pending' : 'Submitted';
 
     const aipFields = {
       outcome,
@@ -1039,8 +962,7 @@ dataRoutes.post('/aips', async (c) => {
       prepared_by_title: prepared_by_title || '',
       approved_by_name: approved_by_name || '',
       approved_by_title: approved_by_title || '',
-      status: newStatus,
-      verification_document_path: verificationDocPath,
+      status: 'Submitted',
     };
 
     const activityFields = activities.map((act: any) => ({

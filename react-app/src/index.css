@@ -4,7 +4,6 @@
    DARK MODE — class-based (Tailwind v4)
    ============================================================ */
 @custom-variant dark (&:where(.dark, .dark *));
-@custom-variant fast-mode (&:where(.fast-mode, .fast-mode *));
 
 :root {
   --color-surface: #f8fafc;          /* slate-50 */
@@ -35,31 +34,6 @@
   [class*="shadow-purple-"] {
     --tw-shadow-color: rgb(0 0 0 / 0.3);
   }
-}
-
-/* ============================================================
-   FAST MODE — amber-dark theme applied to the AIP form selector
-   when "Fast Entry" is toggled ON
-   ============================================================ */
-.fast-mode {
-  --fm-bg:          #0D0B06;   /* near-black with warm undertone */
-  --fm-surface:     #161208;   /* dark warm surface */
-  --fm-surface-2:   #1E1910;   /* slightly lighter surface */
-  --fm-border:      #2C2410;   /* amber-tinted dark border */
-  --fm-border-sub:  #1C1A0C;   /* subtle divider */
-  --fm-text:        #F5EAC8;   /* warm off-white */
-  --fm-text-muted:  #8C7E46;   /* muted warm gold */
-  --fm-text-dim:    #4A4220;   /* dimmed warm */
-  --fm-amber:       #F59E0B;   /* amber accent */
-  color-scheme: dark;
-}
-
-/* Smooth transition into/out of Fast Mode */
-.fast-mode-transition,
-.fast-mode-transition *,
-.fast-mode-transition *::before,
-.fast-mode-transition *::after {
-  transition: background-color 280ms ease, color 200ms ease, border-color 220ms ease, box-shadow 200ms ease !important;
 }
 
 /* Smooth transition when toggling dark mode */

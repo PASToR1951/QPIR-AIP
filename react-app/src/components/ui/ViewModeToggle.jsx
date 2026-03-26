@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const ViewModeToggle = ({ appMode, toggleAppMode, onBeta, theme = "indigo" }) => {
+export const ViewModeToggle = ({ appMode, toggleAppMode, theme = "indigo" }) => {
     if (!toggleAppMode || appMode === 'splash') return null;
 
     const textHoverClasses = {
@@ -23,16 +23,6 @@ export const ViewModeToggle = ({ appMode, toggleAppMode, onBeta, theme = "indigo
                 )}
             </button>
 
-            {onBeta && (
-                <button
-                    onClick={onBeta}
-                    className="flex text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 px-3 py-1.5 rounded-full shadow-sm hover:bg-amber-100 dark:hover:bg-amber-900/50 hover:border-amber-300 transition-colors items-center gap-1.5"
-                    title="Switch to Streamlined Beta fast-entry mode"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    <span className="hidden sm:inline">Fast Entry</span>
-                </button>
-            )}
         </div>
     );
 };
