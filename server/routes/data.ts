@@ -43,7 +43,7 @@ dataRoutes.post('/aips/draft', async (c) => {
 
     if (!program_title) return c.json({ error: 'program_title is required' }, 400);
 
-    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
 
     const year = parseInt(rawYear) || new Date().getFullYear();
@@ -205,7 +205,7 @@ dataRoutes.delete('/aips/draft', async (c) => {
     }
 
     if (program_title) {
-      const program = await prisma.program.findUnique({ where: { title: program_title } });
+      const program = await prisma.program.findFirst({ where: { title: program_title } });
       if (program) where.program_id = program.id;
     }
 
@@ -230,7 +230,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
 
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
-    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
 
     const yearMatch = quarter.match(/CY (\d{4})/);
@@ -376,7 +376,7 @@ dataRoutes.get('/pirs/draft', async (c) => {
     const yearMatch = quarter?.match(/CY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
-    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ hasDraft: false });
 
     let aip: any;
@@ -461,7 +461,7 @@ dataRoutes.delete('/pirs/draft', async (c) => {
     const yearMatch = quarter.match(/CY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
-    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ message: 'No draft found' });
 
     let aip: any;
@@ -613,12 +613,12 @@ dataRoutes.get('/programs/with-pirs', async (c) => {
     let pirs: any[];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
       pirs = await prisma.pIR.findMany({
-        where: { aip: { school_id: tokenUser.school_id, year } },
+        where: { status: 'Submitted', aip: { school_id: tokenUser.school_id, year } },
         include: { aip: { include: { program: true } } }
       });
     } else {
       pirs = await prisma.pIR.findMany({
-        where: { aip: { created_by_user_id: tokenUser.id, school_id: null, year } },
+        where: { status: 'Submitted', aip: { created_by_user_id: tokenUser.id, school_id: null, year } },
         include: { aip: { include: { program: true } } }
       });
     }
@@ -700,7 +700,7 @@ dataRoutes.get('/aips/activities', async (c) => {
       return c.json({ error: 'program_title is required' }, 400);
     }
 
-    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) {
       return c.json({ error: `Program '${program_title}' not found` }, 404);
     }
@@ -773,7 +773,7 @@ dataRoutes.get('/aips', async (c) => {
 
     if (!program_title) return c.json({ error: 'program_title is required' }, 400);
 
-    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
 
     let aip: any;
@@ -836,7 +836,7 @@ dataRoutes.get('/pirs', async (c) => {
     const yearMatch = quarter.match(/CY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
-    const program = await prisma.program.findUnique({ where: { title: program_title } });
+    const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
 
     let aip: any;
@@ -929,7 +929,7 @@ dataRoutes.post('/aips', async (c) => {
             approved_by_name, approved_by_title, activities } = body;
 
     // Look up program_id
-    const program = await prisma.program.findUnique({
+    const program = await prisma.program.findFirst({
       where: { title: program_title }
     });
     if (!program) {
@@ -1067,7 +1067,7 @@ dataRoutes.post('/pirs', async (c) => {
     }
 
     // Look up program
-    const program = await prisma.program.findUnique({
+    const program = await prisma.program.findFirst({
       where: { title: program_title }
     });
     if (!program) {
