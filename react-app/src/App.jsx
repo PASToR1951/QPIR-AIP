@@ -6,7 +6,6 @@ import axios from 'axios';
 import { NotePencil, Table, LockKey as Lock, Warning as AlertTriangle, CaretCircleRight } from '@phosphor-icons/react';
 import Login from './Login';
 import AIPForm from './AIPForm';
-import AIPBetaForm from './AIPBetaForm';
 import PIRForm from './PIRForm';
 import NotFound from './NotFound';
 import ErrorPage from './ErrorPage';
@@ -443,14 +442,6 @@ function AnimatedRoutes() {
             element={
               <ProtectedRoute>
                 <PageTransition><AIPForm /></PageTransition>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/aip-beta"
-            element={
-              <ProtectedRoute>
-                <PageTransition><AIPBetaForm /></PageTransition>
               </ProtectedRoute>
             }
           />

@@ -135,11 +135,6 @@ export default function App() {
     const handleStart = async (mode, selectedProgram, opts = {}) => {
         setDepedProgram(selectedProgram);
 
-        if (opts.fastEntry) {
-            navigate(`/aip-beta?program=${encodeURIComponent(selectedProgram)}&submode=${mode}`);
-            return;
-        }
-
         if (mode === 'readonly') {
             try {
                 const year = new Date().getFullYear();
