@@ -3,7 +3,7 @@ import { ArrowLeft, FloppyDisk as Save, House as Home, CheckCircle } from '@phos
 import { motion, AnimatePresence } from 'framer-motion';
 import { ViewModeToggle } from './ViewModeToggle';
 
-export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, theme = "indigo", appMode, toggleAppMode, onBeta }) => {
+export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, theme = "indigo", appMode, toggleAppMode }) => {
     const userStr = localStorage.getItem('user');
     let user = null;
     try {
@@ -60,7 +60,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <ViewModeToggle appMode={appMode} toggleAppMode={toggleAppMode} onBeta={onBeta} theme={theme} />
+                    <ViewModeToggle appMode={appMode} toggleAppMode={toggleAppMode} theme={theme} />
 
                     {lastSavedTime && !isSaved && (
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden md:block">

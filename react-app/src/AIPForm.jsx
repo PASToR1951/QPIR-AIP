@@ -504,7 +504,6 @@ export default function App() {
                 theme="pink"
                 appMode={appMode}
                 toggleAppMode={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
-                onBeta={() => navigate(`/aip-beta?program=${encodeURIComponent(depedProgram)}`)}
             />
 
             <DocumentPreviewModal
