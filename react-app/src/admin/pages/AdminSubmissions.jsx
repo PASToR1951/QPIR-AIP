@@ -66,6 +66,7 @@ export default function AdminSubmissions() {
   const [pdfLoadingId, setPdfLoadingId] = useState(null);
 
   // Term structure switcher
+  const [termConfig, setTermConfig] = useState({ termType: null, periods: [] });
   const [pendingTermType, setPendingTermType] = useState(null);
   const [periodMonths, setPeriodMonths] = useState([]); // [{start: number, end: number}]
   const [termSaving, setTermSaving] = useState(false);
