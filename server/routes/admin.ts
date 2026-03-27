@@ -1666,4 +1666,30 @@ adminRoutes.get("/settings/system-info", async (c) => {
   return c.json({ userCount, schoolCount, programCount });
 });
 
+// ==========================================
+// DIVISION CONFIG
+// ==========================================
+
+adminRoutes.get("/settings/division-config", async (c) => {
+  const config = await prisma.divisionConfig.findFirst();
+  return c.json(config ?? { supervisor_name: "", supervisor_title: "" });
+});
+
+adminRoutes.post("/settings/division-config", async (c) => {
+  const { supervisor_name, supervisor_title } = await c.req.json();
+  const existing = await prisma.divisionConfig.findFirst();
+  let config;
+  if (existing) {
+    config = await prisma.divisionConfig.update({
+      where: { id: existing.id },
+      data: { supervisor_name: supervisor_name ?? "", supervisor_title: supervisor_title ?? "" },
+    });
+  } else {
+    config = await prisma.divisionConfig.create({
+      data: { supervisor_name: supervisor_name ?? "", supervisor_title: supervisor_title ?? "" },
+    });
+  }
+  return c.json(config);
+});
+
 export default adminRoutes;

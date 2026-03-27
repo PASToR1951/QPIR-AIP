@@ -1,4 +1,5 @@
 import React from 'react';
+import { GovDocHeader } from './GovDocHeader';
 
 export const AIPDocument = ({
     year = new Date().getFullYear(),
@@ -23,11 +24,7 @@ export const AIPDocument = ({
         <div className="aip-printable text-black font-sans print:p-0 print:m-0 print:bg-white">
 
             {/* ── Header ── */}
-            <div className="text-center mb-4 pb-2 border-b-2 border-black">
-                <h1 className="text-[13px] font-black uppercase tracking-wide">
-                    Annual Implementation Plan for {year}
-                </h1>
-            </div>
+            <GovDocHeader documentTitle={`Annual Implementation Plan for ${year}`} />
 
             {/* ── Profile Section ── */}
             <div className="mb-5 text-[11px]">

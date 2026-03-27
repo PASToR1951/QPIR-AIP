@@ -113,6 +113,24 @@ export default function App() {
     const [isLoading, setIsLoading] = useState(true);
 
     const [loadedDraftData, setLoadedDraftData] = useState(null);
+    const [submittedAipStatus, setSubmittedAipStatus] = useState(null);
+    const [returnedPrograms, setReturnedPrograms] = useState([]);
+    const [draftPrograms, setDraftPrograms] = useState([]);
+    const [toast, setToast] = useState(null);          // { msg, programs[] }
+    const [deletedPopup, setDeletedPopup] = useState(null); // programs[] shown in popup
+    const toastTimerRef = useRef(null);
+
+    const showToast = useCallback((programs) => {
+        const count = programs.length;
+        const msg = count === 1
+            ? `"${programs[0]}" deleted.`
+            : count === 2
+                ? `"${programs[0]}" and "${programs[1]}" deleted.`
+                : `${count} programs deleted.`;
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        setToast({ msg, programs });
+        toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+    }, []);
 
     // ==========================================
     // FORM HELPERS
@@ -169,11 +187,11 @@ export default function App() {
                 const results = await Promise.allSettled(requests);
                 const [programsRes, completedRes, draftRes, coordsRes, termsRes] = results;
                 if (programsRes.status === 'fulfilled') setProgramList(programsRes.value.data.map(p => p.title).sort());
-                if (completedRes.status === 'fulfilled') setCompletedPrograms(completedRes.value.data.map(p => p.title));
-                if (draftRes?.status === 'fulfilled' && draftRes.value.data.hasDraft) {
-                    setDraftInfo({ lastSaved: draftRes.value.data.lastSaved });
-                    setHasDraft(true);
-                    setLoadedDraftData(draftRes.value.data.draftData);
+                if (completedRes.status === 'fulfilled') {
+                    const data = completedRes.value.data;
+                    setCompletedPrograms(data.filter(p => p.aip_status !== 'Draft').map(p => p.title));
+                    setReturnedPrograms(data.filter(p => p.aip_status === 'Returned').map(p => p.title));
+                    setDraftPrograms(data.filter(p => p.aip_status === 'Draft').map(p => p.title));
                 }
                 if (coordsRes?.status === 'fulfilled' && coordsRes.value?.data) setCoordinatorSuggestions(coordsRes.value.data);
                 if (termsRes?.status === 'fulfilled' && termsRes.value?.data) setPersonsTerms(termsRes.value.data);
@@ -199,6 +217,7 @@ export default function App() {
                 );
                 const d = res.data;
                 setYear(String(d.year));
+                setSubmittedAipStatus(d.status || null);
                 setOutcome(d.outcome || "");
                 setSipTitle(d.sipTitle || "");
                 setProjectCoord(d.projectCoord || "");
@@ -238,9 +257,16 @@ export default function App() {
             } catch { /* ignore malformed */ }
         }
 
-        // Load server draft if it matches this program
-        if (hasDraft && loadedDraftData && loadedDraftData.depedProgram === selectedProgram) {
-            loadDraftIntoState(loadedDraftData);
+        // Fetch draft from server for this specific program
+        if (draftPrograms.includes(selectedProgram)) {
+            try {
+                const currentYear = parseInt(year);
+                const draftRes = await axios.get(
+                    `${import.meta.env.VITE_API_URL}/api/aips/draft`,
+                    { params: { program_title: selectedProgram, year: currentYear }, headers: authHeaders }
+                );
+                if (draftRes.data.hasDraft) loadDraftIntoState(draftRes.data.draftData);
+            } catch { /* proceed with blank form */ }
         }
         setAppMode(mode);
     };
@@ -351,7 +377,7 @@ export default function App() {
     // Resize Listener
     useEffect(() => {
         const checkMobile = () => {
-            const mobileStatus = window.innerWidth < 768;
+            const mobileStatus = window.innerWidth < 1024;
             setIsMobile(mobileStatus);
             if (mobileStatus && appMode === 'full') {
                 setAppMode('wizard');
@@ -450,6 +476,68 @@ export default function App() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    const handleBulkDelete = useCallback((programsToDelete) => {
+        setModal({
+            isOpen: true,
+            type: 'warning',
+            title: `Delete ${programsToDelete.length} AIP${programsToDelete.length > 1 ? 's' : ''}?`,
+            message: `This will permanently delete ${programsToDelete.length} AIP submission${programsToDelete.length > 1 ? 's' : ''}. This cannot be undone.`,
+            confirmText: `Yes, Delete ${programsToDelete.length > 1 ? 'All' : 'It'}`,
+            onConfirm: async () => {
+                closeModal();
+                const currentYear = parseInt(year);
+                const results = await Promise.allSettled(
+                    programsToDelete.map(prog =>
+                        axios.delete(`${import.meta.env.VITE_API_URL}/api/aips`, {
+                            params: { program_title: prog, year: currentYear },
+                            headers: authHeaders
+                        })
+                    )
+                );
+                const deleted = programsToDelete.filter((_, i) => results[i].status === 'fulfilled');
+                if (deleted.length > 0) {
+                    setCompletedPrograms(prev => prev.filter(p => !deleted.includes(p)));
+                    setReturnedPrograms(prev => prev.filter(p => !deleted.includes(p)));
+                    setDraftPrograms(prev => prev.filter(p => !deleted.includes(p)));
+                    showToast(deleted);
+                }
+            }
+        });
+    }, [authHeaders, closeModal, hasDraft, loadedDraftData, showToast, year]);
+
+    const handleDeleteSubmission = () => {
+        setModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Delete Submission?',
+            message: 'This will permanently delete your submitted AIP. This action cannot be undone. Are you sure you want to proceed?',
+            confirmText: 'Yes, Delete',
+            onConfirm: async () => {
+                closeModal();
+                try {
+                    await axios.delete(
+                        `${import.meta.env.VITE_API_URL}/api/aips`,
+                        { params: { program_title: depedProgram, year }, headers: authHeaders }
+                    );
+                    setCompletedPrograms(prev => prev.filter(p => p !== depedProgram));
+                    setReturnedPrograms(prev => prev.filter(p => p !== depedProgram));
+                    setDraftPrograms(prev => prev.filter(p => p !== depedProgram));
+                    showToast([depedProgram]);
+                    setAppMode('splash');
+                } catch (error) {
+                    setModal({
+                        isOpen: true,
+                        type: 'warning',
+                        title: 'Deletion Failed',
+                        message: error.response?.data?.error || 'An error occurred while deleting the AIP. Please try again.',
+                        confirmText: 'Dismiss',
+                        onConfirm: closeModal
+                    });
+                }
+            }
+        });
+    };
+
     const handleConfirmSubmit = async () => {
         const filledActivities = activities.filter(a => a.name.trim() !== '');
 
@@ -520,6 +608,66 @@ export default function App() {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-dark-base">
+        <ConfirmationModal
+            isOpen={modal.isOpen}
+            onClose={closeModal}
+            onConfirm={modal.onConfirm}
+            type={modal.type}
+            title={modal.title}
+            message={modal.message}
+            confirmText={modal.confirmText}
+        />
+        {toast && (
+            <button
+                onClick={() => { setDeletedPopup(toast.programs); }}
+                className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-lg border text-sm font-bold bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/70 transition-colors cursor-pointer"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                {toast.msg}
+                <span className="text-[10px] font-semibold opacity-60 border border-current rounded px-1.5 py-0.5 ml-1">details</span>
+            </button>
+        )}
+        {deletedPopup && (
+            <div
+                className="fixed inset-0 z-[300] flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                onClick={() => setDeletedPopup(null)}
+            >
+                <div
+                    className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
+                    onClick={e => e.stopPropagation()}
+                >
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
+                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 className="font-black text-slate-800 dark:text-slate-100 text-sm">Deleted Programs</h3>
+                            <p className="text-xs text-slate-400 dark:text-slate-500">{deletedPopup.length} AIP{deletedPopup.length > 1 ? 's' : ''} removed</p>
+                        </div>
+                    </div>
+                    <ul className="space-y-2 mb-5 max-h-60 overflow-y-auto">
+                        {deletedPopup.map(p => (
+                            <li key={p} className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300 py-1.5 border-b border-slate-100 dark:border-dark-border last:border-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500 shrink-0">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                                {p}
+                            </li>
+                        ))}
+                    </ul>
+                    <button
+                        onClick={() => setDeletedPopup(null)}
+                        className="w-full py-2 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-colors"
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        )}
         <AnimatePresence mode="wait">
             {appMode === 'splash' ? (
                 <motion.div key="splash" {...motionProps}>
@@ -532,11 +680,12 @@ export default function App() {
                     <ViewModeSelector
                         programs={programList}
                         onStart={handleStart}
-                        hasDraft={hasDraft}
-                        draftInfo={draftInfo}
-                        draftProgram={loadedDraftData?.depedProgram || null}
+                        draftPrograms={draftPrograms}
                         completedPrograms={completedPrograms}
+                        returnedPrograms={returnedPrograms}
+                        onBulkDelete={handleBulkDelete}
                         theme="pink"
+                        isMobile={isMobile}
                     />
                 </motion.div>
             ) : appMode === 'readonly' ? (
@@ -550,15 +699,26 @@ export default function App() {
                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                 </svg>
                                 <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex-1">This form has been submitted and is read-only.</span>
-                                <button
-                                    onClick={() => window.print()}
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
-                                    </svg>
-                                    Print / Save PDF
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={handleDeleteSubmission}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                        </svg>
+                                        Delete Submission
+                                    </button>
+                                    <button
+                                        onClick={() => window.print()}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+                                        </svg>
+                                        Print / Save PDF
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         {/* Document */}
@@ -631,17 +791,6 @@ export default function App() {
             `}</style>
 
 
-
-            {/* Modal */}
-            <ConfirmationModal
-                isOpen={modal.isOpen}
-                onClose={closeModal}
-                onConfirm={modal.onConfirm}
-                type={modal.type}
-                title={modal.title}
-                message={modal.message}
-                confirmText={modal.confirmText}
-            />
 
             {/* MAIN CONTAINER */}
             <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0">

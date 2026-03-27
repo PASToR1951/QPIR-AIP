@@ -20,6 +20,16 @@ app.get('/api/health', (c) => {
 
 // Public: active announcement for user dashboard banner
 import { prisma as _prisma } from "./db/client.ts";
+
+// Public: division config (supervisor name/title for PIR documents)
+app.get('/api/config', async (c) => {
+  const config = await _prisma.divisionConfig.findFirst();
+  return c.json({
+    supervisor_name:  config?.supervisor_name  ?? "",
+    supervisor_title: config?.supervisor_title ?? "",
+  });
+});
+
 app.get('/api/announcement', async (c) => {
   const now = new Date();
   const a = await _prisma.announcement.findFirst({

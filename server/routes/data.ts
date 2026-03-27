@@ -613,7 +613,7 @@ dataRoutes.get('/programs/with-aips', async (c) => {
       });
     }
 
-    const programs = aips.map((aip: any) => aip.program).sort((a: any, b: any) => a.title.localeCompare(b.title));
+    const programs = aips.map((aip: any) => ({ ...aip.program, aip_status: aip.status })).sort((a: any, b: any) => a.title.localeCompare(b.title));
     return c.json(programs);
   } catch (error) {
     console.error(error);
@@ -886,6 +886,7 @@ dataRoutes.get('/aips', async (c) => {
 
     return c.json({
       year: aip.year,
+      status: aip.status,
       depedProgram: aip.program.title,
       outcome: aip.outcome,
       sipTitle: aip.sip_title,
@@ -912,6 +913,47 @@ dataRoutes.get('/aips', async (c) => {
   } catch (error) {
     console.error(error);
     return c.json({ error: 'Failed to fetch AIP' }, 500);
+  }
+});
+
+// DELETE /api/aips — delete a submitted AIP (only allowed for Submitted or Returned status)
+dataRoutes.delete('/aips', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const program_title = c.req.query('program_title');
+    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+
+    if (!program_title) return c.json({ error: 'program_title is required' }, 400);
+
+    const program = await prisma.program.findFirst({ where: { title: program_title } });
+    if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
+
+    let aip: any;
+    if (tokenUser.role === 'School' && tokenUser.school_id) {
+      aip = await prisma.aIP.findUnique({
+        where: { school_id_program_id_year: { school_id: tokenUser.school_id, program_id: program.id, year } }
+      });
+    } else {
+      aip = await prisma.aIP.findFirst({
+        where: { created_by_user_id: tokenUser.id, school_id: null, program_id: program.id, year }
+      });
+    }
+
+    if (!aip) return c.json({ error: 'AIP not found' }, 404);
+
+    const deletableStatuses = ['Draft', 'Returned'];
+    if (!deletableStatuses.includes(aip.status)) {
+      return c.json({ error: `Cannot delete an AIP with status '${aip.status}'. Only Draft or Returned AIPs can be deleted.` }, 403);
+    }
+
+    await prisma.aIP.delete({ where: { id: aip.id } });
+
+    return c.json({ message: 'AIP deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete AIP:', error);
+    return c.json({ error: 'Failed to delete AIP' }, 500);
   }
 });
 

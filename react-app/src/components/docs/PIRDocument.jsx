@@ -1,12 +1,19 @@
 import React from 'react';
-import { FormBoxHeader } from '../ui/FormBoxHeader';
+import { GovDocHeader } from './GovDocHeader';
 
 const DEFAULT_FACTOR_TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
 
 export const PIRDocument = ({
-    quarter = "1st Quarter CY 2026",
-    supervisorName = "DR. ENRIQUE Q. RETES, EdD",
-    supervisorTitle = "Chief Education Supervisor",
+    quarter = (() => {
+        const m = new Date().getMonth();
+        const y = new Date().getFullYear();
+        if (m <= 2) return `1st Quarter CY ${y}`;
+        if (m <= 5) return `2nd Quarter CY ${y}`;
+        if (m <= 8) return `3rd Quarter CY ${y}`;
+        return `4th Quarter CY ${y}`;
+    })(),
+    supervisorName = "",
+    supervisorTitle = "",
     program,
     school,
     owner,
@@ -44,11 +51,10 @@ export const PIRDocument = ({
     return (
         <div className="pir-printable text-black font-sans print:p-0 print:m-0 print:bg-white min-h-screen">
             {/* Header */}
-            <FormBoxHeader
-                title="QUARTERLY PROGRAM IMPLEMENTATION REVIEW (QPIR)"
-                subtitle="Quarterly Division Monitoring Evaluation and Adjustment"
+            <GovDocHeader
+                documentTitle="Quarterly Program Implementation Review (QPIR)"
+                documentSubtitle="Quarterly Division Monitoring Evaluation and Adjustment"
                 badge={quarter}
-                version="v4 March 2026"
             />
 
             {/* Section A: Program Profile */}
