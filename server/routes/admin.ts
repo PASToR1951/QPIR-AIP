@@ -227,16 +227,16 @@ adminRoutes.get("/overview", async (c) => {
     prisma.user.count({ where: { is_active: true } }),
     prisma.program.count(),
     prisma.user.count({ where: { is_active: true, role: "Division Personnel" } }),
-    prisma.aIP.count({ where: { year } }),
-    prisma.pIR.count(),
+    prisma.aIP.count({ where: { year, status: { not: 'Draft' } } }),
+    prisma.pIR.count({ where: { status: { not: 'Draft' } } }),
     // PIR quarterly breakdown for the current year
     prisma.pIR.findMany({
-      where: { aip: { year } },
+      where: { aip: { year }, status: { not: 'Draft' } },
       select: { quarter: true, status: true },
     }),
-    // AIP compliance: schools with at least one AIP this year
+    // AIP compliance: schools with at least one non-draft AIP this year
     prisma.aIP.findMany({
-      where: { year, school_id: { not: null } },
+      where: { year, school_id: { not: null }, status: { not: 'Draft' } },
       select: { school_id: true },
       distinct: ["school_id"],
     }),
@@ -315,11 +315,13 @@ adminRoutes.get("/overview", async (c) => {
 
   // Recent submissions (up to 20)
   const recentAIPs = await prisma.aIP.findMany({
+    where: { status: { not: 'Draft' } },
     take: 10,
     orderBy: { created_at: "desc" },
     include: { school: true, program: true, created_by: true },
   });
   const recentPIRs = await prisma.pIR.findMany({
+    where: { status: { not: 'Draft' } },
     take: 15,
     orderBy: { created_at: "desc" },
     include: { aip: { include: { school: true, program: true } }, created_by: true },
@@ -361,10 +363,10 @@ adminRoutes.get("/overview", async (c) => {
       schools: {
         include: {
           aips: {
-            where: { year },
+            where: { year, status: { not: 'Draft' } },
             select: {
               id: true,
-              pirs: { select: { id: true, status: true, quarter: true } },
+              pirs: { where: { status: { not: 'Draft' } }, select: { id: true, status: true, quarter: true } },
             },
           },
         },
@@ -482,12 +484,14 @@ adminRoutes.get("/submissions", async (c) => {
 
   // Always build both filter objects (needed for counts regardless of active tab)
   const aipWhere = {
+    status: { not: 'Draft' as const },
     ...(year && { year }),
     ...(programId && { program_id: programId }),
     ...(status && { status }),
     ...(schoolFilter && { school: schoolFilter }),
   };
   const pirWhere = {
+    status: { not: 'Draft' as const },
     ...(quarter && { quarter: { contains: `${quarter}` } }),
     ...(status && { status }),
     aip: {
@@ -600,7 +604,7 @@ adminRoutes.get("/submissions/export", async (c) => {
 
   const aips = (!type || type === "aip" || type === "all")
     ? await prisma.aIP.findMany({
-        where: { ...(year && { year }), ...(status && { status }) },
+        where: { status: { not: 'Draft' }, ...(year && { year }), ...(status && { status }) },
         include: { school: { include: { cluster: true } }, program: true, created_by: true },
         orderBy: { created_at: "desc" },
       })
@@ -608,7 +612,7 @@ adminRoutes.get("/submissions/export", async (c) => {
 
   const pirs = (!type || type === "pir" || type === "all")
     ? await prisma.pIR.findMany({
-        where: { ...(status && { status }), aip: { ...(year && { year }) } },
+        where: { status: { not: 'Draft' }, ...(status && { status }), aip: { ...(year && { year }) } },
         include: { aip: { include: { school: { include: { cluster: true } }, program: true } }, created_by: true },
         orderBy: { created_at: "desc" },
       })
