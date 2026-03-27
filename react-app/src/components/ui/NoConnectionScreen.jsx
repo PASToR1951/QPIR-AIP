@@ -11,8 +11,7 @@ const NoConnectionScreen = ({ children }) => {
     const handleOnline = () => {
       setJustRestored(true);
       setTimeout(() => {
-        setIsOnline(true);
-        setJustRestored(false);
+        window.location.reload();
       }, 1000);
     };
     const handleOffline = () => {
@@ -35,8 +34,7 @@ const NoConnectionScreen = ({ children }) => {
       await fetch('/favicon.ico', { cache: 'no-store', mode: 'no-cors' });
       setJustRestored(true);
       setTimeout(() => {
-        setIsOnline(true);
-        setJustRestored(false);
+        window.location.reload();
       }, 1000);
     } catch {
       // still offline
@@ -158,7 +156,7 @@ const NoConnectionScreen = ({ children }) => {
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400 text-base font-medium leading-relaxed">
                   {justRestored
-                    ? 'Your connection has been restored. Resuming…'
+                    ? 'Your connection has been restored. Reloading…'
                     : 'Unable to reach the server. Please check your network connection and try again.'}
                 </p>
               </motion.div>
