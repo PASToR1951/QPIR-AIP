@@ -1574,12 +1574,48 @@ adminRoutes.get("/reports/:type/export", async (c) => {
 });
 
 // ==========================================
+// SETTINGS
+// ==========================================
+
+adminRoutes.get("/settings/system-info", async (c) => {
+  const [userCount, schoolCount, programCount] = await Promise.all([
+    prisma.user.count(),
+    prisma.school.count(),
+    prisma.program.count(),
+  ]);
+  return c.json({ userCount, schoolCount, programCount });
+});
+
+adminRoutes.get("/settings/division-config", async (c) => {
+  const config = await prisma.divisionConfig.findFirst();
+  return c.json({
+    supervisor_name:  config?.supervisor_name  ?? "",
+    supervisor_title: config?.supervisor_title ?? "",
+  });
+});
+
+adminRoutes.post("/settings/division-config", async (c) => {
+  const admin = getUserFromToken(c.req.header("Authorization"))!;
+  const { supervisor_name, supervisor_title } = await c.req.json();
+  const existing = await prisma.divisionConfig.findFirst();
+  const config = existing
+    ? await prisma.divisionConfig.update({ where: { id: existing.id }, data: { supervisor_name, supervisor_title } })
+    : await prisma.divisionConfig.create({ data: { supervisor_name, supervisor_title } });
+  await writeAuditLog(admin.id, "updated_division_config", "DivisionConfig", config.id, { supervisor_name, supervisor_title });
+  return c.json(config);
+});
+
+// ==========================================
 // ANNOUNCEMENTS
 // ==========================================
 
 adminRoutes.get("/announcements", async (c) => {
   const announcement = await prisma.announcement.findFirst({
     orderBy: { updated_at: "desc" },
+    include: {
+      mentioned_schools: { include: { school: { select: { id: true, name: true } } } },
+      mentioned_users:   { include: { user:   { select: { id: true, first_name: true, last_name: true, name: true } } } },
+    },
   });
   return c.json(announcement ?? null);
 });
@@ -1602,6 +1638,80 @@ adminRoutes.post("/announcements", async (c) => {
     announcement = await prisma.announcement.create({
       data: { message, type: type ?? "info", is_active: is_active ?? true, dismissible: dismissible ?? true, expires_at: expiresAtDate, created_by: admin.id },
     });
+  }
+
+  // ── Resolve @[Name] mentions → school/user IDs ───────────────────
+  const mentionTokens: string[] = [...message.matchAll(/@\[([^\]]+)\]/g)].map((m: RegExpMatchArray) => m[1] as string);
+
+  const mentionedSchoolIds: number[] = [];
+  const mentionedUserIds:   number[] = [];
+
+  if (mentionTokens.length > 0) {
+    const [allSchools, allDivPersonnel] = await Promise.all([
+      prisma.school.findMany({ select: { id: true, name: true, abbreviation: true } }),
+      prisma.user.findMany({
+        where: { role: "Division Personnel", is_active: true },
+        select: { id: true, name: true, first_name: true, last_name: true },
+      }),
+    ]);
+
+    for (const token of mentionTokens) {
+      const lc = token.toLowerCase();
+      const school = allSchools.find(s =>
+        s.name.toLowerCase() === lc || (s.abbreviation ?? "").toLowerCase() === lc
+      );
+      if (school) { mentionedSchoolIds.push(school.id); continue; }
+
+      const user = allDivPersonnel.find(u => {
+        const full = [u.first_name, u.last_name].filter(Boolean).join(" ");
+        return full.toLowerCase() === lc || (u.name ?? "").toLowerCase() === lc;
+      });
+      if (user) mentionedUserIds.push(user.id);
+    }
+  }
+
+  // Replace old mention records
+  await prisma.announcementMentionSchool.deleteMany({ where: { announcement_id: announcement.id } });
+  await prisma.announcementMentionUser.deleteMany({ where: { announcement_id: announcement.id } });
+
+  if (mentionedSchoolIds.length > 0) {
+    await prisma.announcementMentionSchool.createMany({
+      data: mentionedSchoolIds.map(sid => ({ announcement_id: announcement.id, school_id: sid })),
+    });
+  }
+  if (mentionedUserIds.length > 0) {
+    await prisma.announcementMentionUser.createMany({
+      data: mentionedUserIds.map(uid => ({ announcement_id: announcement.id, user_id: uid })),
+    });
+  }
+
+  // ── Notify mentioned users ────────────────────────────────────────
+  if (mentionedSchoolIds.length > 0 || mentionedUserIds.length > 0) {
+    const schoolUsers = mentionedSchoolIds.length > 0
+      ? await prisma.user.findMany({
+          where: { school_id: { in: mentionedSchoolIds }, is_active: true },
+          select: { id: true },
+        })
+      : [];
+
+    const notifyIds = [...new Set([
+      ...schoolUsers.map(u => u.id),
+      ...mentionedUserIds,
+    ])];
+
+    const plainMessage = message.replace(/@\[([^\]]+)\]/g, (_: string, n: string) => `@${n}`);
+
+    if (notifyIds.length > 0) {
+      await prisma.notification.createMany({
+        data: notifyIds.map(uid => ({
+          user_id: uid,
+          title:   "You were mentioned in an announcement",
+          message: plainMessage,
+          type:    "announcement",
+        })),
+        skipDuplicates: true,
+      });
+    }
   }
 
   await writeAuditLog(admin.id, "updated_announcement", "Announcement", announcement.id, { message, type, is_active, dismissible });
