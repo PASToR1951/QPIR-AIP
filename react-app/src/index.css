@@ -160,6 +160,48 @@ html.dark-transition *::after {
 }
 
 /* ============================================================
+   MENTION PILLS — used in the announcement editor & banner
+   ============================================================ */
+.mention-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px 2px;
+  border-radius: 9999px;
+  background-color: #e0e7ff;       /* indigo-100 */
+  color: #4338ca;                  /* indigo-700 */
+  font-weight: 900;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  border: 1px solid #c7d2fe;       /* indigo-200 */
+  margin: 0 2px;
+  cursor: default;
+  white-space: nowrap;
+  vertical-align: middle;
+  user-select: all;
+}
+.dark .mention-pill {
+  background-color: rgba(55, 48, 163, 0.28);
+  color: #a5b4fc;                  /* indigo-300 */
+  border-color: rgba(99, 102, 241, 0.30);
+}
+
+/* Contenteditable announcement editor */
+.mention-editor {
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 4.5rem;
+  outline: none;
+}
+.mention-editor:empty::before {
+  content: attr(data-placeholder);
+  color: #cbd5e1;
+  pointer-events: none;
+}
+.dark .mention-editor:empty::before {
+  color: #475569;
+}
+
+/* ============================================================
    FOOTER PATTERN — responsive diamond grid with subtle color
    ============================================================ */
 .footer-pattern {
