@@ -33,7 +33,8 @@ model School {
   cluster    Cluster  @relation(fields: [cluster_id], references: [id], onDelete: Cascade)
   aips       AIP[]
   users      User[]
-  restricted_programs Program[] @relation("RestrictedPrograms")
+  restricted_programs      Program[]                   @relation("RestrictedPrograms")
+  announcement_mentions    AnnouncementMentionSchool[]
 
   @@map("schools")
 }
@@ -81,7 +82,8 @@ model User {
   audit_logs    AuditLog[]
 
   // Notifications
-  notifications Notification[]
+  notifications         Notification[]
+  announcement_mentions AnnouncementMentionUser[]
 
   created_at DateTime @default(now())
 }
@@ -233,7 +235,33 @@ model Announcement {
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
 
+  // Mention targeting — empty = visible to everyone
+  mentioned_schools AnnouncementMentionSchool[]
+  mentioned_users   AnnouncementMentionUser[]
+
   @@map("announcements")
+}
+
+// Junction: announcement → schools (all users of that school can see it)
+model AnnouncementMentionSchool {
+  announcement_id Int
+  school_id       Int
+  announcement    Announcement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+  school          School       @relation(fields: [school_id], references: [id], onDelete: Cascade)
+
+  @@id([announcement_id, school_id])
+  @@map("announcement_mention_schools")
+}
+
+// Junction: announcement → division personnel users (direct mention)
+model AnnouncementMentionUser {
+  announcement_id Int
+  user_id         Int
+  announcement    Announcement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([announcement_id, user_id])
+  @@map("announcement_mention_users")
 }
 
 model DivisionConfig {
