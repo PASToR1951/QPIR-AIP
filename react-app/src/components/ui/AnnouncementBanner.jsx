@@ -1,5 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { XCircle, Info, Warning, WarningCircle, Megaphone } from '@phosphor-icons/react';
+import { XCircle, Info, Warning, WarningCircle, Megaphone, At } from '@phosphor-icons/react';
+
+/* Render plain text with @[Name] mentions as inline white badges */
+function renderWithMentions(text) {
+  const parts = text.split(/(@\[[^\]]+\])/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^@\[([^\]]+)\]$/);
+    if (match) {
+      return (
+        <span
+          key={i}
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-white/25 font-black text-xs leading-none mx-0.5"
+        >
+          <At size={10} weight="bold" />
+          {match[1]}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -38,7 +58,9 @@ export function AnnouncementBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/api/announcement`)
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch(`${API}/api/announcement`, { headers })
       .then(r => r.json())
       .then(data => {
         if (!data?.is_active) return;
@@ -85,8 +107,8 @@ export function AnnouncementBanner() {
         </div>
 
         {/* Message */}
-        <p className={`flex-1 text-sm font-semibold ${msgText} leading-snug`}>
-          {announcement.message}
+        <p className={`flex-1 text-sm font-semibold ${msgText} leading-snug flex items-center flex-wrap gap-y-0.5`}>
+          {renderWithMentions(announcement.message)}
         </p>
 
         {/* Dismiss — only rendered when allowed */}
