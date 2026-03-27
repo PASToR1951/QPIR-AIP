@@ -66,31 +66,37 @@ const THEME_CLASSES = {
 export const ViewModeSelector = ({
     programs: rawPrograms = [],
     onStart,
-    hasDraft = false,
-    draftInfo = null,
-    draftProgram: rawDraftProgram = null,
+    draftPrograms: rawDraftPrograms = [],
     completedPrograms: rawCompletedPrograms = [],
+    returnedPrograms: rawReturnedPrograms = [],
+    onBulkDelete,
     theme = "pink",
+    isMobile = false,
 }) => {
-    const programs         = rawPrograms;
-    const draftProgram     = rawDraftProgram;
+    const programs          = rawPrograms;
+    const draftPrograms     = rawDraftPrograms;
     const completedPrograms = rawCompletedPrograms;
+    const returnedPrograms  = rawReturnedPrograms;
     const [stage, setStage] = useState('program');
     const [selected, setSelected] = useState(null);
     const [search, setSearch] = useState('');
     const [sortFilter, setSortFilter] = useState('all');
     const [sortOrder, setSortOrder] = useState('status');
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedPrograms, setSelectedPrograms] = useState([]);
     const c = THEME_CLASSES[theme] || THEME_CLASSES.pink;
 
-    const { submittedCount, draftCount, pendingCount } = useMemo(() => {
-        const submittedCount = completedPrograms.filter(p => programs.includes(p)).length;
-        const hasDraftInList = draftProgram && programs.includes(draftProgram);
-        return { 
-            submittedCount, 
-            draftCount: hasDraftInList ? 1 : 0, 
-            pendingCount: programs.length - submittedCount - (hasDraftInList ? 1 : 0) 
+    const { submittedCount, draftCount, pendingCount, returnedCount } = useMemo(() => {
+        const returnedCount  = returnedPrograms.filter(p => programs.includes(p)).length;
+        const draftCount     = draftPrograms.filter(p => programs.includes(p)).length;
+        const submittedCount = completedPrograms.filter(p => programs.includes(p) && !returnedPrograms.includes(p)).length;
+        return {
+            submittedCount,
+            returnedCount,
+            draftCount,
+            pendingCount: programs.length - submittedCount - returnedCount - draftCount
         };
-    }, [completedPrograms, draftProgram, programs]);
+    }, [completedPrograms, returnedPrograms, draftPrograms, programs]);
 
     const sortedFiltered = useMemo(() => {
         const filtered = search
@@ -98,16 +104,18 @@ export const ViewModeSelector = ({
             : programs;
 
         const statusRank = p => {
-            if (draftProgram === p) return 0;
-            if (completedPrograms.includes(p)) return 1;
-            return 2;
+            if (draftPrograms.includes(p)) return 0;
+            if (returnedPrograms.includes(p)) return 1;
+            if (completedPrograms.includes(p)) return 2;
+            return 3;
         };
 
         return filtered
             .filter(p => {
-                if (sortFilter === 'done') return completedPrograms.includes(p);
-                if (sortFilter === 'draft') return draftProgram === p;
-                if (sortFilter === 'pending') return !completedPrograms.includes(p) && draftProgram !== p;
+                if (sortFilter === 'done')     return completedPrograms.includes(p) && !returnedPrograms.includes(p);
+                if (sortFilter === 'draft')    return draftPrograms.includes(p);
+                if (sortFilter === 'returned') return returnedPrograms.includes(p);
+                if (sortFilter === 'pending')  return !completedPrograms.includes(p) && !draftPrograms.includes(p) && !returnedPrograms.includes(p);
                 return true;
             })
             .sort((a, b) => {
@@ -115,17 +123,29 @@ export const ViewModeSelector = ({
                 if (sortOrder === 'za') return b.localeCompare(a);
                 return a.localeCompare(b); // 'az' default
             });
-    }, [search, sortFilter, sortOrder, programs, completedPrograms, draftProgram]);
+    }, [search, sortFilter, sortOrder, programs, completedPrograms, draftPrograms, returnedPrograms]);
 
     const handlePickProgram = useCallback((p) => {
+        if (selectionMode) {
+            const isSelectable = draftPrograms.includes(p) || returnedPrograms.includes(p);
+            if (!isSelectable) return;
+            setSelectedPrograms(prev =>
+                prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
+            );
+            return;
+        }
         if (completedPrograms.includes(p)) {
             onStart('readonly', p);
+            return;
+        }
+        if (isMobile) {
+            onStart('wizard', p);
             return;
         }
         setSelected(p);
         setStage('mode');
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, [completedPrograms, onStart]);
+    }, [completedPrograms, onStart, selectionMode, draftPrograms, returnedPrograms]);
 
 
     const Background = () => (
@@ -184,11 +204,12 @@ export const ViewModeSelector = ({
                             <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                     {[
-                                        { key: 'all',     label: 'All',     count: programs.length },
-                                        { key: 'done',    label: 'Done',    count: submittedCount },
-                                        { key: 'draft',   label: 'Draft',   count: draftCount },
-                                        { key: 'pending', label: 'Pending', count: pendingCount },
-                                    ].map(({ key, label, count }) => (
+                                        { key: 'all',      label: 'All',      count: programs.length },
+                                        { key: 'done',     label: 'Done',     count: submittedCount },
+                                        { key: 'draft',    label: 'Draft',    count: draftCount },
+                                        { key: 'returned', label: 'Returned', count: returnedCount },
+                                        { key: 'pending',  label: 'Pending',  count: pendingCount },
+                                    ].filter(({ key, count }) => key === 'all' || count > 0).map(({ key, label, count }) => (
                                         <button
                                             key={key}
                                             onClick={() => setSortFilter(key)}
@@ -208,7 +229,20 @@ export const ViewModeSelector = ({
                                     ))}
                                 </div>
 
-                                {/* Sort order */}
+                                {/* Select + Sort */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                {onBulkDelete && (draftPrograms.length > 0 || returnedPrograms.length > 0) && (
+                                    <button
+                                        onClick={() => { setSelectionMode(m => !m); setSelectedPrograms([]); }}
+                                        className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150 ${
+                                            selectionMode
+                                                ? 'bg-red-600 text-white border-red-600'
+                                                : 'bg-white/70 dark:bg-dark-surface/70 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-dark-border hover:border-red-300 hover:text-red-600 hover:bg-red-50/50'
+                                        }`}
+                                    >
+                                        {selectionMode ? 'Cancel' : 'Select'}
+                                    </button>
+                                )}
                                 <div className="relative shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                                         <path d="M3 6h18M7 12h10M11 18h2" />
@@ -225,6 +259,7 @@ export const ViewModeSelector = ({
                                     <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                                         <path d="m6 9 6 6 6-6" />
                                     </svg>
+                                </div>
                                 </div>
                             </div>
                         </div>
@@ -266,8 +301,11 @@ export const ViewModeSelector = ({
                             ) : (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {sortedFiltered.map(p => {
-                                        const isDraft = draftProgram === p;
-                                        const isDone = completedPrograms.includes(p);
+                                        const isDraft      = draftPrograms.includes(p);
+                                        const isReturned   = returnedPrograms.includes(p);
+                                        const isDone       = completedPrograms.includes(p) && !isReturned;
+                                        const isSelectable = isDraft || isReturned;
+                                        const isSelected   = selectedPrograms.includes(p);
 
                                         return (
                                             <button
@@ -276,27 +314,49 @@ export const ViewModeSelector = ({
                                                 className={[
                                                     'group w-full flex flex-col gap-3 p-4 rounded-2xl text-left',
                                                     'border-2 transition-all duration-150 shadow-sm active:scale-[0.97]',
-                                                    isDraft
-                                                        ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 hover:border-amber-400 hover:shadow-amber-100/50'
-                                                        : isDone
-                                                            ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300 hover:shadow-emerald-100/50'
-                                                            : `border-slate-200/80 dark:border-dark-border bg-slate-100/60 dark:bg-dark-surface/60 backdrop-blur-sm shadow-sm ${c.cardPendingHover}`,
+                                                    selectionMode && !isSelectable ? 'opacity-40 cursor-not-allowed' : '',
+                                                    selectionMode && isSelected
+                                                        ? 'border-red-400 bg-red-50 dark:bg-red-950/30 ring-2 ring-red-200'
+                                                        : isDraft
+                                                            ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 hover:border-amber-400 hover:shadow-amber-100/50'
+                                                            : isReturned
+                                                                ? 'border-orange-300 bg-orange-50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-900/50 hover:border-orange-400 hover:shadow-orange-100/50'
+                                                                : isDone
+                                                                    ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300 hover:shadow-emerald-100/50'
+                                                                    : `border-slate-200/80 dark:border-dark-border bg-slate-100/60 dark:bg-dark-surface/60 backdrop-blur-sm shadow-sm ${c.cardPendingHover}`,
                                                 ].join(' ')}
                                             >
-                                                {/* Status badge — always visible at top */}
-                                                <span className={`self-start text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
-                                                    isDraft
-                                                        ? 'text-amber-700 bg-amber-100 border-amber-300 dark:text-amber-300 dark:bg-amber-900/50 dark:border-amber-700'
-                                                        : isDone
-                                                            ? 'text-emerald-700 bg-emerald-100 border-emerald-300 dark:text-emerald-300 dark:bg-emerald-900/50 dark:border-emerald-700'
-                                                            : c.pendingBadge
-                                                }`}>
-                                                    {isDraft ? 'Draft' : isDone ? 'Submitted' : 'Pending'}
-                                                </span>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    {/* Status badge */}
+                                                    <span className={`self-start text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                                                        isDraft
+                                                            ? 'text-amber-700 bg-amber-100 border-amber-300 dark:text-amber-300 dark:bg-amber-900/50 dark:border-amber-700'
+                                                            : isReturned
+                                                                ? 'text-orange-700 bg-orange-100 border-orange-300 dark:text-orange-300 dark:bg-orange-900/50 dark:border-orange-700'
+                                                                : isDone
+                                                                    ? 'text-emerald-700 bg-emerald-100 border-emerald-300 dark:text-emerald-300 dark:bg-emerald-900/50 dark:border-emerald-700'
+                                                                    : c.pendingBadge
+                                                    }`}>
+                                                        {isDraft ? 'Draft' : isReturned ? 'Returned' : isDone ? 'Submitted' : 'Pending'}
+                                                    </span>
+
+                                                    {/* Checkbox in selection mode */}
+                                                    {selectionMode && isSelectable && (
+                                                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                                            isSelected ? 'bg-red-500 border-red-500' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-surface'
+                                                        }`}>
+                                                            {isSelected && (
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                    <polyline points="20 6 9 17 4 12" />
+                                                                </svg>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
 
                                                 {/* Program name */}
                                                 <span className={`text-sm font-bold leading-snug transition-colors ${
-                                                    isDraft ? 'text-amber-900 dark:text-amber-200' : isDone ? 'text-emerald-900 dark:text-emerald-200' : 'text-slate-800 dark:text-slate-100'
+                                                    isDraft ? 'text-amber-900 dark:text-amber-200' : isReturned ? 'text-orange-900 dark:text-orange-200' : isDone ? 'text-emerald-900 dark:text-emerald-200' : 'text-slate-800 dark:text-slate-100'
                                                 }`}>
                                                     {p}
                                                 </span>
@@ -308,13 +368,53 @@ export const ViewModeSelector = ({
 
                         </div>
                     )}
+
+                    {/* Bulk delete action bar */}
+                    {selectionMode && (
+                        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-xl whitespace-nowrap">
+                            <span className="text-sm font-bold text-slate-600 dark:text-slate-300">
+                                {selectedPrograms.length > 0 ? `${selectedPrograms.length} selected` : 'Select to delete'}
+                            </span>
+                            <div className="w-px h-5 bg-slate-200 dark:bg-dark-border" />
+                            <button
+                                onClick={() => {
+                                    const selectable = sortedFiltered.filter(p => draftPrograms.includes(p) || returnedPrograms.includes(p));
+                                    setSelectedPrograms(prev => prev.length === selectable.length ? [] : selectable);
+                                }}
+                                className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                            >
+                                {sortedFiltered.filter(p => draftPrograms.includes(p) || returnedPrograms.includes(p)).length === selectedPrograms.length && selectedPrograms.length > 0 ? 'Deselect All' : 'Select All'}
+                            </button>
+                            {selectedPrograms.length > 0 && (
+                                <>
+                                    <div className="w-px h-5 bg-slate-200 dark:bg-dark-border" />
+                                    <button
+                                        onClick={() => { onBulkDelete(selectedPrograms); setSelectionMode(false); setSelectedPrograms([]); }}
+                                        className="inline-flex items-center gap-2 px-4 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                        </svg>
+                                        Delete {selectedPrograms.length}
+                                    </button>
+                                </>
+                            )}
+                            <div className="w-px h-5 bg-slate-200 dark:bg-dark-border" />
+                            <button
+                                onClick={() => { setSelectionMode(false); setSelectedPrograms([]); }}
+                                className="text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         );
     }
 
     // ── STAGE 2: MODE SELECTION ─────────────────────────────────────────────
-    const isDraftMatch = draftProgram && draftProgram === selected;
+    const isDraftMatch = draftPrograms.includes(selected);
     const isCompleted = completedPrograms.includes(selected);
 
     return (
@@ -353,14 +453,13 @@ export const ViewModeSelector = ({
                         </div>
 
                         {/* Draft banner — inline */}
-                        {hasDraft && draftInfo && isDraftMatch && (
+                        {isDraftMatch && (
                             <div className="flex items-center gap-3 px-4 py-3 md:px-5 md:py-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 rounded-xl md:rounded-2xl mb-5 md:mb-6">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500 shrink-0">
                                     <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                                 </svg>
                                 <p className="text-xs md:text-sm text-amber-700">
-                                    <span className="font-bold">Draft saved</span>
-                                    <span className="text-amber-600/70"> — {new Date(draftInfo.lastSaved).toLocaleString()}</span>
+                                    <span className="font-bold">Draft saved</span> — your previous progress will be restored.
                                 </p>
                             </div>
                         )}

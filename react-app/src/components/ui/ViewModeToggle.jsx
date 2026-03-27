@@ -11,7 +11,7 @@ export const ViewModeToggle = ({ appMode, toggleAppMode, theme = "indigo" }) => 
     };
 
     return (
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-2">
             <button
                 onClick={toggleAppMode}
                 className={`flex text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border px-3 py-1.5 rounded-full shadow-sm transition-colors items-center gap-1.5 ${textHoverClasses[theme]}`}

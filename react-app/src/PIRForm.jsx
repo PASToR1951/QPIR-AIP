@@ -54,6 +54,8 @@ export default function App() {
     const [isMobile, setIsMobile] = useState(false);
     const [programsWithAIPs, setProgramsWithAIPs] = useState([]);
     const [completedPrograms, setCompletedPrograms] = useState([]);
+    const [supervisorName, setSupervisorName] = useState('');
+    const [supervisorTitle, setSupervisorTitle] = useState('');
     const [quarterString] = useState(() => {
         const date = new Date();
         const month = date.getMonth();
@@ -79,12 +81,17 @@ export default function App() {
                 const requests = [
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
                     axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { headers: authHeaders }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/config`),
                 ];
                 requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { headers: authHeaders }));
                 const results = await Promise.allSettled(requests);
-                const [withAIPsRes, withPIRsRes, draftRes] = results;
+                const [withAIPsRes, withPIRsRes, configRes, draftRes] = results;
                 if (withAIPsRes.status === 'fulfilled') setProgramsWithAIPs(withAIPsRes.value.data.map(p => p.title));
                 if (withPIRsRes.status === 'fulfilled') setCompletedPrograms(withPIRsRes.value.data.map(p => p.title));
+                if (configRes.status === 'fulfilled') {
+                    setSupervisorName(configRes.value.data.supervisor_name ?? '');
+                    setSupervisorTitle(configRes.value.data.supervisor_title ?? '');
+                }
                 if (draftRes?.status === 'fulfilled' && draftRes.value.data.hasDraft) {
                     setDraftInfo({ lastSaved: draftRes.value.data.lastSaved, draftProgram: draftRes.value.data.draftProgram });
                     setHasDraft(true);
@@ -600,6 +607,8 @@ export default function App() {
                                 <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border p-8 print:shadow-none print:border-none print:p-0 print:rounded-none">
                                     <PIRDocument
                                         quarter={quarterString}
+                                        supervisorName={supervisorName}
+                                        supervisorTitle={supervisorTitle}
                                         program={program}
                                         school={school}
                                         owner={owner}
@@ -639,6 +648,8 @@ export default function App() {
                             >
                                 <PIRDocument
                                     quarter={quarterString}
+                                    supervisorName={supervisorName}
+                                    supervisorTitle={supervisorTitle}
                                     program={program}
                                     school={school}
                                     owner={owner}

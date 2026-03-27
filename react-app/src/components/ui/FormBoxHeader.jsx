@@ -3,29 +3,29 @@ import React from 'react';
 export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
     if (compact) {
         return (
-            <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50/50 dark:bg-dark-surface rounded-2xl border border-slate-100 dark:border-dark-border select-none mb-4">
-                <div className="flex items-center gap-3 shrink-0">
-                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-16 w-auto drop-shadow-sm hidden sm:block print:block" />
-                    <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-16 w-auto drop-shadow-sm hidden sm:block print:block" />
-                    <img src="/Division_Logo.webp" alt="Division Logo" className="h-16 w-auto drop-shadow-sm hidden sm:block print:block" />
+            <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 p-4 sm:p-6 bg-slate-50/50 dark:bg-dark-surface rounded-2xl border border-slate-100 dark:border-dark-border select-none mb-4">
+                <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                    <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-10 sm:h-16 w-auto drop-shadow-sm print:block" />
+                    <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-10 sm:h-16 w-auto drop-shadow-sm print:block" />
+                    <img src="/Division_Logo.webp" alt="Division Logo" className="h-10 sm:h-16 w-auto drop-shadow-sm print:block" />
                 </div>
                 <div className="h-10 w-px bg-slate-200 dark:bg-dark-border hidden md:block"></div>
                 <div className="flex-1 flex flex-col items-center md:items-start text-center md:text-left">
-                    <div className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-tight">
+                    <div className="text-[10px] sm:text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider leading-tight">
                         Republic of the Philippines • Department of Education
                     </div>
-                    <div className="text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight mt-0.5">
+                    <div className="text-[11px] sm:text-[12px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight mt-0.5">
                         Negros Island Region
                     </div>
-                    <div className="text-[10px] font-black text-blue-600 uppercase tracking-tight">
+                    <div className="text-[11px] sm:text-[12px] font-black text-blue-600 uppercase tracking-tight">
                         Division of Guihulngan City
                     </div>
-                    <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tighter mt-2 uppercase">
+                    <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight sm:tracking-tighter mt-2 uppercase">
                         {title}
                     </h1>
                 </div>
                 {badge && (
-                    <div className="shrink-0 px-3 py-1 rounded-full text-[10px] font-black bg-white dark:bg-dark-surface text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-dark-border shadow-sm uppercase tracking-tighter">
+                    <div className="shrink-0 px-3 py-1 rounded-full text-[11px] font-black bg-white dark:bg-dark-surface text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-dark-border shadow-sm uppercase tracking-tighter">
                         {badge}
                     </div>
                 )}

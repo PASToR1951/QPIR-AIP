@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   FloppyDisk, Buildings, Users, BookOpen, Database,
   Info, Warning, WarningCircle, Megaphone, XCircle, LockSimple,
-  Gear, CheckCircle,
+  Gear, CheckCircle, UserCircle,
 } from '@phosphor-icons/react';
 import { AdminLayout } from '../AdminLayout.jsx';
 import { CURRENT_VERSION } from '../../version.js';
@@ -136,14 +136,21 @@ export default function AdminSettings() {
   const [saved, setSaved]               = useState(false);
   const [formError, setFormError]       = useState('');
 
+  const [divConfig, setDivConfig]         = useState({ supervisor_name: '', supervisor_title: '' });
+  const [savingDiv, setSavingDiv]         = useState(false);
+  const [savedDiv, setSavedDiv]           = useState(false);
+  const [divError, setDivError]           = useState('');
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
       axios.get(`${API}/api/admin/announcements`, { headers: authHeaders() }),
       axios.get(`${API}/api/admin/settings/system-info`, { headers: authHeaders() }),
-    ]).then(([ar, sr]) => {
+      axios.get(`${API}/api/admin/settings/division-config`, { headers: authHeaders() }),
+    ]).then(([ar, sr, dr]) => {
       if (ar.data) setAnnouncement({ message: ar.data.message ?? '', type: ar.data.type ?? 'info', is_active: ar.data.is_active ?? true, dismissible: ar.data.dismissible !== false });
       setSysInfo(sr.data);
+      if (dr.data) setDivConfig({ supervisor_name: dr.data.supervisor_name ?? '', supervisor_title: dr.data.supervisor_title ?? '' });
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -159,6 +166,20 @@ export default function AdminSettings() {
       setFormError(e.response?.data?.error || 'Operation failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveDiv = async () => {
+    setSavingDiv(true);
+    setDivError('');
+    try {
+      await axios.post(`${API}/api/admin/settings/division-config`, divConfig, { headers: authHeaders() });
+      setSavedDiv(true);
+      setTimeout(() => setSavedDiv(false), 2500);
+    } catch (e) {
+      setDivError(e.response?.data?.error || 'Operation failed');
+    } finally {
+      setSavingDiv(false);
     }
   };
 
@@ -318,6 +339,59 @@ export default function AdminSettings() {
                     }
                   </button>
                 </div>
+              </div>
+            </div>
+          </SettingsCard>
+
+          {/* ── Document Signatories ────────────────────── */}
+          <SettingsCard
+            icon={UserCircle}
+            iconBg="bg-emerald-100 dark:bg-emerald-950/50"
+            iconColor="text-emerald-600 dark:text-emerald-400"
+            title="Document Signatories"
+            description="Name and title that appear on the PIR document's 'Noted' signature block."
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                  Supervisor Name
+                </label>
+                <input
+                  type="text"
+                  value={divConfig.supervisor_name}
+                  onChange={e => setDivConfig(d => ({ ...d, supervisor_name: e.target.value }))}
+                  placeholder="e.g. DR. JUAN D. DELA CRUZ, EdD"
+                  className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 dark:focus:border-emerald-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                  Supervisor Title / Position
+                </label>
+                <input
+                  type="text"
+                  value={divConfig.supervisor_title}
+                  onChange={e => setDivConfig(d => ({ ...d, supervisor_title: e.target.value }))}
+                  placeholder="e.g. Chief Education Supervisor"
+                  className="w-full px-3.5 py-2.5 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 dark:focus:border-emerald-500 transition-all"
+                />
+              </div>
+              <div className="flex flex-col items-start sm:items-end gap-1 pt-1">
+                {divError && <p className="text-xs text-red-500 font-bold">{divError}</p>}
+                <button
+                  onClick={handleSaveDiv}
+                  disabled={savingDiv}
+                  className={`flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-60 ${
+                    savedDiv
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  }`}
+                >
+                  {savedDiv
+                    ? <><CheckCircle size={15} weight="fill" /> Saved</>
+                    : <><FloppyDisk size={15} weight="bold" /> {savingDiv ? 'Saving…' : 'Save'}</>
+                  }
+                </button>
               </div>
             </div>
           </SettingsCard>
