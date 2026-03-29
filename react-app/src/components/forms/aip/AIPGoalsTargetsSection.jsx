@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
 
@@ -7,6 +7,17 @@ export default React.memo(function AIPGoalsTargetsSection({
     objectives, handleObjectiveChange, addObjective, removeObjective,
     indicators, handleIndicatorChange, addIndicator, removeIndicator
 }) {
+    const objectiveRefs = useRef([]);
+    const indicatorRefs = useRef([]);
+
+    useEffect(() => {
+        objectiveRefs.current[objectives.length - 1]?.focus();
+    }, [objectives.length]);
+
+    useEffect(() => {
+        indicatorRefs.current[indicators.length - 1]?.focus();
+    }, [indicators.length]);
+
     return (
         <>
             <SectionHeader
@@ -25,10 +36,18 @@ export default React.memo(function AIPGoalsTargetsSection({
                             <div key={i} className="flex gap-3 items-start bg-white dark:bg-dark-surface p-3 rounded-xl border border-slate-200 dark:border-dark-border group transition-all hover:border-pink-300">
                                 <div className="mt-2.5 text-slate-400 dark:text-slate-500 font-bold w-6 text-center text-sm select-none">{i + 1}.</div>
                                 <TextareaAuto
+                                    ref={el => objectiveRefs.current[i] = el}
                                     className="w-full bg-transparent p-2 focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg text-sm text-slate-800 dark:text-slate-100 transition-all"
                                     placeholder={`Enter objective ${i + 1}...`}
                                     value={obj}
                                     onChange={(e) => handleObjectiveChange(i, e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleObjectiveChange(i, e.target.value);
+                                            addObjective();
+                                        }
+                                    }}
                                 />
                                 {objectives.length > 1 && (
                                     <button type="button" onClick={() => removeObjective(i)} className="p-2 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors mt-1" title="Remove Objective">
@@ -56,10 +75,18 @@ export default React.memo(function AIPGoalsTargetsSection({
                                 <div className="flex-grow">
                                     <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Indicator Description</label>
                                     <TextareaAuto
+                                        ref={el => indicatorRefs.current[i] = el}
                                         className="w-full bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 transition-all"
                                         placeholder="e.g. Percentage of teachers..."
                                         value={ind.description}
                                         onChange={(e) => handleIndicatorChange(i, 'description', e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleIndicatorChange(i, 'description', e.target.value);
+                                                addIndicator();
+                                            }
+                                        }}
                                     />
                                 </div>
                                 <div className="w-full md:w-48 shrink-0">
@@ -71,7 +98,21 @@ export default React.memo(function AIPGoalsTargetsSection({
                                             className="w-full bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg px-3 py-2 pr-7 text-sm text-slate-800 dark:text-slate-100 transition-all outline-none"
                                             placeholder="0"
                                             value={ind.target}
-                                            onChange={(e) => handleIndicatorChange(i, 'target', e.target.value.replace(/[^0-9.]/g, ''))}
+                                            onChange={(e) => {
+                                                const raw = e.target.value.replace(/[^0-9.]/g, '');
+                                                const num = parseFloat(raw);
+                                                if (!isNaN(num) && num > 100) {
+                                                    handleIndicatorChange(i, 'target', '100');
+                                                } else {
+                                                    handleIndicatorChange(i, 'target', raw);
+                                                }
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    addIndicator();
+                                                }
+                                            }}
                                         />
                                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 text-sm pointer-events-none select-none">%</span>
                                     </div>
