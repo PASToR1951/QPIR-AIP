@@ -143,6 +143,7 @@ model PIR {
   program_owner               String
   budget_from_division        Decimal  @default(0.0)
   budget_from_co_psf          Decimal  @default(0.0)
+  functional_division         String?  // "SGOD" | "OSDS" | "CID" — null for school users
   indicator_quarterly_targets Json     @default("[]")
   // Shape: [{description: string, annual_target: string, quarterly_target: string}]
   action_items                Json     @default("[]")

@@ -48,6 +48,8 @@ export default function App() {
     const isDivisionPersonnel = user?.role === 'Division Personnel';
 
     const saveTimerRef = useRef(null);
+    const draftIndicatorsLoaded = useRef(false);
+    const pirActivitiesLoaded = useRef(false);
 
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
@@ -140,6 +142,11 @@ export default function App() {
 
     const closeModal = useCallback(() => setModal(prev => ({ ...prev, isOpen: false })), []);
 
+    // Submitted PIR tracking (for edit/delete)
+    const [pirId, setPirId] = useState(null);
+    const [pirStatus, setPirStatus] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+
     // Form State
     const [program, setProgram] = useState("");
     // School Users: school is always their own school (pre-filled, not selectable)
@@ -152,12 +159,15 @@ export default function App() {
     const [budgetFromDivision, setBudgetFromDivision] = useState("");
     const [budgetFromCoPSF, setBudgetFromCoPSF] = useState("");
 
+    // Functional Division (Division Personnel only)
+    const [functionalDivision, setFunctionalDivision] = useState("");
+
     // Section B — Performance Indicators
     const [indicatorTargets, setIndicatorTargets] = useState([]);
 
     // Section E — Action Items
     const [actionItems, setActionItems] = useState(
-        Array(5).fill(null).map(() => ({ action: '', response_asds: '', response_sds: '' }))
+        [{ action: '', response_asds: '', response_sds: '' }]
     );
 
     // Date Initialization & Resize Listener
@@ -183,6 +193,7 @@ export default function App() {
     const [activities, setActivities] = useState([
         { id: crypto.randomUUID(), name: "", implementation_period: "", period_start_month: null, period_end_month: null, aip_activity_id: null, fromAIP: false, isUnplanned: false, complied: null, actualTasksConducted: "", contributoryIndicators: "", movsExpectedOutputs: "", adjustments: "", physTarget: "", finTarget: "", physAcc: "", finAcc: "", actions: "" }
     ]);
+    const [removedAIPActivities, setRemovedAIPActivities] = useState([]);
     const [isLoadingActivities, setIsLoadingActivities] = useState(false);
 
     // Add state to track which activity card is expanded (for Wizard)
@@ -224,49 +235,59 @@ export default function App() {
                     ? { user_id: user?.id, program_title: program, year }
                     : { school_id: schoolId, program_title: program, year };
 
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/activities`, { params });
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/activities`, { params, headers: authHeaders });
                 const aipActivities = res.data.activities;
                 if (aipActivities && aipActivities.length > 0) {
-                    // Filter to activities relevant to the current quarter
-                    const qStart = (currentQuarterNum - 1) * 3 + 1;
-                    const qEnd = currentQuarterNum * 3;
-                    const relevantActivities = aipActivities.filter(a =>
-                        a.period_start_month && a.period_end_month
-                            ? (a.period_start_month <= qEnd && a.period_end_month >= qStart)
-                            : true // Legacy data without structured months — show in all quarters
-                    );
-                    const activitiesToUse = relevantActivities.length > 0 ? relevantActivities : aipActivities;
-                    setActivities(activitiesToUse.map(a => ({
-                        id: crypto.randomUUID(),
-                        name: a.activity_name,
-                        implementation_period: a.implementation_period,
-                        period_start_month: a.period_start_month ?? null,
-                        period_end_month: a.period_end_month ?? null,
-                        aip_activity_id: a.id,
-                        fromAIP: true,
-                        isUnplanned: false,
-                        complied: null,
-                        actualTasksConducted: "",
-                        contributoryIndicators: "",
-                        movsExpectedOutputs: a.outputs ?? "",
-                        adjustments: "",
-                        physTarget: "",
-                        finTarget: String(a.budget_amount ?? ""),
-                        physAcc: "",
-                        finAcc: "",
-                        actions: ""
-                    })));
+                    if (pirActivitiesLoaded.current) {
+                        // Loading from a submitted PIR — preserve its activity review data
+                        pirActivitiesLoaded.current = false;
+                    } else {
+                        // Filter to activities relevant to the current quarter
+                        const qStart = (currentQuarterNum - 1) * 3 + 1;
+                        const qEnd = currentQuarterNum * 3;
+                        const relevantActivities = aipActivities.filter(a =>
+                            a.period_start_month && a.period_end_month
+                                ? (a.period_start_month <= qEnd && a.period_end_month >= qStart)
+                                : true // Legacy data without structured months — show in all quarters
+                        );
+                        setActivities(relevantActivities.map(a => ({
+                            id: crypto.randomUUID(),
+                            name: a.activity_name,
+                            implementation_period: a.implementation_period,
+                            period_start_month: a.period_start_month ?? null,
+                            period_end_month: a.period_end_month ?? null,
+                            aip_activity_id: a.id,
+                            fromAIP: true,
+                            isUnplanned: false,
+                            complied: null,
+                            actualTasksConducted: "",
+                            contributoryIndicators: "",
+                            movsExpectedOutputs: a.outputs ?? "",
+                            adjustments: "",
+                            physTarget: "",
+                            finTarget: String(a.budget_amount ?? ""),
+                            physAcc: "",
+                            finAcc: "",
+                            actions: ""
+                        })));
+                    }
                 }
                 // Populate indicator targets from AIP indicators
                 if (res.data.indicators?.length) {
-                    setIndicatorTargets(res.data.indicators.map(ind => ({
-                        description: ind.description,
-                        annual_target: String(ind.target ?? ''),
-                        quarterly_target: '',
-                    })));
+                    if (draftIndicatorsLoaded.current) {
+                        // First fetch after draft load: preserve saved targets, clear flag
+                        draftIndicatorsLoaded.current = false;
+                    } else {
+                        // Normal fetch (new program selected): overwrite with fresh indicators
+                        setIndicatorTargets(res.data.indicators.map(ind => ({
+                            description: ind.description,
+                            annual_target: String(ind.target ?? ''),
+                            quarterly_target: '',
+                        })));
+                    }
                 }
-                // Owner/Coordinator is locked from AIP if not already populated
-                if (!owner && res.data.project_coordinator) { setOwner(res.data.project_coordinator); setOwnerLocked(true); }
+                // Owner/Coordinator is always overwritten and locked from AIP when present
+                if (res.data.project_coordinator) { setOwner(res.data.project_coordinator); setOwnerLocked(true); }
             } catch {
                 // No AIP found - keep manual entry mode
             } finally {
@@ -288,13 +309,16 @@ export default function App() {
                     { params: { program_title: selectedProgram, quarter: quarterString }, headers: authHeaders }
                 );
                 const d = res.data;
+                setPirId(d.id ?? null);
+                setPirStatus(d.status ?? null);
                 setSchool(d.school || "");
                 setOwner(d.owner || "");
                 setBudgetFromDivision(String(d.budgetFromDivision || ""));
                 setBudgetFromCoPSF(String(d.budgetFromCoPSF || ""));
+                setFunctionalDivision(String(d.functionalDivision || ""));
                 if (d.indicatorQuarterlyTargets) setIndicatorTargets(d.indicatorQuarterlyTargets);
                 if (d.actionItems) setActionItems(d.actionItems);
-                if (d.activities) setActivities(d.activities);
+                if (d.activities) { setActivities(d.activities); pirActivitiesLoaded.current = true; }
                 if (d.factors) setFactors(d.factors);
             } catch (e) {
                 console.error("Failed to load submitted PIR:", e);
@@ -307,16 +331,19 @@ export default function App() {
         if (hasDraft && loadedDraftData) {
             try {
                 const draft = loadedDraftData;
-                if (isDivisionPersonnel) setSchool(draft.school || "");
+                if (isDivisionPersonnel) {
+                    setSchool(draft.school || "");
+                    setFunctionalDivision(draft.functionalDivision || "");
+                }
                 setOwner(draft.owner || "");
                 setBudgetFromDivision(draft.budgetFromDivision || "");
                 setBudgetFromCoPSF(draft.budgetFromCoPSF || "");
-                if (draft.indicatorQuarterlyTargets?.length) setIndicatorTargets(draft.indicatorQuarterlyTargets);
+                if (draft.indicatorQuarterlyTargets?.length) {
+                    setIndicatorTargets(draft.indicatorQuarterlyTargets);
+                    draftIndicatorsLoaded.current = true;
+                }
                 if (draft.actionItems?.length) {
-                    setActionItems(draft.actionItems.length >= 5
-                        ? draft.actionItems
-                        : [...draft.actionItems, ...Array(5 - draft.actionItems.length).fill(null).map(() => ({ action: '', response_asds: '', response_sds: '' }))]
-                    );
+                    setActionItems(draft.actionItems);
                 }
                 if (draft.activities) setActivities(draft.activities);
                 if (draft.factors) setFactors(draft.factors);
@@ -337,6 +364,9 @@ export default function App() {
     const handleBack = () => {
         if (appMode === 'splash') {
             navigate('/');
+        } else if (isEditing) {
+            setIsEditing(false);
+            setAppMode('readonly');
         } else {
             if (hasInputtedData()) {
                 handleSaveForLater();
@@ -350,6 +380,42 @@ export default function App() {
             handleSaveForLater();
         }
         navigate('/');
+    };
+
+    const handleEditPIR = () => {
+        setIsEditing(true);
+        setAppMode('wizard');
+    };
+
+    const handleDeletePIR = () => {
+        setModal({
+            isOpen: true,
+            type: 'warning',
+            title: 'Delete Submitted PIR?',
+            message: 'This will permanently delete your submitted PIR for this quarter. This cannot be undone.',
+            confirmText: 'Yes, Delete',
+            onConfirm: async () => {
+                closeModal();
+                try {
+                    await axios.delete(`${import.meta.env.VITE_API_URL}/api/pirs/${pirId}`, { headers: authHeaders });
+                    // Remove from completedPrograms and refresh
+                    setCompletedPrograms(prev => prev.filter(p => p !== program));
+                    setPirId(null);
+                    setPirStatus(null);
+                    setIsEditing(false);
+                    setAppMode('splash');
+                } catch (e) {
+                    setModal({
+                        isOpen: true,
+                        type: 'warning',
+                        title: 'Delete Failed',
+                        message: e.response?.data?.error || 'Failed to delete the PIR. It may already be under review.',
+                        confirmText: 'Dismiss',
+                        onConfirm: closeModal,
+                    });
+                }
+            },
+        });
     };
 
     const handleViewAIP = async () => {
@@ -380,6 +446,7 @@ export default function App() {
                 program_owner: owner,
                 budget_from_division: budgetFromDivision,
                 budget_from_co_psf: budgetFromCoPSF,
+                functional_division: isDivisionPersonnel ? functionalDivision : null,
                 indicator_quarterly_targets: indicatorTargets,
                 action_items: actionItems,
                 activity_reviews: activities.map(a => ({
@@ -439,10 +506,17 @@ export default function App() {
 
     const executeDelete = useCallback((id) => {
         setActivities(prev => {
+            const row = prev.find(a => a.id === id);
+            if (row?.fromAIP) {
+                setRemovedAIPActivities(r =>
+                    r.some(a => a.id === id) ? r : [...r, row]
+                );
+            }
             const newActivities = prev.filter(a => a.id !== id);
             setExpandedActivityId(curr => curr === id && newActivities.length > 0 ? newActivities[newActivities.length - 1].id : curr);
             return newActivities;
         });
+        setModal(prev => ({ ...prev, isOpen: false }));
         setActivityToDelete(null);
     }, []);
 
@@ -456,18 +530,33 @@ export default function App() {
                     isOpen: true,
                     type: 'warning',
                     title: 'Delete Activity?',
-                    message: 'This activity contains data. Are you sure you want to permanently remove it?',
+                    message: row.fromAIP
+                        ? 'This activity contains data. It will be moved to the tray below so you can restore it later.'
+                        : 'This activity contains data. Are you sure you want to permanently remove it?',
                     confirmText: 'Yes, Delete',
                     onConfirm: () => executeDelete(id)
                 });
                 return prev;
             } else {
+                if (row?.fromAIP) {
+                    setRemovedAIPActivities(r =>
+                        r.some(a => a.id === id) ? r : [...r, row]
+                    );
+                }
                 const newActivities = prev.filter(a => a.id !== id);
                 setExpandedActivityId(curr => curr === id && newActivities.length > 0 ? newActivities[newActivities.length - 1].id : curr);
                 return newActivities;
             }
         });
     }, [executeDelete]);
+
+    const handleRestoreActivity = useCallback((id) => {
+        setRemovedAIPActivities(prev => {
+            const item = prev.find(a => a.id === id);
+            if (item) setActivities(acts => [...acts, item]);
+            return prev.filter(a => a.id !== id);
+        });
+    }, []);
 
     const handleActivityChange = useCallback((id, field, value) => {
         setActivities(prev => prev.map(a => a.id === id ? { ...a, [field]: value } : a));
@@ -500,58 +589,78 @@ export default function App() {
     };
 
     const handleConfirmSubmit = async () => {
-        try {
-            await axios.post(
-                `${import.meta.env.VITE_API_URL}/api/pirs`,
-                {
-                    program_title: program,
-                    quarter: quarterString,
-                    program_owner: owner,
-                    budget_from_division: budgetFromDivision,
-                    budget_from_co_psf: budgetFromCoPSF,
-                    indicator_quarterly_targets: indicatorTargets,
-                    action_items: actionItems,
-                    activity_reviews: activities.map(a => ({
-                        aip_activity_id: a.fromAIP ? a.aip_activity_id : null,
-                        complied: a.complied,
-                        actual_tasks_conducted: a.actualTasksConducted,
-                        contributory_performance_indicators: a.contributoryIndicators,
-                        movs_expected_outputs: a.movsExpectedOutputs,
-                        adjustments: a.adjustments,
-                        is_unplanned: a.isUnplanned,
-                        physTarget: a.physTarget,
-                        finTarget: a.finTarget,
-                        physAcc: a.physAcc,
-                        finAcc: a.finAcc,
-                        actions: a.actions,
-                    })),
-                    factors: Object.fromEntries(
-                        FACTOR_TYPES.map(type => [type, {
-                            facilitating: factors[type]?.facilitating ?? '',
-                            hindering: factors[type]?.hindering ?? '',
-                            recommendations: factors[type]?.recommendations ?? '',
-                        }])
-                    ),
-                },
-                { headers: authHeaders }
-            );
+        const pirBody = {
+            program_title: program,
+            quarter: quarterString,
+            program_owner: owner,
+            budget_from_division: budgetFromDivision,
+            budget_from_co_psf: budgetFromCoPSF,
+            functional_division: isDivisionPersonnel ? functionalDivision : null,
+            indicator_quarterly_targets: indicatorTargets,
+            action_items: actionItems,
+            activity_reviews: activities.map(a => ({
+                aip_activity_id: a.fromAIP ? a.aip_activity_id : null,
+                complied: a.complied,
+                actual_tasks_conducted: a.actualTasksConducted,
+                contributory_performance_indicators: a.contributoryIndicators,
+                movs_expected_outputs: a.movsExpectedOutputs,
+                adjustments: a.adjustments,
+                is_unplanned: a.isUnplanned,
+                physTarget: a.physTarget,
+                finTarget: a.finTarget,
+                physAcc: a.physAcc,
+                finAcc: a.finAcc,
+                actions: a.actions,
+            })),
+            factors: Object.fromEntries(
+                FACTOR_TYPES.map(type => [type, {
+                    facilitating: factors[type]?.facilitating ?? '',
+                    hindering: factors[type]?.hindering ?? '',
+                    recommendations: factors[type]?.recommendations ?? '',
+                }])
+            ),
+        };
 
-            setIsSubmitted(true);
-            // Draft is promoted to Submitted in the backend — no separate delete needed
-            setModal({
-                isOpen: true,
-                type: 'success',
-                title: 'Success!',
-                message: 'The QPIR document has been saved to the database.',
-                confirmText: 'Back to Dashboard',
-                onConfirm: () => navigate('/')
-            });
+        try {
+            if (isEditing && pirId) {
+                await axios.put(
+                    `${import.meta.env.VITE_API_URL}/api/pirs/${pirId}`,
+                    pirBody,
+                    { headers: authHeaders }
+                );
+                setIsEditing(false);
+                setPirStatus('Submitted');
+                setModal({
+                    isOpen: true,
+                    type: 'success',
+                    title: 'PIR Updated!',
+                    message: 'Your changes have been saved.',
+                    confirmText: 'View Submission',
+                    onConfirm: () => { closeModal(); setAppMode('readonly'); }
+                });
+            } else {
+                await axios.post(
+                    `${import.meta.env.VITE_API_URL}/api/pirs`,
+                    pirBody,
+                    { headers: authHeaders }
+                );
+                setIsSubmitted(true);
+                // Draft is promoted to Submitted in the backend — no separate delete needed
+                setModal({
+                    isOpen: true,
+                    type: 'success',
+                    title: 'Success!',
+                    message: 'The QPIR document has been saved to the database.',
+                    confirmText: 'Back to Dashboard',
+                    onConfirm: () => navigate('/')
+                });
+            }
         } catch (error) {
             console.error("Failed to submit PIR:", error);
             setModal({
                 isOpen: true,
                 type: 'warning',
-                title: 'Submission Failed',
+                title: isEditing ? 'Update Failed' : 'Submission Failed',
                 message: error.response?.data?.error || 'An error occurred while saving the PIR. Please ensure the associated AIP exists.',
                 confirmText: 'Dismiss',
                 onConfirm: closeModal
@@ -592,24 +701,56 @@ export default function App() {
                         <div className="bg-slate-50 dark:bg-dark-base min-h-screen font-sans print:bg-white">
                             {/* Lock banner */}
                             <div className="max-w-5xl mx-auto px-4 pt-8 pb-4 print:hidden">
-                                <div className="flex items-center gap-3 px-5 py-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl shadow-sm">
+                                <div className="flex items-center gap-3 px-5 py-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 rounded-2xl shadow-sm flex-wrap">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 shrink-0">
                                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                                     </svg>
-                                    <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex-1">This form has been submitted and is read-only.</span>
-                                    <button
-                                        onClick={() => window.print()}
-                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" />
-                                        </svg>
-                                        Print / Save PDF
-                                    </button>
+                                    <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex-1">
+                                        This form has been submitted{pirStatus && pirStatus !== 'Submitted' ? ` — currently ${pirStatus.toLowerCase()} by reviewers` : ' and is read-only'}.
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        {pirStatus === 'Submitted' && (
+                                            <>
+                                                <button
+                                                    onClick={handleEditPIR}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                    </svg>
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={handleDeletePIR}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-900/50 text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                                    </svg>
+                                                    Delete
+                                                </button>
+                                            </>
+                                        )}
+                                        <button
+                                            onClick={() => {
+                                                const s = document.createElement('style');
+                                                s.textContent = '@media print { @page { size: A4 landscape; margin: 1cm; } }';
+                                                document.head.appendChild(s);
+                                                window.print();
+                                                window.addEventListener('afterprint', () => s.remove(), { once: true });
+                                            }}
+                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" />
+                                            </svg>
+                                            Print / Save PDF
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             {/* Document */}
-                            <div className="max-w-5xl mx-auto px-4 pb-12">
+                            <div className="max-w-7xl mx-auto px-4 pb-12">
                                 <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-sm border border-slate-100 dark:border-dark-border p-8 print:shadow-none print:border-none print:p-0 print:rounded-none">
                                     <PIRDocument
                                         quarter={quarterString}
@@ -620,6 +761,7 @@ export default function App() {
                                         owner={owner}
                                         budgetFromDivision={budgetFromDivision}
                                         budgetFromCoPSF={budgetFromCoPSF}
+                                        functionalDivision={functionalDivision}
                                         indicatorTargets={indicatorTargets}
                                         activities={activities}
                                         factors={factors}
@@ -633,11 +775,11 @@ export default function App() {
                     <motion.div key="form" {...motionProps}>
                         <div className="bg-slate-50 dark:bg-dark-base min-h-screen flex flex-col text-slate-800 dark:text-slate-100 font-sans relative print:py-0 print:bg-white print:text-black">
                             <FormHeader
-                                title="Quarterly Performance Review"
+                                title={isEditing ? 'Edit Submitted PIR' : 'Quarterly Performance Review'}
                                 programName={program}
-                                onSave={handleSaveForLater}
+                                onSave={isEditing ? undefined : handleSaveForLater}
                                 onBack={handleBack}
-                                onHome={handleHome}
+                                onHome={isEditing ? undefined : handleHome}
                                 isSaving={isSaving}
                                 isSaved={isSaved}
                                 lastSavedTime={lastSavedTime}
@@ -652,6 +794,7 @@ export default function App() {
                                 title="PIR Document Preview"
                                 subtitle="Quarterly Program Implementation Review"
                                 filename={`PIR_${quarterString.replace(/\s+/g, '_')}${program ? '_' + program.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') : ''}`}
+                                landscape
                             >
                                 <PIRDocument
                                     quarter={quarterString}
@@ -662,6 +805,7 @@ export default function App() {
                                     owner={owner}
                                     budgetFromDivision={budgetFromDivision}
                                     budgetFromCoPSF={budgetFromCoPSF}
+                                    functionalDivision={functionalDivision}
                                     indicatorTargets={indicatorTargets}
                                     activities={activities}
                                     factors={factors}
@@ -705,26 +849,8 @@ export default function App() {
                                 </button>
                             )}
 
-                            <style>{`
-                @media print {
-                    @page { margin: 1cm; }
-                    body { background-color: white !important; color: black !important; }
-                    .print-reset { background: transparent !important; color: black !important; border-color: black !important; }
-                }
-            `}</style>
 
 
-
-                            {/* Modal */}
-                            <ConfirmationModal
-                                isOpen={modal.isOpen}
-                                onClose={closeModal}
-                                onConfirm={modal.onConfirm}
-                                type={modal.type}
-                                title={modal.title}
-                                message={modal.message}
-                                confirmText={modal.confirmText}
-                            />
 
                             {/* MAIN CONTAINER */}
                             <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0">
@@ -797,6 +923,8 @@ export default function App() {
                                                         setBudgetFromDivision={setBudgetFromDivision}
                                                         budgetFromCoPSF={budgetFromCoPSF}
                                                         setBudgetFromCoPSF={setBudgetFromCoPSF}
+                                                        functionalDivision={functionalDivision}
+                                                        setFunctionalDivision={setFunctionalDivision}
                                                     />
 
                                                     {/* -------------------------------------------------------- */}
@@ -825,6 +953,8 @@ export default function App() {
                                                         handleAddActivity={handleAddActivity}
                                                         handleAddUnplannedActivity={handleAddUnplannedActivity}
                                                         isAddingActivity={isAddingActivity}
+                                                        removedAIPActivities={removedAIPActivities}
+                                                        handleRestoreActivity={handleRestoreActivity}
                                                     />
 
                                                     {/* -------------------------------------------------------- */}
@@ -889,6 +1019,7 @@ export default function App() {
                                                                 onSubmit={handleConfirmSubmit}
                                                                 onPreview={() => setIsPreviewOpen(true)}
                                                                 theme="blue"
+                                                                submitLabel={isEditing ? "Save Changes" : undefined}
                                                             />
                                                         </div>
                                                     )}
@@ -947,7 +1078,7 @@ export default function App() {
                                                                 className="inline-flex h-14 items-center justify-center rounded-2xl bg-blue-600 px-8 py-1 text-sm font-bold text-white transition-colors gap-3 hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-md"
                                                             >
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                                                                {isSubmitted ? "Submitted" : "Confirm & Submit"}
+                                                                {isSubmitted ? "Submitted" : isEditing ? "Save Changes" : "Confirm & Submit"}
                                                             </button>
                                                         </div>
                                                     </div>
@@ -961,6 +1092,15 @@ export default function App() {
                     </motion.div>
                 )}
             </AnimatePresence>
+            <ConfirmationModal
+                isOpen={modal.isOpen}
+                onClose={closeModal}
+                onConfirm={modal.onConfirm}
+                type={modal.type}
+                title={modal.title}
+                message={modal.message}
+                confirmText={modal.confirmText}
+            />
         </div>
     );
 }

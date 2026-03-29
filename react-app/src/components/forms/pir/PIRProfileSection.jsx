@@ -1,6 +1,7 @@
 import React from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { Input } from '../../ui/Input';
+import { Select } from '../../ui/Select';
 
 function LockedField({ label, value }) {
     return (
@@ -26,6 +27,7 @@ export default React.memo(function PIRProfileSection({
     owner, setOwner, ownerLocked,
     budgetFromDivision, setBudgetFromDivision,
     budgetFromCoPSF, setBudgetFromCoPSF,
+    functionalDivision, setFunctionalDivision,
 }) {
     return (
         <div className={`${(appMode === 'full' || currentStep === 1) ? 'block' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
@@ -45,8 +47,21 @@ export default React.memo(function PIRProfileSection({
                     </div>
                 </div>
 
-                {/* School Users: show pre-filled school as a read-only info field */}
-                {!isDivisionPersonnel && (
+                {/* School Users: read-only school field. Division Personnel: Functional Division dropdown. */}
+                {isDivisionPersonnel ? (
+                    <Select
+                        theme="blue"
+                        label="Functional Division"
+                        placeholder="Select..."
+                        options={[
+                            { value: "SGOD", label: "SGOD" },
+                            { value: "OSDS", label: "OSDS" },
+                            { value: "CID", label: "CID" },
+                        ]}
+                        value={functionalDivision}
+                        onChange={(e) => setFunctionalDivision(e.target.value)}
+                    />
+                ) : (
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">School</label>
                         <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl">
@@ -65,15 +80,14 @@ export default React.memo(function PIRProfileSection({
                     </div>
                 </div>
 
+                <Input theme="blue" label="Budget — From Division" placeholder="₱ 0.00" inputMode="decimal" value={budgetFromDivision} onChange={(e) => setBudgetFromDivision(e.target.value.replace(/[^0-9.]/g, ''))} />
+
                 {ownerLocked
                     ? <LockedField label={isDivisionPersonnel ? "Program Owner" : "Coordinator"} value={owner} />
                     : <Input theme="blue" label={isDivisionPersonnel ? "Program Owner" : "Coordinator"} placeholder={isDivisionPersonnel ? "Name of owner" : "Name of coordinator"} value={owner} onChange={(e) => setOwner(e.target.value)} />
                 }
 
-                <div className="grid grid-cols-2 gap-4">
-                    <Input theme="blue" label="Budget — From Division" placeholder="₱ 0.00" inputMode="decimal" value={budgetFromDivision} onChange={(e) => setBudgetFromDivision(e.target.value.replace(/[^0-9.]/g, ''))} />
-                    <Input theme="blue" label="Budget — From CO-PSF" placeholder="₱ 0.00" inputMode="decimal" value={budgetFromCoPSF} onChange={(e) => setBudgetFromCoPSF(e.target.value.replace(/[^0-9.]/g, ''))} />
-                </div>
+                <Input theme="blue" label="Budget — From CO-PSF" placeholder="₱ 0.00" inputMode="decimal" value={budgetFromCoPSF} onChange={(e) => setBudgetFromCoPSF(e.target.value.replace(/[^0-9.]/g, ''))} />
             </div>
         </div>
     );
