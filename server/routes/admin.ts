@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import jwt from "jsonwebtoken";
 import * as bcrypt from "bcrypt";
+import { getCESRoleForPIR, CES_ROLES } from "../lib/routing.ts";
 
 const adminRoutes = new Hono();
 const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
@@ -30,6 +31,18 @@ function getUserFromToken(authHeader: string | undefined): TokenPayload | null {
 function requireAdmin(authHeader: string | undefined): TokenPayload {
   const user = getUserFromToken(authHeader);
   if (!user || user.role !== "Admin") throw new Error("FORBIDDEN");
+  return user;
+}
+
+function requireCES(authHeader: string | undefined): TokenPayload {
+  const user = getUserFromToken(authHeader);
+  if (!user || !(CES_ROLES as readonly string[]).includes(user.role)) throw new Error("FORBIDDEN");
+  return user;
+}
+
+function requireSDS(authHeader: string | undefined): TokenPayload {
+  const user = getUserFromToken(authHeader);
+  if (!user || user.role !== "SDS") throw new Error("FORBIDDEN");
   return user;
 }
 
@@ -106,11 +119,12 @@ adminRoutes.patch('/pirs/:id/management-response', async (c) => {
   return c.json({ message: 'Management response saved', pir: updated });
 });
 
-// GET /admin/pirs — list submitted PIRs (Admin + Reviewer)
+// GET /admin/pirs — list submitted PIRs (Admin + Reviewer + CES + SDS)
 adminRoutes.get('/pirs', async (c) => {
   const tokenUser = getUserFromToken(c.req.header('Authorization'));
   if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
-  if (tokenUser.role !== 'Admin' && tokenUser.role !== 'Reviewer') {
+  const readableRoles = ['Admin', 'Reviewer', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'SDS'];
+  if (!readableRoles.includes(tokenUser.role)) {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
@@ -141,11 +155,12 @@ adminRoutes.get('/pirs', async (c) => {
   })));
 });
 
-// GET /admin/pirs/:id — single PIR with full data (Admin + Reviewer)
+// GET /admin/pirs/:id — single PIR with full data (Admin + Reviewer + CES + SDS)
 adminRoutes.get('/pirs/:id', async (c) => {
   const tokenUser = getUserFromToken(c.req.header('Authorization'));
   if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
-  if (tokenUser.role !== 'Admin' && tokenUser.role !== 'Reviewer') {
+  const readableRoles = ['Admin', 'Reviewer', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'SDS'];
+  if (!readableRoles.includes(tokenUser.role)) {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
@@ -156,6 +171,7 @@ adminRoutes.get('/pirs/:id', async (c) => {
       aip: { include: { program: true, school: true } },
       activity_reviews: { include: { aip_activity: true } },
       factors: true,
+      ces_reviewer: { select: { name: true, role: true } },
     },
   });
   if (!pir) return c.json({ error: 'PIR not found' }, 404);
@@ -180,6 +196,10 @@ adminRoutes.get('/pirs/:id', async (c) => {
     budgetFromCoPSF: (pir as any).budget_from_co_psf,
     indicatorQuarterlyTargets: (pir as any).indicator_quarterly_targets ?? [],
     actionItems: (pir as any).action_items ?? [],
+    cesReviewer: (pir as any).ces_reviewer?.name ?? null,
+    cesNotedAt: (pir as any).ces_noted_at ?? null,
+    cesRemarks: (pir as any).ces_remarks ?? null,
+    sdsRemarks: (pir as any).sds_remarks ?? null,
     activities: pir.activity_reviews.map((r: any) => ({
       id: r.id,
       name: r.aip_activity?.activity_name ?? '',
@@ -198,6 +218,288 @@ adminRoutes.get('/pirs/:id', async (c) => {
     })),
     factors: factorsMap,
   });
+});
+
+// ==========================================
+// CES REVIEW ROUTES (before admin middleware)
+// ==========================================
+
+adminRoutes.get('/ces/pirs', async (c) => {
+  let tokenUser: TokenPayload;
+  try { tokenUser = requireCES(c.req.header('Authorization')); }
+  catch { return c.json({ error: 'Forbidden' }, 403); }
+
+  const quarter = c.req.query('quarter');
+
+  const cesFilter: Record<string, any> = {
+    'CES-SGOD': { aip: { school_id: null, program: { division: 'SGOD' } } },
+    'CES-ASDS': { aip: { school_id: null, program: { division: 'OSDS' } } },
+    'CES-CID':  { OR: [
+      { aip: { school_id: null, program: { division: 'CID' } } },
+      { aip: { school_id: { not: null } } },
+    ]},
+  };
+
+  const roleFilter = cesFilter[tokenUser.role] ?? {};
+
+  const pirs = await prisma.pIR.findMany({
+    where: {
+      status: 'For CES Review',
+      ...roleFilter,
+      ...(quarter ? { quarter } : {}),
+    },
+    include: {
+      aip: { include: { program: true, school: true } },
+      created_by: { select: { name: true, first_name: true, last_name: true, email: true } },
+    },
+    orderBy: { created_at: 'desc' },
+  });
+
+  return c.json(pirs.map((p: any) => ({
+    id: p.id,
+    quarter: p.quarter,
+    status: p.status,
+    program: p.aip.program.title,
+    school: p.aip.school?.name ?? 'Division',
+    owner: p.program_owner,
+    functionalDivision: p.functional_division,
+    submittedAt: p.created_at,
+    submittedBy: buildSubmittedBy(p.created_by),
+  })));
+});
+
+adminRoutes.post('/ces/pirs/:id/note', async (c) => {
+  let tokenUser: TokenPayload;
+  try { tokenUser = requireCES(c.req.header('Authorization')); }
+  catch { return c.json({ error: 'Forbidden' }, 403); }
+
+  const pirId = parseInt(c.req.param('id'));
+  const { ces_remarks } = await c.req.json();
+
+  const pir = await prisma.pIR.findUnique({
+    where: { id: pirId },
+    include: { aip: { include: { program: true, school: true } } },
+  });
+  if (!pir) return c.json({ error: 'PIR not found' }, 404);
+  if ((pir as any).status !== 'For CES Review') {
+    return c.json({ error: 'PIR is not pending CES review' }, 409);
+  }
+
+  const updated = await prisma.pIR.update({
+    where: { id: pirId },
+    data: {
+      status: 'For SDS Review',
+      ces_reviewer_id: tokenUser.id,
+      ces_noted_at: new Date(),
+      ces_remarks: ces_remarks ?? null,
+    },
+  });
+
+  const schoolLabel = (pir as any).aip.school?.name ?? 'Division';
+  const programTitle = (pir as any).aip.program.title;
+
+  // Notify all SDS users
+  const sdsUsers = await prisma.user.findMany({ where: { role: 'SDS', is_active: true }, select: { id: true } });
+  if (sdsUsers.length > 0) {
+    await prisma.notification.createMany({
+      data: sdsUsers.map((u: any) => ({
+        user_id: u.id,
+        title: 'PIR Ready for SDS Review',
+        message: `${schoolLabel} PIR for ${programTitle} (${(pir as any).quarter}) has been noted by CES and is ready for your review.`,
+        type: 'for_sds_review',
+      })),
+    });
+  }
+
+  // Notify the submitter
+  if ((pir as any).created_by_user_id) {
+    await prisma.notification.create({
+      data: {
+        user_id: (pir as any).created_by_user_id,
+        title: 'PIR Forwarded for SDS Review',
+        message: `Your PIR for ${programTitle} (${(pir as any).quarter}) has been noted by CES and is now pending SDS review.`,
+        type: 'for_sds_review',
+      },
+    });
+  }
+
+  await writeAuditLog(tokenUser.id, 'ces_noted_pir', 'PIR', pirId, { ces_remarks: ces_remarks ?? null });
+  return c.json({ success: true, pir: updated });
+});
+
+adminRoutes.post('/ces/pirs/:id/return', async (c) => {
+  let tokenUser: TokenPayload;
+  try { tokenUser = requireCES(c.req.header('Authorization')); }
+  catch { return c.json({ error: 'Forbidden' }, 403); }
+
+  const pirId = parseInt(c.req.param('id'));
+  const { ces_remarks } = await c.req.json();
+
+  const pir = await prisma.pIR.findUnique({
+    where: { id: pirId },
+    include: { aip: { include: { program: true, school: true } } },
+  });
+  if (!pir) return c.json({ error: 'PIR not found' }, 404);
+  if ((pir as any).status !== 'For CES Review') {
+    return c.json({ error: 'PIR is not pending CES review' }, 409);
+  }
+
+  await prisma.pIR.update({
+    where: { id: pirId },
+    data: {
+      status: 'Returned',
+      ces_reviewer_id: tokenUser.id,
+      ces_noted_at: new Date(),
+      ces_remarks: ces_remarks ?? null,
+    },
+  });
+
+  const programTitle = (pir as any).aip.program.title;
+  if ((pir as any).created_by_user_id) {
+    await prisma.notification.create({
+      data: {
+        user_id: (pir as any).created_by_user_id,
+        title: 'PIR Returned by CES',
+        message: `Your PIR for ${programTitle} (${(pir as any).quarter}) was returned by CES.${ces_remarks ? ` Feedback: ${ces_remarks}` : ''}`,
+        type: 'returned',
+      },
+    });
+  }
+
+  await writeAuditLog(tokenUser.id, 'ces_returned_pir', 'PIR', pirId, { ces_remarks: ces_remarks ?? null });
+  return c.json({ success: true });
+});
+
+// ==========================================
+// SDS REVIEW ROUTES (before admin middleware)
+// ==========================================
+
+adminRoutes.get('/sds/pirs', async (c) => {
+  let tokenUser: TokenPayload;
+  try { tokenUser = requireSDS(c.req.header('Authorization')); }
+  catch { return c.json({ error: 'Forbidden' }, 403); }
+
+  const quarter = c.req.query('quarter');
+  const pirs = await prisma.pIR.findMany({
+    where: {
+      status: 'For SDS Review',
+      ...(quarter ? { quarter } : {}),
+    },
+    include: {
+      aip: { include: { program: true, school: true } },
+      created_by: { select: { name: true, first_name: true, last_name: true, email: true } },
+      ces_reviewer: { select: { name: true, role: true } },
+    },
+    orderBy: { ces_noted_at: 'desc' },
+  });
+
+  return c.json(pirs.map((p: any) => ({
+    id: p.id,
+    quarter: p.quarter,
+    status: p.status,
+    program: p.aip.program.title,
+    school: p.aip.school?.name ?? 'Division',
+    owner: p.program_owner,
+    functionalDivision: p.functional_division,
+    cesReviewer: p.ces_reviewer?.name ?? null,
+    cesNotedAt: p.ces_noted_at,
+    cesRemarks: p.ces_remarks,
+    submittedAt: p.created_at,
+    submittedBy: buildSubmittedBy(p.created_by),
+  })));
+});
+
+adminRoutes.post('/sds/pirs/:id/approve', async (c) => {
+  let tokenUser: TokenPayload;
+  try { tokenUser = requireSDS(c.req.header('Authorization')); }
+  catch { return c.json({ error: 'Forbidden' }, 403); }
+
+  const pirId = parseInt(c.req.param('id'));
+  const { sds_remarks } = await c.req.json();
+
+  const pir = await prisma.pIR.findUnique({
+    where: { id: pirId },
+    include: { aip: { include: { program: true, school: true } } },
+  });
+  if (!pir) return c.json({ error: 'PIR not found' }, 404);
+  if ((pir as any).status !== 'For SDS Review') {
+    return c.json({ error: 'PIR is not pending SDS review' }, 409);
+  }
+
+  await prisma.pIR.update({
+    where: { id: pirId },
+    data: { status: 'Approved', sds_remarks: sds_remarks ?? null },
+  });
+
+  const programTitle = (pir as any).aip.program.title;
+  if ((pir as any).created_by_user_id) {
+    await prisma.notification.create({
+      data: {
+        user_id: (pir as any).created_by_user_id,
+        title: 'PIR Approved',
+        message: `Your PIR for ${programTitle} (${(pir as any).quarter}) has been approved by SDS.`,
+        type: 'approved',
+      },
+    });
+  }
+
+  await writeAuditLog(tokenUser.id, 'sds_approved_pir', 'PIR', pirId, { sds_remarks: sds_remarks ?? null });
+  return c.json({ success: true });
+});
+
+adminRoutes.post('/sds/pirs/:id/return', async (c) => {
+  let tokenUser: TokenPayload;
+  try { tokenUser = requireSDS(c.req.header('Authorization')); }
+  catch { return c.json({ error: 'Forbidden' }, 403); }
+
+  const pirId = parseInt(c.req.param('id'));
+  // returnTo: "submitter" | "ces" — defaults to "submitter"
+  const { sds_remarks, returnTo } = await c.req.json();
+
+  const pir = await prisma.pIR.findUnique({
+    where: { id: pirId },
+    include: { aip: { include: { program: true, school: true } } },
+  });
+  if (!pir) return c.json({ error: 'PIR not found' }, 404);
+  if ((pir as any).status !== 'For SDS Review') {
+    return c.json({ error: 'PIR is not pending SDS review' }, 409);
+  }
+
+  const newStatus = returnTo === 'ces' ? 'For CES Review' : 'Returned';
+  await prisma.pIR.update({
+    where: { id: pirId },
+    data: { status: newStatus, sds_remarks: sds_remarks ?? null },
+  });
+
+  const programTitle = (pir as any).aip.program.title;
+
+  if (returnTo === 'ces') {
+    const cesRole = getCESRoleForPIR((pir as any).aip.program?.division ?? null, !!(pir as any).aip.school_id);
+    const cesUsers = await prisma.user.findMany({ where: { role: cesRole, is_active: true }, select: { id: true } });
+    if (cesUsers.length > 0) {
+      const schoolLabel = (pir as any).aip.school?.name ?? 'Division';
+      await prisma.notification.createMany({
+        data: cesUsers.map((u: any) => ({
+          user_id: u.id,
+          title: 'PIR Returned to CES by SDS',
+          message: `SDS returned the PIR for ${schoolLabel} - ${programTitle} (${(pir as any).quarter}) back to CES for further review.`,
+          type: 'for_ces_review',
+        })),
+      });
+    }
+  } else if ((pir as any).created_by_user_id) {
+    await prisma.notification.create({
+      data: {
+        user_id: (pir as any).created_by_user_id,
+        title: 'PIR Returned by SDS',
+        message: `Your PIR for ${programTitle} (${(pir as any).quarter}) was returned by SDS.${sds_remarks ? ` Feedback: ${sds_remarks}` : ''}`,
+        type: 'returned',
+      },
+    });
+  }
+
+  await writeAuditLog(tokenUser.id, 'sds_returned_pir', 'PIR', pirId, { sds_remarks: sds_remarks ?? null, returnTo: returnTo ?? 'submitter' });
+  return c.json({ success: true });
 });
 
 adminRoutes.use("*", async (c, next) => {
@@ -250,10 +552,12 @@ adminRoutes.get("/overview", async (c) => {
     const qPirs = pirsByQuarter.filter((p) => p.quarter.startsWith(prefix));
     return {
       quarter: `Q${q}`,
-      submitted: qPirs.filter((p) => p.status === "Submitted").length,
-      approved: qPirs.filter((p) => p.status === "Approved").length,
-      underReview: qPirs.filter((p) => p.status === "Under Review").length,
-      returned: qPirs.filter((p) => p.status === "Returned").length,
+      submitted:    qPirs.filter((p) => p.status === "Submitted").length,
+      forCESReview: qPirs.filter((p) => p.status === "For CES Review").length,
+      forSDSReview: qPirs.filter((p) => p.status === "For SDS Review").length,
+      approved:     qPirs.filter((p) => p.status === "Approved").length,
+      underReview:  qPirs.filter((p) => p.status === "Under Review").length,
+      returned:     qPirs.filter((p) => p.status === "Returned").length,
     };
   });
 
@@ -686,15 +990,17 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
   const id = parseInt(c.req.param("id"));
   const { type, status, feedback } = await c.req.json();
 
-  if (!["Submitted", "Under Review", "Approved", "Returned"].includes(status)) {
+  if (!["Submitted", "Under Review", "For CES Review", "For SDS Review", "Approved", "Returned"].includes(status)) {
     return c.json({ error: "Invalid status" }, 400);
   }
 
   const statusLabels: Record<string, string> = {
-    "Approved": "approved",
-    "Returned": "returned",
-    "Under Review": "under_review",
-    "Submitted": "submitted",
+    "Approved":        "approved",
+    "Returned":        "returned",
+    "Under Review":    "under_review",
+    "For CES Review":  "for_ces_review",
+    "For SDS Review":  "for_sds_review",
+    "Submitted":       "submitted",
   };
 
   if (type === "pir") {
@@ -702,10 +1008,12 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
     if (pir.created_by_user_id) {
       const schoolLabel = pir.aip.school?.name ?? "your school";
       const notifMessages: Record<string, { title: string; message: string }> = {
-        "Approved": { title: "PIR Approved", message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) from ${schoolLabel} has been approved.` },
-        "Returned": { title: "PIR Returned", message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) has been returned for correction.${feedback ? ` Feedback: ${feedback}` : ""}` },
-        "Under Review": { title: "PIR Under Review", message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) is now under review.` },
-        "Submitted": { title: "PIR Status Updated", message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) status has been updated to Submitted.` },
+        "Approved":       { title: "PIR Approved",            message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) from ${schoolLabel} has been approved.` },
+        "Returned":       { title: "PIR Returned",            message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) has been returned for correction.${feedback ? ` Feedback: ${feedback}` : ""}` },
+        "Under Review":   { title: "PIR Under Review",        message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) is now under review.` },
+        "For CES Review": { title: "PIR Pending CES Review",  message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) has been sent for CES review.` },
+        "For SDS Review": { title: "PIR Pending SDS Review",  message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) has been forwarded to SDS for review.` },
+        "Submitted":      { title: "PIR Status Updated",      message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) status has been updated to Submitted.` },
       };
       const notif = notifMessages[status];
       if (notif) {
@@ -902,8 +1210,9 @@ adminRoutes.post("/users", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const { name, first_name, middle_initial, last_name, email, password, role, school_id, program_ids } = await c.req.json();
 
-  if ((role === "Admin" || role === "Reviewer") && !name) {
-    return c.json({ error: "name is required for Admin and Reviewer users" }, 400);
+  const systemRoles = ["Admin", "Reviewer", "CES-SGOD", "CES-ASDS", "CES-CID", "SDS"];
+  if (systemRoles.includes(role) && !name) {
+    return c.json({ error: "name is required for this role" }, 400);
   }
   if (role === "Division Personnel" && (!first_name || !last_name)) {
     return c.json({ error: "first_name and last_name are required for Division Personnel" }, 400);
@@ -955,7 +1264,7 @@ adminRoutes.patch("/users/:id", async (c) => {
   // Handle school_id carefully
   if (role === "School" && school_id !== undefined) {
     updateData.school_id = school_id;
-  } else if (role === "Division Personnel" || role === "Admin" || role === "Reviewer") {
+  } else if (["Division Personnel", "Admin", "Reviewer", "CES-SGOD", "CES-ASDS", "CES-CID", "SDS"].includes(role)) {
     updateData.school_id = null;
   }
 
@@ -1154,9 +1463,9 @@ adminRoutes.get("/programs", async (c) => {
 
 adminRoutes.post("/programs", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
-  const { title, abbreviation, category, school_level_requirement } = await c.req.json();
+  const { title, abbreviation, category, division, school_level_requirement } = await c.req.json();
   try {
-    const program = await prisma.program.create({ data: { title, abbreviation: abbreviation || null, category: category || null, school_level_requirement } });
+    const program = await prisma.program.create({ data: { title, abbreviation: abbreviation || null, category: category || null, division: division || null, school_level_requirement } });
     await writeAuditLog(admin.id, "created_program", "Program", program.id, { title });
     return c.json(program);
   } catch (e: any) {
@@ -1168,13 +1477,13 @@ adminRoutes.post("/programs", async (c) => {
 adminRoutes.patch("/programs/:id", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const id = parseInt(c.req.param("id"));
-  const { title, abbreviation, category, school_level_requirement } = await c.req.json();
+  const { title, abbreviation, category, division, school_level_requirement } = await c.req.json();
   try {
     const program = await prisma.program.update({
       where: { id },
-      data: { title, abbreviation: abbreviation || null, category: category || null, school_level_requirement },
+      data: { title, abbreviation: abbreviation || null, category: category || null, division: division || null, school_level_requirement },
     });
-    await writeAuditLog(admin.id, "updated_program", "Program", id, { title, abbreviation, school_level_requirement });
+    await writeAuditLog(admin.id, "updated_program", "Program", id, { title, abbreviation, division, school_level_requirement });
     return c.json(program);
   } catch (e: any) {
     if (e?.code === "P2002") return c.json({ error: "A program with that title already exists for that applicability level." }, 409);
@@ -1516,7 +1825,7 @@ adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
   }
 
   return c.json({
-    programs: programs.map((p) => ({ id: p.id, title: p.title, abbreviation: p.abbreviation, category: p.category })),
+    programs: programs.map((p) => ({ id: p.id, title: p.title, abbreviation: p.abbreviation, category: p.category, division: (p as any).division ?? null })),
     schools: schools.map((s) => ({ id: s.id, name: s.name, abbreviation: s.abbreviation })),
     matrix,
     totals,

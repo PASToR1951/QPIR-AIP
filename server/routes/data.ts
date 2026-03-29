@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import jwt from "jsonwebtoken";
+import { getCESRoleForPIR } from "../lib/routing.ts";
 
 const dataRoutes = new Hono();
 const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
@@ -1236,7 +1237,7 @@ dataRoutes.post('/pirs', async (c) => {
             year
           }
         },
-        include: { activities: true }
+        include: { activities: true, program: true }
       });
     } else {
       // Division Personnel: find AIP by user + program + year (school is null)
@@ -1247,7 +1248,7 @@ dataRoutes.post('/pirs', async (c) => {
           program_id: program.id,
           year
         },
-        include: { activities: true }
+        include: { activities: true, program: true }
       });
     }
 
@@ -1282,10 +1283,15 @@ dataRoutes.post('/pirs', async (c) => {
       actions_to_address_gap: rev.actions ?? '',
     }));
 
-    // Check if a Draft PIR exists — promote it instead of creating a new one
+    // Check if a PIR already exists for this aip + quarter
     const existingDraft = await prisma.pIR.findUnique({
       where: { aip_id_quarter: { aip_id: aip.id, quarter } }
     });
+
+    const inProgressStatuses = ['For CES Review', 'For SDS Review', 'Under Review'];
+    if (existingDraft && inProgressStatuses.includes(existingDraft.status)) {
+      return c.json({ error: 'A PIR has already been submitted for this program and quarter.' }, 409);
+    }
 
     let pir;
     if (existingDraft && existingDraft.status === 'Draft') {
@@ -1300,7 +1306,7 @@ dataRoutes.post('/pirs', async (c) => {
           functional_division: functional_division ?? null,
           indicator_quarterly_targets: indicator_quarterly_targets ?? [],
           action_items: action_items ?? [],
-          status: 'Submitted',
+          status: 'For CES Review',
           factors: { create: factorData },
           activity_reviews: { create: reviewData }
         }
@@ -1317,21 +1323,25 @@ dataRoutes.post('/pirs', async (c) => {
           functional_division: functional_division ?? null,
           indicator_quarterly_targets: indicator_quarterly_targets ?? [],
           action_items: action_items ?? [],
+          status: 'For CES Review',
           factors: { create: factorData },
           activity_reviews: { create: reviewData }
         }
       });
     }
 
-    // Notify all admins that a new PIR was submitted
+    // Notify the appropriate CES role and all admins
     const pirSchoolLabel = aip.school_id
       ? (await prisma.school.findUnique({ where: { id: aip.school_id }, select: { name: true } }))?.name ?? 'A school'
       : (tokenUser.name ?? tokenUser.email ?? 'Division Personnel');
+    const cesRole = getCESRoleForPIR(aip.program?.division ?? null, !!aip.school_id);
+    const cesUsers = await prisma.user.findMany({ where: { role: cesRole, is_active: true }, select: { id: true } });
     const pirAdmins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
-    if (pirAdmins.length > 0) {
+    const notifyIds = [...new Set([...cesUsers.map((u: any) => u.id), ...pirAdmins.map((u: any) => u.id)])];
+    if (notifyIds.length > 0) {
       await prisma.notification.createMany({
-        data: pirAdmins.map(admin => ({
-          user_id: admin.id,
+        data: notifyIds.map((userId: number) => ({
+          user_id: userId,
           title: 'New PIR Submitted',
           message: `${pirSchoolLabel} submitted a PIR for ${program_title} (${quarter}).`,
           type: 'pir_submitted',
@@ -1362,8 +1372,8 @@ dataRoutes.put('/pirs/:id', async (c) => {
     if (pir.created_by_user_id !== null && pir.created_by_user_id !== tokenUser.id) {
       return c.json({ error: 'Forbidden' }, 403);
     }
-    // Only allow editing if still "Submitted" (not yet reviewed)
-    if (pir.status !== 'Submitted') {
+    // Only allow editing if awaiting CES review or returned to submitter
+    if (pir.status !== 'For CES Review' && pir.status !== 'Returned') {
       return c.json({ error: 'This PIR can no longer be edited — it is currently under review.' }, 409);
     }
 
@@ -1408,6 +1418,7 @@ dataRoutes.put('/pirs/:id', async (c) => {
         functional_division: functional_division ?? null,
         indicator_quarterly_targets: indicator_quarterly_targets ?? [],
         action_items: action_items ?? [],
+        status: 'For CES Review', // Re-enter CES queue on resubmission
         factors: { create: factorData },
         activity_reviews: { create: reviewData },
       },
@@ -1436,8 +1447,8 @@ dataRoutes.delete('/pirs/:id', async (c) => {
     if (pir.created_by_user_id !== null && pir.created_by_user_id !== tokenUser.id) {
       return c.json({ error: 'Forbidden' }, 403);
     }
-    // Only allow deletion if still "Submitted"
-    if (pir.status !== 'Submitted') {
+    // Only allow deletion if awaiting CES review or returned to submitter
+    if (pir.status !== 'For CES Review' && pir.status !== 'Returned') {
       return c.json({ error: 'This PIR can no longer be deleted — it is currently under review.' }, 409);
     }
 
