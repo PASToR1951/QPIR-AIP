@@ -79,6 +79,7 @@ export default function App() {
 
     // Form State: Profile & Goals
     const [outcome, setOutcome] = useState("");
+    const [selectedTarget, setSelectedTarget] = useState("");
     const [depedProgram, setDepedProgram] = useState("");
     const [sipTitle, setSipTitle] = useState("");
     const [projectCoord, setProjectCoord] = useState("");
@@ -146,6 +147,7 @@ export default function App() {
     const loadDraftIntoState = useCallback((draft) => {
         if (!draft) return;
         setOutcome(draft.outcome || "");
+        setSelectedTarget(draft.indicators?.[0]?.description || "");
         setYear(draft.year || String(new Date().getFullYear()));
         setSipTitle(draft.sipTitle || "");
         setProjectCoord(draft.projectCoord || "");
@@ -160,6 +162,7 @@ export default function App() {
 
     const resetFormState = useCallback(() => {
         setOutcome("");
+        setSelectedTarget("");
         setSipTitle("");
         setProjectCoord("");
         setObjectives([""]);
@@ -224,6 +227,7 @@ export default function App() {
                 setYear(String(d.year));
                 setSubmittedAipStatus(d.status || null);
                 setOutcome(d.outcome || "");
+                setSelectedTarget(d.indicators?.[0]?.description || "");
                 setSipTitle(d.sipTitle || "");
                 setProjectCoord(d.projectCoord || "");
                 setObjectives(d.objectives || []);
@@ -289,6 +293,19 @@ export default function App() {
     }, []);
     const addIndicator = useCallback(() => setIndicators(prev => [...prev, { description: "", target: "" }]), []);
     const removeIndicator = useCallback((index) => setIndicators(prev => prev.filter((_, i) => i !== index)), []);
+
+    // Outcome change handler — resets target and indicators when outcome changes
+    const handleOutcomeChange = useCallback((newOutcome) => {
+        setOutcome(newOutcome);
+        setSelectedTarget("");
+        setIndicators([{ description: "", target: "" }]);
+    }, []);
+
+    // Target change handler — syncs selected target into the first indicator description
+    const handleTargetChange = useCallback((targetDescription) => {
+        setSelectedTarget(targetDescription);
+        setIndicators(prev => [{ ...prev[0], description: targetDescription }, ...prev.slice(1)]);
+    }, []);
 
     const hasInputtedData = () => {
         return outcome || sipTitle || projectCoord ||
@@ -857,7 +874,9 @@ export default function App() {
                                 <AIPProfileSection
                                     appMode={appMode}
                                     outcome={outcome}
-                                    setOutcome={setOutcome}
+                                    setOutcome={handleOutcomeChange}
+                                    selectedTarget={selectedTarget}
+                                    setSelectedTarget={handleTargetChange}
                                     year={year}
                                     setYear={setYear}
                                     depedProgram={depedProgram}
@@ -873,7 +892,7 @@ export default function App() {
                             {/* SECTION 2: GOALS AND TARGETS */}
                             {/* -------------------------------------------------------- */}
                             <div className={`${(appMode === 'full' || currentStep === 2) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
-                                <AIPGoalsTargetsSection 
+                                <AIPGoalsTargetsSection
                                     appMode={appMode}
                                     objectives={objectives}
                                     handleObjectiveChange={handleObjectiveChange}
