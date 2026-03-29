@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import Fuse from 'fuse.js';
 
 function toTitleCase(str) {
@@ -16,6 +16,16 @@ export default function FuzzyAutocomplete({
     const [isOpen, setIsOpen] = useState(false);
     const [results, setResults] = useState([]);
     const containerRef = useRef(null);
+    const textareaRef = useRef(null);
+
+    const autoResize = useCallback(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+    }, []);
+
+    useEffect(() => { autoResize(); }, [value, autoResize]);
 
     const fuse = useMemo(() => new Fuse(terms, { threshold: 0.3 }), [terms]);
 
@@ -47,6 +57,7 @@ export default function FuzzyAutocomplete({
     };
 
     const handleKeyDown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); }
         if (e.key === 'Escape') setIsOpen(false);
     };
 
@@ -58,11 +69,14 @@ export default function FuzzyAutocomplete({
                 </label>
             )}
             <textarea
-                rows={2}
+                ref={textareaRef}
+                rows={1}
                 className={className}
+                style={{ overflow: 'hidden', resize: 'none' }}
                 placeholder={placeholder}
                 value={value}
                 onChange={handleChange}
+                onInput={autoResize}
                 onFocus={() => {
                     if (terms.length > 0 && !value?.trim()) {
                         setResults(terms.slice(0, 5));

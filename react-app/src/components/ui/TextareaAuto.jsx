@@ -29,6 +29,14 @@ export const TextareaAuto = React.forwardRef(({ className, value, onChange, ...p
         el.style.height = `${el.scrollHeight}px`;
     }, []);
 
+    const handleKeyDown = useCallback((e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        if (props.onKeyDown) props.onKeyDown(e);
+    }, [props.onKeyDown]);
+
     const handleBlur = useCallback((e) => {
         if (onChange && localValue !== value) {
             // Create a synthetic event or just call onChange with current state if needed
@@ -59,6 +67,7 @@ export const TextareaAuto = React.forwardRef(({ className, value, onChange, ...p
             value={localValue}
             onInput={handleInput}
             onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
             className={cn(
                 "w-full outline-none resize-none overflow-hidden placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-transparent dark:text-slate-100 min-h-[2.5rem]",
                 className

@@ -397,22 +397,22 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                                                         <TextareaAuto placeholder="e.g. January to March" className="text-xs font-medium text-slate-600 dark:text-slate-300 w-full bg-transparent p-1 focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded-md" value={act.implementation_period} onChange={(e) => handleActivityChange(act.id, 'implementation_period', e.target.value)} />
                                                     )}
                                                 </td>
-                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top">
+                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top h-px">
                                                     <input type="number" inputMode="decimal" className="w-full text-center outline-none font-mono text-sm font-semibold text-slate-700 dark:text-slate-200 h-full min-h-[44px] bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded-md" value={act.physTarget} onChange={(e) => handleActivityChange(act.id, 'physTarget', e.target.value.replace(/[^0-9.]/g, ''))} />
                                                 </td>
-                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top">
+                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top h-px">
                                                     <input type="number" inputMode="decimal" className="w-full text-center outline-none font-mono text-sm font-semibold text-slate-700 dark:text-slate-200 h-full min-h-[44px] bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded-md" value={act.finTarget} onChange={(e) => handleActivityChange(act.id, 'finTarget', e.target.value.replace(/[^0-9.]/g, ''))} />
                                                 </td>
-                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top">
+                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top h-px">
                                                     <input type="number" inputMode="decimal" className="w-full text-center outline-none font-mono text-sm font-semibold text-slate-700 dark:text-slate-200 h-full min-h-[44px] bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded-md" value={act.physAcc} onChange={(e) => handleActivityChange(act.id, 'physAcc', e.target.value.replace(/[^0-9.]/g, ''))} />
                                                 </td>
-                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top">
+                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top h-px">
                                                     <input type="number" inputMode="decimal" className="w-full text-center outline-none font-mono text-sm font-semibold text-slate-700 dark:text-slate-200 h-full min-h-[44px] bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded-md" value={act.finAcc} onChange={(e) => handleActivityChange(act.id, 'finAcc', e.target.value.replace(/[^0-9.]/g, ''))} />
                                                 </td>
-                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top bg-slate-50/50 dark:bg-dark-base/50">
+                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top bg-slate-50/50 dark:bg-dark-base/50 h-px">
                                                     <input type="text" readOnly tabIndex={-1} className="w-full text-center font-bold outline-none font-mono text-sm select-none pointer-events-none bg-transparent h-full min-h-[44px]" style={{ color: physGap < 0 ? '#ef4444' : '#64748b' }} value={`${physGap.toFixed(2)}%`} />
                                                 </td>
-                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top bg-slate-50/50 dark:bg-dark-base/50">
+                                                <td className="border-r border-slate-200 dark:border-dark-border p-1 align-top bg-slate-50/50 dark:bg-dark-base/50 h-px">
                                                     <input type="text" readOnly tabIndex={-1} className="w-full text-center font-bold outline-none font-mono text-sm select-none pointer-events-none bg-transparent h-full min-h-[44px]" style={{ color: finGap < 0 ? '#ef4444' : '#64748b' }} value={`${finGap.toFixed(2)}%`} />
                                                 </td>
                                                 <td className="p-3 align-top">
