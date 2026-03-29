@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 
 import { Input } from './components/ui/Input';
@@ -25,6 +25,7 @@ import AIPActionPlanSection from './components/forms/aip/AIPActionPlanSection';
 
 export default function App() {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { settings } = useAccessibility();
     const motionProps = useMemo(() => (
         settings.reduceMotion
@@ -43,6 +44,7 @@ export default function App() {
     const isDivisionPersonnel = user?.role === 'Division Personnel';
 
     const saveTimerRef = useRef(null);
+    const autoStarted = useRef(false);
 
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
@@ -110,6 +112,9 @@ export default function App() {
     // Autosave State
     const autosaveTimerRef = useRef(null);
     const [lastAutoSavedTime, setLastAutoSavedTime] = useState(null);
+
+    // Splash stage-2 selection (program chosen but no mode yet)
+    const [splashSelectedProgram, setSplashSelectedProgram] = useState(null);
 
     // Draft State Tracking for ViewModeSelector
     const [hasDraft, setHasDraft] = useState(false);
@@ -244,6 +249,7 @@ export default function App() {
                 return; // stay on splash if fetch fails
             }
             setAppMode('readonly');
+            setSearchParams({ program: selectedProgram, mode: 'readonly' }, { replace: true });
             return;
         }
 
@@ -265,6 +271,7 @@ export default function App() {
                         loadDraftIntoState(lsData);
                         closeModal();
                         setAppMode(mode);
+                        setSearchParams({ program: selectedProgram, mode }, { replace: true });
                     },
                     onClose: async () => {
                         closeModal();
@@ -280,6 +287,7 @@ export default function App() {
                             } catch { /* proceed with blank form */ }
                         }
                         setAppMode(mode);
+                        setSearchParams({ program: selectedProgram, mode }, { replace: true });
                     }
                 });
                 return; // modal will trigger setAppMode on confirm or onClose
@@ -298,6 +306,7 @@ export default function App() {
             } catch { /* proceed with blank form */ }
         }
         setAppMode(mode);
+        setSearchParams({ program: selectedProgram, mode }, { replace: true });
     };
 
     // Objective handlers
@@ -342,6 +351,7 @@ export default function App() {
                 handleSaveForLater();
             }
             setAppMode('splash');
+            setSearchParams({}, { replace: true });
         }
     };
 
@@ -351,6 +361,33 @@ export default function App() {
         }
         navigate('/');
     };
+
+    // Auto-start from URL params once data has loaded (supports deep links & browser refresh)
+    useEffect(() => {
+        if (isLoading || autoStarted.current) return;
+        autoStarted.current = true;
+        const paramProgram = searchParams.get('program');
+        const paramMode = searchParams.get('mode');
+        if (paramProgram && ['wizard', 'full', 'readonly'].includes(paramMode)) {
+            handleStart(paramMode, paramProgram);
+        } else if (paramProgram && !paramMode) {
+            setSplashSelectedProgram(paramProgram);
+        }
+    }, [isLoading]);
+
+    // Sync splash/form state when URL params change
+    useEffect(() => {
+        if (!autoStarted.current) return;
+        const paramProgram = searchParams.get('program');
+        const paramMode = searchParams.get('mode');
+        if (!paramProgram) {
+            setSplashSelectedProgram(null);
+            if (appMode !== 'splash') { setAppMode('splash'); setDepedProgram(''); }
+        } else if (!paramMode) {
+            setSplashSelectedProgram(paramProgram);
+            if (appMode !== 'splash') { setAppMode('splash'); setDepedProgram(''); }
+        }
+    }, [searchParams]);
 
     const handleSaveForLater = async () => {
         clearTimeout(saveTimerRef.current);
@@ -580,6 +617,7 @@ export default function App() {
                     setDraftPrograms(prev => prev.filter(p => p !== depedProgram));
                     showToast([depedProgram]);
                     setAppMode('splash');
+                    setSearchParams({}, { replace: true });
                 } catch (error) {
                     setModal({
                         isOpen: true,
@@ -643,7 +681,9 @@ export default function App() {
                 title: 'Success!',
                 message: 'The Annual Implementation Plan has been saved to the database.',
                 confirmText: 'Back to Dashboard',
-                onConfirm: () => navigate('/')
+                onConfirm: () => navigate('/'),
+                hideCancelButton: true,
+                extraAction: { text: 'View Programs', onClick: () => navigate('/aip') }
             });
         } catch (error) {
             setModal({
@@ -673,6 +713,8 @@ export default function App() {
             message={modal.message}
             confirmText={modal.confirmText}
             cancelText={modal.cancelText}
+            hideCancelButton={modal.hideCancelButton}
+            extraAction={modal.extraAction}
         />
         {toast && (
             <button
@@ -745,6 +787,15 @@ export default function App() {
                         onBulkDelete={handleBulkDelete}
                         theme="pink"
                         isMobile={isMobile}
+                        selectedProgram={splashSelectedProgram}
+                        onSelectProgram={(p) => {
+                            setSplashSelectedProgram(p);
+                            if (p) {
+                                setSearchParams({ program: p }, { replace: true });
+                            } else {
+                                setSearchParams({}, { replace: true });
+                            }
+                        }}
                     />
                 </motion.div>
             ) : appMode === 'readonly' ? (
@@ -816,7 +867,11 @@ export default function App() {
                 lastAutoSavedTime={lastAutoSavedTime}
                 theme="pink"
                 appMode={appMode}
-                toggleAppMode={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
+                toggleAppMode={() => {
+                    const newMode = appMode === 'wizard' ? 'full' : 'wizard';
+                    setAppMode(newMode);
+                    setSearchParams({ program: depedProgram, mode: newMode }, { replace: true });
+                }}
             />
 
             <DocumentPreviewModal

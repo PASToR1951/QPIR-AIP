@@ -2,16 +2,18 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WarningCircle as AlertCircle, CheckCircle as CheckCircle2, XCircle } from '@phosphor-icons/react';
 
-export const ConfirmationModal = ({ 
-    isOpen, 
-    onClose, 
-    onConfirm, 
-    title, 
-    message, 
-    confirmText = "Confirm", 
+export const ConfirmationModal = ({
+    isOpen,
+    onClose,
+    onConfirm,
+    title,
+    message,
+    confirmText = "Confirm",
     cancelText = "Cancel",
     type = "warning", // warning, success, info
-    icon
+    icon,
+    hideCancelButton = false,
+    extraAction = null // { text, onClick }
 }) => {
     const icons = {
         warning: <AlertCircle className="w-12 h-12 text-amber-500" />,
@@ -59,12 +61,22 @@ export const ConfirmationModal = ({
                             </p>
                             
                             <div className="flex flex-row gap-3 w-full">
-                                <button 
-                                    onClick={onClose}
-                                    className="flex-1 px-6 py-4 rounded-2xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-all active:scale-95"
-                                >
-                                    {cancelText}
-                                </button>
+                                {!hideCancelButton && (
+                                    <button
+                                        onClick={onClose}
+                                        className="flex-1 px-6 py-4 rounded-2xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-all active:scale-95"
+                                    >
+                                        {cancelText}
+                                    </button>
+                                )}
+                                {extraAction && (
+                                    <button
+                                        onClick={extraAction.onClick}
+                                        className="flex-1 px-6 py-4 rounded-2xl font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-all active:scale-95"
+                                    >
+                                        {extraAction.text}
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => { onConfirm(); }}
                                     className={`flex-1 px-6 py-4 rounded-2xl font-bold text-white transition-all active:scale-95 shadow-lg ${confirmColors[type]}`}

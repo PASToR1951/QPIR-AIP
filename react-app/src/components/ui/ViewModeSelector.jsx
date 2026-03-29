@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 
 const THEME_CLASSES = {
     pink: {
@@ -74,14 +74,26 @@ export const ViewModeSelector = ({
     onBulkDelete,
     theme = "pink",
     isMobile = false,
+    selectedProgram: propSelectedProgram = null,
+    onSelectProgram = null,
 }) => {
     const programs          = rawPrograms;
     const draftPrograms     = rawDraftPrograms;
     const completedPrograms = rawCompletedPrograms;
     const returnedPrograms  = rawReturnedPrograms;
     const autosavedPrograms = rawAutosavedPrograms;
-    const [stage, setStage] = useState('program');
-    const [selected, setSelected] = useState(null);
+    const [stage, setStage] = useState(propSelectedProgram ? 'mode' : 'program');
+    const [selected, setSelected] = useState(propSelectedProgram);
+
+    useEffect(() => {
+        if (propSelectedProgram) {
+            setSelected(propSelectedProgram);
+            setStage('mode');
+        } else {
+            setSelected(null);
+            setStage('program');
+        }
+    }, [propSelectedProgram]);
     const [search, setSearch] = useState('');
     const [sortFilter, setSortFilter] = useState('all');
     const [sortOrder, setSortOrder] = useState('status');
@@ -151,6 +163,7 @@ export const ViewModeSelector = ({
         }
         setSelected(p);
         setStage('mode');
+        onSelectProgram?.(p);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, [completedPrograms, onStart, selectionMode, draftPrograms, returnedPrograms]);
 
@@ -440,7 +453,7 @@ export const ViewModeSelector = ({
 
                     {/* Back link */}
                     <button
-                        onClick={() => setStage('program')}
+                        onClick={() => { setStage('program'); onSelectProgram?.(null); }}
                         className="inline-flex items-center gap-2 text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100/80 dark:bg-dark-surface/80 hover:bg-slate-200/80 dark:hover:bg-dark-border backdrop-blur-sm px-4 py-2 rounded-xl border border-slate-200/60 dark:border-dark-border transition-all uppercase tracking-wider mb-6 md:mb-10 shadow-sm"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
