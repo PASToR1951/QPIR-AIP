@@ -41,6 +41,8 @@ export default function AdminSubmissions() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('type') || 'all'; // 'all' | 'aip' | 'pir'
   const setTab = (key) => { setSearchParams(prev => { prev.set('type', key); return prev; }); setPage(1); };
+  const group = searchParams.get('group') || 'flat';
+  const setGroup = (key) => { setSearchParams(prev => { prev.set('group', key); return prev; }); };
   const [submissions, setSubmissions] = useState([]);
   const [totals, setTotals] = useState({ aipTotal: 0, pirTotal: 0, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -264,14 +266,49 @@ export default function AdminSubmissions() {
     { key: 'pir', label: 'PIRs', count: totals.pirTotal },
   ];
 
+  const GROUP_OPTIONS = [
+    { key: 'flat',    label: 'Default' },
+    { key: 'cluster', label: 'By Cluster' },
+    { key: 'school',  label: 'By School' },
+    { key: 'user',    label: 'By Submitter' },
+    { key: 'quarter', label: 'By Quarter' },
+    { key: 'status',  label: 'By Status' },
+  ];
+
+  function groupSubmissions(data, groupKey) {
+    if (groupKey === 'flat') return null;
+    const keyFn = {
+      cluster: r => r.cluster || '—',
+      school:  r => r.school  || '—',
+      user:    r => r.submittedBy || '—',
+      quarter: r => r.quarter || '— (AIP)',
+      status:  r => r.status,
+    }[groupKey];
+    if (!keyFn) return null;
+    const map = new Map();
+    for (const row of data) {
+      const k = keyFn(row);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(row);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, rows]) => ({ groupKey: key, rows }));
+  }
+
   const STATUS_OPTIONS = ['Submitted', 'Under Review', 'Approved', 'Returned'];
-  const QUARTER_OPTIONS = ['1st Quarter', '2nd Quarter', '3rd Quarter', '4th Quarter'];
+  const QUARTER_OPTIONS = [
+    { label: '1st Quarter', value: '1st' },
+    { label: '2nd Quarter', value: '2nd' },
+    { label: '3rd Quarter', value: '3rd' },
+    { label: '4th Quarter', value: '4th' },
+  ];
   const YEAR_OPTIONS = [2024, 2025, 2026, 2027].map(y => ({ value: y, label: String(y) }));
 
   const columns = [
     { key: 'school', label: 'School', sortable: true, render: v => <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px] block">{v}</span> },
     { key: 'cluster', label: 'Cluster', sortable: true, render: v => <span className="text-xs font-bold bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-lg">{v}</span> },
-    { key: 'program', label: 'Program', sortable: true, render: v => <span className="truncate max-w-[180px] block text-slate-600 dark:text-slate-400">{v}</span> },
+    { key: 'program', label: 'Program', sortable: true, cardFullWidth: true, render: v => <span className="truncate max-w-[180px] block text-slate-600 dark:text-slate-400">{v}</span> },
     { key: 'type', label: 'Type', render: (v) => <StatusBadge status={v} size="xs" /> },
     { key: 'quarter', label: 'Quarter', render: v => <span className="text-xs text-slate-500 dark:text-slate-400">{v ?? '—'}</span> },
     { key: 'year', label: 'Year', sortable: true },
@@ -317,17 +354,19 @@ export default function AdminSubmissions() {
       <div className="space-y-4">
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 border-b border-slate-200 dark:border-dark-border">
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={`px-4 py-2.5 text-sm font-bold transition-colors relative flex items-center gap-2 ${tab === t.key ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-            >
-              {t.label}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${tab === t.key ? 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400' : 'bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400'}`}>{t.count}</span>
-              {tab === t.key && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t" />}
-            </button>
-          ))}
-          <div className="ml-auto flex items-center gap-2 pb-1">
+        <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 dark:border-dark-border">
+          <div className="flex items-center gap-1 flex-1 min-w-0">
+            {TABS.map(t => (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={`px-4 py-2.5 text-sm font-bold transition-colors relative flex items-center gap-2 ${tab === t.key ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+              >
+                {t.label}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${tab === t.key ? 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400' : 'bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400'}`}>{t.count}</span>
+                {tab === t.key && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t" />}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 pb-1 shrink-0">
             <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${showFilters ? 'bg-indigo-100 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border'}`}>
               <Funnel size={16} /> Filters
             </button>
@@ -335,6 +374,22 @@ export default function AdminSubmissions() {
               <DownloadSimple size={16} /> CSV
             </button>
           </div>
+        </div>
+
+        {/* Group-by selector */}
+        <div className="flex items-center gap-1 flex-wrap pt-2">
+          <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mr-1">Group:</span>
+          {GROUP_OPTIONS.map(g => (
+            <button key={g.key} onClick={() => setGroup(g.key)}
+              className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${
+                group === g.key
+                  ? 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400'
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border'
+              }`}
+            >
+              {g.label}
+            </button>
+          ))}
         </div>
 
         {/* Filter Bar */}
@@ -364,7 +419,7 @@ export default function AdminSubmissions() {
                 clearable
               />
               <SearchableSelect
-                options={QUARTER_OPTIONS.map((q, i) => ({ value: String(i + 1), label: q }))}
+                options={QUARTER_OPTIONS}
                 value={filters.quarter}
                 onChange={v => setFilters(f => ({ ...f, quarter: v }))}
                 placeholder="Quarter"
@@ -488,18 +543,45 @@ export default function AdminSubmissions() {
           <div className="flex items-center justify-center h-48">
             <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />
           </div>
-        ) : (
-          <DataTable
-            columns={columns}
-            data={submissions}
-            selectable
-            selectedIds={selectedIds}
-            onSelectChange={setSelectedIds}
-            onRowClick={(row) => { if (row.type === 'PIR') setReviewItem(row); else openView(row); }}
-            getRowClassName={(row) => row.type === 'PIR' ? 'cursor-pointer' : ''}
-            emptyMessage="No submissions match the current filters."
-          />
-        )}
+        ) : (() => {
+          const groups = groupSubmissions(submissions, group);
+          if (!groups) {
+            return (
+              <DataTable
+                columns={columns}
+                data={submissions}
+                selectable
+                selectedIds={selectedIds}
+                onSelectChange={setSelectedIds}
+                onRowClick={(row) => { if (row.type === 'PIR') setReviewItem(row); else openView(row); }}
+                getRowClassName={(row) => row.type === 'PIR' ? 'cursor-pointer' : ''}
+                emptyMessage="No submissions match the current filters."
+              />
+            );
+          }
+          return (
+            <div className="space-y-6">
+              {groups.map(({ groupKey, rows }) => (
+                <div key={groupKey}>
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <span className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{groupKey}</span>
+                    <span className="text-[10px] font-bold bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full">{rows.length}</span>
+                  </div>
+                  <DataTable
+                    columns={columns}
+                    data={rows}
+                    selectable
+                    selectedIds={selectedIds}
+                    onSelectChange={setSelectedIds}
+                    onRowClick={(row) => { if (row.type === 'PIR') setReviewItem(row); else openView(row); }}
+                    getRowClassName={(row) => row.type === 'PIR' ? 'cursor-pointer' : ''}
+                    emptyMessage="No submissions in this group."
+                  />
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Approve Confirm */}

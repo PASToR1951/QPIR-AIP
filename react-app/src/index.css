@@ -96,8 +96,17 @@ html.dark-transition *::after {
 
 /* Print always uses light mode */
 @media print {
+  @page {
+    margin: 1.5cm;
+    size: A4 portrait;
+  }
+
   .dark {
     color-scheme: light;
+  }
+
+  body {
+    background: white !important;
   }
 }
 

@@ -18,13 +18,21 @@ export default function ReviewerLayout() {
       <header className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest select-none">
-              QPIR-AIP
-            </span>
-            <span className="text-slate-200 dark:text-dark-border select-none">|</span>
-            <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest select-none">
-              Reviewer Portal
-            </span>
+            <div className="flex items-center gap-2">
+              <img src="/AIP-PIR-logo.png" alt="AIP-PIR Logo" className="h-8 w-auto drop-shadow-sm" />
+              <div className="w-px h-6 bg-slate-200 dark:bg-dark-border/60 mx-1 hidden sm:block"></div>
+              <img src="/DepEd_Seal.webp" alt="DepEd Seal" loading="lazy" className="h-8 w-auto drop-shadow-sm hidden sm:block" />
+              <img src="/Division_Logo.webp" alt="Division Logo" loading="lazy" className="h-8 w-auto drop-shadow-sm hidden sm:block" />
+            </div>
+            <div className="w-px h-6 bg-slate-200 dark:bg-dark-border/60 hidden sm:block"></div>
+            <div className="flex flex-col">
+              <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest select-none leading-none">
+                QPIR-AIP
+              </span>
+              <span className="text-[9px] font-black text-blue-600 tracking-[0.2em] uppercase mt-0.5 select-none">
+                Reviewer Portal
+              </span>
+            </div>
           </div>
 
           <nav className="flex items-center gap-1">

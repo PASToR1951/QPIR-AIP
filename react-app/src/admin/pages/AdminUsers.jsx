@@ -21,11 +21,11 @@ const inputCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border bor
 function UserForm({ form, setForm, schools, programs }) {
   return (
     <div className="space-y-4">
-      {form.role === 'Admin' && (
+      {(form.role === 'Admin' || form.role === 'Reviewer') && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Full Name</label>
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            className={inputCls} placeholder="Administrator Name" />
+            className={inputCls} placeholder={form.role === 'Reviewer' ? 'Reviewer Name' : 'Administrator Name'} />
         </div>
       )}
       {form.role === 'Division Personnel' && (
@@ -271,7 +271,7 @@ export default function AdminUsers() {
     },
   ];
 
-  const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'Admin'];
+  const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'Admin', 'Reviewer'];
 
   return (
     <AdminLayout>

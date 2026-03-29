@@ -41,11 +41,15 @@ export const AIPDocument = ({
                     <span className="font-medium flex-1">{depedProgram || "\u00A0"}</span>
                 </div>
 
-                {/* SIP Title + Project Coord (same row) */}
+                {/* SIP Title */}
                 <div className="flex py-1 border-b border-dotted border-slate-400">
                     <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0">School Improvement Project/Title:</span>
-                    <span className="font-medium w-[38%]">{sipTitle || "\u00A0"}</span>
-                    <span className="font-bold w-[17%] uppercase text-[10px] tracking-tight shrink-0 pl-3">Project Coord:</span>
+                    <span className="font-medium flex-1">{sipTitle || "\u00A0"}</span>
+                </div>
+
+                {/* Project Coordinator */}
+                <div className="flex py-1 border-b border-dotted border-slate-400">
+                    <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0">Project Coordinator:</span>
                     <span className="font-medium flex-1">{projectCoord || "\u00A0"}</span>
                 </div>
 
@@ -85,7 +89,7 @@ export const AIPDocument = ({
                             <div className="space-y-0.5">
                                 {indicators.map((ind, i) => (
                                     <div key={i} className="font-medium text-right pr-1">
-                                        {ind.target || "\u00A0"}
+                                        {ind.target ? (String(ind.target).endsWith('%') ? ind.target : `${ind.target}%`) : "\u00A0"}
                                     </div>
                                 ))}
                             </div>
@@ -95,8 +99,8 @@ export const AIPDocument = ({
             </div>
 
             {/* ── Activities Table ── */}
-            <div className="mb-6 overflow-x-auto">
-                <table className="w-full border-collapse text-[10px] border border-black">
+            <div className="mb-6 overflow-x-auto border-b border-black">
+                <table className="w-full border-collapse text-[10px] border border-black" style={{ borderBottom: 'none' }}>
                     <thead>
                         <tr className="text-center font-black uppercase text-[9px] tracking-tight bg-slate-50 print:bg-transparent">
                             <th rowSpan="2" className="border border-black p-2 w-[35%] text-left align-middle">Activities to be Conducted</th>
@@ -131,7 +135,7 @@ export const AIPDocument = ({
                                 <td className="border border-black p-2 align-top text-center font-medium">{act.period}</td>
                                 <td className="border border-black p-2 align-top text-center font-medium">{act.persons}</td>
                                 <td className="border border-black p-2 align-top text-center font-medium">{act.outputs}</td>
-                                <td className="border border-black p-2 align-top text-right font-mono font-bold">
+                                <td className="border border-black p-2 align-top text-center font-mono font-bold">
                                     {act.budgetAmount ? formatCurrency(act.budgetAmount) : ''}
                                 </td>
                                 <td className="border border-black p-2 align-top text-center font-medium">{act.budgetSource}</td>
@@ -144,15 +148,15 @@ export const AIPDocument = ({
             {/* ── Signatures ── */}
             <div className="mt-8 grid grid-cols-2 gap-16 px-8">
                 <div>
-                    <div className="flex items-baseline gap-2 border-b-2 border-black pb-0.5">
-                        <span className="text-[9px] font-black uppercase tracking-widest shrink-0 whitespace-nowrap">Prepared by:</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest">Prepared by:</span>
+                    <div className="border-b-2 border-black pb-0.5 mt-1 text-center">
                         <span className="font-black uppercase text-[11px] tracking-tight">{preparedByName || '\u00A0'}</span>
                     </div>
                     <p className="text-[9px] mt-1 text-center font-bold uppercase tracking-wide">{preparedByTitle || '\u00A0'}</p>
                 </div>
                 <div>
-                    <div className="flex items-baseline gap-2 border-b-2 border-black pb-0.5">
-                        <span className="text-[9px] font-black uppercase tracking-widest shrink-0 whitespace-nowrap">Approved:</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest">Approved:</span>
+                    <div className="border-b-2 border-black pb-0.5 mt-1 text-center">
                         <span className="font-black uppercase text-[11px] tracking-tight">{approvedByName || '\u00A0'}</span>
                     </div>
                     <p className="text-[9px] mt-1 text-center font-bold uppercase tracking-wide">{approvedByTitle || '\u00A0'}</p>

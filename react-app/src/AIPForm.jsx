@@ -57,6 +57,7 @@ export default function App() {
     const [activityToDelete, setActivityToDelete] = useState(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [programList, setProgramList] = useState([]);
+    const [programAbbreviations, setProgramAbbreviations] = useState({});
     const [completedPrograms, setCompletedPrograms] = useState([]);
 
     // Save Status State
@@ -186,7 +187,11 @@ export default function App() {
                 ];
                 const results = await Promise.allSettled(requests);
                 const [programsRes, completedRes, draftRes, coordsRes, termsRes] = results;
-                if (programsRes.status === 'fulfilled') setProgramList(programsRes.value.data.map(p => p.title).sort());
+                if (programsRes.status === 'fulfilled') {
+                    const pdata = programsRes.value.data;
+                    setProgramList(pdata.map(p => p.title).sort());
+                    setProgramAbbreviations(Object.fromEntries(pdata.filter(p => p.abbreviation).map(p => [p.title, p.abbreviation])));
+                }
                 if (completedRes.status === 'fulfilled') {
                     const data = completedRes.value.data;
                     setCompletedPrograms(data.filter(p => p.aip_status !== 'Draft').map(p => p.title));
@@ -679,6 +684,7 @@ export default function App() {
                     />
                     <ViewModeSelector
                         programs={programList}
+                        programAbbreviations={programAbbreviations}
                         onStart={handleStart}
                         draftPrograms={draftPrograms}
                         completedPrograms={completedPrograms}
@@ -765,6 +771,7 @@ export default function App() {
                 onClose={() => setIsPreviewOpen(false)}
                 title="AIP Document Preview"
                 subtitle={`Annual Implementation Plan Cycle ${year}`}
+                filename={`AIP_${year}${sipTitle ? '_' + sipTitle.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') : ''}`}
             >
                 <AIPDocument
                     year={year}
