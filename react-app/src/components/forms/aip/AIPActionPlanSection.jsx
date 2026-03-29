@@ -187,8 +187,8 @@ export default React.memo(function AIPActionPlanSection({
 
             {/* FULL MODE: Table View */}
             {appMode === 'full' && (
-                <div className="overflow-visible overflow-x-auto pb-4 pr-16">
-                    <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-visible min-w-[1000px]">
+                <div className="overflow-x-auto pb-4">
+                    <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-hidden min-w-[1000px]">
                         <table className="w-full border-collapse text-sm">
                             <thead>
                                 <tr className="text-left select-none bg-slate-50 dark:bg-dark-base border-b border-slate-200 dark:border-dark-border">
@@ -255,9 +255,9 @@ export default React.memo(function AIPActionPlanSection({
                                                     <td className="border-r border-slate-200 dark:border-dark-border p-2 align-top bg-slate-50/30 dark:bg-dark-base/30">
                                                         <input type="text" className="w-full text-center outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded p-1" placeholder="NONE" value={act.budgetSource} onChange={(e) => handleActivityChange(act.id, 'budgetSource', e.target.value)} />
                                                     </td>
-                                                    <td className="border-none p-0 w-0 relative bg-white dark:bg-dark-surface">
+                                                    <td className="border-none p-1 w-10 align-middle bg-white dark:bg-dark-surface">
                                                         {activities.filter(a => a.phase === act.phase).length > 1 && (
-                                                            <button type="button" onClick={() => handleRemoveActivity(act.id)} className="absolute -right-12 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500 shadow-sm hover:border-red-200 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 focus:outline-none transition-colors z-10 opacity-40 group-hover:opacity-100" title="Delete Row">
+                                                            <button type="button" onClick={() => handleRemoveActivity(act.id)} className="flex h-8 w-8 items-center justify-center mx-auto rounded-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500 shadow-sm hover:border-red-200 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 focus:outline-none transition-colors opacity-40 group-hover:opacity-100" title="Delete Row">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                                                             </button>
                                                         )}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   XCircle, ArrowLeft, Buildings, IdentificationBadge, ShieldStar,
-  UserPlus, CaretRight, Eye, EyeSlash,
+  UserPlus, CaretRight, Eye, EyeSlash, Binoculars,
 } from '@phosphor-icons/react';
 import { SearchableSelect } from './SearchableSelect.jsx';
 import { MultiSelect } from './MultiSelect.jsx';
@@ -34,6 +34,17 @@ const ROLES = [
     activeBg: 'bg-violet-50 dark:bg-violet-950/30 border-violet-400 dark:border-violet-600',
     hoverBg: 'hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50/50 dark:hover:bg-violet-950/20',
     iconBg: 'bg-violet-100 dark:bg-violet-950/50',
+  },
+  {
+    value: 'Reviewer',
+    label: 'Reviewer',
+    icon: Binoculars,
+    description: 'Management-level account. Reviews PIR submissions and adds management responses.',
+    group: 'system',
+    iconColor: 'text-amber-500',
+    activeBg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-400 dark:border-amber-600',
+    hoverBg: 'hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/50 dark:hover:bg-amber-950/20',
+    iconBg: 'bg-amber-100 dark:bg-amber-950/50',
   },
   {
     value: 'Admin',
@@ -114,6 +125,7 @@ function RolePicker({ selected, onSelect }) {
 function DetailsForm({ form, setForm, schools, programs }) {
   const [showPassword, setShowPassword] = useState(false);
   const isDepedEmail = form.role === 'School' || form.role === 'Division Personnel';
+
   const emailLocal = isDepedEmail ? form.email.replace(/@deped\.gov\.ph$/, '') : form.email;
 
   const handleEmailChange = (e) => {
@@ -123,7 +135,7 @@ function DetailsForm({ form, setForm, schools, programs }) {
 
   return (
     <div className="space-y-4">
-      {form.role === 'Admin' && (
+      {(form.role === 'Admin' || form.role === 'Reviewer') && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
             Full Name
@@ -132,7 +144,7 @@ function DetailsForm({ form, setForm, schools, programs }) {
             value={form.name}
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             className={inputCls}
-            placeholder="Administrator Name"
+            placeholder={form.role === 'Reviewer' ? 'Reviewer Name' : 'Administrator Name'}
           />
         </div>
       )}

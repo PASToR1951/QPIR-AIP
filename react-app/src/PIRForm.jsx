@@ -53,6 +53,7 @@ export default function App() {
     const [appMode, setAppMode] = useState('splash');
     const [isMobile, setIsMobile] = useState(false);
     const [programsWithAIPs, setProgramsWithAIPs] = useState([]);
+    const [programAbbreviations, setProgramAbbreviations] = useState({});
     const [completedPrograms, setCompletedPrograms] = useState([]);
     const [supervisorName, setSupervisorName] = useState('');
     const [supervisorTitle, setSupervisorTitle] = useState('');
@@ -86,7 +87,11 @@ export default function App() {
                 requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { headers: authHeaders }));
                 const results = await Promise.allSettled(requests);
                 const [withAIPsRes, withPIRsRes, configRes, draftRes] = results;
-                if (withAIPsRes.status === 'fulfilled') setProgramsWithAIPs(withAIPsRes.value.data.map(p => p.title));
+                if (withAIPsRes.status === 'fulfilled') {
+                    const pdata = withAIPsRes.value.data;
+                    setProgramsWithAIPs(pdata.map(p => p.title));
+                    setProgramAbbreviations(Object.fromEntries(pdata.filter(p => p.abbreviation).map(p => [p.title, p.abbreviation])));
+                }
                 if (withPIRsRes.status === 'fulfilled') setCompletedPrograms(withPIRsRes.value.data.map(p => p.title));
                 if (configRes.status === 'fulfilled') {
                     setSupervisorName(configRes.value.data.supervisor_name ?? '');
@@ -572,6 +577,7 @@ export default function App() {
                         />
                         <ViewModeSelector
                             programs={programsWithAIPs}
+                            programAbbreviations={programAbbreviations}
                             onStart={handleStart}
                             hasDraft={hasDraft}
                             draftInfo={draftInfo}
@@ -645,6 +651,7 @@ export default function App() {
                                 onClose={() => setIsPreviewOpen(false)}
                                 title="PIR Document Preview"
                                 subtitle="Quarterly Program Implementation Review"
+                                filename={`PIR_${quarterString.replace(/\s+/g, '_')}${program ? '_' + program.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') : ''}`}
                             >
                                 <PIRDocument
                                     quarter={quarterString}
@@ -667,6 +674,7 @@ export default function App() {
                                 onClose={() => setIsAIPPreviewOpen(false)}
                                 title="Annual Implementation Plan"
                                 subtitle={`AIP Reference — ${program}`}
+                                filename={`AIP_${aipDocumentData?.year ?? ''}${aipDocumentData?.sipTitle ? '_' + aipDocumentData.sipTitle.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') : ''}`}
                             >
                                 {aipDocumentData && (
                                     <AIPDocument

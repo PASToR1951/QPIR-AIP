@@ -65,6 +65,7 @@ const THEME_CLASSES = {
  */
 export const ViewModeSelector = ({
     programs: rawPrograms = [],
+    programAbbreviations = {},
     onStart,
     draftPrograms: rawDraftPrograms = [],
     completedPrograms: rawCompletedPrograms = [],
@@ -99,8 +100,12 @@ export const ViewModeSelector = ({
     }, [completedPrograms, returnedPrograms, draftPrograms, programs]);
 
     const sortedFiltered = useMemo(() => {
+        const q = search.toLowerCase();
         const filtered = search
-            ? programs.filter(p => p.toLowerCase().includes(search.toLowerCase()))
+            ? programs.filter(p =>
+                p.toLowerCase().includes(q) ||
+                (programAbbreviations[p] && programAbbreviations[p].toLowerCase().includes(q))
+              )
             : programs;
 
         const statusRank = p => {
@@ -188,7 +193,7 @@ export const ViewModeSelector = ({
                         <div className="w-full max-w-2xl mb-4 flex flex-col gap-2.5">
                             {/* Search */}
                             <div className="relative">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">
                                     <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
                                 </svg>
                                 <input

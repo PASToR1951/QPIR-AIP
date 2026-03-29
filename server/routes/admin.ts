@@ -883,8 +883,8 @@ adminRoutes.post("/users", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const { name, first_name, middle_initial, last_name, email, password, role, school_id, program_ids } = await c.req.json();
 
-  if (role === "Admin" && !name) {
-    return c.json({ error: "name is required for Admin users" }, 400);
+  if ((role === "Admin" || role === "Reviewer") && !name) {
+    return c.json({ error: "name is required for Admin and Reviewer users" }, 400);
   }
   if (role === "Division Personnel" && (!first_name || !last_name)) {
     return c.json({ error: "first_name and last_name are required for Division Personnel" }, 400);
@@ -936,7 +936,7 @@ adminRoutes.patch("/users/:id", async (c) => {
   // Handle school_id carefully
   if (role === "School" && school_id !== undefined) {
     updateData.school_id = school_id;
-  } else if (role === "Division Personnel" || role === "Admin") {
+  } else if (role === "Division Personnel" || role === "Admin" || role === "Reviewer") {
     updateData.school_id = null;
   }
 
