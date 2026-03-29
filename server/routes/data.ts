@@ -245,6 +245,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
 
     const body = await c.req.json();
     const { program_title, quarter, program_owner, budget_from_division, budget_from_co_psf,
+            functional_division,
             indicator_quarterly_targets, action_items, activity_reviews, factors } = body;
 
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
@@ -283,6 +284,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
       program_owner: program_owner || '',
       budget_from_division: parseFloat(budget_from_division) || 0,
       budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+      functional_division: functional_division ?? null,
       indicator_quarterly_targets: indicator_quarterly_targets ?? [],
       action_items: action_items ?? [],
       status: 'Draft',
@@ -440,6 +442,7 @@ dataRoutes.get('/pirs/draft', async (c) => {
         owner: pir.program_owner,
         budgetFromDivision: String((pir as any).budget_from_division ?? 0),
         budgetFromCoPSF: String((pir as any).budget_from_co_psf ?? 0),
+        functionalDivision: (pir as any).functional_division ?? null,
         indicatorQuarterlyTargets: (pir as any).indicator_quarterly_targets as any[] ?? [],
         actionItems: (pir as any).action_items as any[] ?? [],
         activities: pir.activity_reviews.map((r: any) => ({
@@ -600,15 +603,16 @@ dataRoutes.get('/programs/with-aips', async (c) => {
     const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
 
     const db = prisma.aIP as any;
+    const SUBMITTED_AIP_STATUSES = ['Submitted', 'Verified', 'Under Review', 'Approved', 'Returned'];
     let aips: any[];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
       aips = await db.findMany({
-        where: { school_id: tokenUser.school_id, year },
+        where: { school_id: tokenUser.school_id, year, status: { in: SUBMITTED_AIP_STATUSES } },
         include: { program: true }
       });
     } else {
       aips = await db.findMany({
-        where: { created_by_user_id: tokenUser.id, school_id: null, year },
+        where: { created_by_user_id: tokenUser.id, school_id: null, year, status: { in: SUBMITTED_AIP_STATUSES } },
         include: { program: true }
       });
     }
@@ -1015,12 +1019,15 @@ dataRoutes.get('/pirs', async (c) => {
     }
 
     return c.json({
+      id: pir.id,
+      status: pir.status,
       quarter: pir.quarter,
       program: aip.program.title,
       school: aip.school?.name ?? '',
       owner: pir.program_owner,
       budgetFromDivision: (pir as any).budget_from_division,
       budgetFromCoPSF: (pir as any).budget_from_co_psf,
+      functionalDivision: (pir as any).functional_division ?? null,
       indicatorQuarterlyTargets: (pir as any).indicator_quarterly_targets as any[] ?? [],
       actionItems: (pir as any).action_items as any[] ?? [],
       activities: pir.activity_reviews.map((r: any) => ({
@@ -1192,6 +1199,7 @@ dataRoutes.post('/pirs', async (c) => {
       program_owner,
       budget_from_division,
       budget_from_co_psf,
+      functional_division,
       indicator_quarterly_targets,
       action_items,
       activity_reviews,
@@ -1289,6 +1297,7 @@ dataRoutes.post('/pirs', async (c) => {
           program_owner,
           budget_from_division: parseFloat(budget_from_division) || 0,
           budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+          functional_division: functional_division ?? null,
           indicator_quarterly_targets: indicator_quarterly_targets ?? [],
           action_items: action_items ?? [],
           status: 'Submitted',
@@ -1305,6 +1314,7 @@ dataRoutes.post('/pirs', async (c) => {
           program_owner,
           budget_from_division: parseFloat(budget_from_division) || 0,
           budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+          functional_division: functional_division ?? null,
           indicator_quarterly_targets: indicator_quarterly_targets ?? [],
           action_items: action_items ?? [],
           factors: { create: factorData },
@@ -1333,6 +1343,110 @@ dataRoutes.post('/pirs', async (c) => {
   } catch (error) {
     console.error(error);
     return c.json({ error: 'Failed to create PIR' }, 500);
+  }
+});
+
+// PUT /api/pirs/:id — update a submitted PIR (only allowed if status === "Submitted")
+dataRoutes.put('/pirs/:id', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const pirId = parseInt(c.req.param('id'));
+    if (isNaN(pirId)) return c.json({ error: 'Invalid PIR id' }, 400);
+
+    const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
+    if (!pir) return c.json({ error: 'PIR not found' }, 404);
+
+    // Ownership check
+    if (pir.created_by_user_id !== null && pir.created_by_user_id !== tokenUser.id) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+    // Only allow editing if still "Submitted" (not yet reviewed)
+    if (pir.status !== 'Submitted') {
+      return c.json({ error: 'This PIR can no longer be edited — it is currently under review.' }, 409);
+    }
+
+    const body = await c.req.json();
+    const {
+      program_owner, budget_from_division, budget_from_co_psf, functional_division,
+      indicator_quarterly_targets, action_items, activity_reviews, factors
+    } = body;
+
+    const factorData = Object.entries(factors).map(([type, data]: [string, any]) => ({
+      factor_type: type,
+      facilitating_factors: data.facilitating ?? '',
+      hindering_factors: data.hindering ?? '',
+      recommendations: data.recommendations ?? '',
+    }));
+
+    const reviewData = activity_reviews.map((rev: any) => ({
+      aip_activity_id: rev.aip_activity_id ? parseInt(rev.aip_activity_id) : null,
+      complied: rev.complied ?? null,
+      actual_tasks_conducted: rev.actual_tasks_conducted ?? '',
+      contributory_performance_indicators: rev.contributory_performance_indicators ?? '',
+      movs_expected_outputs: rev.movs_expected_outputs ?? '',
+      adjustments: rev.adjustments ?? '',
+      is_unplanned: rev.is_unplanned ?? false,
+      physical_target: parseFloat(rev.physTarget || 0),
+      financial_target: parseFloat(rev.finTarget || 0),
+      physical_accomplished: parseFloat(rev.physAcc || 0),
+      financial_accomplished: parseFloat(rev.finAcc || 0),
+      actions_to_address_gap: rev.actions ?? '',
+    }));
+
+    // Replace related records and update fields
+    await prisma.pIRActivityReview.deleteMany({ where: { pir_id: pirId } });
+    await prisma.pIRFactor.deleteMany({ where: { pir_id: pirId } });
+
+    const updated = await prisma.pIR.update({
+      where: { id: pirId },
+      data: {
+        program_owner,
+        budget_from_division: parseFloat(budget_from_division) || 0,
+        budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+        functional_division: functional_division ?? null,
+        indicator_quarterly_targets: indicator_quarterly_targets ?? [],
+        action_items: action_items ?? [],
+        factors: { create: factorData },
+        activity_reviews: { create: reviewData },
+      },
+    });
+
+    return c.json({ message: 'PIR updated successfully', pir: updated });
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to update PIR' }, 500);
+  }
+});
+
+// DELETE /api/pirs/:id — delete a submitted PIR (only allowed if status === "Submitted")
+dataRoutes.delete('/pirs/:id', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const pirId = parseInt(c.req.param('id'));
+    if (isNaN(pirId)) return c.json({ error: 'Invalid PIR id' }, 400);
+
+    const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
+    if (!pir) return c.json({ error: 'PIR not found' }, 404);
+
+    // Ownership check
+    if (pir.created_by_user_id !== null && pir.created_by_user_id !== tokenUser.id) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+    // Only allow deletion if still "Submitted"
+    if (pir.status !== 'Submitted') {
+      return c.json({ error: 'This PIR can no longer be deleted — it is currently under review.' }, 409);
+    }
+
+    await prisma.pIR.delete({ where: { id: pirId } });
+
+    return c.json({ message: 'PIR deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to delete PIR' }, 500);
   }
 });
 
@@ -1416,14 +1530,15 @@ dataRoutes.get('/dashboard', async (c) => {
     }
 
     // ── AIP Completion ───────────────────────────────────
+    const SUBMITTED_AIP_STATUSES = ['Submitted', 'Verified', 'Under Review', 'Approved', 'Returned'];
     let aipCompleted = 0;
     if (tokenUser.role === 'Division Personnel') {
       aipCompleted = await prisma.aIP.count({
-        where: { created_by_user_id: tokenUser.id, school_id: null, year }
+        where: { created_by_user_id: tokenUser.id, school_id: null, year, status: { in: SUBMITTED_AIP_STATUSES } }
       });
     } else if (tokenUser.school_id) {
       aipCompleted = await prisma.aIP.count({
-        where: { school_id: tokenUser.school_id, year }
+        where: { school_id: tokenUser.school_id, year, status: { in: SUBMITTED_AIP_STATUSES } }
       });
     }
     const aipTotal = activePrograms;
@@ -1432,8 +1547,8 @@ dataRoutes.get('/dashboard', async (c) => {
     // ── PIR Submitted (timeline-aware) ──────────────────
     const userAIPsWithActivities = await (prisma.aIP as any).findMany({
       where: tokenUser.role === 'Division Personnel'
-        ? { created_by_user_id: tokenUser.id, school_id: null, year }
-        : { school_id: tokenUser.school_id, year },
+        ? { created_by_user_id: tokenUser.id, school_id: null, year, status: { in: SUBMITTED_AIP_STATUSES } }
+        : { school_id: tokenUser.school_id, year, status: { in: SUBMITTED_AIP_STATUSES } },
       select: {
         id: true,
         activities: { select: { period_start_month: true, period_end_month: true, budget_amount: true } }

@@ -16,6 +16,19 @@ export default React.memo(function PIRActionItemsSection({
         ));
     };
 
+    const addItem = () =>
+        setActionItems(prev => [...prev, { action: '', response_asds: '', response_sds: '' }]);
+
+    const removeItem = (index) =>
+        setActionItems(prev => prev.filter((_, i) => i !== index));
+
+    const handleKeyDown = (e, index) => {
+        if (e.key === 'Enter' && !e.shiftKey && index === actionItems.length - 1) {
+            e.preventDefault();
+            addItem();
+        }
+    };
+
     return (
         <div className={`${(appMode === 'full' || currentStep === 5) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
             {appMode === 'wizard' && (
@@ -40,52 +53,46 @@ export default React.memo(function PIRActionItemsSection({
                 </div>
             )}
 
-            <div className="space-y-4">
-                {actionItems.map((item, i) => (
-                    <div key={i} className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl overflow-hidden shadow-sm">
-                        <div className="flex items-center gap-3 px-5 py-3 bg-slate-50 dark:bg-dark-base border-b border-slate-200 dark:border-dark-border">
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white text-xs font-bold shadow-sm">
-                                {i + 1}
-                            </div>
-                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Action Item</span>
+            <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl overflow-hidden shadow-sm">
+                <div className="divide-y divide-slate-100 dark:divide-dark-border" id="action-items-list">
+                    {actionItems.map((item, i) => (
+                        <div key={i} className="flex items-start gap-3 px-4 py-3">
+                            {actionItems.length > 1 && (
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-sm mt-1">
+                                    {i + 1}
+                                </div>
+                            )}
+                            <TextareaAuto
+                                className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-100 bg-transparent outline-none min-h-[100px] placeholder:text-slate-300 dark:placeholder:text-slate-600 resize-none py-0.5"
+                                placeholder="Describe the recommended action or way forward..."
+                                value={item.action}
+                                onChange={(e) => handleChange(i, e.target.value)}
+                                onKeyDown={(e) => handleKeyDown(e, i)}
+                            />
+                            {actionItems.length > 1 && (
+                                <button
+                                    type="button"
+                                    onClick={() => removeItem(i)}
+                                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors mt-1"
+                                    title="Remove"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                            )}
                         </div>
+                    ))}
+                </div>
 
-                        <div className="p-5 flex flex-col gap-4">
-                            <div>
-                                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">
-                                    Action / Ways Forward
-                                </label>
-                                <div className="bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl p-3 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-50 dark:focus-within:ring-blue-950/20 transition-all">
-                                    <TextareaAuto
-                                        className="w-full text-sm font-medium text-slate-800 dark:text-slate-100 bg-transparent outline-none min-h-[48px] placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                                        placeholder="Describe the recommended action or way forward..."
-                                        value={item.action}
-                                        onChange={(e) => handleChange(i, e.target.value)}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">
-                                        Management Response — ASDS/FD Chief
-                                    </label>
-                                    <div className="text-sm italic text-slate-400 dark:text-slate-500 p-3 rounded-xl bg-slate-50 dark:bg-dark-base border border-dashed border-slate-200 dark:border-dark-border">
-                                        Pending management review
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2">
-                                        Management Response — SDS
-                                    </label>
-                                    <div className="text-sm italic text-slate-400 dark:text-slate-500 p-3 rounded-xl bg-slate-50 dark:bg-dark-base border border-dashed border-slate-200 dark:border-dark-border">
-                                        Pending management review
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+                <div className="border-t border-slate-100 dark:border-dark-border">
+                    <button
+                        type="button"
+                        onClick={addItem}
+                        className="flex items-center gap-2 text-xs font-bold text-blue-500 hover:text-blue-600 px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all w-full"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Action Item
+                    </button>
+                </div>
             </div>
         </div>
     );

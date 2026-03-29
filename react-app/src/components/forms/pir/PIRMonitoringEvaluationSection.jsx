@@ -13,7 +13,9 @@ export default React.memo(function PIRMonitoringEvaluationSection({
     handleActivityChange,
     handleAddActivity,
     handleAddUnplannedActivity,
-    isAddingActivity
+    isAddingActivity,
+    removedAIPActivities = [],
+    handleRestoreActivity,
 }) {
     if (appMode !== 'full' && currentStep !== 3) return null;
 
@@ -418,10 +420,10 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                                                 <td className="p-3 align-top">
                                                     <TextareaAuto placeholder="Resolutions..." className="font-medium text-slate-700 dark:text-slate-200 w-full bg-transparent p-1 focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded-md" value={act.actions} onChange={(e) => handleActivityChange(act.id, 'actions', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAddActivity(); }} />
                                                 </td>
-                                                <td className="border-none p-0 w-0 relative bg-white dark:bg-dark-surface">
+                                                <td className="p-2 align-middle text-center w-10">
                                                     {activities.length > 1 && (
-                                                        <button type="button" onClick={() => handleRemoveActivity(act.id)} className="absolute -right-14 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500 shadow-sm hover:border-red-200 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 focus:outline-none transition-colors z-10 opacity-0 group-hover:opacity-100" title="Delete Row">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                                                        <button type="button" onClick={() => handleRemoveActivity(act.id)} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors mx-auto" title="Delete Row">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
                                                         </button>
                                                     )}
                                                 </td>
@@ -439,6 +441,40 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                         </button>
                     </div>
                 </>
+            )}
+
+            {/* Removed AIP Activities Tray */}
+            {removedAIPActivities.length > 0 && (
+                <div className="mt-6 rounded-2xl border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20 overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-200 dark:border-amber-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500 shrink-0"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Removed AIP Activities</span>
+                        <span className="ml-auto text-[10px] font-semibold text-amber-500 dark:text-amber-500">Restore to add back</span>
+                    </div>
+                    <div className="divide-y divide-amber-100 dark:divide-amber-900">
+                        {removedAIPActivities.map((act) => (
+                            <div key={act.id} className="flex items-center gap-3 px-4 py-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
+                                        {act.name || <span className="italic font-normal text-slate-400">Untitled Activity</span>}
+                                    </p>
+                                    {act.implementation_period && (
+                                        <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">{act.implementation_period}</p>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRestoreActivity(act.id)}
+                                    className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-full transition-colors shrink-0"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                                    Restore
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             )}
         </div>
     );

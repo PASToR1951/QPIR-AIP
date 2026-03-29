@@ -64,15 +64,18 @@ export default React.memo(function PIRIndicatorsSection({
                                     {ind.description}
                                 </div>
                                 <div className="p-4 text-sm text-slate-600 dark:text-slate-300 text-center font-mono border-r border-slate-200 dark:border-dark-border flex items-center justify-center">
-                                    {ind.annual_target || '—'}
+                                    {ind.annual_target ? `${ind.annual_target}%` : '—%'}
                                 </div>
                                 <div className="p-3 focus-within:bg-blue-50/40 dark:focus-within:bg-blue-950/10 transition-colors">
-                                    <TextareaAuto
-                                        className="w-full text-sm font-medium text-slate-800 dark:text-slate-100 bg-transparent outline-none min-h-[40px] placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                                        placeholder="Enter quarterly target..."
-                                        value={ind.quarterly_target}
-                                        onChange={(e) => handleChange(i, e.target.value)}
-                                    />
+                                    <div className="flex items-center gap-1">
+                                        <TextareaAuto
+                                            className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-100 bg-transparent outline-none min-h-[40px] placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                                            placeholder="Enter quarterly target..."
+                                            value={ind.quarterly_target}
+                                            onChange={(e) => handleChange(i, e.target.value)}
+                                        />
+                                        <span className="text-sm font-bold text-slate-400 dark:text-slate-500 shrink-0">%</span>
+                                    </div>
                                 </div>
                             </div>
                         ))}

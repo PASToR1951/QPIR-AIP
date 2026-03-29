@@ -19,6 +19,7 @@ export const PIRDocument = ({
     owner,
     budgetFromDivision,
     budgetFromCoPSF,
+    functionalDivision = "",
     indicatorTargets = [],
     activities = [],
     factors = {},
@@ -67,8 +68,10 @@ export const PIRDocument = ({
                             <span className="w-2/3 font-bold">{program || "\u00A0"}</span>
                         </div>
                         <div className="flex border-b border-black pb-1">
-                            <span className="font-black w-1/3 uppercase tracking-tighter">School:</span>
-                            <span className="w-2/3 font-bold">{school || "\u00A0"}</span>
+                            <span className="font-black w-1/3 uppercase tracking-tighter">
+                                {functionalDivision ? 'Functional Division:' : 'School:'}
+                            </span>
+                            <span className="w-2/3 font-bold">{functionalDivision || school || "\u00A0"}</span>
                         </div>
                         <div className="flex border-b border-black pb-1">
                             <span className="font-black w-1/3 uppercase tracking-tighter">Owner:</span>
@@ -107,8 +110,8 @@ export const PIRDocument = ({
                         ) : indicatorTargets.map((ind, i) => (
                             <tr key={i}>
                                 <td className="border border-black p-2">{ind.description}</td>
-                                <td className="border border-black p-2 text-center">{ind.annual_target}</td>
-                                <td className="border border-black p-2 text-center">{ind.quarterly_target}</td>
+                                <td className="border border-black p-2 text-center">{ind.annual_target ? `${ind.annual_target}%` : '—%'}</td>
+                                <td className="border border-black p-2 text-center">{ind.quarterly_target ? `${ind.quarterly_target}%` : '—%'}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -124,7 +127,7 @@ export const PIRDocument = ({
                             <tr className="text-center font-black bg-slate-50 uppercase tracking-tighter print:bg-transparent">
                                 <th rowSpan={2} className="border border-black p-2 w-[3%]">No</th>
                                 <th rowSpan={2} className="border border-black p-2 w-[14%]">Q1 Activity/IES (Based on AIP {year})</th>
-                                <th rowSpan={2} className="border border-black p-2 w-[5%]">Complied (✓) or Not Complied (✗)</th>
+                                <th rowSpan={2} className="border border-black p-1 w-[6%] leading-tight"><span className="block">Complied (✓)</span><span className="block">or Not</span><span className="block">Complied (✗)</span></th>
                                 <th rowSpan={2} className="border border-black p-2 w-[10%]">Actual Tasks Conducted</th>
                                 <th rowSpan={2} className="border border-black p-2 w-[10%]">Contributory Performance Indicators</th>
                                 <th rowSpan={2} className="border border-black p-2 w-[10%]">MOVs / Expected Outputs</th>
@@ -251,17 +254,14 @@ export const PIRDocument = ({
                         </tr>
                     </thead>
                     <tbody>
-                        {Array(5).fill(null).map((_, i) => {
-                            const item = actionItems[i] ?? { action: '', response_asds: '', response_sds: '' };
-                            return (
-                                <tr key={i} className="min-h-[40px]">
-                                    <td className="border border-black p-2 text-center font-black">{i + 1}</td>
-                                    <td className="border border-black p-2 whitespace-pre-wrap">{item.action}</td>
-                                    <td className="border border-black p-2 whitespace-pre-wrap">{item.response_asds}</td>
-                                    <td className="border border-black p-2 whitespace-pre-wrap">{item.response_sds}</td>
-                                </tr>
-                            );
-                        })}
+                        {actionItems.map((item, i) => (
+                            <tr key={i} className="min-h-[40px]">
+                                <td className="border border-black p-2 text-center font-black">{i + 1}</td>
+                                <td className="border border-black p-2 whitespace-pre-wrap">{item.action}</td>
+                                <td className="border border-black p-2 whitespace-pre-wrap">{item.response_asds}</td>
+                                <td className="border border-black p-2 whitespace-pre-wrap">{item.response_sds}</td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>
