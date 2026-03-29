@@ -296,7 +296,7 @@ export default function AdminSubmissions() {
       .map(([key, rows]) => ({ groupKey: key, rows }));
   }
 
-  const STATUS_OPTIONS = ['Submitted', 'Under Review', 'Approved', 'Returned'];
+  const STATUS_OPTIONS = ['Submitted', 'Under Review', 'For CES Review', 'For SDS Review', 'Approved', 'Returned'];
   const QUARTER_OPTIONS = [
     { label: '1st Quarter', value: '1st' },
     { label: '2nd Quarter', value: '2nd' },

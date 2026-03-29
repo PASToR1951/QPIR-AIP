@@ -10,6 +10,7 @@ const API = import.meta.env.VITE_API_URL;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 const LEVELS = ['Elementary', 'Secondary', 'Both', 'Select Schools', 'Division'];
 const KRA_CATEGORIES = ['ACCESS', 'EQUITY', 'QUALITY', 'WELL-BEING & RESILIENCY', 'GOVERNANCE'];
+const DIVISIONS = ['SGOD', 'OSDS', 'CID'];
 const LEVEL_LABELS = {
   'Elementary': 'Elementary',
   'Secondary': 'Secondary',
@@ -34,7 +35,7 @@ export default function AdminPrograms() {
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState('All');
 
-  const [programForm, setProgramForm] = useState({ title: '', abbreviation: '', category: '', school_level_requirement: 'Both' });
+  const [programForm, setProgramForm] = useState({ title: '', abbreviation: '', category: '', division: '', school_level_requirement: 'Both' });
   const [editProgram, setEditProgram] = useState(null);
   const [deleteProgram, setDeleteProgram] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -66,7 +67,7 @@ export default function AdminPrograms() {
     try {
       setFormError('');
       await axios.post(`${API}/api/admin/programs`, programForm, { headers: authHeaders() });
-      setAddOpen(false); setProgramForm({ title: '', abbreviation: '', category: '', school_level_requirement: 'Both' }); fetchAll(); showToast('Program added successfully.');
+      setAddOpen(false); setProgramForm({ title: '', abbreviation: '', category: '', division: '', school_level_requirement: 'Both' }); fetchAll(); showToast('Program added successfully.');
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setActionLoading(false); }
@@ -76,7 +77,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/programs/${editProgram.id}`, { title: programForm.title, abbreviation: programForm.abbreviation, category: programForm.category, school_level_requirement: programForm.school_level_requirement }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/programs/${editProgram.id}`, { title: programForm.title, abbreviation: programForm.abbreviation, category: programForm.category, division: programForm.division || null, school_level_requirement: programForm.school_level_requirement }, { headers: authHeaders() });
       setEditProgram(null); fetchAll(); showToast('Program updated successfully.');
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -129,7 +130,7 @@ export default function AdminPrograms() {
                 </button>
               )}
             </div>
-            <button onClick={() => { setAddOpen(true); setProgramForm({ title: '', abbreviation: '', category: '', school_level_requirement: 'Both' }); }}
+            <button onClick={() => { setAddOpen(true); setProgramForm({ title: '', abbreviation: '', category: '', division: '', school_level_requirement: 'Both' }); }}
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shrink-0">
               <Plus size={17} /> <span className="hidden sm:inline">Add Program</span><span className="sm:hidden">Add</span>
             </button>
@@ -162,10 +163,13 @@ export default function AdminPrograms() {
                       {prog.title}{prog.abbreviation && <span className="font-normal text-slate-400 dark:text-slate-500"> ({prog.abbreviation})</span>}
                     </h3>
                       <span className="block text-xs font-bold text-slate-400 dark:text-slate-500">{LEVEL_LABELS[prog.school_level_requirement] ?? prog.school_level_requirement}</span>
-                      {prog.category && <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide rounded-lg bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400">{prog.category}</span>}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {prog.category && <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide rounded-lg bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400">{prog.category}</span>}
+                        {prog.division && <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide rounded-lg bg-teal-50 dark:bg-teal-950/30 text-teal-600 dark:text-teal-400">{prog.division}</span>}
+                      </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button onClick={() => { setEditProgram(prog); setProgramForm({ title: prog.title, abbreviation: prog.abbreviation ?? '', category: prog.category ?? '', school_level_requirement: prog.school_level_requirement }); }} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={16} /></button>
+                    <button onClick={() => { setEditProgram(prog); setProgramForm({ title: prog.title, abbreviation: prog.abbreviation ?? '', category: prog.category ?? '', division: prog.division ?? '', school_level_requirement: prog.school_level_requirement }); }} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={16} /></button>
                     <button onClick={() => setDeleteProgram(prog)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><Trash size={16} /></button>
                   </div>
                 </div>
@@ -221,7 +225,11 @@ export default function AdminPrograms() {
             <SearchableSelect options={[{ value: '', label: 'None' }, ...KRA_CATEGORIES.map(c => ({ value: c, label: c }))]} value={programForm.category} onChange={v => setProgramForm(f => ({ ...f, category: v }))} />
           </div>
           <div>
-            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">applicability</label>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Division <span className="font-normal normal-case text-slate-400">(for CES routing)</span></label>
+            <SearchableSelect options={[{ value: '', label: 'None' }, ...DIVISIONS.map(d => ({ value: d, label: d }))]} value={programForm.division} onChange={v => setProgramForm(f => ({ ...f, division: v }))} />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">Applicability</label>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-1.5">determines which schools or users can see and file this program</p>
             <SearchableSelect options={LEVELS.map(l => ({ value: l, label: LEVEL_LABELS[l] ?? l }))} value={programForm.school_level_requirement} onChange={v => setProgramForm(f => ({ ...f, school_level_requirement: v }))} />
           </div>
