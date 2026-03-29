@@ -24,6 +24,12 @@ import DashboardStats, { getActionPrompt } from './components/ui/DashboardStats'
 // Reviewer pages
 import ReviewerLayout from './reviewer/ReviewerLayout.jsx';
 
+// CES pages
+import CESLayout from './ces/CESLayout.jsx';
+
+// SDS pages
+import SDSLayout from './sds/SDSLayout.jsx';
+
 // Admin pages
 import AdminOverview from './admin/pages/AdminOverview.jsx';
 import AdminSubmissions from './admin/pages/AdminSubmissions.jsx';
@@ -34,6 +40,8 @@ import AdminDeadlines from './admin/pages/AdminDeadlines.jsx';
 import AdminReports from './admin/pages/AdminReports.jsx';
 import AdminSettings from './admin/pages/AdminSettings.jsx';
 
+const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID'];
+
 // Simple Protected Route component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -42,6 +50,8 @@ const ProtectedRoute = ({ children }) => {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     if (user?.role === 'Admin') return <Navigate to="/admin" replace />;
     if (user?.role === 'Reviewer') return <Navigate to="/reviewer" replace />;
+    if (CES_ROLES.includes(user?.role)) return <Navigate to="/ces" replace />;
+    if (user?.role === 'SDS') return <Navigate to="/sds" replace />;
   } catch {
     return <Navigate to="/login" replace />;
   }
@@ -80,6 +90,28 @@ const AdminRouteGuard = ({ children }) => {
   } catch {
     return <Navigate to="/login" replace />;
   }
+  return children;
+};
+
+// CES route guard — allows CES-SGOD, CES-ASDS, CES-CID (and Admin for testing)
+const CESRouteGuard = ({ children }) => {
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/login" replace />;
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || 'null');
+    if (!CES_ROLES.includes(u?.role) && u?.role !== 'Admin') return <Navigate to="/" replace />;
+  } catch { return <Navigate to="/login" replace />; }
+  return children;
+};
+
+// SDS route guard
+const SDSRouteGuard = ({ children }) => {
+  const token = localStorage.getItem('token');
+  if (!token) return <Navigate to="/login" replace />;
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || 'null');
+    if (u?.role !== 'SDS' && u?.role !== 'Admin') return <Navigate to="/" replace />;
+  } catch { return <Navigate to="/login" replace />; }
   return children;
 };
 
@@ -458,6 +490,12 @@ function AnimatedRoutes() {
 
           {/* Reviewer Routes */}
           <Route path="/reviewer/*" element={<ReviewerRouteGuard><ReviewerLayout /></ReviewerRouteGuard>} />
+
+          {/* CES Routes */}
+          <Route path="/ces/*" element={<CESRouteGuard><CESLayout /></CESRouteGuard>} />
+
+          {/* SDS Routes */}
+          <Route path="/sds/*" element={<SDSRouteGuard><SDSLayout /></SDSRouteGuard>} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminRouteGuard><AdminOverview /></AdminRouteGuard>} />
