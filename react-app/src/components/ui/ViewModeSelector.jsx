@@ -70,6 +70,7 @@ export const ViewModeSelector = ({
     draftPrograms: rawDraftPrograms = [],
     completedPrograms: rawCompletedPrograms = [],
     returnedPrograms: rawReturnedPrograms = [],
+    autosavedPrograms: rawAutosavedPrograms = [],
     onBulkDelete,
     theme = "pink",
     isMobile = false,
@@ -78,6 +79,7 @@ export const ViewModeSelector = ({
     const draftPrograms     = rawDraftPrograms;
     const completedPrograms = rawCompletedPrograms;
     const returnedPrograms  = rawReturnedPrograms;
+    const autosavedPrograms = rawAutosavedPrograms;
     const [stage, setStage] = useState('program');
     const [selected, setSelected] = useState(null);
     const [search, setSearch] = useState('');
@@ -312,6 +314,7 @@ export const ViewModeSelector = ({
                                         const isSelectable = isDraft || isReturned;
                                         const isSelected   = selectedPrograms.includes(p);
 
+                                        const hasAutosave = autosavedPrograms.includes(p);
                                         return (
                                             <button
                                                 key={p}
@@ -345,8 +348,8 @@ export const ViewModeSelector = ({
                                                         {isDraft ? 'Draft' : isReturned ? 'Returned' : isDone ? 'Submitted' : 'Pending'}
                                                     </span>
 
-                                                    {/* Checkbox in selection mode */}
-                                                    {selectionMode && isSelectable && (
+                                                    {/* Autosave indicator / Checkbox in selection mode */}
+                                                    {selectionMode && isSelectable ? (
                                                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                                                             isSelected ? 'bg-red-500 border-red-500' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-surface'
                                                         }`}>
@@ -356,7 +359,14 @@ export const ViewModeSelector = ({
                                                                 </svg>
                                                             )}
                                                         </div>
-                                                    )}
+                                                    ) : hasAutosave ? (
+                                                        <span className="inline-flex items-center gap-1 self-start text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border text-violet-700 bg-violet-100 border-violet-300 dark:text-violet-300 dark:bg-violet-900/50 dark:border-violet-700 shrink-0">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                                                            </svg>
+                                                            Unsaved
+                                                        </span>
+                                                    ) : null}
                                                 </div>
 
                                                 {/* Program name */}

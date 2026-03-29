@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { cn } from './Input';
 
-export const TextareaAuto = React.forwardRef(({ className, value, onChange, ...props }, forwardedRef) => {
+export const TextareaAuto = React.forwardRef(({ className, value, onChange, onKeyDown: parentOnKeyDown, ...props }, forwardedRef) => {
     const [localValue, setLocalValue] = useState(value || '');
     const textareaRef = useRef(null);
 
@@ -20,10 +20,10 @@ export const TextareaAuto = React.forwardRef(({ className, value, onChange, ...p
 
     const handleInput = useCallback((e) => {
         setLocalValue(e.target.value);
-        
+
         const el = textareaRef.current;
         if (!el) return;
-        
+
         // Prevent layout thrashing: only recalculate height here, do not trigger parent onChange
         el.style.height = 'auto';
         el.style.height = `${el.scrollHeight}px`;
@@ -33,15 +33,16 @@ export const TextareaAuto = React.forwardRef(({ className, value, onChange, ...p
         if (e.key === 'Enter') {
             e.preventDefault();
             e.stopPropagation();
+            // Fall through — parent handler may still add a row
         }
-        if (props.onKeyDown) props.onKeyDown(e);
-    }, [props.onKeyDown]);
+        if (parentOnKeyDown) parentOnKeyDown(e);
+    }, [parentOnKeyDown]);
 
     const handleBlur = useCallback((e) => {
         if (onChange && localValue !== value) {
             // Create a synthetic event or just call onChange with current state if needed
-            // The simplest way to keep compatibility with existing onChange handlers is to 
-            // call it with the original event, but update the target's value. 
+            // The simplest way to keep compatibility with existing onChange handlers is to
+            // call it with the original event, but update the target's value.
             // We can just pass the event, since the target value is already updated in DOM.
             onChange(e);
         }
