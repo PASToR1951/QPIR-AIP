@@ -300,15 +300,15 @@ adminRoutes.get("/overview", async (c) => {
   const deadline = await prisma.deadline.findUnique({
     where: { year_quarter: { year, quarter: currentQuarter } },
   });
-  const defaultDeadlines: Record<number, string> = {
-    1: `${year}-03-31`,
-    2: `${year}-06-30`,
-    3: `${year}-09-30`,
-    4: `${year}-12-31`,
+  const defaultDeadlines: Record<number, Date> = {
+    1: new Date(year, 2,  31, 23, 59, 59, 999),
+    2: new Date(year, 5,  30, 23, 59, 59, 999),
+    3: new Date(year, 8,  30, 23, 59, 59, 999),
+    4: new Date(year, 11, 31, 23, 59, 59, 999),
   };
   const deadlineDate = deadline
-    ? deadline.date
-    : new Date(defaultDeadlines[currentQuarter]);
+    ? new Date(new Date(deadline.date).setHours(23, 59, 59, 999))
+    : defaultDeadlines[currentQuarter];
   const daysLeft = Math.ceil(
     (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
@@ -1755,15 +1755,15 @@ adminRoutes.get("/layout-info", async (c) => {
   const deadline = await prisma.deadline.findUnique({
     where: { year_quarter: { year, quarter: currentQuarter } },
   });
-  const defaultDeadlines: Record<number, string> = {
-    1: `${year}-03-31`,
-    2: `${year}-06-30`,
-    3: `${year}-09-30`,
-    4: `${year}-12-31`,
+  const defaultDeadlines: Record<number, Date> = {
+    1: new Date(year, 2,  31, 23, 59, 59, 999),
+    2: new Date(year, 5,  30, 23, 59, 59, 999),
+    3: new Date(year, 8,  30, 23, 59, 59, 999),
+    4: new Date(year, 11, 31, 23, 59, 59, 999),
   };
   const deadlineDate = deadline
-    ? deadline.date
-    : new Date(defaultDeadlines[currentQuarter]);
+    ? new Date(new Date(deadline.date).setHours(23, 59, 59, 999))
+    : defaultDeadlines[currentQuarter];
   const daysLeft = Math.ceil(
     (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
