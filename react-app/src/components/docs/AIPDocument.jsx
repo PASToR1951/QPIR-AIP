@@ -57,8 +57,8 @@ export const AIPDocument = ({
                 <div className="flex py-1 border-b border-dotted border-slate-400">
                     <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0 pt-0.5">Objective/s:</span>
                     <div className="flex-1 font-medium space-y-0.5">
-                        {objectives.length > 0
-                            ? objectives.map((obj, i) => (
+                        {objectives.filter(obj => obj.trim() !== '').length > 0
+                            ? objectives.filter(obj => obj.trim() !== '').map((obj, i) => (
                                 <div key={i} className="flex gap-1.5 items-start">
                                     <span className="shrink-0">*</span>
                                     <span>{obj}</span>
@@ -72,29 +72,34 @@ export const AIPDocument = ({
                 {/* Performance Indicators + Annual Target */}
                 <div className="flex py-1 border-b border-dotted border-slate-400">
                     <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0 pt-0.5">Performance Indicator/s OVI):</span>
-                    <div className="w-[47%] font-medium space-y-0.5">
-                        {indicators.length > 0
-                            ? indicators.map((ind, i) => (
-                                <div key={i} className="flex gap-1.5 items-start">
-                                    <span className="shrink-0">*</span>
-                                    <span>{ind.description}</span>
-                                </div>
-                            ))
-                            : <span>&nbsp;</span>
-                        }
-                    </div>
-                    {indicators.length > 0 && (
-                        <div className="w-[23%] pl-4">
-                            <div className="font-bold uppercase text-[10px] tracking-tight mb-0.5">Annual Target:</div>
-                            <div className="space-y-0.5">
-                                {indicators.map((ind, i) => (
-                                    <div key={i} className="font-medium text-right pr-1">
-                                        {ind.target ? (String(ind.target).endsWith('%') ? ind.target : `${ind.target}%`) : "\u00A0"}
-                                    </div>
-                                ))}
+                    {(() => {
+                        const visibleIndicators = indicators.filter(ind => ind.description.trim() !== '');
+                        return <>
+                            <div className="w-[47%] font-medium space-y-0.5">
+                                {visibleIndicators.length > 0
+                                    ? visibleIndicators.map((ind, i) => (
+                                        <div key={i} className="flex gap-1.5 items-start">
+                                            <span className="shrink-0">*</span>
+                                            <span>{ind.description}</span>
+                                        </div>
+                                    ))
+                                    : <span>&nbsp;</span>
+                                }
                             </div>
-                        </div>
-                    )}
+                            {visibleIndicators.length > 0 && (
+                                <div className="w-[23%] pl-4">
+                                    <div className="font-bold uppercase text-[10px] tracking-tight mb-0.5 text-right">Annual Target:</div>
+                                    <div className="space-y-0.5">
+                                        {visibleIndicators.map((ind, i) => (
+                                            <div key={i} className="font-medium text-right pr-1">
+                                                {ind.target ? (String(ind.target).endsWith('%') ? ind.target : `${ind.target}%`) : "\u00A0"}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </>;
+                    })()}
                 </div>
             </div>
 

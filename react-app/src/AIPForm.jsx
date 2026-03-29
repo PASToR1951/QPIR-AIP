@@ -343,8 +343,8 @@ export default function App() {
                 outcome,
                 sip_title: sipTitle,
                 project_coordinator: projectCoord,
-                objectives,
-                indicators,
+                objectives: objectives.filter(o => o.trim() !== ''),
+                indicators: indicators.filter(ind => ind.description.trim() !== ''),
                 prepared_by_name: preparedByName,
                 prepared_by_title: preparedByTitle,
                 approved_by_name: approvedByName,
@@ -381,7 +381,9 @@ export default function App() {
                 const key = `aip_draft_${depedProgram}_${year}`;
                 const snapshot = {
                     outcome, depedProgram, sipTitle, projectCoord,
-                    objectives, indicators, activities,
+                    objectives: objectives.filter(o => o.trim() !== ''),
+                    indicators: indicators.filter(ind => ind.description.trim() !== ''),
+                    activities,
                     preparedByName, preparedByTitle, approvedByName, approvedByTitle,
                     year,
                     savedAt: new Date().toISOString()
@@ -589,8 +591,8 @@ export default function App() {
                 outcome,
                 sip_title: sipTitle,
                 project_coordinator: projectCoord,
-                objectives,
-                indicators,
+                objectives: objectives.filter(o => o.trim() !== ''),
+                indicators: indicators.filter(ind => ind.description.trim() !== ''),
                 prepared_by_name: preparedByName,
                 prepared_by_title: preparedByTitle,
                 approved_by_name: approvedByName,
@@ -992,7 +994,7 @@ export default function App() {
                                     disabled={currentStep === 1}
                                     className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-surface hover:bg-slate-200 dark:hover:bg-dark-border disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{pointerEvents:'none'}}><path d="m15 18-6-6 6-6" /></svg>
                                     Back
                                 </button>
 
@@ -1003,7 +1005,7 @@ export default function App() {
                                         className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-pink-600 hover:bg-pink-700 transition-colors active:scale-95 shadow-md"
                                     >
                                         Continue
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{pointerEvents:'none'}}><path d="m9 18 6-6-6-6" /></svg>
                                     </button>
                                 )}
                             </div>
