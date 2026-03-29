@@ -416,7 +416,7 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                                                     <input type="text" readOnly tabIndex={-1} className="w-full text-center font-bold outline-none font-mono text-sm select-none pointer-events-none bg-transparent h-full min-h-[44px]" style={{ color: finGap < 0 ? '#ef4444' : '#64748b' }} value={`${finGap.toFixed(2)}%`} />
                                                 </td>
                                                 <td className="p-3 align-top">
-                                                    <TextareaAuto placeholder="Resolutions..." className="font-medium text-slate-700 dark:text-slate-200 w-full bg-transparent p-1 focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded-md" value={act.actions} onChange={(e) => handleActivityChange(act.id, 'actions', e.target.value)} />
+                                                    <TextareaAuto placeholder="Resolutions..." className="font-medium text-slate-700 dark:text-slate-200 w-full bg-transparent p-1 focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded-md" value={act.actions} onChange={(e) => handleActivityChange(act.id, 'actions', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAddActivity(); }} />
                                                 </td>
                                                 <td className="border-none p-0 w-0 relative bg-white dark:bg-dark-surface">
                                                     {activities.length > 1 && (

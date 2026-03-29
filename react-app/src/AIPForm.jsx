@@ -72,7 +72,9 @@ export default function App() {
         title: '',
         message: '',
         confirmText: 'Confirm',
-        onConfirm: () => { }
+        cancelText: 'Cancel',
+        onConfirm: () => { },
+        onClose: null // null means fall back to closeModal
     });
 
     const closeModal = useCallback(() => setModal(prev => ({ ...prev, isOpen: false })), []);
@@ -120,6 +122,7 @@ export default function App() {
     const [draftPrograms, setDraftPrograms] = useState([]);
     const [toast, setToast] = useState(null);          // { msg, programs[] }
     const [deletedPopup, setDeletedPopup] = useState(null); // programs[] shown in popup
+    const [autosavedPrograms, setAutosavedPrograms] = useState([]);
     const toastTimerRef = useRef(null);
 
     const showToast = useCallback((programs) => {
@@ -250,19 +253,36 @@ export default function App() {
         if (lsRaw) {
             try {
                 const lsData = JSON.parse(lsRaw);
+                const hasServerDraft = draftPrograms.includes(selectedProgram);
                 setModal({
                     isOpen: true,
                     type: 'warning',
                     title: 'Restore Auto-Save?',
-                    message: `An auto-saved draft was found from ${new Date(lsData.savedAt).toLocaleString()}. Restore it?`,
+                    message: `An auto-saved draft was found from ${new Date(lsData.savedAt).toLocaleString()}. Restore it?${hasServerDraft ? ' Or discard it to load your last saved draft instead.' : ''}`,
                     confirmText: 'Yes, Restore',
+                    cancelText: hasServerDraft ? 'No, Load Saved Draft' : 'Cancel',
                     onConfirm: () => {
                         loadDraftIntoState(lsData);
                         closeModal();
                         setAppMode(mode);
+                    },
+                    onClose: async () => {
+                        closeModal();
+                        localStorage.removeItem(lsKey);
+                        if (hasServerDraft) {
+                            try {
+                                const currentYear = parseInt(year);
+                                const draftRes = await axios.get(
+                                    `${import.meta.env.VITE_API_URL}/api/aips/draft`,
+                                    { params: { program_title: selectedProgram, year: currentYear }, headers: authHeaders }
+                                );
+                                if (draftRes.data.hasDraft) loadDraftIntoState(draftRes.data.draftData);
+                            } catch { /* proceed with blank form */ }
+                        }
+                        setAppMode(mode);
                     }
                 });
-                return; // modal will trigger setAppMode on confirm
+                return; // modal will trigger setAppMode on confirm or onClose
             } catch { /* ignore malformed */ }
         }
 
@@ -389,6 +409,7 @@ export default function App() {
                     savedAt: new Date().toISOString()
                 };
                 localStorage.setItem(key, JSON.stringify(snapshot));
+                setAutosavedPrograms(prev => prev.includes(depedProgram) ? prev : [...prev, depedProgram]);
                 setLastAutoSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
                 setTimeout(() => setLastAutoSavedTime(null), 3000);
             } catch { /* quota exceeded or private browsing — silently skip */ }
@@ -397,6 +418,17 @@ export default function App() {
         return () => clearTimeout(autosaveTimerRef.current);
     }, [appMode, depedProgram, year, outcome, sipTitle, projectCoord, objectives, indicators, activities,
         preparedByName, preparedByTitle, approvedByName, approvedByTitle]);
+
+    // Scan localStorage for autosaved programs; clear any that are already submitted
+    useEffect(() => {
+        if (!year || programList.length === 0) return;
+        completedPrograms.forEach(p => localStorage.removeItem(`aip_draft_${p}_${year}`));
+        const withAutosave = programList.filter(p =>
+            !completedPrograms.includes(p) &&
+            localStorage.getItem(`aip_draft_${p}_${year}`) !== null
+        );
+        setAutosavedPrograms(withAutosave);
+    }, [programList, year, completedPrograms]);
 
     // Resize Listener
     useEffect(() => {
@@ -634,12 +666,13 @@ export default function App() {
         <div className="min-h-screen bg-slate-50 dark:bg-dark-base">
         <ConfirmationModal
             isOpen={modal.isOpen}
-            onClose={closeModal}
+            onClose={modal.onClose ?? closeModal}
             onConfirm={modal.onConfirm}
             type={modal.type}
             title={modal.title}
             message={modal.message}
             confirmText={modal.confirmText}
+            cancelText={modal.cancelText}
         />
         {toast && (
             <button
@@ -708,6 +741,7 @@ export default function App() {
                         draftPrograms={draftPrograms}
                         completedPrograms={completedPrograms}
                         returnedPrograms={returnedPrograms}
+                        autosavedPrograms={autosavedPrograms}
                         onBulkDelete={handleBulkDelete}
                         theme="pink"
                         isMobile={isMobile}

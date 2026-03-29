@@ -33,7 +33,7 @@ export const ConfirmationModal = ({
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="bg-white dark:bg-dark-surface rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl border border-slate-100 dark:border-dark-border relative overflow-hidden"
+                        className="bg-white dark:bg-dark-surface rounded-[2.5rem] p-8 md:p-12 max-w-md sm:max-w-lg md:max-w-xl w-full shadow-2xl border border-slate-100 dark:border-dark-border relative overflow-hidden"
                     >
                         {/* Decorative background element */}
                         <div className="absolute -top-24 -right-24 w-48 h-48 bg-slate-50 dark:bg-dark-base rounded-full blur-3xl opacity-50 pointer-events-none"></div>
@@ -58,7 +58,7 @@ export const ConfirmationModal = ({
                                 {message}
                             </p>
                             
-                            <div className="flex flex-col sm:flex-row gap-3 w-full">
+                            <div className="flex flex-row gap-3 w-full">
                                 <button 
                                     onClick={onClose}
                                     className="flex-1 px-6 py-4 rounded-2xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-all active:scale-95"

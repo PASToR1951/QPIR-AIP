@@ -188,7 +188,7 @@ export default React.memo(function AIPActionPlanSection({
             {/* FULL MODE: Table View */}
             {appMode === 'full' && (
                 <div className="overflow-x-auto pb-4">
-                    <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-hidden min-w-[1000px]">
+                    <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-visible min-w-[1000px]">
                         <table className="w-full border-collapse text-sm">
                             <thead>
                                 <tr className="text-left select-none bg-slate-50 dark:bg-dark-base border-b border-slate-200 dark:border-dark-border">
@@ -253,7 +253,7 @@ export default React.memo(function AIPActionPlanSection({
                                                         </div>
                                                     </td>
                                                     <td className="border-r border-slate-200 dark:border-dark-border p-2 align-top bg-slate-50/30 dark:bg-dark-base/30">
-                                                        <input type="text" className="w-full text-center outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded p-1" placeholder="NONE" value={act.budgetSource} onChange={(e) => handleActivityChange(act.id, 'budgetSource', e.target.value)} />
+                                                        <input type="text" className="w-full text-center outline-none text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded p-1" placeholder="NONE" value={act.budgetSource} onChange={(e) => handleActivityChange(act.id, 'budgetSource', e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddActivityPhase(act.phase); } }} />
                                                     </td>
                                                     <td className="border-none p-1 w-10 align-middle bg-white dark:bg-dark-surface">
                                                         {activities.filter(a => a.phase === act.phase).length > 1 && (
