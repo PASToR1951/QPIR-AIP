@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 
 const FACTOR_TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
@@ -30,6 +30,7 @@ import PIRActionItemsSection from './components/forms/pir/PIRActionItemsSection'
 
 export default function App() {
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { settings } = useAccessibility();
     const motionProps = useMemo(() => (
         settings.reduceMotion
@@ -50,6 +51,7 @@ export default function App() {
     const saveTimerRef = useRef(null);
     const draftIndicatorsLoaded = useRef(false);
     const pirActivitiesLoaded = useRef(false);
+    const autoStarted = useRef(false);
 
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
@@ -146,6 +148,9 @@ export default function App() {
     const [pirId, setPirId] = useState(null);
     const [pirStatus, setPirStatus] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
+
+    // Splash stage-2 selection (program chosen but no mode yet)
+    const [splashSelectedProgram, setSplashSelectedProgram] = useState(null);
 
     // Form State
     const [program, setProgram] = useState("");
@@ -325,6 +330,7 @@ export default function App() {
                 return; // stay on splash if fetch fails
             }
             setAppMode('readonly');
+            setSearchParams({ program: selectedProgram, mode: 'readonly' }, { replace: true });
             return;
         }
 
@@ -352,6 +358,7 @@ export default function App() {
             }
         }
         setAppMode(mode);
+        setSearchParams({ program: selectedProgram, mode }, { replace: true });
     };
 
     const hasInputtedData = () => {
@@ -367,11 +374,13 @@ export default function App() {
         } else if (isEditing) {
             setIsEditing(false);
             setAppMode('readonly');
+            setSearchParams({ program, mode: 'readonly' }, { replace: true });
         } else {
             if (hasInputtedData()) {
                 handleSaveForLater();
             }
             setAppMode('splash');
+            setSearchParams({}, { replace: true });
         }
     };
 
@@ -385,7 +394,35 @@ export default function App() {
     const handleEditPIR = () => {
         setIsEditing(true);
         setAppMode('wizard');
+        setSearchParams({ program, mode: 'wizard' }, { replace: true });
     };
+
+    // Auto-start from URL params once data has loaded (supports deep links & browser refresh)
+    useEffect(() => {
+        if (isLoading || autoStarted.current) return;
+        autoStarted.current = true;
+        const paramProgram = searchParams.get('program');
+        const paramMode = searchParams.get('mode');
+        if (paramProgram && ['wizard', 'full', 'readonly'].includes(paramMode)) {
+            handleStart(paramMode, paramProgram);
+        } else if (paramProgram && !paramMode) {
+            setSplashSelectedProgram(paramProgram);
+        }
+    }, [isLoading]);
+
+    // Sync splash/form state when URL params change
+    useEffect(() => {
+        if (!autoStarted.current) return;
+        const paramProgram = searchParams.get('program');
+        const paramMode = searchParams.get('mode');
+        if (!paramProgram) {
+            setSplashSelectedProgram(null);
+            if (appMode !== 'splash') { setAppMode('splash'); setProgram(''); }
+        } else if (!paramMode) {
+            setSplashSelectedProgram(paramProgram);
+            if (appMode !== 'splash') { setAppMode('splash'); setProgram(''); }
+        }
+    }, [searchParams]);
 
     const handleDeletePIR = () => {
         setModal({
@@ -404,6 +441,7 @@ export default function App() {
                     setPirStatus(null);
                     setIsEditing(false);
                     setAppMode('splash');
+                    setSearchParams({}, { replace: true });
                 } catch (e) {
                     setModal({
                         isOpen: true,
@@ -448,7 +486,7 @@ export default function App() {
                 budget_from_co_psf: budgetFromCoPSF,
                 functional_division: isDivisionPersonnel ? functionalDivision : null,
                 indicator_quarterly_targets: indicatorTargets,
-                action_items: actionItems,
+                action_items: actionItems.filter(item => item.action?.trim()),
                 activity_reviews: activities.map(a => ({
                     aip_activity_id: a.fromAIP ? a.aip_activity_id : null,
                     complied: a.complied,
@@ -597,7 +635,7 @@ export default function App() {
             budget_from_co_psf: budgetFromCoPSF,
             functional_division: isDivisionPersonnel ? functionalDivision : null,
             indicator_quarterly_targets: indicatorTargets,
-            action_items: actionItems,
+            action_items: actionItems.filter(item => item.action?.trim()),
             activity_reviews: activities.map(a => ({
                 aip_activity_id: a.fromAIP ? a.aip_activity_id : null,
                 complied: a.complied,
@@ -636,7 +674,7 @@ export default function App() {
                     title: 'PIR Updated!',
                     message: 'Your changes have been saved.',
                     confirmText: 'View Submission',
-                    onConfirm: () => { closeModal(); setAppMode('readonly'); }
+                    onConfirm: () => { closeModal(); setAppMode('readonly'); setSearchParams({ program, mode: 'readonly' }, { replace: true }); }
                 });
             } else {
                 await axios.post(
@@ -652,7 +690,9 @@ export default function App() {
                     title: 'Success!',
                     message: 'The QPIR document has been saved to the database.',
                     confirmText: 'Back to Dashboard',
-                    onConfirm: () => navigate('/')
+                    onConfirm: () => navigate('/'),
+                    hideCancelButton: true,
+                    extraAction: { text: 'View Programs', onClick: () => navigate('/pir') }
                 });
             }
         } catch (error) {
@@ -693,6 +733,15 @@ export default function App() {
                             draftProgram={loadedDraftData?.program || null}
                             completedPrograms={completedPrograms}
                             theme="blue"
+                            selectedProgram={splashSelectedProgram}
+                            onSelectProgram={(p) => {
+                                setSplashSelectedProgram(p);
+                                if (p) {
+                                    setSearchParams({ program: p }, { replace: true });
+                                } else {
+                                    setSearchParams({}, { replace: true });
+                                }
+                            }}
                         />
                     </motion.div>
                 ) : appMode === 'readonly' ? (
@@ -785,7 +834,11 @@ export default function App() {
                                 lastSavedTime={lastSavedTime}
                                 theme="blue"
                                 appMode={appMode}
-                                toggleAppMode={() => setAppMode(appMode === 'wizard' ? 'full' : 'wizard')}
+                                toggleAppMode={() => {
+                                    const newMode = appMode === 'wizard' ? 'full' : 'wizard';
+                                    setAppMode(newMode);
+                                    setSearchParams({ program, mode: newMode }, { replace: true });
+                                }}
                             />
 
                             <DocumentPreviewModal
@@ -1100,6 +1153,8 @@ export default function App() {
                 title={modal.title}
                 message={modal.message}
                 confirmText={modal.confirmText}
+                hideCancelButton={modal.hideCancelButton}
+                extraAction={modal.extraAction}
             />
         </div>
     );

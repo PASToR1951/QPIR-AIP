@@ -715,7 +715,26 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
       }
     }
   } else {
-    await prisma.aIP.update({ where: { id }, data: { status } });
+    const aip = await prisma.aIP.update({
+      where: { id },
+      data: { status },
+      include: { program: true, school: true },
+    });
+    if (aip.created_by_user_id) {
+      const schoolLabel = aip.school?.name ?? "your school";
+      const aipNotifMessages: Record<string, { title: string; message: string }> = {
+        "Approved":     { title: "AIP Approved",     message: `Your AIP for ${aip.program.title} (FY ${aip.year}) from ${schoolLabel} has been approved.` },
+        "Returned":     { title: "AIP Returned",     message: `Your AIP for ${aip.program.title} (FY ${aip.year}) has been returned for correction.${feedback ? ` Feedback: ${feedback}` : ""}` },
+        "Under Review": { title: "AIP Under Review", message: `Your AIP for ${aip.program.title} (FY ${aip.year}) is now under review.` },
+        "Submitted":    { title: "AIP Status Updated", message: `Your AIP for ${aip.program.title} (FY ${aip.year}) status has been updated to Submitted.` },
+      };
+      const aipNotif = aipNotifMessages[status];
+      if (aipNotif) {
+        await prisma.notification.create({
+          data: { user_id: aip.created_by_user_id, title: aipNotif.title, message: aipNotif.message, type: statusLabels[status] },
+        });
+      }
+    }
   }
 
   await writeAuditLog(admin.id, `updated_${type}_status`, type === "pir" ? "PIR" : "AIP", id, {
