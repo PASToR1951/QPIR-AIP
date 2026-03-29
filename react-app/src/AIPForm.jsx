@@ -222,6 +222,7 @@ export default function App() {
     // Called when the user picks program + mode in the splash
     const handleStart = async (mode, selectedProgram, opts = {}) => {
         setDepedProgram(selectedProgram);
+        setIsSubmitted(false);
         resetFormState();
 
         if (mode === 'readonly') {
@@ -386,6 +387,9 @@ export default function App() {
         } else if (!paramMode) {
             setSplashSelectedProgram(paramProgram);
             if (appMode !== 'splash') { setAppMode('splash'); setDepedProgram(''); }
+        } else if (appMode === 'splash') {
+            // URL params restored (e.g. browser back) — re-enter form
+            handleStart(paramMode, paramProgram);
         }
     }, [searchParams]);
 
@@ -681,9 +685,9 @@ export default function App() {
                 title: 'Success!',
                 message: 'The Annual Implementation Plan has been saved to the database.',
                 confirmText: 'Back to Dashboard',
-                onConfirm: () => navigate('/'),
+                onConfirm: () => { closeModal(); navigate('/'); },
                 hideCancelButton: true,
-                extraAction: { text: 'View Programs', onClick: () => navigate('/aip') }
+                extraAction: { text: 'View Programs', onClick: () => { closeModal(); navigate('/aip'); } }
             });
         } catch (error) {
             setModal({

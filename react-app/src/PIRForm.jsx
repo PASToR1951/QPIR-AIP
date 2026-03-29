@@ -306,6 +306,7 @@ export default function App() {
     // Called when the user picks program + mode in the splash
     const handleStart = async (mode, selectedProgram) => {
         setProgram(selectedProgram);
+        setIsSubmitted(false);
 
         if (mode === 'readonly') {
             try {
@@ -421,6 +422,9 @@ export default function App() {
         } else if (!paramMode) {
             setSplashSelectedProgram(paramProgram);
             if (appMode !== 'splash') { setAppMode('splash'); setProgram(''); }
+        } else if (appMode === 'splash') {
+            // URL params restored (e.g. browser back) — re-enter form
+            handleStart(paramMode, paramProgram);
         }
     }, [searchParams]);
 
@@ -690,9 +694,9 @@ export default function App() {
                     title: 'Success!',
                     message: 'The QPIR document has been saved to the database.',
                     confirmText: 'Back to Dashboard',
-                    onConfirm: () => navigate('/'),
+                    onConfirm: () => { closeModal(); navigate('/'); },
                     hideCancelButton: true,
-                    extraAction: { text: 'View Programs', onClick: () => navigate('/pir') }
+                    extraAction: { text: 'View Programs', onClick: () => { closeModal(); navigate('/pir'); } }
                 });
             }
         } catch (error) {

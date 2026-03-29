@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   XCircle, ArrowLeft, Buildings, IdentificationBadge, ShieldStar,
-  UserPlus, CaretRight, Eye, EyeSlash, Binoculars,
+  UserPlus, CaretRight, Eye, EyeSlash, Binoculars, Stamp, UserCircleGear,
 } from '@phosphor-icons/react';
 import { SearchableSelect } from './SearchableSelect.jsx';
 import { MultiSelect } from './MultiSelect.jsx';
@@ -57,6 +57,50 @@ const ROLES = [
     hoverBg: 'hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50/50 dark:hover:bg-rose-950/20',
     iconBg: 'bg-rose-100 dark:bg-rose-950/50',
   },
+  {
+    value: 'CES-SGOD',
+    label: 'CES – SGOD',
+    icon: Stamp,
+    description: 'Reviews and notes SGOD division PIRs before forwarding to SDS.',
+    group: 'review-chain',
+    iconColor: 'text-teal-500',
+    activeBg: 'bg-teal-50 dark:bg-teal-950/30 border-teal-400 dark:border-teal-600',
+    hoverBg: 'hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-950/20',
+    iconBg: 'bg-teal-100 dark:bg-teal-950/50',
+  },
+  {
+    value: 'CES-ASDS',
+    label: 'CES – ASDS',
+    icon: Stamp,
+    description: 'Reviews and notes OSDS division PIRs before forwarding to SDS.',
+    group: 'review-chain',
+    iconColor: 'text-cyan-500',
+    activeBg: 'bg-cyan-50 dark:bg-cyan-950/30 border-cyan-400 dark:border-cyan-600',
+    hoverBg: 'hover:border-cyan-300 dark:hover:border-cyan-700 hover:bg-cyan-50/50 dark:hover:bg-cyan-950/20',
+    iconBg: 'bg-cyan-100 dark:bg-cyan-950/50',
+  },
+  {
+    value: 'CES-CID',
+    label: 'CES – CID',
+    icon: Stamp,
+    description: 'Reviews CID division PIRs and all school PIRs before forwarding to SDS.',
+    group: 'review-chain',
+    iconColor: 'text-sky-500',
+    activeBg: 'bg-sky-50 dark:bg-sky-950/30 border-sky-400 dark:border-sky-600',
+    hoverBg: 'hover:border-sky-300 dark:hover:border-sky-700 hover:bg-sky-50/50 dark:hover:bg-sky-950/20',
+    iconBg: 'bg-sky-100 dark:bg-sky-950/50',
+  },
+  {
+    value: 'SDS',
+    label: 'SDS',
+    icon: UserCircleGear,
+    description: 'Schools Division Superintendent. Final approver for all PIRs after CES review.',
+    group: 'review-chain',
+    iconColor: 'text-purple-500',
+    activeBg: 'bg-purple-50 dark:bg-purple-950/30 border-purple-400 dark:border-purple-600',
+    hoverBg: 'hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50/50 dark:hover:bg-purple-950/20',
+    iconBg: 'bg-purple-100 dark:bg-purple-950/50',
+  },
 ];
 
 function RoleCard({ role, selected, onSelect }) {
@@ -91,6 +135,7 @@ function RoleCard({ role, selected, onSelect }) {
 function RolePicker({ selected, onSelect }) {
   const field = ROLES.filter(r => r.group === 'field');
   const system = ROLES.filter(r => r.group === 'system');
+  const reviewChain = ROLES.filter(r => r.group === 'review-chain');
 
   return (
     <div className="space-y-5">
@@ -102,6 +147,18 @@ function RolePicker({ selected, onSelect }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {field.map(r => <RoleCard key={r.value} role={r} selected={selected} onSelect={onSelect} />)}
         </div>
+      </div>
+
+      {/* Divider */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-slate-100 dark:bg-dark-border" />
+        <span className="text-[10px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest">Review Chain</span>
+        <div className="flex-1 h-px bg-slate-100 dark:bg-dark-border" />
+      </div>
+
+      {/* Review chain group */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {reviewChain.map(r => <RoleCard key={r.value} role={r} selected={selected} onSelect={onSelect} />)}
       </div>
 
       {/* Divider */}
