@@ -14,18 +14,18 @@ import { UserProfileModal } from '../components/UserProfileModal.jsx';
 const API = import.meta.env.VITE_API_URL;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
-const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin', 'Reviewer'];
+const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin'];
 
 const inputCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 
 function UserForm({ form, setForm, schools, programs, clusters = [] }) {
   return (
     <div className="space-y-4">
-      {(['Admin', 'Reviewer', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'].includes(form.role)) && (
+      {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'].includes(form.role)) && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Full Name</label>
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            className={inputCls} placeholder={form.role === 'Cluster Coordinator' ? 'Cluster Coordinator Name' : form.role.startsWith('CES') ? `${form.role} Name` : form.role === 'Reviewer' ? 'Reviewer Name' : 'Administrator Name'} />
+            className={inputCls} placeholder={form.role === 'Cluster Coordinator' ? 'Cluster Coordinator Name' : form.role.startsWith('CES') ? `${form.role} Name` : 'Administrator Name'} />
         </div>
       )}
       {form.role === 'Division Personnel' && (
@@ -286,7 +286,7 @@ export default function AdminUsers() {
     },
   ];
 
-  const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin', 'Reviewer'];
+  const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin'];
 
   return (
     <AdminLayout>

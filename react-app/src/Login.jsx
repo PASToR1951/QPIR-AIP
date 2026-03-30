@@ -48,7 +48,7 @@ export default function Login() {
       const { token, user } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
-      navigate(user.role === 'Admin' ? '/admin' : user.role === 'Reviewer' ? '/reviewer' : '/');
+      navigate(user.role === 'Admin' ? '/admin' : '/');
     } catch (err) {
       shakeCard();
       setError(err.response?.data?.error || 'Failed to login. Check your credentials.');

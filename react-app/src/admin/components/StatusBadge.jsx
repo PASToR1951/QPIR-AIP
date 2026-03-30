@@ -12,7 +12,6 @@ const STATUS_STYLES = {
   School: 'bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-400',
   'Division Personnel': 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
   Admin: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400',
-  Reviewer: 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400',
   'CES-SGOD': 'bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400',
   'CES-ASDS': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400',
   'CES-CID': 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400',

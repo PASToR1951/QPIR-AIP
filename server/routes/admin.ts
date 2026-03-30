@@ -85,46 +85,11 @@ function toCSV(rows: Record<string, unknown>[]): string {
 }
 
 // Wrap every admin handler with auth check
-// PATCH /admin/pirs/:id/management-response — accessible by Admin or Reviewer
-// Registered before the admin-only middleware so Reviewer tokens are not blocked
-adminRoutes.patch('/pirs/:id/management-response', async (c) => {
-  const tokenUser = getUserFromToken(c.req.header('Authorization'));
-  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
-  if (tokenUser.role !== 'Admin' && tokenUser.role !== 'Reviewer') {
-    return c.json({ error: 'Forbidden' }, 403);
-  }
-
-  const pirId = parseInt(c.req.param('id'));
-  const body = await c.req.json();
-
-  const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
-  if (!pir) return c.json({ error: 'PIR not found' }, 404);
-
-  const existingItems = (pir.action_items as any[]) ?? [];
-  const incomingItems = (body.action_items as any[]) ?? [];
-
-  // Merge: preserve program owner's action, only update response fields
-  const merged = existingItems.map((item: any, idx: number) => ({
-    action: item.action,
-    response_asds: incomingItems[idx]?.response_asds ?? item.response_asds ?? '',
-    response_sds: incomingItems[idx]?.response_sds ?? item.response_sds ?? '',
-  }));
-
-  const updated = await prisma.pIR.update({
-    where: { id: pirId },
-    data: { action_items: merged },
-  });
-
-  await writeAuditLog(tokenUser.id, 'management_response_updated', 'PIR', pirId, { pirId });
-
-  return c.json({ message: 'Management response saved', pir: updated });
-});
-
-// GET /admin/pirs — list submitted PIRs (Admin + Reviewer + CES + Cluster Coordinator)
+// GET /admin/pirs — list submitted PIRs (Admin + CES + Cluster Coordinator)
 adminRoutes.get('/pirs', async (c) => {
   const tokenUser = getUserFromToken(c.req.header('Authorization'));
   if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
-  const readableRoles = ['Admin', 'Reviewer', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'];
+  const readableRoles = ['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'];
   if (!readableRoles.includes(tokenUser.role)) {
     return c.json({ error: 'Forbidden' }, 403);
   }
@@ -160,7 +125,7 @@ adminRoutes.get('/pirs', async (c) => {
 adminRoutes.get('/pirs/:id', async (c) => {
   const tokenUser = getUserFromToken(c.req.header('Authorization'));
   if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
-  const readableRoles = ['Admin', 'Reviewer', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'];
+  const readableRoles = ['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'];
   if (!readableRoles.includes(tokenUser.role)) {
     return c.json({ error: 'Forbidden' }, 403);
   }
@@ -1194,7 +1159,7 @@ adminRoutes.post("/users", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const { name, first_name, middle_initial, last_name, email, password, role, school_id, cluster_id, program_ids } = await c.req.json();
 
-  const systemRoles = ["Admin", "Reviewer", "CES-SGOD", "CES-ASDS", "CES-CID", "Cluster Coordinator"];
+  const systemRoles = ["Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Cluster Coordinator"];
   if (systemRoles.includes(role) && !name) {
     return c.json({ error: "name is required for this role" }, 400);
   }
@@ -1276,7 +1241,7 @@ adminRoutes.patch("/users/:id", async (c) => {
   } else if (role === "Cluster Coordinator") {
     updateData.school_id = null;
     if (cluster_id !== undefined) updateData.cluster_id = cluster_id;
-  } else if (["Division Personnel", "Admin", "Reviewer", "CES-SGOD", "CES-ASDS", "CES-CID"].includes(role)) {
+  } else if (["Division Personnel", "Admin", "CES-SGOD", "CES-ASDS", "CES-CID"].includes(role)) {
     updateData.school_id = null;
     updateData.cluster_id = null;
   }
