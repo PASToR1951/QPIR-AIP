@@ -62,7 +62,7 @@ model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
   password  String    // Hashed password
-  role            String    // "School" | "Division Personnel" | "Admin" | "Reviewer" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Cluster Coordinator"
+  role            String    // "School" | "Division Personnel" | "Admin" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Cluster Coordinator"
   name            String?
   first_name      String?
   middle_initial  String?

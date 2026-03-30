@@ -21,9 +21,6 @@ import FormBackground from './components/ui/FormBackground';
 import AccessibilityPanel from './components/ui/AccessibilityPanel';
 import DashboardStats, { getActionPrompt } from './components/ui/DashboardStats';
 
-// Reviewer pages
-import ReviewerLayout from './reviewer/ReviewerLayout.jsx';
-
 // CES pages
 import CESLayout from './ces/CESLayout.jsx';
 
@@ -49,23 +46,11 @@ const ProtectedRoute = ({ children }) => {
   try {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     if (user?.role === 'Admin') return <Navigate to="/admin" replace />;
-    if (user?.role === 'Reviewer') return <Navigate to="/reviewer" replace />;
     if (CES_ROLES.includes(user?.role)) return <Navigate to="/ces" replace />;
     if (user?.role === 'Cluster Coordinator') return <Navigate to="/cluster-head" replace />;
   } catch {
     return <Navigate to="/login" replace />;
   }
-  return children;
-};
-
-// Reviewer-only route guard
-const ReviewerRouteGuard = ({ children }) => {
-  const token = localStorage.getItem('token');
-  if (!token) return <Navigate to="/login" replace />;
-  try {
-    const u = JSON.parse(localStorage.getItem('user') || 'null');
-    if (u?.role !== 'Reviewer' && u?.role !== 'Admin') return <Navigate to="/" replace />;
-  } catch { return <Navigate to="/login" replace />; }
   return children;
 };
 
@@ -487,9 +472,6 @@ function AnimatedRoutes() {
               </ProtectedRoute>
             }
           />
-
-          {/* Reviewer Routes */}
-          <Route path="/reviewer/*" element={<ReviewerRouteGuard><ReviewerLayout /></ReviewerRouteGuard>} />
 
           {/* CES Routes */}
           <Route path="/ces/*" element={<CESRouteGuard><CESLayout /></CESRouteGuard>} />
