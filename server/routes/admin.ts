@@ -1441,9 +1441,9 @@ adminRoutes.get("/programs", async (c) => {
 
 adminRoutes.post("/programs", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
-  const { title, abbreviation, category, division, school_level_requirement } = await c.req.json();
+  const { title, abbreviation, division, school_level_requirement } = await c.req.json();
   try {
-    const program = await prisma.program.create({ data: { title, abbreviation: abbreviation || null, category: category || null, division: division || null, school_level_requirement } });
+    const program = await prisma.program.create({ data: { title, abbreviation: abbreviation || null, division: division || null, school_level_requirement } });
     await writeAuditLog(admin.id, "created_program", "Program", program.id, { title });
     return c.json(program);
   } catch (e: any) {
@@ -1455,11 +1455,11 @@ adminRoutes.post("/programs", async (c) => {
 adminRoutes.patch("/programs/:id", async (c) => {
   const admin = getUserFromToken(c.req.header("Authorization"))!;
   const id = parseInt(c.req.param("id"));
-  const { title, abbreviation, category, division, school_level_requirement } = await c.req.json();
+  const { title, abbreviation, division, school_level_requirement } = await c.req.json();
   try {
     const program = await prisma.program.update({
       where: { id },
-      data: { title, abbreviation: abbreviation || null, category: category || null, division: division || null, school_level_requirement },
+      data: { title, abbreviation: abbreviation || null, division: division || null, school_level_requirement },
     });
     await writeAuditLog(admin.id, "updated_program", "Program", id, { title, abbreviation, division, school_level_requirement });
     return c.json(program);
@@ -1486,6 +1486,57 @@ adminRoutes.patch("/programs/:id/personnel", async (c) => {
     data: { personnel: { set: user_ids.map((uid: number) => ({ id: uid })) } },
   });
   await writeAuditLog(admin.id, "updated_program_personnel", "Program", id, { user_ids });
+  return c.json({ success: true });
+});
+
+// ==========================================
+// DIVISION PROGRAMS
+// ==========================================
+
+adminRoutes.get("/division-programs", async (c) => {
+  const programs = await prisma.divisionProgram.findMany({
+    orderBy: [{ division: "asc" }, { title: "asc" }],
+  });
+  return c.json(programs);
+});
+
+adminRoutes.post("/division-programs", async (c) => {
+  const admin = getUserFromToken(c.req.header("Authorization"))!;
+  const { title, abbreviation, division } = await c.req.json();
+  try {
+    const program = await prisma.divisionProgram.create({
+      data: { title, abbreviation: abbreviation || null, division },
+    });
+    await writeAuditLog(admin.id, "created_division_program", "DivisionProgram", program.id, { title, division });
+    return c.json(program);
+  } catch (e: any) {
+    if (e?.code === "P2002") return c.json({ error: "A program with that title already exists in that division." }, 409);
+    throw e;
+  }
+});
+
+adminRoutes.patch("/division-programs/:id", async (c) => {
+  const admin = getUserFromToken(c.req.header("Authorization"))!;
+  const id = parseInt(c.req.param("id"));
+  const { title, abbreviation, division } = await c.req.json();
+  try {
+    const program = await prisma.divisionProgram.update({
+      where: { id },
+      data: { title, abbreviation: abbreviation || null, division },
+    });
+    await writeAuditLog(admin.id, "updated_division_program", "DivisionProgram", id, { title, division });
+    return c.json(program);
+  } catch (e: any) {
+    if (e?.code === "P2002") return c.json({ error: "A program with that title already exists in that division." }, 409);
+    throw e;
+  }
+});
+
+adminRoutes.delete("/division-programs/:id", async (c) => {
+  const admin = getUserFromToken(c.req.header("Authorization"))!;
+  const id = parseInt(c.req.param("id"));
+  await prisma.divisionProgram.delete({ where: { id } });
+  await writeAuditLog(admin.id, "deleted_division_program", "DivisionProgram", id, {});
   return c.json({ success: true });
 });
 
@@ -1743,7 +1794,7 @@ adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
 
   const programs = await prisma.program.findMany({
     where: { school_level_requirement: { not: "Division" } },
-    orderBy: [{ category: "asc" }, { title: "asc" }],
+    orderBy: [{ title: "asc" }],
   });
 
   const schools = await prisma.school.findMany({
@@ -1803,7 +1854,7 @@ adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
   }
 
   return c.json({
-    programs: programs.map((p) => ({ id: p.id, title: p.title, abbreviation: p.abbreviation, category: p.category, division: (p as any).division ?? null })),
+    programs: programs.map((p) => ({ id: p.id, title: p.title, abbreviation: p.abbreviation, division: (p as any).division ?? null })),
     schools: schools.map((s) => ({ id: s.id, name: s.name, abbreviation: s.abbreviation })),
     matrix,
     totals,

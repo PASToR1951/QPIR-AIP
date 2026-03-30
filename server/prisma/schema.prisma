@@ -45,7 +45,6 @@ model Program {
   id                       Int     @id @default(autoincrement())
   title                    String
   abbreviation             String? // Short name / acronym, e.g. "SPED"
-  category                 String? // KRA grouping: "ACCESS", "EQUITY", "QUALITY", "WELL-BEING & RESILIENCY", "GOVERNANCE"
   division                 String? // "SGOD" | "OSDS" | "CID" — determines CES routing for Division Personnel PIRs
   school_level_requirement String  // "Elementary", "Secondary", "Both", "Select Schools", "Division"
 
@@ -277,6 +276,16 @@ model AnnouncementMentionUser {
 
   @@id([announcement_id, user_id])
   @@map("announcement_mention_users")
+}
+
+model DivisionProgram {
+  id           Int     @id @default(autoincrement())
+  title        String
+  abbreviation String? // Short name / acronym
+  division     String  // NOT NULL: "CID" | "OSDS" | "SGOD" — clear indicator of functional division
+
+  @@unique([title, division])
+  @@map("division_programs")
 }
 
 model DivisionConfig {
