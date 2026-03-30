@@ -15,9 +15,10 @@ model Cluster {
   id             Int      @id @default(autoincrement())
   cluster_number Int      @unique
   name           String
-  
+
   // Relations
-  schools        School[]
+  schools           School[]
+  coordinator_users User[]   @relation("UserCluster")
 
   @@map("clusters")
 }
@@ -61,7 +62,7 @@ model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
   password  String    // Hashed password
-  role            String    // "School" | "Division Personnel" | "Admin" | "Reviewer" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "SDS"
+  role            String    // "School" | "Division Personnel" | "Admin" | "Reviewer" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Cluster Coordinator"
   name            String?
   first_name      String?
   middle_initial  String?
@@ -69,8 +70,12 @@ model User {
   is_active       Boolean   @default(true)
 
   // Relation to School (For School Role Users)
-  school_id Int?
-  school    School?   @relation(fields: [school_id], references: [id])
+  school_id  Int?
+  school     School?  @relation(fields: [school_id], references: [id])
+
+  // Relation to Cluster (For Cluster Coordinator users)
+  cluster_id Int?
+  cluster    Cluster? @relation("UserCluster", fields: [cluster_id], references: [id], onDelete: SetNull)
 
   // Relation to Programs (For Division Personnel Users)
   programs  Program[] @relation("UserPrograms")
@@ -152,15 +157,13 @@ model PIR {
   // Shape: [{description: string, annual_target: string, quarterly_target: string}]
   action_items                Json     @default("[]")
   // Shape: [{action: string, response_asds: string, response_sds: string}]
-  status                      String   @default("For CES Review") // "Draft" | "For CES Review" | "For SDS Review" | "Approved" | "Returned"
+  status                      String   @default("For CES Review") // "Draft" | "For CES Review" | "For Cluster Head Review" | "Approved" | "Returned"
   remarks                     String?  // Admin remarks/annotations on this PIR
   presented                   Boolean  @default(false) // Admin-toggled: whether school presented this PIR
   // CES review tracking
   ces_reviewer_id             Int?
   ces_noted_at                DateTime?
   ces_remarks                 String?  // CES notes/feedback
-  // SDS review tracking
-  sds_remarks                 String?  // SDS notes/feedback
   created_at                  DateTime @default(now())
 
   // Relations
