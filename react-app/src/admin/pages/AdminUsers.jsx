@@ -14,18 +14,18 @@ import { UserProfileModal } from '../components/UserProfileModal.jsx';
 const API = import.meta.env.VITE_API_URL;
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
-const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'SDS', 'Admin', 'Reviewer'];
+const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin', 'Reviewer'];
 
 const inputCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 
-function UserForm({ form, setForm, schools, programs }) {
+function UserForm({ form, setForm, schools, programs, clusters = [] }) {
   return (
     <div className="space-y-4">
-      {(['Admin', 'Reviewer', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'SDS'].includes(form.role)) && (
+      {(['Admin', 'Reviewer', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'].includes(form.role)) && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Full Name</label>
           <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            className={inputCls} placeholder={form.role === 'SDS' ? 'SDS Name' : form.role.startsWith('CES') ? `${form.role} Name` : form.role === 'Reviewer' ? 'Reviewer Name' : 'Administrator Name'} />
+            className={inputCls} placeholder={form.role === 'Cluster Coordinator' ? 'Cluster Coordinator Name' : form.role.startsWith('CES') ? `${form.role} Name` : form.role === 'Reviewer' ? 'Reviewer Name' : 'Administrator Name'} />
         </div>
       )}
       {form.role === 'Division Personnel' && (
@@ -66,7 +66,7 @@ function UserForm({ form, setForm, schools, programs }) {
         <SearchableSelect
           options={ROLES.map(r => ({ value: r, label: r }))}
           value={form.role}
-          onChange={v => setForm(f => ({ ...f, role: v, school_id: null, program_ids: [] }))}
+          onChange={v => setForm(f => ({ ...f, role: v, school_id: null, cluster_id: null, program_ids: [] }))}
           placeholder="Select role"
         />
       </div>
@@ -78,6 +78,19 @@ function UserForm({ form, setForm, schools, programs }) {
             value={form.school_id}
             onChange={v => setForm(f => ({ ...f, school_id: v }))}
             placeholder="Select school"
+          />
+        </div>
+      )}
+      {form.role === 'Cluster Coordinator' && (
+        <div>
+          <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+            Assigned Cluster <span className="text-rose-500">*</span>
+          </label>
+          <SearchableSelect
+            options={clusters.map(c => ({ value: c.id, label: `Cluster ${c.cluster_number}${c.name ? ` — ${c.name}` : ''}` }))}
+            value={form.cluster_id}
+            onChange={v => setForm(f => ({ ...f, cluster_id: v }))}
+            placeholder="Select cluster"
           />
         </div>
       )}
@@ -103,6 +116,7 @@ export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState('All');
   const [schools, setSchools] = useState([]);
   const [programs, setPrograms] = useState([]);
+  const [clusters, setClusters] = useState([]);
 
   // Modals
   const [viewUser, setViewUser] = useState(null);
@@ -134,7 +148,7 @@ export default function AdminUsers() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const emptyForm = { id: null, name: '', first_name: '', middle_initial: '', last_name: '', email: '', password: '', role: 'School', school_id: null, program_ids: [] };
+  const emptyForm = { id: null, name: '', first_name: '', middle_initial: '', last_name: '', email: '', password: '', role: 'School', school_id: null, cluster_id: null, program_ids: [] };
   const [form, setForm] = useState(emptyForm);
 
   const fetchAll = useCallback(() => {
@@ -152,6 +166,7 @@ export default function AdminUsers() {
   useEffect(() => {
     axios.get(`${API}/api/admin/schools`, { headers: authHeaders() }).then(r => setSchools(r.data)).catch(() => {});
     axios.get(`${API}/api/admin/programs`, { headers: authHeaders() }).then(r => setPrograms(r.data)).catch(() => {});
+    axios.get(`${API}/api/admin/clusters`, { headers: authHeaders() }).then(r => setClusters(r.data)).catch(() => {});
   }, []);
 
   const handleCreate = async (wizardForm) => {
@@ -271,7 +286,7 @@ export default function AdminUsers() {
     },
   ];
 
-  const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'SDS', 'Admin', 'Reviewer'];
+  const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin', 'Reviewer'];
 
   return (
     <AdminLayout>
@@ -329,13 +344,14 @@ export default function AdminUsers() {
         onSave={handleCreate}
         schools={schools}
         programs={programs}
+        clusters={clusters}
         loading={actionLoading}
         error={formError}
       />
 
       {/* Edit User */}
       <FormModal open={!!editUser} title="Edit User" onSave={handleEdit} onCancel={() => setEditUser(null)} loading={actionLoading} saveLabel="Save Changes">
-        <UserForm form={form} setForm={setForm} schools={schools} programs={programs} />
+        <UserForm form={form} setForm={setForm} schools={schools} programs={programs} clusters={clusters} />
         {formError && <p className="mt-3 text-xs font-bold text-rose-600">{formError}</p>}
       </FormModal>
 

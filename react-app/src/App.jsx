@@ -27,8 +27,8 @@ import ReviewerLayout from './reviewer/ReviewerLayout.jsx';
 // CES pages
 import CESLayout from './ces/CESLayout.jsx';
 
-// SDS pages
-import SDSLayout from './sds/SDSLayout.jsx';
+// Cluster Head pages
+import ClusterHeadLayout from './cluster-head/ClusterHeadLayout.jsx';
 
 // Admin pages
 import AdminOverview from './admin/pages/AdminOverview.jsx';
@@ -51,7 +51,7 @@ const ProtectedRoute = ({ children }) => {
     if (user?.role === 'Admin') return <Navigate to="/admin" replace />;
     if (user?.role === 'Reviewer') return <Navigate to="/reviewer" replace />;
     if (CES_ROLES.includes(user?.role)) return <Navigate to="/ces" replace />;
-    if (user?.role === 'SDS') return <Navigate to="/sds" replace />;
+    if (user?.role === 'Cluster Coordinator') return <Navigate to="/cluster-head" replace />;
   } catch {
     return <Navigate to="/login" replace />;
   }
@@ -104,13 +104,13 @@ const CESRouteGuard = ({ children }) => {
   return children;
 };
 
-// SDS route guard
-const SDSRouteGuard = ({ children }) => {
+// Cluster Head route guard
+const ClusterHeadRouteGuard = ({ children }) => {
   const token = localStorage.getItem('token');
   if (!token) return <Navigate to="/login" replace />;
   try {
     const u = JSON.parse(localStorage.getItem('user') || 'null');
-    if (u?.role !== 'SDS' && u?.role !== 'Admin') return <Navigate to="/" replace />;
+    if (u?.role !== 'Cluster Coordinator' && u?.role !== 'Admin') return <Navigate to="/" replace />;
   } catch { return <Navigate to="/login" replace />; }
   return children;
 };
@@ -126,7 +126,7 @@ const PIRRouteGuard = ({ children }) => {
   } catch {
     localStorage.removeItem('user');
   }
-  const isDivisionPersonnel = user?.role === 'Division Personnel';
+  const isDivisionPersonnel = user?.role === 'Division Personnel' || user?.role === 'Cluster Coordinator';
   const token = localStorage.getItem('token');
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -494,8 +494,8 @@ function AnimatedRoutes() {
           {/* CES Routes */}
           <Route path="/ces/*" element={<CESRouteGuard><CESLayout /></CESRouteGuard>} />
 
-          {/* SDS Routes */}
-          <Route path="/sds/*" element={<SDSRouteGuard><SDSLayout /></SDSRouteGuard>} />
+          {/* Cluster Head Routes */}
+          <Route path="/cluster-head/*" element={<ClusterHeadRouteGuard><ClusterHeadLayout /></ClusterHeadRouteGuard>} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminRouteGuard><AdminOverview /></AdminRouteGuard>} />
