@@ -496,15 +496,6 @@ function AIPFunnelReport({ year }) {
 }
 
 // ─── Cluster PIR Summary Tab ─────────────────────────────────────────────────
-const KRA_CATEGORIES = ['ACCESS', 'EQUITY', 'QUALITY', 'WELL-BEING & RESILIENCY', 'GOVERNANCE'];
-const KRA_COLORS = {
-  'ACCESS': 'bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300',
-  'EQUITY': 'bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-300',
-  'QUALITY': 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300',
-  'WELL-BEING & RESILIENCY': 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300',
-  'GOVERNANCE': 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300',
-};
-
 function ClusterPIRSummary({ year }) {
   const [clusters, setClusters] = useState([]);
   const [clusterId, setClusterId] = useState('');
@@ -561,23 +552,6 @@ function ClusterPIRSummary({ year }) {
       });
     }
   };
-
-  // Group programs by category
-  const grouped = [];
-  if (data) {
-    const byCategory = {};
-    for (const prog of data.programs) {
-      const cat = prog.category || 'UNCATEGORIZED';
-      if (!byCategory[cat]) byCategory[cat] = [];
-      byCategory[cat].push(prog);
-    }
-    // Sort by KRA_CATEGORIES order, then uncategorized at the end
-    for (const cat of [...KRA_CATEGORIES, 'UNCATEGORIZED']) {
-      if (byCategory[cat]?.length) {
-        grouped.push({ category: cat, programs: byCategory[cat] });
-      }
-    }
-  }
 
   // CONSTRAINT: Clusters have no meaningful name — display by number only. Never append c.name; it mirrors the number and produces "Cluster 1: Cluster 1".
   const clusterOptions = clusters.map(c => ({ value: String(c.id), label: `Cluster ${c.cluster_number}` }));
@@ -642,17 +616,7 @@ function ClusterPIRSummary({ year }) {
                 </tr>
               </thead>
               <tbody>
-                {grouped.map(group => (
-                  <React.Fragment key={group.category}>
-                    {/* Category header row */}
-                    <tr>
-                      <td colSpan={1 + data.schools.length * 2}
-                        className={`px-3 py-1.5 font-black text-[10px] uppercase tracking-widest sticky left-0 z-10 ${KRA_COLORS[group.category] || 'bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400'}`}>
-                        {group.category}
-                      </td>
-                    </tr>
-                    {/* Program rows */}
-                    {group.programs.map(prog => (
+                {data.programs.map(prog => (
                       <tr key={prog.id} className="hover:bg-slate-50/50 dark:hover:bg-dark-border/20 border-t border-slate-100 dark:border-dark-border/50">
                         <td className="px-3 py-1.5 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap sticky left-0 bg-white dark:bg-dark-surface z-10 border-r border-slate-200 dark:border-dark-border">
                           {prog.title}
@@ -706,8 +670,6 @@ function ClusterPIRSummary({ year }) {
                         })}
                       </tr>
                     ))}
-                  </React.Fragment>
-                ))}
                 {/* Totals row */}
                 <tr className="bg-slate-50 dark:bg-dark-surface border-t-2 border-slate-300 dark:border-dark-border">
                   <td className="px-3 py-2 font-black text-slate-700 dark:text-slate-200 uppercase text-[10px] tracking-wide sticky left-0 bg-slate-50 dark:bg-dark-surface z-10 border-r border-slate-200 dark:border-dark-border">
