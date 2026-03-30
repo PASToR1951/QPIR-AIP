@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   XCircle, ArrowLeft, Buildings, IdentificationBadge, ShieldStar,
-  UserPlus, CaretRight, Eye, EyeSlash, Binoculars, Stamp, UsersThree,
+  UserPlus, CaretRight, Eye, EyeSlash, Binoculars, UsersThree,
 } from '@phosphor-icons/react';
 import { SearchableSelect } from './SearchableSelect.jsx';
 import { MultiSelect } from './MultiSelect.jsx';
@@ -56,39 +56,6 @@ const ROLES = [
     activeBg: 'bg-rose-50 dark:bg-rose-950/30 border-rose-400 dark:border-rose-600',
     hoverBg: 'hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50/50 dark:hover:bg-rose-950/20',
     iconBg: 'bg-rose-100 dark:bg-rose-950/50',
-  },
-  {
-    value: 'CES-SGOD',
-    label: 'CES – SGOD',
-    icon: Stamp,
-    description: 'Reviews and notes SGOD division PIRs.',
-    group: 'review-chain',
-    iconColor: 'text-teal-500',
-    activeBg: 'bg-teal-50 dark:bg-teal-950/30 border-teal-400 dark:border-teal-600',
-    hoverBg: 'hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-950/20',
-    iconBg: 'bg-teal-100 dark:bg-teal-950/50',
-  },
-  {
-    value: 'CES-ASDS',
-    label: 'CES – ASDS',
-    icon: Stamp,
-    description: 'Reviews and notes OSDS division PIRs.',
-    group: 'review-chain',
-    iconColor: 'text-cyan-500',
-    activeBg: 'bg-cyan-50 dark:bg-cyan-950/30 border-cyan-400 dark:border-cyan-600',
-    hoverBg: 'hover:border-cyan-300 dark:hover:border-cyan-700 hover:bg-cyan-50/50 dark:hover:bg-cyan-950/20',
-    iconBg: 'bg-cyan-100 dark:bg-cyan-950/50',
-  },
-  {
-    value: 'CES-CID',
-    label: 'CES – CID',
-    icon: Stamp,
-    description: 'Reviews CID division PIRs and Cluster Coordinator PIRs.',
-    group: 'review-chain',
-    iconColor: 'text-sky-500',
-    activeBg: 'bg-sky-50 dark:bg-sky-950/30 border-sky-400 dark:border-sky-600',
-    hoverBg: 'hover:border-sky-300 dark:hover:border-sky-700 hover:bg-sky-50/50 dark:hover:bg-sky-950/20',
-    iconBg: 'bg-sky-100 dark:bg-sky-950/50',
   },
   {
     value: 'Cluster Coordinator',
@@ -318,7 +285,7 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
             Assigned Cluster <span className="text-rose-500">*</span>
           </label>
           <SearchableSelect
-            options={clusters.map(c => ({ value: c.id, label: `Cluster ${c.cluster_number}${c.name ? ` — ${c.name}` : ''}` }))}
+            options={clusters.map(c => ({ value: c.id, label: c.name || `Cluster ${c.cluster_number}` }))}
             value={form.cluster_id}
             onChange={v => setForm(f => ({ ...f, cluster_id: v }))}
             placeholder="Select cluster"
