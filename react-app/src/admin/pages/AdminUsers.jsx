@@ -87,7 +87,7 @@ function UserForm({ form, setForm, schools, programs, clusters = [] }) {
             Assigned Cluster <span className="text-rose-500">*</span>
           </label>
           <SearchableSelect
-            options={clusters.map(c => ({ value: c.id, label: `Cluster ${c.cluster_number}${c.name ? ` — ${c.name}` : ''}` }))}
+            options={clusters.map(c => ({ value: c.id, label: c.name || `Cluster ${c.cluster_number}` }))}
             value={form.cluster_id}
             onChange={v => setForm(f => ({ ...f, cluster_id: v }))}
             placeholder="Select cluster"

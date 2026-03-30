@@ -1213,6 +1213,13 @@ adminRoutes.post("/users", async (c) => {
     }
   }
 
+  if (role === "Cluster Coordinator") {
+    const count = await prisma.user.count({ where: { role: "Cluster Coordinator" } });
+    if (count >= 10) {
+      return c.json({ error: "Maximum of 10 Cluster Coordinator accounts allowed." }, 409);
+    }
+  }
+
   const salt = await bcrypt.genSalt(10);
   const hashed = await bcrypt.hash(password, salt);
 
