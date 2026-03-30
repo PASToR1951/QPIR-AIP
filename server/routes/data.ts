@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import jwt from "jsonwebtoken";
-import { getCESRoleForPIR } from "../lib/routing.ts";
+import { getCESRoleForDivisionPIR } from "../lib/routing.ts";
 
 const dataRoutes = new Hono();
 const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
@@ -1237,10 +1237,10 @@ dataRoutes.post('/pirs', async (c) => {
             year
           }
         },
-        include: { activities: true, program: true }
+        include: { activities: true, program: true, school: { include: { cluster: true } } }
       });
     } else {
-      // Division Personnel: find AIP by user + program + year (school is null)
+      // Division Personnel / Cluster Coordinator: find AIP by user + program + year (school is null)
       aip = await prisma.aIP.findFirst({
         where: {
           created_by_user_id: tokenUser.id,
@@ -1248,7 +1248,7 @@ dataRoutes.post('/pirs', async (c) => {
           program_id: program.id,
           year
         },
-        include: { activities: true, program: true }
+        include: { activities: true, program: true, school: { include: { cluster: true } } }
       });
     }
 
@@ -1288,7 +1288,7 @@ dataRoutes.post('/pirs', async (c) => {
       where: { aip_id_quarter: { aip_id: aip.id, quarter } }
     });
 
-    const inProgressStatuses = ['For CES Review', 'For SDS Review', 'Under Review'];
+    const inProgressStatuses = ['For CES Review', 'For Cluster Head Review', 'Under Review'];
     if (existingDraft && inProgressStatuses.includes(existingDraft.status)) {
       return c.json({ error: 'A PIR has already been submitted for this program and quarter.' }, 409);
     }
@@ -1306,7 +1306,7 @@ dataRoutes.post('/pirs', async (c) => {
           functional_division: functional_division ?? null,
           indicator_quarterly_targets: indicator_quarterly_targets ?? [],
           action_items: action_items ?? [],
-          status: 'For CES Review',
+          status: tokenUser.role === 'School' ? 'For Cluster Head Review' : 'For CES Review',
           factors: { create: factorData },
           activity_reviews: { create: reviewData }
         }
@@ -1323,27 +1323,43 @@ dataRoutes.post('/pirs', async (c) => {
           functional_division: functional_division ?? null,
           indicator_quarterly_targets: indicator_quarterly_targets ?? [],
           action_items: action_items ?? [],
-          status: 'For CES Review',
+          status: tokenUser.role === 'School' ? 'For Cluster Head Review' : 'For CES Review',
           factors: { create: factorData },
           activity_reviews: { create: reviewData }
         }
       });
     }
 
-    // Notify the appropriate CES role and all admins
-    const pirSchoolLabel = aip.school_id
-      ? (await prisma.school.findUnique({ where: { id: aip.school_id }, select: { name: true } }))?.name ?? 'A school'
-      : (tokenUser.name ?? tokenUser.email ?? 'Division Personnel');
-    const cesRole = getCESRoleForPIR(aip.program?.division ?? null, !!aip.school_id);
-    const cesUsers = await prisma.user.findMany({ where: { role: cesRole, is_active: true }, select: { id: true } });
+    // Notify the appropriate reviewer(s) and all admins
+    const submitterLabel = aip.school?.name ?? tokenUser.name ?? tokenUser.email ?? 'A user';
     const pirAdmins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
-    const notifyIds = [...new Set([...cesUsers.map((u: any) => u.id), ...pirAdmins.map((u: any) => u.id)])];
+    let reviewerIds: number[] = [];
+
+    if (tokenUser.role === 'School') {
+      // School PIR → notify Cluster Coordinator for this school's cluster
+      const clusterCoords = await prisma.user.findMany({
+        where: { role: 'Cluster Coordinator', cluster_id: aip.school?.cluster_id ?? null, is_active: true },
+        select: { id: true }
+      });
+      reviewerIds = clusterCoords.map((u: any) => u.id);
+    } else if (tokenUser.role === 'Cluster Coordinator') {
+      // Cluster Coordinator's own PIR → notify CES-CID
+      const cesCID = await prisma.user.findMany({ where: { role: 'CES-CID', is_active: true }, select: { id: true } });
+      reviewerIds = cesCID.map((u: any) => u.id);
+    } else {
+      // Division Personnel → notify correct CES role by program division
+      const cesRole = getCESRoleForDivisionPIR(aip.program?.division ?? null);
+      const cesUsers = await prisma.user.findMany({ where: { role: cesRole, is_active: true }, select: { id: true } });
+      reviewerIds = cesUsers.map((u: any) => u.id);
+    }
+
+    const notifyIds = [...new Set([...reviewerIds, ...pirAdmins.map((u: any) => u.id)])];
     if (notifyIds.length > 0) {
       await prisma.notification.createMany({
         data: notifyIds.map((userId: number) => ({
           user_id: userId,
           title: 'New PIR Submitted',
-          message: `${pirSchoolLabel} submitted a PIR for ${program_title} (${quarter}).`,
+          message: `${submitterLabel} submitted a PIR for ${program_title} (${quarter}).`,
           type: 'pir_submitted',
         })),
       });
@@ -1372,8 +1388,8 @@ dataRoutes.put('/pirs/:id', async (c) => {
     if (pir.created_by_user_id !== null && pir.created_by_user_id !== tokenUser.id) {
       return c.json({ error: 'Forbidden' }, 403);
     }
-    // Only allow editing if awaiting CES review or returned to submitter
-    if (pir.status !== 'For CES Review' && pir.status !== 'Returned') {
+    // Only allow editing if awaiting review or returned to submitter
+    if (pir.status !== 'For CES Review' && pir.status !== 'For Cluster Head Review' && pir.status !== 'Returned') {
       return c.json({ error: 'This PIR can no longer be edited — it is currently under review.' }, 409);
     }
 
@@ -1418,7 +1434,7 @@ dataRoutes.put('/pirs/:id', async (c) => {
         functional_division: functional_division ?? null,
         indicator_quarterly_targets: indicator_quarterly_targets ?? [],
         action_items: action_items ?? [],
-        status: 'For CES Review', // Re-enter CES queue on resubmission
+        status: tokenUser.role === 'School' ? 'For Cluster Head Review' : 'For CES Review', // Re-enter queue on resubmission
         factors: { create: factorData },
         activity_reviews: { create: reviewData },
       },
@@ -1447,8 +1463,8 @@ dataRoutes.delete('/pirs/:id', async (c) => {
     if (pir.created_by_user_id !== null && pir.created_by_user_id !== tokenUser.id) {
       return c.json({ error: 'Forbidden' }, 403);
     }
-    // Only allow deletion if awaiting CES review or returned to submitter
-    if (pir.status !== 'For CES Review' && pir.status !== 'Returned') {
+    // Only allow deletion if awaiting review or returned to submitter
+    if (pir.status !== 'For CES Review' && pir.status !== 'For Cluster Head Review' && pir.status !== 'Returned') {
       return c.json({ error: 'This PIR can no longer be deleted — it is currently under review.' }, 409);
     }
 
