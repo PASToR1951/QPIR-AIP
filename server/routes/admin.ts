@@ -1205,6 +1205,14 @@ adminRoutes.post("/users", async (c) => {
     return c.json({ error: "email, password, role are required" }, 400);
   }
 
+  const cesRoles = ["CES-SGOD", "CES-ASDS", "CES-CID"];
+  if (cesRoles.includes(role)) {
+    const existing = await prisma.user.findFirst({ where: { role } });
+    if (existing) {
+      return c.json({ error: `A ${role} account already exists. Only one account per CES role is allowed.` }, 409);
+    }
+  }
+
   const salt = await bcrypt.genSalt(10);
   const hashed = await bcrypt.hash(password, salt);
 
@@ -1237,6 +1245,14 @@ adminRoutes.patch("/users/:id", async (c) => {
   const id = parseInt(c.req.param("id"));
   const body = await c.req.json();
   const { name, first_name, middle_initial, last_name, role, school_id, cluster_id, program_ids, is_active } = body;
+
+  const cesRoles = ["CES-SGOD", "CES-ASDS", "CES-CID"];
+  if (role !== undefined && cesRoles.includes(role)) {
+    const existing = await prisma.user.findFirst({ where: { role, NOT: { id } } });
+    if (existing) {
+      return c.json({ error: `A ${role} account already exists. Only one account per CES role is allowed.` }, 409);
+    }
+  }
 
   const updateData: Record<string, unknown> = {};
   if (name            !== undefined) updateData.name            = name;
