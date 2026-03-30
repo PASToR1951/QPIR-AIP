@@ -645,10 +645,9 @@ export function PIRReviewDrawer({ open, pir, onClose, onStatusChange }) {
                     <MetaField label="Total Budget" value={fmtPeso(data.total_budget)} />
                     <MetaField label="Fund Source" value={data.fund_source ?? '—'} />
                     <MetaField label="AIP Year" value={data.aip?.year ?? '—'} />
-                    {data.cesReviewer && <MetaField label="CES Reviewer" value={data.cesReviewer} />}
-                    {data.cesNotedAt && <MetaField label="CES Noted At" value={new Date(data.cesNotedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })} />}
-                    {data.cesRemarks && <MetaField label="CES Remarks" value={data.cesRemarks} />}
-                    {data.sdsRemarks && <MetaField label="SDS Remarks" value={data.sdsRemarks} />}
+                    {data.cesReviewer && <MetaField label="CES / Cluster Head Reviewer" value={data.cesReviewer} />}
+                    {data.cesNotedAt && <MetaField label="Noted At" value={new Date(data.cesNotedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })} />}
+                    {data.cesRemarks && <MetaField label="Reviewer Remarks" value={data.cesRemarks} />}
                   </div>
 
                   {/* Overall Remarks */}

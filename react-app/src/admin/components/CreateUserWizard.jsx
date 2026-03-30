@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   XCircle, ArrowLeft, Buildings, IdentificationBadge, ShieldStar,
-  UserPlus, CaretRight, Eye, EyeSlash, Binoculars, Stamp, UserCircleGear,
+  UserPlus, CaretRight, Eye, EyeSlash, Binoculars, Stamp, UsersThree,
 } from '@phosphor-icons/react';
 import { SearchableSelect } from './SearchableSelect.jsx';
 import { MultiSelect } from './MultiSelect.jsx';
@@ -61,7 +61,7 @@ const ROLES = [
     value: 'CES-SGOD',
     label: 'CES – SGOD',
     icon: Stamp,
-    description: 'Reviews and notes SGOD division PIRs before forwarding to SDS.',
+    description: 'Reviews and notes SGOD division PIRs.',
     group: 'review-chain',
     iconColor: 'text-teal-500',
     activeBg: 'bg-teal-50 dark:bg-teal-950/30 border-teal-400 dark:border-teal-600',
@@ -72,7 +72,7 @@ const ROLES = [
     value: 'CES-ASDS',
     label: 'CES – ASDS',
     icon: Stamp,
-    description: 'Reviews and notes OSDS division PIRs before forwarding to SDS.',
+    description: 'Reviews and notes OSDS division PIRs.',
     group: 'review-chain',
     iconColor: 'text-cyan-500',
     activeBg: 'bg-cyan-50 dark:bg-cyan-950/30 border-cyan-400 dark:border-cyan-600',
@@ -83,7 +83,7 @@ const ROLES = [
     value: 'CES-CID',
     label: 'CES – CID',
     icon: Stamp,
-    description: 'Reviews CID division PIRs and all school PIRs before forwarding to SDS.',
+    description: 'Reviews CID division PIRs and Cluster Coordinator PIRs.',
     group: 'review-chain',
     iconColor: 'text-sky-500',
     activeBg: 'bg-sky-50 dark:bg-sky-950/30 border-sky-400 dark:border-sky-600',
@@ -91,15 +91,15 @@ const ROLES = [
     iconBg: 'bg-sky-100 dark:bg-sky-950/50',
   },
   {
-    value: 'SDS',
-    label: 'SDS',
-    icon: UserCircleGear,
-    description: 'Schools Division Superintendent. Final approver for all PIRs after CES review.',
+    value: 'Cluster Coordinator',
+    label: 'Cluster Coordinator',
+    icon: UsersThree,
+    description: 'School Head who notes school PIRs from their cluster. Also submits their own PIRs to CES-CID.',
     group: 'review-chain',
-    iconColor: 'text-purple-500',
-    activeBg: 'bg-purple-50 dark:bg-purple-950/30 border-purple-400 dark:border-purple-600',
-    hoverBg: 'hover:border-purple-300 dark:hover:border-purple-700 hover:bg-purple-50/50 dark:hover:bg-purple-950/20',
-    iconBg: 'bg-purple-100 dark:bg-purple-950/50',
+    iconColor: 'text-amber-500',
+    activeBg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-400 dark:border-amber-600',
+    hoverBg: 'hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/50 dark:hover:bg-amber-950/20',
+    iconBg: 'bg-amber-100 dark:bg-amber-950/50',
   },
 ];
 
@@ -179,7 +179,7 @@ function RolePicker({ selected, onSelect }) {
 /* ─────────────────────────────────────────────────────────── *
  *  Step 2 — Details form
  * ─────────────────────────────────────────────────────────── */
-function DetailsForm({ form, setForm, schools, programs }) {
+function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
   const [showPassword, setShowPassword] = useState(false);
   const isDepedEmail = form.role === 'School' || form.role === 'Division Personnel';
 
@@ -192,7 +192,7 @@ function DetailsForm({ form, setForm, schools, programs }) {
 
   return (
     <div className="space-y-4">
-      {(form.role === 'Admin' || form.role === 'Reviewer') && (
+      {(form.role === 'Admin' || form.role === 'Reviewer' || form.role === 'Cluster Coordinator') && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
             Full Name
@@ -201,7 +201,7 @@ function DetailsForm({ form, setForm, schools, programs }) {
             value={form.name}
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             className={inputCls}
-            placeholder={form.role === 'Reviewer' ? 'Reviewer Name' : 'Administrator Name'}
+            placeholder={form.role === 'Reviewer' ? 'Reviewer Name' : form.role === 'Cluster Coordinator' ? 'Cluster Coordinator Name' : 'Administrator Name'}
           />
         </div>
       )}
@@ -312,6 +312,20 @@ function DetailsForm({ form, setForm, schools, programs }) {
         </div>
       )}
 
+      {form.role === 'Cluster Coordinator' && (
+        <div>
+          <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+            Assigned Cluster <span className="text-rose-500">*</span>
+          </label>
+          <SearchableSelect
+            options={clusters.map(c => ({ value: c.id, label: `Cluster ${c.cluster_number}${c.name ? ` — ${c.name}` : ''}` }))}
+            value={form.cluster_id}
+            onChange={v => setForm(f => ({ ...f, cluster_id: v }))}
+            placeholder="Select cluster"
+          />
+        </div>
+      )}
+
       {form.role === 'Division Personnel' && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
@@ -334,10 +348,10 @@ function DetailsForm({ form, setForm, schools, programs }) {
  * ─────────────────────────────────────────────────────────── */
 const ROLE_META = Object.fromEntries(ROLES.map(r => [r.value, r]));
 
-export function CreateUserWizard({ open, onClose, onSave, schools, programs, loading, error }) {
+export function CreateUserWizard({ open, onClose, onSave, schools, programs, clusters = [], loading, error }) {
   const emptyForm = {
     name: '', first_name: '', middle_initial: '', last_name: '',
-    email: '', password: '', role: null, school_id: null, program_ids: [],
+    email: '', password: '', role: null, school_id: null, cluster_id: null, program_ids: [],
   };
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(emptyForm);
@@ -409,10 +423,10 @@ export function CreateUserWizard({ open, onClose, onSave, schools, programs, loa
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {step === 1 && (
-            <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, program_ids: [] }))} />
+            <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, cluster_id: null, program_ids: [] }))} />
           )}
           {step === 2 && (
-            <DetailsForm form={form} setForm={setForm} schools={schools} programs={programs} />
+            <DetailsForm form={form} setForm={setForm} schools={schools} programs={programs} clusters={clusters} />
           )}
         </div>
 
