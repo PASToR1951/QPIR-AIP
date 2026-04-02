@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 
@@ -32,6 +32,12 @@ export default function ClusterHeadDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // Under Review timer state
+  const [reviewCountdown, setReviewCountdown] = useState(null); // null = not started
+  const [underReviewPirId, setUnderReviewPirId] = useState(null);
+  const countdownRef = useRef(null);
+  const startReviewFiredRef = useRef(null); // tracks which pirId timer was fired for
+
   const fetchPIRs = () => {
     setLoading(true);
     const params = quarter ? `?quarter=${encodeURIComponent(quarter)}` : '';
@@ -54,14 +60,47 @@ export default function ClusterHeadDashboard() {
     );
   });
 
+  const stopTimer = () => {
+    clearInterval(countdownRef.current);
+    countdownRef.current = null;
+    setReviewCountdown(null);
+  };
+
   const openModal = (type, pir, e) => {
     e.stopPropagation();
-    setModal({ type, pirId: pir.id, program: pir.program, quarter: pir.quarter });
+    setModal({ type, pirId: pir.id, program: pir.program, quarter: pir.quarter, status: pir.status });
     setRemarks('');
     setError('');
+
+    // Start 3-minute timer if not already Under Review
+    if (pir.status !== 'Under Review' && startReviewFiredRef.current !== pir.id) {
+      stopTimer();
+      setReviewCountdown(3 * 60);
+      countdownRef.current = setInterval(() => {
+        setReviewCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(countdownRef.current);
+            if (startReviewFiredRef.current !== pir.id) {
+              startReviewFiredRef.current = pir.id;
+              axios.post(`${API}/api/admin/cluster-head/pirs/${pir.id}/start-review`, {}, { headers: authHeaders() })
+                .then(() => setUnderReviewPirId(pir.id))
+                .catch(() => {});
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  };
+
+  const closeModal = () => {
+    stopTimer();
+    setModal(null);
   };
 
   const handleConfirm = async () => {
+    stopTimer();
     setSubmitting(true);
     setError('');
     try {
@@ -69,6 +108,8 @@ export default function ClusterHeadDashboard() {
         ? `${API}/api/admin/cluster-head/pirs/${modal.pirId}/note`
         : `${API}/api/admin/cluster-head/pirs/${modal.pirId}/return`;
       await axios.post(endpoint, { remarks }, { headers: authHeaders() });
+      setUnderReviewPirId(null);
+      startReviewFiredRef.current = null;
       setModal(null);
       fetchPIRs();
     } catch (err) {
@@ -158,6 +199,11 @@ export default function ClusterHeadDashboard() {
                   </td>
                   <td className="px-5 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      {p.status === 'Under Review' && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 border border-violet-200 dark:border-violet-700/60">
+                          Under Review{p.activeReviewerName ? ` · ${p.activeReviewerName}` : ''}
+                        </span>
+                      )}
                       <button
                         onClick={e => openModal('note', p, e)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 border border-green-200 dark:border-green-700/60 transition-colors"
@@ -189,9 +235,21 @@ export default function ClusterHeadDashboard() {
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
           <div className="bg-white dark:bg-dark-surface rounded-2xl shadow-xl border border-slate-200 dark:border-dark-border w-full max-w-md p-6">
-            <h2 className="text-base font-black text-slate-800 dark:text-slate-100 mb-1">
-              {modal.type === 'note' ? 'Note / Approve PIR' : 'Return to Submitter'}
-            </h2>
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <h2 className="text-base font-black text-slate-800 dark:text-slate-100">
+                {modal.type === 'note' ? 'Note / Approve PIR' : 'Return to Submitter'}
+              </h2>
+              {reviewCountdown !== null && reviewCountdown > 0 && (
+                <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 tabular-nums">
+                  Flagging in {Math.floor(reviewCountdown / 60)}:{String(reviewCountdown % 60).padStart(2, '0')}
+                </span>
+              )}
+              {(reviewCountdown === 0 || underReviewPirId === modal.pirId) && (
+                <span className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 border border-violet-200 dark:border-violet-700/60">
+                  Under Review
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
               {modal.program} — {modal.quarter}
             </p>
@@ -221,7 +279,7 @@ export default function ClusterHeadDashboard() {
 
             <div className="flex gap-2 mt-4 justify-end">
               <button
-                onClick={() => setModal(null)}
+                onClick={closeModal}
                 disabled={submitting}
                 className="px-4 py-2 text-xs font-bold rounded-xl border border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-border/30 transition-colors"
               >

@@ -1,16 +1,60 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { CaretDown, MagnifyingGlass, X } from '@phosphor-icons/react';
 
 export const SearchableSelect = ({ options = [], value, onChange, placeholder = 'Select…', clearable = false, className = '' }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [dropPos, setDropPos] = useState(null);
   const ref = useRef(null);
+  const dropRef = useRef(null);
 
+  // Close on outside click — must check both the trigger and the portal dropdown
   useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const handler = (e) => {
+      if (
+        ref.current && !ref.current.contains(e.target) &&
+        (!dropRef.current || !dropRef.current.contains(e.target))
+      ) {
+        setOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Close on scroll/resize so the portal doesn't float away,
+  // but ignore scrolls that happen inside the dropdown itself.
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => {
+      if (dropRef.current && dropRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
+  const handleOpen = () => {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const approxDropHeight = Math.min(options.length * 36 + 52, 316);
+      const openUpward = spaceBelow < approxDropHeight && rect.top > approxDropHeight;
+      setDropPos({
+        left: rect.left,
+        width: rect.width,
+        top: openUpward ? undefined : rect.bottom + 4,
+        bottom: openUpward ? window.innerHeight - rect.top + 4 : undefined,
+      });
+    }
+    setOpen(v => !v);
+    setQuery('');
+  };
 
   const filtered = options.filter(o =>
     String(o.label).toLowerCase().includes(query.toLowerCase())
@@ -22,7 +66,7 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
     <div ref={ref} className={`relative ${className}`}>
       <button
         type="button"
-        onClick={() => { setOpen(!open); setQuery(''); }}
+        onClick={handleOpen}
         className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 hover:border-indigo-400 transition-colors"
       >
         <span className={selected ? '' : 'text-slate-400 dark:text-slate-500'}>{selected?.label ?? placeholder}</span>
@@ -36,8 +80,19 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
         </div>
       </button>
 
-      {open && (
-        <div className="absolute z-50 top-full mt-1 w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl shadow-xl overflow-hidden">
+      {open && dropPos && createPortal(
+        <div
+          ref={dropRef}
+          style={{
+            position: 'fixed',
+            top: dropPos.top,
+            bottom: dropPos.bottom,
+            left: dropPos.left,
+            width: dropPos.width,
+            zIndex: 9999,
+          }}
+          className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl shadow-xl overflow-hidden"
+        >
           <div className="p-2 border-b border-slate-100 dark:border-dark-border">
             <div className="flex items-center gap-2 px-2">
               <MagnifyingGlass size={16} className="text-slate-400 shrink-0" />
@@ -64,7 +119,8 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

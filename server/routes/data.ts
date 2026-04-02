@@ -84,6 +84,9 @@ dataRoutes.post('/aips/draft', async (c) => {
     if (existing && existing.status !== 'Draft') {
       return c.json({ error: 'An AIP has already been submitted for this program and year' }, 409);
     }
+    if (existing && (existing as any).archived) {
+      return c.json({ error: 'This AIP has been archived and cannot be modified' }, 409);
+    }
 
     const aipData = {
       outcome: outcome || '',
@@ -546,10 +549,15 @@ dataRoutes.get('/programs', async (c) => {
     }
 
     if (tokenUser.role === 'Division Personnel') {
-      // Division Personnel: only assigned programs
+      // Division Personnel: only assigned Division-level programs
       const user = await prisma.user.findUnique({
         where: { id: tokenUser.id },
-        include: { programs: { orderBy: { title: 'asc' } } }
+        include: {
+          programs: {
+            where: { school_level_requirement: 'Division' },
+            orderBy: { title: 'asc' },
+          },
+        },
       });
       return c.json(user?.programs ?? []);
     }
@@ -1105,7 +1113,7 @@ dataRoutes.post('/aips', async (c) => {
       prepared_by_title: prepared_by_title || '',
       approved_by_name: approved_by_name || '',
       approved_by_title: approved_by_title || '',
-      status: 'Submitted',
+      status: 'Approved',
     };
 
     const activityFields = activities.map((act: any) => {
@@ -1136,8 +1144,8 @@ dataRoutes.post('/aips', async (c) => {
     }
 
     let aip;
-    if (existingDraft && existingDraft.status === 'Draft') {
-      // Promote draft to submitted: delete old activities and replace
+    if (existingDraft && (existingDraft.status === 'Draft' || existingDraft.status === 'Returned')) {
+      // Promote draft or re-submit returned AIP: delete old activities and replace
       await prisma.aIPActivity.deleteMany({ where: { aip_id: existingDraft.id } });
       aip = await prisma.aIP.update({
         where: { id: existingDraft.id },
@@ -1149,6 +1157,9 @@ dataRoutes.post('/aips', async (c) => {
       });
     } else if (existingDraft) {
       // AIP already exists with a non-Draft status — cannot overwrite
+      if ((existingDraft as any).archived) {
+        return c.json({ error: 'This AIP has been archived and cannot be modified' }, 409);
+      }
       return c.json(
         { error: `An AIP for this program and year already exists (status: ${existingDraft.status}).` },
         409
@@ -1176,17 +1187,80 @@ dataRoutes.post('/aips', async (c) => {
       await prisma.notification.createMany({
         data: admins.map(admin => ({
           user_id: admin.id,
-          title: 'New AIP Submitted',
-          message: `${schoolLabel} submitted an AIP for ${program_title} (FY ${year}).`,
+          title: 'New AIP Received (Pre-approved)',
+          message: `${schoolLabel} submitted a pre-approved AIP for ${program_title} (FY ${year}).`,
           type: 'aip_submitted',
         })),
       });
     }
 
+    // Notify the submitter that their AIP is pre-approved
+    await prisma.notification.create({
+      data: {
+        user_id: tokenUser.id,
+        title: 'AIP Approved',
+        message: `Your AIP for ${program_title} (FY ${year}) has been received and is pre-approved.`,
+        type: 'approved',
+      },
+    });
+
     return c.json({ message: 'AIP created successfully', aip });
   } catch (error) {
     console.error(error);
     return c.json({ error: 'Failed to create AIP' }, 500);
+  }
+});
+
+// POST request to edit an approved AIP (notifies admins)
+dataRoutes.post('/aips/:id/request-edit', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) {
+      return c.json({ error: 'Authentication required' }, 401);
+    }
+
+    const aipId = parseInt(c.req.param('id'));
+    const aip = await prisma.aIP.findUnique({
+      where: { id: aipId },
+      include: { program: true, school: true },
+    });
+
+    if (!aip) {
+      return c.json({ error: 'AIP not found' }, 404);
+    }
+
+    // Verify ownership
+    const isOwner =
+      aip.created_by_user_id === tokenUser.id ||
+      (tokenUser.school_id != null && aip.school_id === tokenUser.school_id);
+    if (!isOwner) {
+      return c.json({ error: 'Not authorized to request edit for this AIP' }, 403);
+    }
+
+    if (aip.status !== 'Approved') {
+      return c.json({ error: 'Edit requests can only be made for Approved AIPs' }, 409);
+    }
+
+    const requesterLabel = aip.school
+      ? aip.school.name
+      : (tokenUser.name ?? tokenUser.email ?? 'Division Personnel');
+
+    const admins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
+    if (admins.length > 0) {
+      await prisma.notification.createMany({
+        data: admins.map(admin => ({
+          user_id: admin.id,
+          title: 'Edit Request — AIP',
+          message: `${requesterLabel} is requesting permission to edit their AIP for ${aip.program.title} (FY ${aip.year}).`,
+          type: 'aip_edit_requested',
+        })),
+      });
+    }
+
+    return c.json({ message: 'Edit request sent to admin' });
+  } catch (error) {
+    console.error(error);
+    return c.json({ error: 'Failed to send edit request' }, 500);
   }
 });
 
@@ -1506,6 +1580,69 @@ function buildDeadline(year: number, quarter: number, customDate?: Date): Date {
   };
   return defaults[quarter];
 }
+
+// ==========================================
+// SUBMISSION HISTORY
+// ==========================================
+
+// GET /api/history — all non-draft AIPs for the authenticated user, grouped by year (desc),
+// each AIP includes its non-draft PIRs.
+dataRoutes.get('/history', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const aipWhere = tokenUser.role === 'School' && tokenUser.school_id
+      ? { school_id: tokenUser.school_id, status: { not: 'Draft' } }
+      : { created_by_user_id: tokenUser.id, school_id: null, status: { not: 'Draft' } };
+
+    const aips = await (prisma.aIP as any).findMany({
+      where: aipWhere,
+      include: {
+        program: { select: { title: true, abbreviation: true } },
+        pirs: {
+          where: { status: { not: 'Draft' } },
+          select: { id: true, quarter: true, status: true, created_at: true },
+          orderBy: { created_at: 'asc' },
+        },
+      },
+      orderBy: [{ year: 'desc' }, { created_at: 'asc' }],
+    });
+
+    // Group by year
+    const yearMap = new Map<number, any[]>();
+    for (const aip of aips) {
+      if (!yearMap.has(aip.year)) yearMap.set(aip.year, []);
+      yearMap.get(aip.year)!.push({
+        id: aip.id,
+        program: aip.program.title,
+        abbreviation: aip.program.abbreviation ?? null,
+        status: aip.status,
+        archived: (aip as any).archived ?? false,
+        created_at: aip.created_at,
+        pirs: aip.pirs.map((p: any) => ({
+          id: p.id,
+          quarter: p.quarter,
+          status: p.status,
+        })),
+      });
+    }
+
+    // Sort programs within each year alphabetically
+    for (const list of yearMap.values()) {
+      list.sort((a: any, b: any) => a.program.localeCompare(b.program));
+    }
+
+    const result = Array.from(yearMap.entries())
+      .sort(([a], [b]) => b - a)
+      .map(([year, aips]) => ({ year, aips }));
+
+    return c.json(result);
+  } catch (err) {
+    console.error('Failed to fetch history:', err);
+    return c.json({ error: 'Failed to fetch history' }, 500);
+  }
+});
 
 // ==========================================
 // DASHBOARD

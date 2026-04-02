@@ -113,7 +113,7 @@ function RolePicker({ selected, onSelect }) {
       </div>
 
       {/* Review chain group */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="flex flex-col gap-3">
         {reviewChain.map(r => <RoleCard key={r.value} role={r} selected={selected} onSelect={onSelect} />)}
       </div>
 
@@ -288,7 +288,7 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
             Assigned Programs
           </label>
           <MultiSelect
-            options={programs.map(p => ({ value: p.id, label: p.title }))}
+            options={programs.filter(p => p.school_level_requirement === 'Division').map(p => ({ value: p.id, label: p.title }))}
             selected={form.program_ids}
             onChange={v => setForm(f => ({ ...f, program_ids: v }))}
             placeholder="Select programs"

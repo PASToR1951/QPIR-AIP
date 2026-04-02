@@ -20,6 +20,7 @@ import PageLoader from './components/ui/PageLoader';
 import FormBackground from './components/ui/FormBackground';
 import AccessibilityPanel from './components/ui/AccessibilityPanel';
 import DashboardStats, { getActionPrompt } from './components/ui/DashboardStats';
+import SubmissionsHistory from './components/ui/SubmissionsHistory';
 
 // CES pages
 import CESLayout from './ces/CESLayout.jsx';
@@ -421,6 +422,8 @@ function Dashboard() {
           )}
         </div>
 
+        {/* Submission History */}
+        <SubmissionsHistory />
 
       </main>
 

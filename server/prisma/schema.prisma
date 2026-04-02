@@ -86,6 +86,9 @@ model User {
   // PIRs this user CES-noted
   ces_reviewed_pirs PIR[] @relation("PIRCESReviewer")
 
+  // PIRs this user is currently actively reviewing
+  active_pir_reviews PIR[] @relation("PIRActiveReviewer")
+
   // Admin audit logs
   audit_logs    AuditLog[]
 
@@ -111,7 +114,9 @@ model AIP {
   prepared_by_title   String   @default("")
   approved_by_name    String   @default("")
   approved_by_title   String   @default("")
-  status              String   @default("Submitted") // "Draft" | "Submitted" | "Verified" | "Under Review" | "Approved" | "Returned"
+  status              String   @default("Approved") // "Draft" | "Approved" | "Returned"
+  archived            Boolean  @default(false)
+  archived_at         DateTime?
   created_at          DateTime @default(now())
 
   // Relations
@@ -156,19 +161,23 @@ model PIR {
   // Shape: [{description: string, annual_target: string, quarterly_target: string}]
   action_items                Json     @default("[]")
   // Shape: [{action: string, response_asds: string, response_sds: string}]
-  status                      String   @default("For CES Review") // "Draft" | "For CES Review" | "For Cluster Head Review" | "Approved" | "Returned"
+  status                      String   @default("For CES Review") // "Draft" | "For CES Review" | "For Cluster Head Review" | "Under Review" | "Approved" | "Returned"
   remarks                     String?  // Admin remarks/annotations on this PIR
   presented                   Boolean  @default(false) // Admin-toggled: whether school presented this PIR
   // CES review tracking
   ces_reviewer_id             Int?
   ces_noted_at                DateTime?
   ces_remarks                 String?  // CES notes/feedback
+  // Active review tracking — set when a reviewer opens the PIR; cleared on note/return
+  active_reviewer_id          Int?
+  active_review_started_at    DateTime?
   created_at                  DateTime @default(now())
 
   // Relations
   aip                AIP                 @relation(fields: [aip_id], references: [id], onDelete: Cascade)
   created_by         User?               @relation("CreatedByUser", fields: [created_by_user_id], references: [id], onDelete: Cascade)
   ces_reviewer       User?               @relation("PIRCESReviewer", fields: [ces_reviewer_id], references: [id], onDelete: SetNull)
+  active_reviewer    User?               @relation("PIRActiveReviewer", fields: [active_reviewer_id], references: [id], onDelete: SetNull)
   activity_reviews   PIRActivityReview[]
   factors            PIRFactor[]
 

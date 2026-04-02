@@ -98,7 +98,7 @@ function UserForm({ form, setForm, schools, programs, clusters = [] }) {
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Assigned Programs</label>
           <MultiSelect
-            options={programs.map(p => ({ value: p.id, label: p.title }))}
+            options={programs.filter(p => p.school_level_requirement === 'Division').map(p => ({ value: p.id, label: p.title }))}
             selected={form.program_ids}
             onChange={v => setForm(f => ({ ...f, program_ids: v }))}
             placeholder="Select programs"
