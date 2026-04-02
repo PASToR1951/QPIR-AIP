@@ -46,8 +46,8 @@ export default function Login() {
       });
 
       const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('user', JSON.stringify(user));
       navigate(user.role === 'Admin' ? '/admin' : '/');
     } catch (err) {
       shakeCard();

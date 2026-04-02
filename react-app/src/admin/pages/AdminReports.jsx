@@ -13,7 +13,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 
 const TABS = [
   { key: 'compliance', label: 'AIP Compliance' },
@@ -92,13 +92,15 @@ function ExportButtons({ type, year }) {
 function ComplianceReport({ year }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); setError(null);
     axios.get(`${API}/api/admin/reports/compliance?year=${year}`, { headers: authHeaders() })
-      .then(r => setData(r.data)).catch(console.error).finally(() => setLoading(false));
+      .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load compliance report.'); }).finally(() => setLoading(false));
   }, [year]);
 
   if (loading) return <Spinner />;
+  if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;
   if (!data) return null;
 
   const STATUS_COLORS = { submitted: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400', missing: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400', na: 'bg-slate-100 text-slate-400 dark:bg-dark-border dark:text-slate-600' };
@@ -141,13 +143,15 @@ function ComplianceReport({ year }) {
 function QuarterlyReport({ year }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); setError(null);
     axios.get(`${API}/api/admin/reports/quarterly?year=${year}`, { headers: authHeaders() })
-      .then(r => setData(r.data)).catch(console.error).finally(() => setLoading(false));
+      .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load quarterly report.'); }).finally(() => setLoading(false));
   }, [year]);
 
   if (loading) return <Spinner />;
+  if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;
   if (!data) return null;
 
   return (
@@ -170,13 +174,15 @@ function QuarterlyReport({ year }) {
 function BudgetReport({ year }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); setError(null);
     axios.get(`${API}/api/admin/reports/budget?year=${year}`, { headers: authHeaders() })
-      .then(r => setData(r.data)).catch(console.error).finally(() => setLoading(false));
+      .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load budget report.'); }).finally(() => setLoading(false));
   }, [year]);
 
   if (loading) return <Spinner />;
+  if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;
   if (!data?.data?.length) return <p className="text-center text-slate-400 py-16">No budget data for FY {year}.</p>;
 
   const chartData = data.data.slice(0, 10).map(d => ({ name: d.program.slice(0, 16), total: d.total }));
@@ -220,13 +226,15 @@ function BudgetReport({ year }) {
 function WorkloadReport({ year }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); setError(null);
     axios.get(`${API}/api/admin/reports/workload?year=${year}`, { headers: authHeaders() })
-      .then(r => setData(r.data)).catch(console.error).finally(() => setLoading(false));
+      .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load workload report.'); }).finally(() => setLoading(false));
   }, [year]);
 
   if (loading) return <Spinner />;
+  if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;
   if (!data?.length) return <p className="text-center text-slate-400 py-16">No Division Personnel found.</p>;
 
   const chartData = data.map(p => ({ name: (p.name ?? p.email).split(' ')[0], programs: p.programCount, aips: p.aipCount, pirs: p.pirCount }));
@@ -264,13 +272,15 @@ function CsvButton({ rows, filename }) {
 function AccomplishmentReport({ year }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); setError(null);
     axios.get(`${API}/api/admin/reports/accomplishment?year=${year}`, { headers: authHeaders() })
-      .then(r => setData(r.data)).catch(console.error).finally(() => setLoading(false));
+      .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load accomplishment report.'); }).finally(() => setLoading(false));
   }, [year]);
 
   if (loading) return <Spinner />;
+  if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;
   if (!data?.data?.length) return <p className="text-center text-slate-400 py-16">No accomplishment data for FY {year}.</p>;
 
   const sorted = [...data.data].sort((a, b) => b.physicalRate - a.physicalRate).slice(0, 20);
@@ -319,13 +329,15 @@ function AccomplishmentReport({ year }) {
 function FactorsReport({ year }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); setError(null);
     axios.get(`${API}/api/admin/reports/factors?year=${year}`, { headers: authHeaders() })
-      .then(r => setData(r.data)).catch(console.error).finally(() => setLoading(false));
+      .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load factors report.'); }).finally(() => setLoading(false));
   }, [year]);
 
   if (loading) return <Spinner />;
+  if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;
   if (!data?.data) return null;
   const hasData = data.data.some(d => d.facilitating + d.hindering > 0);
   if (!hasData) return <p className="text-center text-slate-400 py-16">No factor data for FY {year}.</p>;
@@ -373,13 +385,15 @@ function FactorsReport({ year }) {
 function BudgetSourcesReport({ year }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); setError(null);
     axios.get(`${API}/api/admin/reports/budget?year=${year}`, { headers: authHeaders() })
-      .then(r => setData(r.data)).catch(console.error).finally(() => setLoading(false));
+      .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load budget sources data.'); }).finally(() => setLoading(false));
   }, [year]);
 
   if (loading) return <Spinner />;
+  if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;
   if (!data?.data?.length) return <p className="text-center text-slate-400 py-16">No budget data for FY {year}.</p>;
 
   const sourceMap = {};
@@ -439,13 +453,15 @@ function BudgetSourcesReport({ year }) {
 function AIPFunnelReport({ year }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); setError(null);
     axios.get(`${API}/api/admin/reports/aip-funnel?year=${year}`, { headers: authHeaders() })
-      .then(r => setData(r.data)).catch(console.error).finally(() => setLoading(false));
+      .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load AIP funnel data.'); }).finally(() => setLoading(false));
   }, [year]);
 
   if (loading) return <Spinner />;
+  if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;
   if (!data?.data?.length) return <p className="text-center text-slate-400 py-16">No AIP data for FY {year}.</p>;
 
   const total = data.data.reduce((s, r) => s + r.count, 0);
@@ -506,7 +522,7 @@ function ClusterPIRSummary({ year }) {
   useEffect(() => {
     axios.get(`${API}/api/admin/clusters`, { headers: authHeaders() })
       .then(r => setClusters(r.data))
-      .catch(console.error);
+      .catch(e => { console.error(e); /* non-critical — cluster list won't populate */ });
   }, []);
 
   useEffect(() => {
@@ -514,7 +530,7 @@ function ClusterPIRSummary({ year }) {
     setLoading(true);
     axios.get(`${API}/api/admin/reports/cluster-pir-summary?year=${year}&quarter=${quarter}&cluster=${clusterId}`, { headers: authHeaders() })
       .then(r => setData(r.data))
-      .catch(console.error)
+      .catch(e => { console.error(e); setData(null); })
       .finally(() => setLoading(false));
   }, [year, quarter, clusterId]);
 

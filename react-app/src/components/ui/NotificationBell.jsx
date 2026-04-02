@@ -4,7 +4,7 @@ import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle } from '
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 
 const TYPE_ICON = {
   approved:     <CheckCircle size={16} className="text-emerald-400 shrink-0" />,
@@ -29,7 +29,7 @@ export function NotificationBell() {
   const ref = useRef(null);
 
   const fetchNotifications = useCallback(() => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (!token) return;
     axios
       .get(`${API}/api/notifications`, { headers: authHeaders() })
@@ -77,8 +77,8 @@ export function NotificationBell() {
     <div className="relative" ref={ref}>
       {/* Bell button */}
       <button
+        aria-label="Notifications"
         onClick={() => setOpen(o => !o)}
-        title="Notifications"
         className={`relative p-2 rounded-xl transition-colors ${open ? 'bg-slate-100 dark:bg-dark-border' : 'hover:bg-slate-50 dark:hover:bg-dark-base'}`}
       >
         <Bell size={22} className="text-slate-500 dark:text-slate-400" />

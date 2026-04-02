@@ -24,7 +24,7 @@ import { AdminLayout } from '../AdminLayout.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 
 const CHART_COLORS = ['#E94560', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316'];
 const BAR_COLORS = { Submitted: '#3b82f6', Approved: '#10b981', 'Under Review': '#f59e0b', Returned: '#E94560' };
@@ -255,6 +255,7 @@ function PirClusterPanel({ cluster: cl, navigate }) {
 export default function AdminOverview() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [clusterSort, setClusterSort] = useState('desc'); // 'asc' | 'desc'
   const navigate = useNavigate();
   const isDark = useIsDark();
@@ -263,7 +264,7 @@ export default function AdminOverview() {
   useEffect(() => {
     axios.get(`${API}/api/admin/overview`, { headers: authHeaders() })
       .then(r => setData(r.data))
-      .catch(console.error)
+      .catch(e => { console.error(e); setFetchError('Failed to load dashboard data. Please refresh and try again.'); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -294,11 +295,16 @@ export default function AdminOverview() {
   }));
 
   const user = (() => {
-    try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
+    try { return JSON.parse(sessionStorage.getItem('user') || 'null'); } catch { return null; }
   })();
 
   return (
     <AdminLayout>
+      {fetchError && (
+        <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 text-sm font-medium mb-4">
+          {fetchError}
+        </div>
+      )}
       {loading ? (
         <div className="space-y-6">
           {/* Hero skeleton */}

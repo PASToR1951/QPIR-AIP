@@ -15,4 +15,3 @@ export function getCESRoleForDivisionPIR(programDivision: string | null): string
 }
 
 export const CES_ROLES = ["CES-SGOD", "CES-ASDS", "CES-CID"] as const;
-export type CESRole = (typeof CES_ROLES)[number];

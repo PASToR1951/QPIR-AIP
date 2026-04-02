@@ -5,7 +5,7 @@ import CESPIRReview from './CESPIRReview.jsx';
 
 export default function CESLayout() {
   const navigate = useNavigate();
-  const user = (() => { try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; } })();
+  const user = (() => { try { return JSON.parse(sessionStorage.getItem('user') || 'null'); } catch { return null; } })();
 
   const roleLabel = {
     'CES-SGOD': 'CES – SGOD',
@@ -14,8 +14,8 @@ export default function CESLayout() {
   }[user?.role] ?? 'CES Portal';
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
     navigate('/login', { replace: true });
   };
 

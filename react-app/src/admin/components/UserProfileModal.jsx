@@ -63,6 +63,8 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
       />
       <motion.div
         key="modal"
+        role="dialog"
+        aria-modal="true"
         initial={{ opacity: 0, scale: 0.95, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 16 }}

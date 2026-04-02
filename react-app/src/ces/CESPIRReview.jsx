@@ -4,7 +4,7 @@ import axios from 'axios';
 import { ArrowLeft, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 
 const formatCurrency = (val) => {
   const n = parseFloat(val);

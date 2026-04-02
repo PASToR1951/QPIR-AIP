@@ -3,11 +3,17 @@ import { cors } from "hono/cors";
 import authRoutes from "./routes/auth.ts";
 import dataRoutes from "./routes/data.ts";
 import adminRoutes from "./routes/admin.ts";
-import jwt from "jsonwebtoken";
+import { prisma as _prisma } from "./db/client.ts";
+import { getUserFromToken } from "./lib/auth.ts";
 
 const app = new Hono();
 
-app.use('*', cors());
+app.use('*', cors({
+  origin: Deno.env.get("ALLOWED_ORIGIN") || "http://localhost:5173",
+  allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
 
 // Root route
 app.get('/', (c) => {
@@ -18,15 +24,6 @@ app.get('/', (c) => {
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', time: new Date().toISOString() });
 });
-
-// Public: active announcement for user dashboard banner
-import { prisma as _prisma } from "./db/client.ts";
-const _JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
-function _decodeToken(header: string | undefined): { id: number; school_id: number | null } | null {
-  if (!header?.startsWith("Bearer ")) return null;
-  try { return jwt.verify(header.slice(7), _JWT_SECRET) as { id: number; school_id: number | null }; }
-  catch { return null; }
-}
 
 // Public: division config (supervisor name/title for PIR documents)
 app.get('/api/config', async (c) => {
@@ -60,7 +57,7 @@ app.get('/api/announcement', async (c) => {
   if (!hasSchoolMentions && !hasUserMentions) return c.json(a);
 
   // Targeted announcement — check if requesting user qualifies
-  const caller = _decodeToken(c.req.header('Authorization'));
+  const caller = getUserFromToken(c.req.header('Authorization'));
   if (!caller) return c.json(null);
 
   const schoolMatch = hasSchoolMentions && caller.school_id != null &&

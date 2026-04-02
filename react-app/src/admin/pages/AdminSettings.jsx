@@ -10,7 +10,7 @@ import { AdminLayout } from '../AdminLayout.jsx';
 import { CURRENT_VERSION } from '../../version.js';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 
 const MAX_CHARS = 280;
 
@@ -179,6 +179,7 @@ export default function AdminSettings() {
   const [announcement, setAnnouncement] = useState({ message: '', type: 'info', is_active: true, dismissible: true });
   const [sysInfo, setSysInfo]           = useState(null);
   const [loading, setLoading]           = useState(true);
+  const [fetchError, setFetchError]     = useState(null);
   const [saving, setSaving]             = useState(false);
   const [saved, setSaved]               = useState(false);
   const [formError, setFormError]       = useState('');
@@ -232,7 +233,7 @@ export default function AdminSettings() {
         supervisor_name:  dr.data.supervisor_name  ?? '',
         supervisor_title: dr.data.supervisor_title ?? '',
       });
-    }).catch(console.error)
+    }).catch(e => { console.error(e); setFetchError('Failed to load settings. Please refresh and try again.'); })
       .finally(() => setLoading(false));
 
     // Mention candidates — non-critical, loaded independently
@@ -408,6 +409,11 @@ export default function AdminSettings() {
 
   return (
     <AdminLayout>
+      {fetchError && (
+        <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 text-sm font-medium mb-4">
+          {fetchError}
+        </div>
+      )}
       {loading ? (
         <div className="flex items-center justify-center h-64">
           <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />

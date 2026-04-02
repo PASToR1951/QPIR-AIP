@@ -32,14 +32,14 @@ export default function App() {
             ? { initial: false, animate: false, exit: false, transition: { duration: 0 } }
             : { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -20 }, transition: { duration: 0.15, ease: 'easeOut' } }
     ), [settings.reduceMotion]);
-    const userStr = localStorage.getItem('user');
+    const userStr = sessionStorage.getItem('user');
     let user = null;
     try {
         user = userStr ? JSON.parse(userStr) : null;
     } catch {
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
     }
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
     const isDivisionPersonnel = user?.role === 'Division Personnel';
 
@@ -48,6 +48,7 @@ export default function App() {
 
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
+    const [loadError, setLoadError] = useState(null);
     const [isMobile, setIsMobile] = useState(false);
     const [year, setYear] = useState(String(new Date().getFullYear()));
 
@@ -56,7 +57,6 @@ export default function App() {
     const totalSteps = 6;
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [showFinalConfirm, setShowFinalConfirm] = useState(false);
-    const [isAddingActivity, setIsAddingActivity] = useState(false);
     const [activityToDelete, setActivityToDelete] = useState(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [programList, setProgramList] = useState([]);
@@ -246,7 +246,9 @@ export default function App() {
                 setApprovedByTitle(d.approvedByTitle || "");
                 if (d.activities) setActivities(d.activities);
             } catch (e) {
-                return; // stay on splash if fetch fails
+                console.error('Failed to load AIP data:', e);
+                setLoadError(e?.response?.data?.error || 'Failed to load the AIP. Please try again.');
+                return; // stay on splash
             }
             setAppMode('readonly');
             setSearchParams({ program: selectedProgram, mode: 'readonly' }, { replace: true });
@@ -498,8 +500,6 @@ export default function App() {
             return [...prev, { id: newId, phase: lastPhase, name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }];
         });
         setExpandedActivityId(newId);
-        setIsAddingActivity(true);
-        setTimeout(() => setIsAddingActivity(false), 1200);
     }, []);
 
     const handleAddActivityPhase = useCallback((targetPhase) => {
@@ -507,8 +507,6 @@ export default function App() {
         setActivities(prev => [...prev, { id: newId, phase: targetPhase, name: "", period: "", periodStartMonth: "", periodEndMonth: "", persons: "", outputs: "", budgetAmount: "", budgetSource: "" }]);
         setExpandedActivityId(newId);
 
-        setIsAddingActivity(true);
-        setTimeout(() => setIsAddingActivity(false), 1200);
     }, []);
 
     const executeDelete = useCallback((id) => {
@@ -789,6 +787,11 @@ export default function App() {
                         onBack={handleBack}
                         theme="pink"
                     />
+                    {loadError && (
+                        <div className="mx-auto max-w-2xl mt-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 text-sm font-medium">
+                            {loadError}
+                        </div>
+                    )}
                     <ViewModeSelector
                         programs={programList}
                         programAbbreviations={programAbbreviations}

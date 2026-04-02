@@ -8,7 +8,7 @@ import {
 import { AdminLayout } from '../AdminLayout.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 
 function Tip({ text }) {
   return (
@@ -88,6 +88,7 @@ export default function AdminDeadlines() {
   const [deadlines, setDeadlines] = useState([]);
   const [history,   setHistory]   = useState([]);
   const [loading,   setLoading]   = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [saving,    setSaving]    = useState(null);
   const [localDates, setLocalDates] = useState({});
   const [formError, setFormError] = useState('');
@@ -102,7 +103,7 @@ export default function AdminDeadlines() {
       setDeadlines(dr.data);
       setLocalDates(Object.fromEntries(dr.data.map(d => [d.quarter, d.date?.slice(0, 10) ?? ''])));
       setHistory(hr.data);
-    }).catch(console.error)
+    }).catch(e => { console.error(e); setFetchError('Failed to load deadlines. Please refresh and try again.'); })
       .finally(() => setLoading(false));
   }, [year]);
 
@@ -166,6 +167,11 @@ export default function AdminDeadlines() {
           </div>
         ) : (
           <>
+            {fetchError && (
+              <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 text-sm font-medium">
+                {fetchError}
+              </div>
+            )}
             {formError && (
               <p className="text-xs text-red-500 font-bold bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40 rounded-xl px-4 py-2">
                 {formError}

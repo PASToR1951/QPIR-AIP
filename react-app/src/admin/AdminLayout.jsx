@@ -5,7 +5,7 @@ import { AdminSidebar } from './AdminSidebar.jsx';
 import { AdminTopBar } from './AdminTopBar.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 
 export const AdminLayout = ({ children }) => {
   const navigate = useNavigate();
@@ -47,13 +47,13 @@ export const AdminLayout = ({ children }) => {
   };
 
   const user = (() => {
-    try { return JSON.parse(localStorage.getItem('user') || 'null'); } catch { return null; }
+    try { return JSON.parse(sessionStorage.getItem('user') || 'null'); } catch { return null; }
   })();
 
   const handleLogout = () => {
     navigate('/login', { replace: true });
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
   };
 
   return (

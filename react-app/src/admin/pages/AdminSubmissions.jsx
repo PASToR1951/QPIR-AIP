@@ -13,7 +13,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 
 const TERM_OPTIONS = [
   { type: 'Trimester', label: 'Trimester', periodCount: 3 },
@@ -46,6 +46,7 @@ export default function AdminSubmissions() {
   const [submissions, setSubmissions] = useState([]);
   const [totals, setTotals] = useState({ aipTotal: 0, pirTotal: 0, total: 0 });
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [page, setPage] = useState(1);
 
   // Filters
@@ -63,6 +64,7 @@ export default function AdminSubmissions() {
   const [returnItem, setReturnItem] = useState(null);
   const [returnFeedback, setReturnFeedback] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState(null);
   const [reviewItem, setReviewItem] = useState(null);
   // Tracks which row's PDF is currently being generated to prevent double-clicks
   const [pdfLoadingId, setPdfLoadingId] = useState(null);
@@ -118,6 +120,7 @@ export default function AdminSubmissions() {
   };
 
   const underReviewTimerRef = useRef(null);
+  const downloadRef = useRef(null);
 
   // Selected rows for bulk
   const [selectedIds, setSelectedIds] = useState([]);
@@ -150,10 +153,11 @@ export default function AdminSubmissions() {
     params.set('page', page);
     axios.get(`${API}/api/admin/submissions?${params}`, { headers: authHeaders() })
       .then(r => {
+        setFetchError(null);
         setSubmissions(r.data.data);
         setTotals({ aipTotal: r.data.aipTotal, pirTotal: r.data.pirTotal, total: r.data.total });
       })
-      .catch(console.error)
+      .catch(e => { console.error(e); setFetchError('Failed to load submissions. Please refresh and try again.'); })
       .finally(() => setLoading(false));
   }, [tab, filters, page]);
 
@@ -198,7 +202,7 @@ export default function AdminSubmissions() {
       if (viewData) {
         setViewData(prev => prev ? { ...prev, status } : prev);
       }
-    } catch { /* silent */ }
+    } catch (e) { console.error(e); setActionError('Failed to update status. Please try again.'); }
     finally { setActionLoading(false); }
   };
 
@@ -212,7 +216,7 @@ export default function AdminSubmissions() {
       }
       setSelectedIds([]);
       fetchSubmissions();
-    } catch { /* silent */ }
+    } catch (e) { console.error(e); setActionError('Failed to approve selected submissions. Please try again.'); }
     finally { setActionLoading(false); }
   };
 
@@ -221,13 +225,14 @@ export default function AdminSubmissions() {
     if (filters.year) params.set('year', filters.year);
     if (filters.status) params.set('status', filters.status);
     const url = `${API}/api/admin/submissions/export?${params}`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'submissions.csv';
-    // Need to fetch with auth header
     const blob = await fetch(url, { headers: authHeaders() }).then(r => r.blob());
-    a.href = URL.createObjectURL(blob);
-    a.click();
+    const blobUrl = URL.createObjectURL(blob);
+    if (downloadRef.current) {
+      downloadRef.current.href = blobUrl;
+      downloadRef.current.download = 'submissions.csv';
+      downloadRef.current.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    }
   };
 
   // Bug fix: accepts `item` directly instead of reading `viewItem` from state.
@@ -354,7 +359,22 @@ export default function AdminSubmissions() {
 
   return (
     <AdminLayout>
+      {/* Hidden download anchor for CSV export */}
+      <a ref={downloadRef} className="hidden" />
       <div className="space-y-4">
+
+        {fetchError && (
+          <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 text-sm font-medium">
+            {fetchError}
+          </div>
+        )}
+
+        {actionError && (
+          <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 px-4 py-3 text-sm font-medium flex items-center justify-between">
+            {actionError}
+            <button onClick={() => setActionError(null)} className="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 font-black text-xs ml-3">Dismiss</button>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 dark:border-dark-border">
