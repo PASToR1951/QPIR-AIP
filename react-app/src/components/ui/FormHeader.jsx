@@ -4,12 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ViewModeToggle } from './ViewModeToggle';
 
 export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, lastAutoSavedTime, theme = "indigo", appMode, toggleAppMode }) => {
-    const userStr = localStorage.getItem('user');
+    const userStr = sessionStorage.getItem('user');
     let user = null;
     try {
         user = userStr ? JSON.parse(userStr) : null;
     } catch {
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
     }
 
     const pillClasses = {

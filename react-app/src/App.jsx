@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Component } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { useAccessibility } from './context/AccessibilityContext';
@@ -16,7 +16,6 @@ import { DashboardHeader } from './components/ui/DashboardHeader';
 import { AnnouncementBanner } from './components/ui/AnnouncementBanner';
 import Footer from './components/ui/Footer';
 import PageTransition from './components/ui/PageTransition';
-import PageLoader from './components/ui/PageLoader';
 import FormBackground from './components/ui/FormBackground';
 import AccessibilityPanel from './components/ui/AccessibilityPanel';
 import DashboardStats, { getActionPrompt } from './components/ui/DashboardStats';
@@ -42,10 +41,10 @@ const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID'];
 
 // Simple Protected Route component
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   if (!token) return <Navigate to="/login" replace />;
   try {
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (user?.role === 'Admin') return <Navigate to="/admin" replace />;
     if (CES_ROLES.includes(user?.role)) return <Navigate to="/ces" replace />;
     if (user?.role === 'Cluster Coordinator') return <Navigate to="/cluster-head" replace />;
@@ -57,10 +56,10 @@ const ProtectedRoute = ({ children }) => {
 
 // Division Personnel-only route guard
 const DivisionPersonnelRouteGuard = ({ children }) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   if (!token) return <Navigate to="/login" replace />;
   try {
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (user?.role !== 'Division Personnel') return <Navigate to="/" replace />;
   } catch { return <Navigate to="/login" replace />; }
   return children;
@@ -68,10 +67,10 @@ const DivisionPersonnelRouteGuard = ({ children }) => {
 
 // Admin-only route guard
 const AdminRouteGuard = ({ children }) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   if (!token) return <Navigate to="/login" replace />;
   try {
-    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (user?.role !== 'Admin') return <Navigate to="/403" replace />;
   } catch {
     return <Navigate to="/login" replace />;
@@ -81,10 +80,10 @@ const AdminRouteGuard = ({ children }) => {
 
 // CES route guard — allows CES-SGOD, CES-ASDS, CES-CID (and Admin for testing)
 const CESRouteGuard = ({ children }) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   if (!token) return <Navigate to="/login" replace />;
   try {
-    const u = JSON.parse(localStorage.getItem('user') || 'null');
+    const u = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!CES_ROLES.includes(u?.role) && u?.role !== 'Admin') return <Navigate to="/" replace />;
   } catch { return <Navigate to="/login" replace />; }
   return children;
@@ -92,10 +91,10 @@ const CESRouteGuard = ({ children }) => {
 
 // Cluster Head route guard
 const ClusterHeadRouteGuard = ({ children }) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   if (!token) return <Navigate to="/login" replace />;
   try {
-    const u = JSON.parse(localStorage.getItem('user') || 'null');
+    const u = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (u?.role !== 'Cluster Coordinator' && u?.role !== 'Admin') return <Navigate to="/" replace />;
   } catch { return <Navigate to="/login" replace />; }
   return children;
@@ -105,15 +104,15 @@ const ClusterHeadRouteGuard = ({ children }) => {
 const PIRRouteGuard = ({ children }) => {
   const [hasAIP, setHasAIP] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const userStr = localStorage.getItem('user');
+  const userStr = sessionStorage.getItem('user');
   let user = null;
   try {
     user = userStr ? JSON.parse(userStr) : null;
   } catch {
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
   }
   const isDivisionPersonnel = user?.role === 'Division Personnel' || user?.role === 'Cluster Coordinator';
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
   useEffect(() => {
@@ -161,14 +160,14 @@ const PIRRouteGuard = ({ children }) => {
 
 function Dashboard() {
   const navigate = useNavigate();
-  const userStr = localStorage.getItem('user');
+  const userStr = sessionStorage.getItem('user');
   let user = null;
   try {
     user = userStr ? JSON.parse(userStr) : null;
   } catch {
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('user');
   }
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
 
   const [aipStatus, setAipStatus] = useState('none');
   const [dashboardData, setDashboardData] = useState(null);
@@ -214,8 +213,8 @@ function Dashboard() {
 
   const handleLogout = () => {
     navigate('/login', { replace: true });
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
   };
 
   return (
@@ -504,13 +503,24 @@ function AnimatedRoutes() {
   );
 }
 
+class ErrorBoundary extends Component {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) return <ErrorPage type="500" />;
+    return this.props.children;
+  }
+}
+
 function App() {
   const { settings } = useAccessibility();
 
   return (
     <MotionConfig reducedMotion={settings.reduceMotion ? 'always' : 'never'}>
       <Router>
-        <AnimatedRoutes />
+        <ErrorBoundary>
+          <AnimatedRoutes />
+        </ErrorBoundary>
         <AccessibilityPanel />
       </Router>
     </MotionConfig>

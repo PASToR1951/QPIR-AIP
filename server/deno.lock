@@ -7,7 +7,7 @@
     "npm:@prisma/client@^7.4.2": "7.4.2_prisma@7.4.2__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4",
     "npm:@prisma/config@^7.4.2": "7.4.2",
     "npm:@types/jsonwebtoken@^9.0.10": "9.0.10",
-    "npm:bcrypt@*": "6.0.0",
+    "npm:bcryptjs@^2.4.3": "2.4.3",
     "npm:hono@4": "4.11.4",
     "npm:hono@^4.11.4": "4.11.4",
     "npm:jsonwebtoken@^9.0.3": "9.0.3",
@@ -1011,13 +1011,8 @@
     "basic-ftp@5.2.0": {
       "integrity": "sha512-VoMINM2rqJwJgfdHq6RiUudKt2BV+FY5ZFezP/ypmwayk68+NzzAQy4XXLlqsGD4MCzq3DrmNFD/uUmBJuGoXw=="
     },
-    "bcrypt@6.0.0": {
-      "integrity": "sha512-cU8v/EGSrnH+HnxV2z0J7/blxH8gq7Xh2JFT6Aroax7UohdmiJJlxApMxtKfuI7z68NvvVcmR78k2LbT6efhRg==",
-      "dependencies": [
-        "node-addon-api",
-        "node-gyp-build"
-      ],
-      "scripts": true
+    "bcryptjs@2.4.3": {
+      "integrity": "sha512-V/Hy/X9Vt7f3BbPJEi8BdVFMByHi+jNXrYkW3huaybV/kQ0KJg0Y6PkEMbn+zeT+i+SiKZ/HMqJGIIt4LZDqNQ=="
     },
     "binary-extensions@2.3.0": {
       "integrity": "sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw=="
@@ -2471,9 +2466,6 @@
     "new-github-issue-url@0.2.1": {
       "integrity": "sha512-md4cGoxuT4T4d/HDOXbrUHkTKrp/vp+m3aOA7XXVYwNsUNMK49g3SQicTSeV5GIz/5QVGAeYRAOlyp9OvlgsYA=="
     },
-    "node-addon-api@8.6.0": {
-      "integrity": "sha512-gBVjCaqDlRUk0EwoPNKzIr9KkS9041G/q31IBShPs1Xz6UTA+EXdZADbzqAJQrpDRq71CIMnOP5VMut3SL0z5Q=="
-    },
     "node-fetch-native@1.6.7": {
       "integrity": "sha512-g9yhqoedzIUm0nTnTqAQvueMPVOuIY16bqgAJJC8XOOubYFNwz6IER9qs0Gq2Xd0+CecCKFjtdDTMA4u4xG06Q=="
     },
@@ -2488,10 +2480,6 @@
       "dependencies": [
         "whatwg-url"
       ]
-    },
-    "node-gyp-build@4.8.4": {
-      "integrity": "sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==",
-      "bin": true
     },
     "normalize-package-data@2.5.0": {
       "integrity": "sha512-/5CMN3T0R4XTj4DcGaexo+roZSdSFW/0AOOTROrjxzCG1wrWXEsGbRKevjlIL+ZDE4sZlJr5ED4YW0yqmkK+eA==",
@@ -3835,6 +3823,7 @@
     "dependencies": [
       "npm:@prisma/client@^7.4.2",
       "npm:@prisma/config@^7.4.2",
+      "npm:bcryptjs@^2.4.3",
       "npm:hono@4",
       "npm:jsonwebtoken@^9.0.3"
     ],

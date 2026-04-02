@@ -4,7 +4,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import { parse } from "https://deno.land/std@0.224.0/csv/parse.ts";
 import * as path from "https://deno.land/std@0.224.0/path/mod.ts";
-import * as bcrypt from "bcrypt";
+import bcrypt from "bcrypt";
 
 const connectionString = Deno.env.get("DATABASE_URL");
 const pool = new pg.Pool({ connectionString });

@@ -12,7 +12,7 @@ import { CreateUserWizard } from '../components/CreateUserWizard.jsx';
 import { UserProfileModal } from '../components/UserProfileModal.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 
 const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin'];
 
@@ -158,7 +158,7 @@ export default function AdminUsers() {
     if (search) params.set('search', search);
     axios.get(`${API}/api/admin/users?${params}`, { headers: authHeaders() })
       .then(r => setUsers(r.data))
-      .catch(console.error)
+      .catch(e => { console.error(e); showToast('Failed to load users. Please refresh and try again.', 'error'); })
       .finally(() => setLoading(false));
   }, [search, roleFilter]);
 
@@ -184,12 +184,12 @@ export default function AdminUsers() {
     setActionLoading(true); setFormError('');
     try {
       await axios.patch(`${API}/api/admin/users/${editUser.id}`, { name: form.name, first_name: form.first_name, middle_initial: form.middle_initial, last_name: form.last_name, role: form.role, school_id: form.school_id, program_ids: form.program_ids }, { headers: authHeaders() });
-      // If the edited user is the currently logged-in user, sync localStorage so
+      // If the edited user is the currently logged-in user, sync sessionStorage so
       // the header/sidebar reflect the new name without requiring a re-login.
       try {
-        const stored = JSON.parse(localStorage.getItem('user') || 'null');
+        const stored = JSON.parse(sessionStorage.getItem('user') || 'null');
         if (stored && stored.id === editUser.id) {
-          localStorage.setItem('user', JSON.stringify({
+          sessionStorage.setItem('user', JSON.stringify({
             ...stored,
             name: form.name,
             first_name: form.first_name,

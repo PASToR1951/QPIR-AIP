@@ -9,7 +9,7 @@ import { StatusBadge } from '../../admin/components/StatusBadge';
 const API = import.meta.env.VITE_API_URL;
 
 export default function SubmissionsHistory() {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   const authHeaders = { Authorization: `Bearer ${token}` };
   const currentYear = new Date().getFullYear();
 

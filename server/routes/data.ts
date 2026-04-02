@@ -1,31 +1,9 @@
 import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
-import jwt from "jsonwebtoken";
 import { getCESRoleForDivisionPIR } from "../lib/routing.ts";
+import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
 
 const dataRoutes = new Hono();
-const JWT_SECRET = Deno.env.get("JWT_SECRET") || "super-secret-default-key-change-me-in-production";
-
-// ==========================================
-// AUTH HELPER
-// ==========================================
-
-interface TokenPayload {
-  id: number;
-  role: string;          // "School" | "Division Personnel"
-  school_id: number | null;
-  email: string;
-  name: string | null;
-}
-
-function getUserFromToken(authHeader: string | undefined): TokenPayload | null {
-  if (!authHeader?.startsWith("Bearer ")) return null;
-  try {
-    return jwt.verify(authHeader.slice(7), JWT_SECRET) as TokenPayload;
-  } catch {
-    return null;
-  }
-}
 
 // ==========================================
 // NORMALIZATION HELPERS

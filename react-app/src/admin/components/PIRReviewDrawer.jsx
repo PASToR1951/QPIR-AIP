@@ -9,7 +9,7 @@ import {
 import { StatusBadge } from './StatusBadge.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 
 const fmt = (n) => Number(n ?? 0).toLocaleString('en-PH');
 const fmtPeso = (n) => `₱${Number(n ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

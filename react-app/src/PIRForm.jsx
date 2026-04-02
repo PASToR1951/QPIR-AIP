@@ -37,14 +37,14 @@ export default function App() {
             ? { initial: false, animate: false, exit: false, transition: { duration: 0 } }
             : { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -20 }, transition: { duration: 0.15, ease: 'easeOut' } }
     ), [settings.reduceMotion]);
-    const userStr = localStorage.getItem('user');
+    const userStr = sessionStorage.getItem('user');
     let user = null;
     try {
         user = userStr ? JSON.parse(userStr) : null;
     } catch {
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
     }
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
     const isDivisionPersonnel = user?.role === 'Division Personnel';
 
@@ -202,7 +202,7 @@ export default function App() {
     const [isLoadingActivities, setIsLoadingActivities] = useState(false);
 
     // Add state to track which activity card is expanded (for Wizard)
-    const [expandedActivityId, setExpandedActivityId] = useState(activities[0].id);
+    const [expandedActivityId, setExpandedActivityId] = useState(activities.length > 0 ? activities[0].id : null);
 
     const initialFactors = FACTOR_TYPES.reduce((acc, type) => {
         acc[type] = { facilitating: "", hindering: "", recommendations: "" };
@@ -719,6 +719,7 @@ export default function App() {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-dark-base">
+            <style>{`@media print { @page { size: A4 landscape; margin: 1cm; } }`}</style>
             <AnimatePresence mode="wait">
                 {appMode === 'splash' ? (
                     <motion.div key="splash" {...motionProps}>
@@ -785,13 +786,8 @@ export default function App() {
                                             </>
                                         )}
                                         <button
-                                            onClick={() => {
-                                                const s = document.createElement('style');
-                                                s.textContent = '@media print { @page { size: A4 landscape; margin: 1cm; } }';
-                                                document.head.appendChild(s);
-                                                window.print();
-                                                window.addEventListener('afterprint', () => s.remove(), { once: true });
-                                            }}
+                                            aria-label="Print PIR"
+                                            onClick={() => window.print()}
                                             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-700 transition-colors"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

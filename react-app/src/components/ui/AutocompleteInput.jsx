@@ -51,8 +51,8 @@ export default function AutocompleteInput({
             />
             {isOpen && filtered.length > 0 && (
                 <ul className="absolute z-50 top-full mt-1 w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl shadow-lg overflow-hidden">
-                    {filtered.map((s, i) => (
-                        <li key={i}>
+                    {filtered.map((s) => (
+                        <li key={s}>
                             <button
                                 type="button"
                                 className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-pink-50 dark:hover:bg-pink-950/30 hover:text-pink-700 dark:hover:text-pink-300 transition-colors"

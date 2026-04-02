@@ -7,7 +7,7 @@ import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 const LEVELS = ['Elementary', 'Secondary', 'Both', 'Select Schools', 'Division'];
 const DIVISIONS = ['SGOD', 'OSDS', 'CID'];
 const LEVEL_LABELS = {
@@ -78,7 +78,7 @@ export default function AdminPrograms() {
       axios.get(`${API}/api/admin/programs`, { headers: authHeaders() }),
       axios.get(`${API}/api/admin/users?role=Division Personnel&status=active`, { headers: authHeaders() }),
     ]).then(([pr, ur]) => { setPrograms(pr.data); setAllPersonnel(ur.data); })
-      .catch(console.error)
+      .catch(e => { console.error(e); showToast('Failed to load programs. Please refresh.', 'error'); })
       .finally(() => setLoadingPrograms(false));
   }, []);
 
@@ -86,7 +86,7 @@ export default function AdminPrograms() {
     setLoadingDivPrograms(true);
     axios.get(`${API}/api/admin/division-programs`, { headers: authHeaders() })
       .then(r => setDivPrograms(r.data))
-      .catch(console.error)
+      .catch(e => { console.error(e); showToast('Failed to load division programs. Please refresh.', 'error'); })
       .finally(() => setLoadingDivPrograms(false));
   }, []);
 

@@ -9,7 +9,7 @@ import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import { MultiSelect } from '../components/MultiSelect.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
+const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
 const LEVELS = ['Elementary', 'Secondary', 'Both'];
 
 export default function AdminSchools() {
@@ -36,6 +36,7 @@ export default function AdminSchools() {
   const [search, setSearch] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [fetchError, setFetchError] = useState(null);
 
   const fetchAll = useCallback(() => {
     setLoading(true);
@@ -43,7 +44,7 @@ export default function AdminSchools() {
       axios.get(`${API}/api/admin/clusters`, { headers: authHeaders() }),
       axios.get(`${API}/api/admin/programs`, { headers: authHeaders() }),
     ]).then(([cr, pr]) => { setClusters(cr.data); setPrograms(pr.data); })
-      .catch(console.error)
+      .catch(e => { console.error(e); setFetchError('Failed to load data. Please refresh and try again.'); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -170,6 +171,12 @@ export default function AdminSchools() {
           </button>
           </div>
         </div>
+
+        {fetchError && (
+          <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 text-sm font-medium">
+            {fetchError}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center h-48">
