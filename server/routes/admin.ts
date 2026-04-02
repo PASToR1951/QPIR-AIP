@@ -210,13 +210,14 @@ adminRoutes.get('/ces/pirs', async (c) => {
 
   const pirs = await prisma.pIR.findMany({
     where: {
-      status: 'For CES Review',
+      status: { in: ['For CES Review', 'Under Review'] },
       ...roleFilter,
       ...(quarter ? { quarter } : {}),
     },
     include: {
       aip: { include: { program: true, school: true } },
       created_by: { select: { name: true, first_name: true, last_name: true, email: true } },
+      active_reviewer: { select: { name: true, first_name: true, last_name: true, email: true } },
     },
     orderBy: { created_at: 'desc' },
   });
@@ -231,7 +232,33 @@ adminRoutes.get('/ces/pirs', async (c) => {
     functionalDivision: p.functional_division,
     submittedAt: p.created_at,
     submittedBy: buildSubmittedBy(p.created_by),
+    activeReviewerName: p.active_reviewer ? buildSubmittedBy(p.active_reviewer) : null,
+    activeReviewStartedAt: p.active_review_started_at ?? null,
   })));
+});
+
+adminRoutes.post('/ces/pirs/:id/start-review', async (c) => {
+  let tokenUser: TokenPayload;
+  try { tokenUser = requireCES(c.req.header('Authorization')); }
+  catch { return c.json({ error: 'Forbidden' }, 403); }
+
+  const pirId = parseInt(c.req.param('id'));
+  const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
+  if (!pir) return c.json({ error: 'PIR not found' }, 404);
+  if (!['For CES Review', 'Under Review'].includes((pir as any).status)) {
+    return c.json({ error: 'PIR is not in a reviewable state' }, 409);
+  }
+  // Already under review by someone else — still allow (idempotent)
+  await prisma.pIR.update({
+    where: { id: pirId },
+    data: {
+      status: 'Under Review',
+      active_reviewer_id: tokenUser.id,
+      active_review_started_at: new Date(),
+    },
+  });
+  await writeAuditLog(tokenUser.id, 'started_pir_review', 'PIR', pirId, {});
+  return c.json({ success: true });
 });
 
 adminRoutes.post('/ces/pirs/:id/note', async (c) => {
@@ -247,7 +274,7 @@ adminRoutes.post('/ces/pirs/:id/note', async (c) => {
     include: { aip: { include: { program: true, school: true } } },
   });
   if (!pir) return c.json({ error: 'PIR not found' }, 404);
-  if ((pir as any).status !== 'For CES Review') {
+  if (!['For CES Review', 'Under Review'].includes((pir as any).status)) {
     return c.json({ error: 'PIR is not pending CES review' }, 409);
   }
 
@@ -255,6 +282,8 @@ adminRoutes.post('/ces/pirs/:id/note', async (c) => {
     where: { id: pirId },
     data: {
       status: 'Approved',
+      active_reviewer_id: null,
+      active_review_started_at: null,
       ces_reviewer_id: tokenUser.id,
       ces_noted_at: new Date(),
       ces_remarks: ces_remarks ?? null,
@@ -292,7 +321,7 @@ adminRoutes.post('/ces/pirs/:id/return', async (c) => {
     include: { aip: { include: { program: true, school: true } } },
   });
   if (!pir) return c.json({ error: 'PIR not found' }, 404);
-  if ((pir as any).status !== 'For CES Review') {
+  if (!['For CES Review', 'Under Review'].includes((pir as any).status)) {
     return c.json({ error: 'PIR is not pending CES review' }, 409);
   }
 
@@ -300,6 +329,8 @@ adminRoutes.post('/ces/pirs/:id/return', async (c) => {
     where: { id: pirId },
     data: {
       status: 'Returned',
+      active_reviewer_id: null,
+      active_review_started_at: null,
       ces_reviewer_id: tokenUser.id,
       ces_noted_at: new Date(),
       ces_remarks: ces_remarks ?? null,
@@ -334,13 +365,14 @@ adminRoutes.get('/cluster-head/pirs', async (c) => {
   const quarter = c.req.query('quarter');
   const pirs = await prisma.pIR.findMany({
     where: {
-      status: 'For Cluster Head Review',
+      status: { in: ['For Cluster Head Review', 'Under Review'] },
       aip: { school: { cluster_id: tokenUser.cluster_id ?? -1 } },
       ...(quarter ? { quarter } : {}),
     },
     include: {
       aip: { include: { program: true, school: { include: { cluster: true } } } },
       created_by: { select: { name: true, first_name: true, last_name: true, email: true } },
+      active_reviewer: { select: { name: true, first_name: true, last_name: true, email: true } },
     },
     orderBy: { created_at: 'desc' },
   });
@@ -355,7 +387,38 @@ adminRoutes.get('/cluster-head/pirs', async (c) => {
     owner: p.program_owner,
     submittedAt: p.created_at,
     submittedBy: buildSubmittedBy(p.created_by),
+    activeReviewerName: p.active_reviewer ? buildSubmittedBy(p.active_reviewer) : null,
+    activeReviewStartedAt: p.active_review_started_at ?? null,
   })));
+});
+
+adminRoutes.post('/cluster-head/pirs/:id/start-review', async (c) => {
+  let tokenUser: TokenPayload;
+  try { tokenUser = requireClusterHead(c.req.header('Authorization')); }
+  catch { return c.json({ error: 'Forbidden' }, 403); }
+
+  const pirId = parseInt(c.req.param('id'));
+  const pir = await prisma.pIR.findUnique({
+    where: { id: pirId },
+    include: { aip: { include: { school: true } } },
+  });
+  if (!pir) return c.json({ error: 'PIR not found' }, 404);
+  if (!['For Cluster Head Review', 'Under Review'].includes((pir as any).status)) {
+    return c.json({ error: 'PIR is not in a reviewable state' }, 409);
+  }
+  if ((pir as any).aip.school?.cluster_id !== tokenUser.cluster_id) {
+    return c.json({ error: 'Forbidden' }, 403);
+  }
+  await prisma.pIR.update({
+    where: { id: pirId },
+    data: {
+      status: 'Under Review',
+      active_reviewer_id: tokenUser.id,
+      active_review_started_at: new Date(),
+    },
+  });
+  await writeAuditLog(tokenUser.id, 'started_pir_review', 'PIR', pirId, {});
+  return c.json({ success: true });
 });
 
 adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
@@ -371,7 +434,7 @@ adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
     include: { aip: { include: { program: true, school: { include: { cluster: true } } } } },
   });
   if (!pir) return c.json({ error: 'PIR not found' }, 404);
-  if ((pir as any).status !== 'For Cluster Head Review') {
+  if (!['For Cluster Head Review', 'Under Review'].includes((pir as any).status)) {
     return c.json({ error: 'PIR is not pending Cluster Head review' }, 409);
   }
   // Confirm this PIR belongs to the coordinator's cluster
@@ -383,6 +446,8 @@ adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
     where: { id: pirId },
     data: {
       status: 'Approved',
+      active_reviewer_id: null,
+      active_review_started_at: null,
       ces_reviewer_id: tokenUser.id,
       ces_noted_at: new Date(),
       ces_remarks: remarks ?? null,
@@ -980,10 +1045,8 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
     if (aip.created_by_user_id) {
       const schoolLabel = aip.school?.name ?? "your school";
       const aipNotifMessages: Record<string, { title: string; message: string }> = {
-        "Approved":     { title: "AIP Approved",     message: `Your AIP for ${aip.program.title} (FY ${aip.year}) from ${schoolLabel} has been approved.` },
-        "Returned":     { title: "AIP Returned",     message: `Your AIP for ${aip.program.title} (FY ${aip.year}) has been returned for correction.${feedback ? ` Feedback: ${feedback}` : ""}` },
-        "Under Review": { title: "AIP Under Review", message: `Your AIP for ${aip.program.title} (FY ${aip.year}) is now under review.` },
-        "Submitted":    { title: "AIP Status Updated", message: `Your AIP for ${aip.program.title} (FY ${aip.year}) status has been updated to Submitted.` },
+        "Approved": { title: "AIP Approved", message: `Your AIP for ${aip.program.title} (FY ${aip.year}) from ${schoolLabel} has been approved.` },
+        "Returned": { title: "AIP Returned", message: `Your AIP for ${aip.program.title} (FY ${aip.year}) has been returned for correction.${feedback ? ` Feedback: ${feedback}` : ""}` },
       };
       const aipNotif = aipNotifMessages[status];
       if (aipNotif) {
@@ -1772,7 +1835,7 @@ adminRoutes.get("/reports/aip-funnel", async (c) => {
     select: { status: true },
   });
 
-  const STATUSES = ["Draft", "Submitted", "Pending", "Verified", "Under Review", "Approved", "Returned"];
+  const STATUSES = ["Draft", "Submitted", "Under Review", "Approved", "Returned"];
   const data = STATUSES.map((s) => ({
     status: s,
     count: aips.filter((a) => a.status === s).length,

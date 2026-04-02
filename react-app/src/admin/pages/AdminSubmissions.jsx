@@ -52,7 +52,7 @@ export default function AdminSubmissions() {
   const [clusters, setClusters] = useState([]);
   const [schools, setSchools] = useState([]);
   const [programs, setPrograms] = useState([]);
-  const [filters, setFilters] = useState({ cluster: null, school: null, program: null, quarter: null, year: null, status: null });
+  const [filters, setFilters] = useState({ cluster: null, school: null, program: null, quarter: null, year: new Date().getFullYear(), status: null });
   const [showFilters, setShowFilters] = useState(false);
 
   // Modals
@@ -303,7 +303,8 @@ export default function AdminSubmissions() {
     { label: '3rd Quarter', value: '3rd' },
     { label: '4th Quarter', value: '4th' },
   ];
-  const YEAR_OPTIONS = [2024, 2025, 2026, 2027].map(y => ({ value: y, label: String(y) }));
+  const currentYear = new Date().getFullYear();
+  const YEAR_OPTIONS = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => ({ value: y, label: String(y) }));
 
   const columns = [
     { key: 'school', label: 'School', sortable: true, render: v => <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px] block">{v}</span> },
@@ -325,7 +326,9 @@ export default function AdminSubmissions() {
           >
             <Eye size={17} />
           </button>
-          <button onClick={() => setApproveItem(row)} title="Approve" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"><Check size={17} /></button>
+          {row.status !== 'Approved' && (
+            <button onClick={() => setApproveItem(row)} title="Approve" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"><Check size={17} /></button>
+          )}
           <button onClick={() => { setReturnItem(row); setReturnFeedback(''); }} title="Return" className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"><ArrowBendUpLeft size={17} /></button>
           {/* Bug fix: pass row directly so handleExportPDF isn't affected by stale viewItem state.
               pdfLoadingId guards against multiple simultaneous export clicks. */}
@@ -698,7 +701,10 @@ export default function AdminSubmissions() {
                   onChange={e => handleStatusUpdate(viewItem.id, viewItem.type, e.target.value)}
                   className="text-sm font-bold bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl px-3 py-1.5 text-slate-700 dark:text-slate-300"
                 >
-                  {['Submitted', 'Under Review', 'Approved', 'Returned'].map(s => (
+                  {(viewItem.type === 'AIP'
+                    ? ['Approved', 'Returned']
+                    : ['Submitted', 'Under Review', 'For CES Review', 'For Cluster Head Review', 'Approved', 'Returned']
+                  ).map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>

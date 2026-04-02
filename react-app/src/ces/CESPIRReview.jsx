@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowLeft, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
@@ -30,13 +30,47 @@ export default function CESPIRReview() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [reviewCountdown, setReviewCountdown] = useState(3 * 60); // seconds
+  const [isUnderReview, setIsUnderReview] = useState(false);
+  const countdownRef = useRef(null);
+  const startReviewFiredRef = useRef(false);
 
   useEffect(() => {
     axios.get(`${API}/api/admin/pirs/${id}`, { headers: authHeaders() })
-      .then(r => setPir(r.data))
+      .then(r => {
+        setPir(r.data);
+        // If already under review (e.g. re-opened), skip timer
+        if (r.data?.status === 'Under Review') {
+          setIsUnderReview(true);
+          setReviewCountdown(0);
+        }
+      })
       .catch(() => setPir(null))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // 3-minute countdown — starts once PIR is loaded and not already Under Review
+  useEffect(() => {
+    if (loading || isUnderReview || startReviewFiredRef.current) return;
+
+    countdownRef.current = setInterval(() => {
+      setReviewCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current);
+          if (!startReviewFiredRef.current) {
+            startReviewFiredRef.current = true;
+            axios.post(`${API}/api/admin/ces/pirs/${id}/start-review`, {}, { headers: authHeaders() })
+              .then(() => setIsUnderReview(true))
+              .catch(() => {}); // silently fail — status update is best-effort
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(countdownRef.current);
+  }, [loading, isUnderReview, id]);
 
   const handleAction = async () => {
     setSubmitting(true);
@@ -89,7 +123,9 @@ export default function CESPIRReview() {
     );
   }
 
-  const canAct = pir.status === 'For CES Review';
+  const canAct = pir.status === 'For CES Review' || pir.status === 'Under Review';
+  const countdownMins = Math.floor(reviewCountdown / 60);
+  const countdownSecs = String(reviewCountdown % 60).padStart(2, '0');
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -105,6 +141,16 @@ export default function CESPIRReview() {
 
         {canAct && (
           <div className="flex items-center gap-2">
+            {!isUnderReview && reviewCountdown > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-dark-border tabular-nums">
+                Flagging as Under Review in {countdownMins}:{countdownSecs}
+              </span>
+            )}
+            {isUnderReview && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 border border-violet-200 dark:border-violet-700/60">
+                Under Review
+              </span>
+            )}
             <button
               onClick={() => { setModal('return'); setRemarks(''); setError(''); }}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-700/60 transition-colors"

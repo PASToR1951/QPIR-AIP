@@ -161,20 +161,28 @@ export default function CESDashboard() {
                   </td>
                   <td className="px-5 py-3.5 text-right">
                     <div className="flex items-center justify-end gap-2" onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={e => openModal('note', p, e)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40 border border-teal-200 dark:border-teal-700/60 transition-colors"
-                      >
-                        <Stamp size={13} />
-                        Note
-                      </button>
-                      <button
-                        onClick={e => openModal('return', p, e)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-700/60 transition-colors"
-                      >
-                        <ArrowUUpLeft size={13} />
-                        Return
-                      </button>
+                      {p.status === 'Under Review' ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400 border border-violet-200 dark:border-violet-700/60">
+                          Under Review{p.activeReviewerName ? ` · ${p.activeReviewerName}` : ''}
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={e => openModal('note', p, e)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/40 border border-teal-200 dark:border-teal-700/60 transition-colors"
+                          >
+                            <Stamp size={13} />
+                            Note
+                          </button>
+                          <button
+                            onClick={e => openModal('return', p, e)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 border border-amber-200 dark:border-amber-700/60 transition-colors"
+                          >
+                            <ArrowUUpLeft size={13} />
+                            Return
+                          </button>
+                        </>
+                      )}
                       <ArrowRight size={15} className="text-slate-300 dark:text-slate-600 ml-1" />
                     </div>
                   </td>

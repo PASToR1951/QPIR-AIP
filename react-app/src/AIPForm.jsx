@@ -55,6 +55,7 @@ export default function App() {
     const [currentStep, setCurrentStep] = useState(1);
     const totalSteps = 6;
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [showFinalConfirm, setShowFinalConfirm] = useState(false);
     const [isAddingActivity, setIsAddingActivity] = useState(false);
     const [activityToDelete, setActivityToDelete] = useState(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -122,7 +123,6 @@ export default function App() {
     const [isLoading, setIsLoading] = useState(true);
 
     const [loadedDraftData, setLoadedDraftData] = useState(null);
-    const [submittedAipStatus, setSubmittedAipStatus] = useState(null);
     const [returnedPrograms, setReturnedPrograms] = useState([]);
     const [draftPrograms, setDraftPrograms] = useState([]);
     const [toast, setToast] = useState(null);          // { msg, programs[] }
@@ -234,7 +234,6 @@ export default function App() {
                 );
                 const d = res.data;
                 setYear(String(d.year));
-                setSubmittedAipStatus(d.status || null);
                 setOutcome(d.outcome || "");
                 setSelectedTarget(d.indicators?.[0]?.description || "");
                 setSipTitle(d.sipTitle || "");
@@ -678,7 +677,7 @@ export default function App() {
 
             setIsSubmitted(true);
             localStorage.removeItem(`aip_draft_${depedProgram}_${year}`);
-            // Draft is now promoted to Submitted in the backend — no separate delete needed
+            // Draft or returned AIP is now promoted to Approved in the backend — no separate delete needed
             setModal({
                 isOpen: true,
                 type: 'success',
@@ -719,6 +718,16 @@ export default function App() {
             cancelText={modal.cancelText}
             hideCancelButton={modal.hideCancelButton}
             extraAction={modal.extraAction}
+        />
+        <ConfirmationModal
+            isOpen={showFinalConfirm}
+            onClose={() => setShowFinalConfirm(false)}
+            onConfirm={() => { setShowFinalConfirm(false); handleConfirmSubmit(); }}
+            type="warning"
+            title="Submit AIP — Final Confirmation"
+            message="Once submitted, your AIP cannot be edited. If corrections are needed later, you will need to request an edit from the Admin. Do you want to proceed?"
+            confirmText="Yes, Submit"
+            cancelText="Cancel"
         />
         {toast && (
             <button
@@ -1120,7 +1129,7 @@ export default function App() {
 
                                     <button
                                         type="button"
-                                        onClick={handleConfirmSubmit}
+                                        onClick={() => setShowFinalConfirm(true)}
                                         disabled={isSubmitted}
                                         className="inline-flex h-14 items-center justify-center rounded-2xl bg-pink-600 px-8 py-1 text-sm font-bold text-white transition-colors gap-3 hover:bg-pink-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-md"
                                     >
