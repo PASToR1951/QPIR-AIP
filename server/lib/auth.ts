@@ -38,7 +38,7 @@ export function getUserFromToken(cOrHeader: Context | string | undefined): Token
   if (!token) return null;
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as TokenPayload;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (!VALID_ROLES.includes(payload.role as any)) {
       return null;

@@ -1,8 +1,10 @@
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import { prisma } from "../db/client.ts";
 import { getCESRoleForDivisionPIR } from "../lib/routing.ts";
 import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
 import { logger } from "../lib/logger.ts";
+import { subscribe, pushNotification, pushNotifications } from "../lib/notifStream.ts";
 
 const dataRoutes = new Hono();
 
@@ -243,10 +245,18 @@ dataRoutes.post('/pirs/draft', async (c) => {
 
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
-    const program = await prisma.program.findFirst({ where: { title: program_title } });
-    if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
+    // Strip null bytes and other control characters to prevent DB crashes
+    // eslint-disable-next-line no-control-regex
+    const sanitized_title = String(program_title).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+    // eslint-disable-next-line no-control-regex
+    const sanitized_quarter = String(quarter).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
 
-    const yearMatch = quarter.match(/CY (\d{4})/);
+    if (!sanitized_title || !sanitized_quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
+
+    const program = await prisma.program.findFirst({ where: { title: sanitized_title } });
+    if (!program) return c.json({ error: `Program '${sanitized_title}' not found` }, 404);
+
+    const yearMatch = sanitized_quarter.match(/CY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
 
     let aip: any;
@@ -266,7 +276,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
 
     // Check for existing PIR draft
     const existing = await prisma.pIR.findUnique({
-      where: { aip_id_quarter: { aip_id: aip.id, quarter } }
+      where: { aip_id_quarter: { aip_id: aip.id, quarter: sanitized_quarter } }
     });
 
     if (existing && existing.status !== 'Draft') {
@@ -323,7 +333,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
         data: {
           aip_id: aip.id,
           created_by_user_id: tokenUser.id,
-          quarter,
+          quarter: sanitized_quarter,
           ...pirData,
           factors: {
             create: factors ? Object.entries(factors).map(([type, data]: [string, any]) => ({
@@ -1195,7 +1205,7 @@ dataRoutes.post('/aips', async (c) => {
     }
     const admins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
     if (admins.length > 0) {
-      await prisma.notification.createMany({
+      const adminNotifs = await prisma.notification.createManyAndReturn({
         data: admins.map(admin => ({
           user_id: admin.id,
           title: 'New AIP Received (Pre-approved)',
@@ -1203,10 +1213,11 @@ dataRoutes.post('/aips', async (c) => {
           type: 'aip_submitted',
         })),
       });
+      pushNotifications(adminNotifs);
     }
 
     // Notify the submitter that their AIP is pre-approved
-    await prisma.notification.create({
+    const submitterNotif = await prisma.notification.create({
       data: {
         user_id: tokenUser.id,
         title: 'AIP Approved',
@@ -1214,6 +1225,7 @@ dataRoutes.post('/aips', async (c) => {
         type: 'approved',
       },
     });
+    pushNotification(submitterNotif);
 
     return c.json({ message: 'AIP created successfully', aip });
   } catch (error) {
@@ -1262,7 +1274,7 @@ dataRoutes.post('/aips/:id/request-edit', async (c) => {
 
     const admins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
     if (admins.length > 0) {
-      await prisma.notification.createMany({
+      const editNotifs = await prisma.notification.createManyAndReturn({
         data: admins.map(admin => ({
           user_id: admin.id,
           title: 'Edit Request — AIP',
@@ -1270,6 +1282,7 @@ dataRoutes.post('/aips/:id/request-edit', async (c) => {
           type: 'aip_edit_requested',
         })),
       });
+      pushNotifications(editNotifs);
     }
 
     return c.json({ message: 'Edit request sent to admin' });
@@ -1475,7 +1488,7 @@ dataRoutes.post('/pirs', async (c) => {
 
     const notifyIds = [...new Set([...reviewerIds, ...pirAdmins.map((u: any) => u.id)])];
     if (notifyIds.length > 0) {
-      await prisma.notification.createMany({
+      const pirNotifs = await prisma.notification.createManyAndReturn({
         data: notifyIds.map((userId: number) => ({
           user_id: userId,
           title: 'New PIR Submitted',
@@ -1483,6 +1496,7 @@ dataRoutes.post('/pirs', async (c) => {
           type: 'pir_submitted',
         })),
       });
+      pushNotifications(pirNotifs);
     }
 
     return c.json({ message: 'PIR created successfully', pir });
@@ -1878,6 +1892,33 @@ dataRoutes.get('/dashboard', async (c) => {
 // ==========================================
 // NOTIFICATIONS
 // ==========================================
+
+// SSE stream — stays open; pushes new notifications in real time.
+dataRoutes.get("/notifications/stream", async (c) => {
+  const tokenUser = getUserFromToken(c);
+  if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
+
+  return streamSSE(c, async (stream) => {
+    const unsubscribe = subscribe(tokenUser.id, (notif) => {
+      stream.writeSSE({ event: "notification", data: JSON.stringify(notif) }).catch(() => {});
+    });
+
+    await stream.writeSSE({ event: "connected", data: "{}" });
+
+    const heartbeat = setInterval(() => {
+      stream.writeSSE({ event: "ping", data: "" }).catch(() => clearInterval(heartbeat));
+    }, 20000);
+
+    await new Promise<void>((resolve) => {
+      const signal = c.req.raw.signal;
+      if (signal.aborted) { resolve(); return; }
+      signal.addEventListener("abort", () => resolve(), { once: true });
+    });
+
+    clearInterval(heartbeat);
+    unsubscribe();
+  });
+});
 
 dataRoutes.get("/notifications", async (c) => {
   const tokenUser = getUserFromToken(c);

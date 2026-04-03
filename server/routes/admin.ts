@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { getCESRoleForDivisionPIR, CES_ROLES } from "../lib/routing.ts";
 import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
 import { logger } from "../lib/logger.ts";
+import { pushNotification, pushNotifications } from "../lib/notifStream.ts";
 
 const adminRoutes = new Hono();
 
@@ -223,7 +224,10 @@ adminRoutes.post('/ces/pirs/:id/start-review', async (c) => {
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
   const pirId = parseInt(c.req.param('id'));
-  const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
+  const pir = await prisma.pIR.findUnique({
+    where: { id: pirId },
+    include: { aip: { include: { program: true } } },
+  });
   if (!pir) return c.json({ error: 'PIR not found' }, 404);
   if (!['For CES Review', 'Under Review'].includes((pir as any).status)) {
     return c.json({ error: 'PIR is not in a reviewable state' }, 409);
@@ -237,6 +241,17 @@ adminRoutes.post('/ces/pirs/:id/start-review', async (c) => {
     },
   });
   if (updated.count === 0) return c.json({ error: 'PIR is already under review' }, 409);
+  if ((pir as any).created_by_user_id) {
+    const notif = await prisma.notification.create({
+      data: {
+        user_id: (pir as any).created_by_user_id,
+        title: 'PIR Under Review',
+        message: `Your PIR for ${(pir as any).aip.program.title} (${(pir as any).quarter}) is now under review.`,
+        type: 'under_review',
+      },
+    });
+    pushNotification(notif);
+  }
   await writeAuditLog(tokenUser.id, 'started_pir_review', 'PIR', pirId, {});
   return c.json({ success: true });
 });
@@ -276,7 +291,7 @@ adminRoutes.post('/ces/pirs/:id/note', async (c) => {
 
   // Notify the submitter
   if ((pir as any).created_by_user_id) {
-    await prisma.notification.create({
+    const notif = await prisma.notification.create({
       data: {
         user_id: (pir as any).created_by_user_id,
         title: 'PIR Approved',
@@ -284,6 +299,7 @@ adminRoutes.post('/ces/pirs/:id/note', async (c) => {
         type: 'approved',
       },
     });
+    pushNotification(notif);
   }
 
   await writeAuditLog(tokenUser.id, 'ces_noted_pir', 'PIR', pirId, { ces_remarks: ces_remarks ?? null });
@@ -323,7 +339,7 @@ adminRoutes.post('/ces/pirs/:id/return', async (c) => {
 
   const programTitle = (pir as any).aip.program.title;
   if ((pir as any).created_by_user_id) {
-    await prisma.notification.create({
+    const notif = await prisma.notification.create({
       data: {
         user_id: (pir as any).created_by_user_id,
         title: 'PIR Returned by CES',
@@ -331,6 +347,7 @@ adminRoutes.post('/ces/pirs/:id/return', async (c) => {
         type: 'returned',
       },
     });
+    pushNotification(notif);
   }
 
   await writeAuditLog(tokenUser.id, 'ces_returned_pir', 'PIR', pirId, { ces_remarks: ces_remarks ?? null });
@@ -382,7 +399,7 @@ adminRoutes.post('/cluster-head/pirs/:id/start-review', async (c) => {
   const pirId = parseInt(c.req.param('id'));
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
-    include: { aip: { include: { school: true } } },
+    include: { aip: { include: { program: true, school: true } } },
   });
   if (!pir) return c.json({ error: 'PIR not found' }, 404);
   if (!['For Cluster Head Review', 'Under Review'].includes((pir as any).status)) {
@@ -400,6 +417,17 @@ adminRoutes.post('/cluster-head/pirs/:id/start-review', async (c) => {
     },
   });
   if (updated.count === 0) return c.json({ error: 'PIR is already under review' }, 409);
+  if ((pir as any).created_by_user_id) {
+    const notif = await prisma.notification.create({
+      data: {
+        user_id: (pir as any).created_by_user_id,
+        title: 'PIR Under Review',
+        message: `Your PIR for ${(pir as any).aip.program.title} (${(pir as any).quarter}) is now under review.`,
+        type: 'under_review',
+      },
+    });
+    pushNotification(notif);
+  }
   await writeAuditLog(tokenUser.id, 'started_pir_review', 'PIR', pirId, {});
   return c.json({ success: true });
 });
@@ -441,7 +469,7 @@ adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
 
   const programTitle = (pir as any).aip.program.title;
   if ((pir as any).created_by_user_id) {
-    await prisma.notification.create({
+    const notif = await prisma.notification.create({
       data: {
         user_id: (pir as any).created_by_user_id,
         title: 'PIR Approved',
@@ -449,6 +477,7 @@ adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
         type: 'approved',
       },
     });
+    pushNotification(notif);
   }
 
   await writeAuditLog(tokenUser.id, 'cluster_head_noted_pir', 'PIR', pirId, { remarks: remarks ?? null });
@@ -489,7 +518,7 @@ adminRoutes.post('/cluster-head/pirs/:id/return', async (c) => {
 
   const programTitle = (pir as any).aip.program.title;
   if ((pir as any).created_by_user_id) {
-    await prisma.notification.create({
+    const notif = await prisma.notification.create({
       data: {
         user_id: (pir as any).created_by_user_id,
         title: 'PIR Returned by Cluster Head',
@@ -497,6 +526,7 @@ adminRoutes.post('/cluster-head/pirs/:id/return', async (c) => {
         type: 'returned',
       },
     });
+    pushNotification(notif);
   }
 
   await writeAuditLog(tokenUser.id, 'cluster_head_returned_pir', 'PIR', pirId, { remarks: remarks ?? null });
@@ -776,7 +806,7 @@ adminRoutes.get("/submissions", async (c) => {
   const year = q("year") ? parseInt(q("year")!) : undefined;
   const status = q("status");
   const page = parseInt(q("page") || "1");
-  const limit = parseInt(q("limit") || "25");
+  const limit = Math.min(100, parseInt(q("limit") || "25"));
   const skip = (page - 1) * limit;
 
   const schoolFilter = schoolId
@@ -1030,9 +1060,10 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
       };
       const notif = notifMessages[status];
       if (notif) {
-        await prisma.notification.create({
+        const created = await prisma.notification.create({
           data: { user_id: pir.created_by_user_id, title: notif.title, message: notif.message, type: statusLabels[status] },
         });
+        pushNotification(created);
       }
     }
   } else {
@@ -1049,9 +1080,10 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
       };
       const aipNotif = aipNotifMessages[status];
       if (aipNotif) {
-        await prisma.notification.create({
+        const created = await prisma.notification.create({
           data: { user_id: aip.created_by_user_id, title: aipNotif.title, message: aipNotif.message, type: statusLabels[status] },
         });
+        pushNotification(created);
       }
     }
   }
@@ -1089,7 +1121,7 @@ adminRoutes.patch("/pirs/:id/remarks", async (c) => {
 
   if (pir.created_by_user_id && remarks.trim()) {
     const schoolLabel = pir.aip.school?.name ?? "your school";
-    await prisma.notification.create({
+    const notif = await prisma.notification.create({
       data: {
         user_id: pir.created_by_user_id,
         title: "Remarks Added to Your PIR",
@@ -1097,6 +1129,7 @@ adminRoutes.patch("/pirs/:id/remarks", async (c) => {
         type: "remarked",
       },
     });
+    pushNotification(notif);
   }
 
   await writeAuditLog(admin.id, "update_remarks", "PIR", id, { remarks });
@@ -2207,7 +2240,7 @@ adminRoutes.post("/announcements", async (c) => {
       const plainMessage = message.replace(/@\[([^\]]+)\]/g, (_: string, n: string) => `@${n}`);
 
       if (notifyIds.length > 0) {
-        await tx.notification.createMany({
+        const annNotifs = await tx.notification.createManyAndReturn({
           data: notifyIds.map(uid => ({
             user_id: uid,
             title:   "You were mentioned in an announcement",
@@ -2216,6 +2249,8 @@ adminRoutes.post("/announcements", async (c) => {
           })),
           skipDuplicates: true,
         });
+        // Store for post-commit push (pushing inside tx risks sending before commit)
+        Object.assign(ann, { _sseNotifs: annNotifs });
       }
     }
 
@@ -2225,6 +2260,10 @@ adminRoutes.post("/announcements", async (c) => {
 
     return ann;
   });
+
+  // Push announcement notifications after transaction commits
+  const sseNotifs = (announcement as any)._sseNotifs;
+  if (sseNotifs?.length) pushNotifications(sseNotifs);
 
   return c.json(announcement);
 });
@@ -2237,7 +2276,7 @@ adminRoutes.post("/announcements", async (c) => {
 adminRoutes.get("/audit-log", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const page = parseInt(c.req.query("page") || "1");
-  const limit = parseInt(c.req.query("limit") || "50");
+  const limit = Math.min(100, parseInt(c.req.query("limit") || "50"));
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
       skip: (page - 1) * limit,
