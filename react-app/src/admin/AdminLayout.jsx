@@ -5,7 +5,7 @@ import { AdminSidebar } from './AdminSidebar.jsx';
 import { AdminTopBar } from './AdminTopBar.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 export const AdminLayout = ({ children }) => {
   const navigate = useNavigate();
@@ -14,13 +14,13 @@ export const AdminLayout = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/layout-info`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/layout-info`, { credentials: 'include'() })
       .then(r => setDeadline({ daysLeft: r.data.daysLeft, currentQuarter: r.data.currentQuarter }))
       .catch(() => {});
   }, []);
 
   const fetchNotifications = useCallback(() => {
-    axios.get(`${API}/api/notifications`, { headers: authHeaders() })
+    axios.get(`${API}/api/notifications`, { credentials: 'include'() })
       .then(r => setNotifications(r.data))
       .catch(() => {});
   }, []);
@@ -34,14 +34,14 @@ export const AdminLayout = ({ children }) => {
 
   const markOne = async (id) => {
     try {
-      await axios.patch(`${API}/api/notifications/${id}/read`, {}, { headers: authHeaders() });
+      await axios.patch(`${API}/api/notifications/${id}/read`, {}, { credentials: 'include'() });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch { /* silent */ }
   };
 
   const markAll = async () => {
     try {
-      await axios.patch(`${API}/api/notifications/read-all`, {}, { headers: authHeaders() });
+      await axios.patch(`${API}/api/notifications/read-all`, {}, { credentials: 'include'() });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch { /* silent */ }
   };

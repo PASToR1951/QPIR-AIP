@@ -4,7 +4,7 @@ import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle } from '
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 const TYPE_ICON = {
   approved:     <CheckCircle size={16} className="text-emerald-400 shrink-0" />,
@@ -29,10 +29,10 @@ export function NotificationBell() {
   const ref = useRef(null);
 
   const fetchNotifications = useCallback(() => {
-    const token = sessionStorage.getItem('token');
+    
     if (!token) return;
     axios
-      .get(`${API}/api/notifications`, { headers: authHeaders() })
+      .get(`${API}/api/notifications`, { credentials: 'include'() })
       .then(r => setNotifications(r.data))
       .catch(() => {});
   }, []);
@@ -61,14 +61,14 @@ export function NotificationBell() {
 
   const markOne = async (id) => {
     try {
-      await axios.patch(`${API}/api/notifications/${id}/read`, {}, { headers: authHeaders() });
+      await axios.patch(`${API}/api/notifications/${id}/read`, {}, { credentials: 'include'() });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch { /* silent */ }
   };
 
   const markAll = async () => {
     try {
-      await axios.patch(`${API}/api/notifications/read-all`, {}, { headers: authHeaders() });
+      await axios.patch(`${API}/api/notifications/read-all`, {}, { credentials: 'include'() });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch { /* silent */ }
   };

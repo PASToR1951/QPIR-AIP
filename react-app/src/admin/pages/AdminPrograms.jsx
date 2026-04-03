@@ -7,7 +7,7 @@ import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 const LEVELS = ['Elementary', 'Secondary', 'Both', 'Select Schools', 'Division'];
 const DIVISIONS = ['SGOD', 'OSDS', 'CID'];
 const LEVEL_LABELS = {
@@ -75,8 +75,8 @@ export default function AdminPrograms() {
   const fetchPrograms = useCallback(() => {
     setLoadingPrograms(true);
     Promise.all([
-      axios.get(`${API}/api/admin/programs`, { headers: authHeaders() }),
-      axios.get(`${API}/api/admin/users?role=Division Personnel&status=active`, { headers: authHeaders() }),
+      axios.get(`${API}/api/admin/programs`, { credentials: 'include'() }),
+      axios.get(`${API}/api/admin/users?role=Division Personnel&status=active`, { credentials: 'include'() }),
     ]).then(([pr, ur]) => { setPrograms(pr.data); setAllPersonnel(ur.data); })
       .catch(e => { console.error(e); showToast('Failed to load programs. Please refresh.', 'error'); })
       .finally(() => setLoadingPrograms(false));
@@ -84,7 +84,7 @@ export default function AdminPrograms() {
 
   const fetchDivPrograms = useCallback(() => {
     setLoadingDivPrograms(true);
-    axios.get(`${API}/api/admin/division-programs`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/division-programs`, { credentials: 'include'() })
       .then(r => setDivPrograms(r.data))
       .catch(e => { console.error(e); showToast('Failed to load division programs. Please refresh.', 'error'); })
       .finally(() => setLoadingDivPrograms(false));
@@ -98,7 +98,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.post(`${API}/api/admin/programs`, programForm, { headers: authHeaders() });
+      await axios.post(`${API}/api/admin/programs`, programForm, { credentials: 'include'() });
       setAddProgramOpen(false);
       setProgramForm({ title: '', abbreviation: '', division: '', school_level_requirement: 'Both' });
       fetchPrograms();
@@ -112,7 +112,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/programs/${editProgram.id}`, { title: programForm.title, abbreviation: programForm.abbreviation, division: programForm.division || null, school_level_requirement: programForm.school_level_requirement }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/programs/${editProgram.id}`, { title: programForm.title, abbreviation: programForm.abbreviation, division: programForm.division || null, school_level_requirement: programForm.school_level_requirement }, { credentials: 'include'() });
       setEditProgram(null);
       fetchPrograms();
       showToast('Program updated successfully.');
@@ -125,7 +125,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/programs/${deleteProgram.id}`, { headers: authHeaders() });
+      await axios.delete(`${API}/api/admin/programs/${deleteProgram.id}`, { credentials: 'include'() });
       setDeleteProgram(null);
       fetchPrograms();
       showToast('Program deleted.');
@@ -138,7 +138,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/programs/${personnelProgram.id}/personnel`, { user_ids: assignedIds }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/programs/${personnelProgram.id}/personnel`, { user_ids: assignedIds }, { credentials: 'include'() });
       setPersonnelProgram(null);
       fetchPrograms();
       showToast('Personnel updated.');
@@ -152,7 +152,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.post(`${API}/api/admin/division-programs`, divForm, { headers: authHeaders() });
+      await axios.post(`${API}/api/admin/division-programs`, divForm, { credentials: 'include'() });
       setAddDivOpen(false);
       setDivForm({ title: '', abbreviation: '', division: 'CID' });
       fetchDivPrograms();
@@ -166,7 +166,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/division-programs/${editDivProgram.id}`, divForm, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/division-programs/${editDivProgram.id}`, divForm, { credentials: 'include'() });
       setEditDivProgram(null);
       fetchDivPrograms();
       showToast('Division program updated.');
@@ -179,7 +179,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/division-programs/${deleteDivProgram.id}`, { headers: authHeaders() });
+      await axios.delete(`${API}/api/admin/division-programs/${deleteDivProgram.id}`, { credentials: 'include'() });
       setDeleteDivProgram(null);
       fetchDivPrograms();
       showToast('Division program deleted.');

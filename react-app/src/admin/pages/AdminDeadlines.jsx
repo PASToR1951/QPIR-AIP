@@ -3,12 +3,13 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarSlash, CalendarBlank, ArrowCounterClockwise, FloppyDisk,
-  ClockCountdown, CaretDown, Hourglass, Warning, Info,
+  ClockCountdown, CaretDown, Hourglass, Warning, Info, LockSimple,
+  CheckCircle, Timer,
 } from '@phosphor-icons/react';
 import { AdminLayout } from '../AdminLayout.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 function Tip({ text }) {
   return (
@@ -23,13 +24,16 @@ function Tip({ text }) {
 }
 
 const QUARTER_LABELS = ['Q1 · Jan – Mar', 'Q2 · Apr – Jun', 'Q3 · Jul – Sep', 'Q4 · Oct – Dec'];
-const DEFAULT_MONTHS = [{ month: 3, day: 31 }, { month: 6, day: 30 }, { month: 9, day: 30 }, { month: 12, day: 31 }];
 
 const QUARTER_RANGES = [
   { start: [2026, 1, 1],  end: [2026, 3, 31]  },
   { start: [2026, 4, 1],  end: [2026, 6, 30]  },
   { start: [2026, 7, 1],  end: [2026, 9, 30]  },
   { start: [2026, 10, 1], end: [2026, 12, 31] },
+];
+
+const QUARTER_STARTS = [
+  [2026, 1, 1], [2026, 4, 1], [2026, 7, 1], [2026, 10, 1],
 ];
 
 function quarterProgress(i) {
@@ -42,43 +46,85 @@ function quarterProgress(i) {
   return Math.round(((now - start) / (end - start)) * 100);
 }
 
-function isCurrentQuarter(i) {
-  const r = QUARTER_RANGES[i];
-  const start = new Date(r.start[0], r.start[1] - 1, r.start[2]).getTime();
-  const end   = new Date(r.end[0],   r.end[1] - 1,   r.end[2] + 1).getTime();
-  return Date.now() >= start && Date.now() < end;
-}
-
 function urgencyStyle(daysLeft) {
-  if (daysLeft < 0)    return 'border-rose-400 dark:border-rose-700 bg-rose-50/60 dark:bg-rose-950/10';
-  if (daysLeft <= 7)   return 'border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/10';
-  if (daysLeft <= 14)  return 'border-amber-200 dark:border-amber-900 bg-amber-50/30 dark:bg-amber-950/5';
-  return 'border-white/60 dark:border-dark-border bg-white/70 dark:bg-dark-surface/80';
+  if (daysLeft < 0)    return 'border-rose-400/50 dark:border-rose-500/30 bg-rose-50/40 dark:bg-rose-950/20 shadow-rose-500/10';
+  if (daysLeft <= 7)   return 'border-amber-400/50 dark:border-amber-500/30 bg-amber-50/40 dark:bg-amber-950/20 shadow-amber-500/10';
+  if (daysLeft <= 14)  return 'border-amber-200/50 dark:border-amber-800/30 bg-amber-50/20 dark:bg-amber-950/10 shadow-amber-500/5';
+  return 'border-white/60 dark:border-white/10 bg-white/40 dark:bg-slate-900/40 shadow-slate-900/5';
 }
 
 function urgencyGradient(days) {
-  if (days < 0)  return 'from-rose-500/10 to-rose-500/0 dark:from-rose-500/15 dark:to-transparent';
-  if (days <= 7) return 'from-amber-500/10 to-amber-500/0 dark:from-amber-500/12 dark:to-transparent';
-  return 'from-indigo-500/5 to-transparent dark:from-indigo-500/5 dark:to-transparent';
+  if (days < 0)  return 'from-rose-500/10 via-rose-500/5 to-transparent dark:from-rose-500/15 dark:via-rose-500/5 dark:to-transparent';
+  if (days <= 7) return 'from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-500/15 dark:via-amber-500/5 dark:to-transparent';
+  return 'from-indigo-500/5 via-violet-500/5 to-transparent dark:from-indigo-500/10 dark:via-violet-500/5 dark:to-transparent';
 }
 
 function urgencyCountdownColor(days) {
-  if (days < 0)  return 'text-rose-500 dark:text-rose-400';
-  if (days <= 7) return 'text-amber-500 dark:text-amber-400';
-  return 'text-indigo-600 dark:text-indigo-400';
+  if (days < 0)  return 'bg-clip-text text-transparent bg-gradient-to-br from-rose-500 to-rose-700 dark:from-rose-400 dark:to-rose-500';
+  if (days <= 7) return 'bg-clip-text text-transparent bg-gradient-to-br from-amber-500 to-orange-600 dark:from-amber-400 dark:to-orange-500';
+  return 'bg-clip-text text-transparent bg-gradient-to-br from-indigo-500 to-violet-600 dark:from-indigo-400 dark:to-violet-400';
 }
 
 function daysLeft(dateStr) {
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
+  const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number);
+  const deadline = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((deadline - today) / 86400000);
 }
+
+function localDateStr(dateObj) {
+  if (!dateObj) return '';
+  const d = new Date(dateObj);
+  // Build YYYY-MM-DD in local time
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Compute current window status for a quarter */
+function windowStatus(localDate, localOpenDate, localGraceDays, i) {
+  const deadlineStr = localDate;
+  if (!deadlineStr) return 'locked';
+
+  const [dy, dm, dd] = deadlineStr.split('-').map(Number);
+  const deadline = new Date(dy, dm - 1, dd, 23, 59, 59, 999);
+
+  let openDate;
+  if (localOpenDate) {
+    const [oy, om, od] = localOpenDate.split('-').map(Number);
+    openDate = new Date(oy, om - 1, od);
+  } else {
+    const qs = QUARTER_STARTS[i];
+    openDate = new Date(qs[0], qs[1] - 1, qs[2]);
+  }
+
+  const graceDays = parseInt(localGraceDays) || 0;
+  const graceEnd = new Date(deadline.getTime() + graceDays * 86400000);
+  graceEnd.setHours(23, 59, 59, 999);
+
+  const now = new Date();
+  if (now < openDate) return 'locked';
+  if (now <= deadline) return 'open';
+  if (graceDays > 0 && now <= graceEnd) return 'grace';
+  return 'closed';
+}
+
+const WINDOW_BADGE = {
+  locked: { label: 'LOCKED',  classes: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700', icon: LockSimple },
+  open:   { label: 'OPEN',    classes: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50', icon: CheckCircle },
+  grace:  { label: 'GRACE',   classes: 'bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/50', icon: Timer },
+  closed: { label: 'CLOSED',  classes: 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800/50', icon: LockSimple },
+};
 
 const containerVariants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
+  visible: { transition: { staggerChildren: 0.04 } },
 };
 const cardVariants = {
-  hidden:  { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+  hidden:  { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2, ease: 'easeOut' } },
 };
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
@@ -97,11 +143,15 @@ export default function AdminDeadlines() {
   const fetchDeadlines = useCallback(() => {
     setLoading(true);
     Promise.all([
-      axios.get(`${API}/api/admin/deadlines?year=${year}`, { headers: authHeaders() }),
-      axios.get(`${API}/api/admin/deadlines/history`,      { headers: authHeaders() }),
+      axios.get(`${API}/api/admin/deadlines?year=${year}`, { credentials: 'include'() }),
+      axios.get(`${API}/api/admin/deadlines/history`,      { credentials: 'include'() }),
     ]).then(([dr, hr]) => {
       setDeadlines(dr.data);
-      setLocalDates(Object.fromEntries(dr.data.map(d => [d.quarter, d.date?.slice(0, 10) ?? ''])));
+      setLocalDates(Object.fromEntries(dr.data.map(d => [d.quarter, {
+        date:       d.date?.slice(0, 10) ?? '',
+        openDate:   d.open_date ? localDateStr(d.open_date) : '',
+        graceDays:  d.grace_period_days ?? 0,
+      }])));
       setHistory(hr.data);
     }).catch(e => { console.error(e); setFetchError('Failed to load deadlines. Please refresh and try again.'); })
       .finally(() => setLoading(false));
@@ -113,7 +163,14 @@ export default function AdminDeadlines() {
     setSaving(quarter);
     try {
       setFormError('');
-      await axios.post(`${API}/api/admin/deadlines`, { year, quarter, date: localDates[quarter] }, { headers: authHeaders() });
+      const ld = localDates[quarter];
+      await axios.post(`${API}/api/admin/deadlines`, {
+        year,
+        quarter,
+        date:              ld.date,
+        open_date:         ld.openDate || null,
+        grace_period_days: parseInt(ld.graceDays) || 0,
+      }, { credentials: 'include'() });
       fetchDeadlines();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -125,24 +182,31 @@ export default function AdminDeadlines() {
     setSaving(deadline.quarter);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/deadlines/${deadline.id}`, { headers: authHeaders() });
+      await axios.delete(`${API}/api/admin/deadlines/${deadline.id}`, { credentials: 'include'() });
       fetchDeadlines();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
     } finally { setSaving(null); }
   };
 
-  const dateChanged = (q) => {
+  const anyChanged = (q) => {
     if (!localDates[q]) return false;
-    const orig = deadlines.find(d => d.quarter === q)?.date?.slice(0, 10);
-    return localDates[q] !== orig;
+    const orig = deadlines.find(d => d.quarter === q);
+    if (!orig) return false;
+    const origDate     = orig.date?.slice(0, 10) ?? '';
+    const origOpen     = orig.open_date ? localDateStr(orig.open_date) : '';
+    const origGrace    = orig.grace_period_days ?? 0;
+    const ld = localDates[q];
+    return ld.date !== origDate || ld.openDate !== origOpen || parseInt(ld.graceDays) !== origGrace;
   };
 
   const impactPreview = (q) => {
     const orig = deadlines.find(d => d.quarter === q)?.date;
-    if (!orig || !localDates[q] || !dateChanged(q)) return null;
+    const ld = localDates[q];
+    if (!orig || !ld?.date || ld.date === orig.slice(0, 10)) return null;
     const origDate = new Date(orig);
-    const newDate  = new Date(localDates[q]);
+    const [ny, nm, nd] = ld.date.split('-').map(Number);
+    const newDate = new Date(ny, nm - 1, nd);
     if (isNaN(newDate.getTime())) return null;
     const diffDays = Math.round((newDate - origDate) / 86400000);
     if (diffDays < 0) return { type: 'warning', msg: `⚠ Moving deadline earlier by ${Math.abs(diffDays)} days` };
@@ -159,7 +223,10 @@ export default function AdminDeadlines() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
+      <div className="relative space-y-8">
+        {/* Decorative Background Orbs */}
+        <div className="absolute top-[5%] left-[-5%] w-[40%] h-[30%] rounded-full bg-indigo-500/20 dark:bg-indigo-600/10 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[20%] right-[-5%] w-[50%] h-[40%] rounded-full bg-violet-500/20 dark:bg-violet-600/10 blur-[120px] pointer-events-none" />
 
         {loading ? (
           <div className="flex items-center justify-center h-64">
@@ -179,54 +246,55 @@ export default function AdminDeadlines() {
             )}
 
             {/* Hero Header */}
-            <div className="bg-white/70 dark:bg-dark-surface/80 backdrop-blur-sm border border-white/60 dark:border-dark-border rounded-2xl overflow-hidden shadow-sm">
-              <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-dark-border bg-slate-50/50 dark:bg-white/[0.02]">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center shrink-0">
-                    <CalendarSlash size={20} weight="fill" className="text-indigo-600 dark:text-indigo-400" />
+            <div className="relative backdrop-blur-2xl bg-white/40 dark:bg-slate-900/40 border border-white/60 dark:border-white/10 rounded-[2rem] overflow-hidden shadow-xl shadow-indigo-900/5">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-violet-500/5 pointer-events-none" />
+              <div className="relative flex items-center justify-between px-8 py-8 border-b border-white/40 dark:border-white/5">
+                <div className="flex items-center gap-5">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-[0_0_20px_rgba(79,70,229,0.3)] flex items-center justify-center shrink-0">
+                    <CalendarSlash size={28} weight="fill" className="text-white" />
                   </div>
                   <div>
-                    <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">Deadlines</h1>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">FY 2026 · Fiscal Year Submission Windows</p>
+                    <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 tracking-tight leading-none mb-1.5">Deadlines</h1>
+                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400">FY 2026 · Fiscal Year Submission Windows</p>
                   </div>
                 </div>
-                <span className="px-4 py-1.5 text-xs font-black rounded-xl bg-indigo-600 text-white tracking-widest uppercase">FY 2026</span>
+                <span className="px-5 py-2 text-xs font-black rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/20 tracking-widest uppercase shadow-inner">FY 2026</span>
               </div>
 
               {/* Summary stat row */}
-              <div className="px-6 py-4 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 divide-x-0 sm:divide-x divide-slate-100 dark:divide-dark-border">
+              <div className="relative px-8 py-6 grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-0 divide-y sm:divide-y-0 divide-x-0 sm:divide-x divide-slate-200/50 dark:divide-white/10">
                 {/* Overdue */}
-                <div className="flex items-center gap-3 py-3 sm:py-0 pr-0 sm:pr-6">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${overdueCount > 0 ? 'bg-rose-100 dark:bg-rose-950/50' : 'bg-slate-100 dark:bg-dark-base'}`}>
-                    <Warning size={16} weight="fill" className={overdueCount > 0 ? 'text-rose-500 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'} />
+                <div className="flex items-center gap-4 py-2 sm:py-0 pr-0 sm:pr-8">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${overdueCount > 0 ? 'bg-gradient-to-br from-rose-400 to-rose-600 shadow-rose-500/30' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                    <Warning size={22} weight="fill" className={overdueCount > 0 ? 'text-white' : 'text-slate-400'} />
                   </div>
                   <div>
-                    <p className="text-xl font-black text-slate-900 dark:text-slate-100 leading-none tabular-nums">{overdueCount}</p>
-                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">Overdue <Tip text="Quarters whose deadline date has already passed." /></p>
+                    <p className="text-3xl font-black text-slate-900 dark:text-white leading-none tabular-nums">{overdueCount}</p>
+                    <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-1">Overdue <Tip text="Quarters whose deadline date has already passed." /></p>
                   </div>
                 </div>
 
-                {/* Next deadline */}
-                <div className="flex items-center gap-3 py-3 sm:py-0 px-0 sm:px-6">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/50 flex items-center justify-center shrink-0">
-                    <ClockCountdown size={16} weight="fill" className="text-indigo-600 dark:text-indigo-400" />
+                {/* Next */}
+                <div className="flex items-center gap-4 py-2 sm:py-0 px-0 sm:px-8">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-400 to-indigo-600 shadow-inner shadow-indigo-500/30 flex items-center justify-center shrink-0">
+                    <ClockCountdown size={22} weight="fill" className="text-white" />
                   </div>
                   <div>
-                    <p className="text-xl font-black text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-                      {nextDays !== null ? `${nextDays}d` : '—'}
+                    <p className="text-3xl font-black text-slate-900 dark:text-white leading-none tabular-nums">
+                      {nextDays !== null ? (nextDays === 0 ? 'Today' : `${nextDays}d`) : '—'}
                     </p>
-                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">Next Deadline <Tip text="Days remaining until the nearest upcoming quarter deadline." /></p>
+                    <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-1">Next Deadline <Tip text="Days remaining until the nearest upcoming quarter deadline." /></p>
                   </div>
                 </div>
 
-                {/* Custom set */}
-                <div className="flex items-center gap-3 py-3 sm:py-0 pl-0 sm:pl-6">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/50 flex items-center justify-center shrink-0">
-                    <Hourglass size={16} weight="fill" className="text-amber-500 dark:text-amber-400" />
+                {/* Custom */}
+                <div className="flex items-center gap-4 py-2 sm:py-0 pl-0 sm:pl-8">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 shadow-inner shadow-amber-500/30 flex items-center justify-center shrink-0">
+                    <Hourglass size={22} weight="fill" className="text-white" />
                   </div>
                   <div>
-                    <p className="text-xl font-black text-slate-900 dark:text-slate-100 leading-none tabular-nums">{customCount}</p>
-                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mt-0.5">Custom Set <Tip text="Quarters where the default deadline has been manually overridden. Use Reset to restore defaults." /></p>
+                    <p className="text-3xl font-black text-slate-900 dark:text-white leading-none tabular-nums">{customCount}</p>
+                    <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-1">Custom Set <Tip text="Quarters where the default deadline has been manually overridden." /></p>
                   </div>
                 </div>
               </div>
@@ -240,26 +308,24 @@ export default function AdminDeadlines() {
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
             >
               {deadlines.map((d, i) => {
-                const days     = daysLeft(d.date);
-                const impact   = impactPreview(d.quarter);
+                const days    = daysLeft(d.date);
+                const impact  = impactPreview(d.quarter);
                 const progress = quarterProgress(i);
-                const isCurrent = isCurrentQuarter(i);
+                const ld      = localDates[d.quarter] ?? { date: '', openDate: '', graceDays: 0 };
+                const winStatus = windowStatus(ld.date, ld.openDate, ld.graceDays, i);
+                const badge   = WINDOW_BADGE[winStatus];
+                const BadgeIcon = badge.icon;
 
                 return (
                   <motion.div
                     key={d.quarter}
                     variants={cardVariants}
-                    className={`relative rounded-2xl border-2 overflow-hidden backdrop-blur-sm shadow-sm transition-colors ${urgencyStyle(days)} ${isCurrent ? 'ring-2 ring-indigo-500/40 dark:ring-indigo-400/30' : ''}`}
+                    className={`relative rounded-3xl border backdrop-blur-2xl shadow-xl transition-shadow duration-200 hover:shadow-2xl ${urgencyStyle(days)}`}
                   >
                     {/* Gradient tint overlay */}
-                    <div className={`absolute inset-0 bg-gradient-to-b ${urgencyGradient(days)} pointer-events-none`} />
+                    <div className={`absolute inset-0 bg-gradient-to-b ${urgencyGradient(days)} rounded-3xl pointer-events-none`} />
 
-                    {/* Active quarter accent bar */}
-                    {isCurrent && (
-                      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-indigo-500 via-indigo-400 to-violet-500" />
-                    )}
-
-                    <div className="relative p-5 space-y-4">
+                    <div className="relative p-6 space-y-5">
                       {/* Title row */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -272,86 +338,121 @@ export default function AdminDeadlines() {
                             </span>
                           )}
                         </div>
-                        <span className={`shrink-0 text-[10px] font-black px-2 py-0.5 rounded-lg border ${
-                          isCurrent
-                            ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50'
-                            : 'bg-slate-100 dark:bg-dark-base text-slate-400 dark:text-slate-500 border-slate-200 dark:border-dark-border'
-                        }`}>
-                          Q{i + 1}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* Window status badge */}
+                          <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-lg border ${badge.classes}`}>
+                            <BadgeIcon size={9} weight="bold" />
+                            {badge.label}
+                          </span>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg border bg-slate-100 dark:bg-dark-base text-slate-400 dark:text-slate-500 border-slate-200 dark:border-dark-border`}>
+                            Q{i + 1}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Progress bar */}
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                            Quarter Progress
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                            Time Elapsed
                           </p>
-                          <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 tabular-nums">
                             {progress}%
                           </span>
                         </div>
                         <div className="w-full h-1.5 bg-slate-200 dark:bg-dark-border rounded-full overflow-hidden">
                           <motion.div
                             className={`h-full rounded-full ${
-                              progress >= 100 ? 'bg-rose-400 dark:bg-rose-500' :
-                              isCurrent      ? 'bg-indigo-500 dark:bg-indigo-400' :
-                                               'bg-slate-400 dark:bg-slate-500'
+                              progress >= 100 ? 'bg-rose-400 dark:bg-rose-500' : 'bg-indigo-500 dark:bg-indigo-400'
                             }`}
                             initial={{ width: 0 }}
                             animate={{ width: `${progress}%` }}
-                            transition={{ duration: 0.6, ease: 'easeOut', delay: i * 0.08 }}
+                            transition={{ duration: 0.4, ease: 'easeOut', delay: i * 0.04 }}
                           />
                         </div>
                       </div>
 
                       {/* Countdown */}
                       <div>
-                        <p className={`text-2xl font-black leading-none tracking-tight ${urgencyCountdownColor(days)}`}>
-                          {days < 0 ? `${Math.abs(days)}d overdue` : `${days}d left`}
+                        <p className={`text-4xl font-black leading-none tracking-tight pb-1 ${urgencyCountdownColor(days)}`}>
+                          {days < 0 ? `${Math.abs(days)}d overdue` : (days === 0 ? 'Due Today' : `${days}d left`)}
                         </p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
-                          {new Date(d.date).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })}
+                        <p className="text-[12px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-1">
+                          {(() => { const [y,m,day] = d.date.slice(0,10).split('-').map(Number); return new Date(y, m-1, day).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }); })()}
                         </p>
                       </div>
 
-                      {/* Date input */}
-                      <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                          <CalendarBlank size={11} className="inline mr-1" />Deadline Date
-                        </label>
-                        <input
-                          type="date"
-                          value={localDates[d.quarter] ?? ''}
-                          onChange={e => setLocalDates(ld => ({ ...ld, [d.quarter]: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                        />
+                      {/* ── Date Inputs ── */}
+                      <div className="space-y-3">
+                        {/* Deadline date */}
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                            <CalendarBlank size={12} className="inline mr-1" />Deadline Date
+                          </label>
+                          <input
+                            type="date"
+                            value={ld.date}
+                            onChange={e => setLocalDates(prev => ({ ...prev, [d.quarter]: { ...prev[d.quarter], date: e.target.value } }))}
+                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-inner"
+                          />
+                        </div>
+
+                        {/* Submissions open date */}
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                            <LockSimple size={12} className="inline mr-1" />Submissions Open
+                            <Tip text="Date when PIR submissions unlock. Leave blank to default to the start of the quarter." />
+                          </label>
+                          <input
+                            type="date"
+                            value={ld.openDate}
+                            onChange={e => setLocalDates(prev => ({ ...prev, [d.quarter]: { ...prev[d.quarter], openDate: e.target.value } }))}
+                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-inner"
+                          />
+                        </div>
+
+                        {/* Grace period */}
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                            <Timer size={12} className="inline mr-1" />Grace Period (Days)
+                            <Tip text="Number of days after the deadline when late submissions are still accepted. 0 means no grace period." />
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="30"
+                            value={ld.graceDays}
+                            onChange={e => setLocalDates(prev => ({ ...prev, [d.quarter]: { ...prev[d.quarter], graceDays: e.target.value } }))}
+                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-inner"
+                          />
+                        </div>
                       </div>
 
                       {/* Impact preview */}
                       {impact && (
-                        <p className={`text-xs font-bold leading-snug ${impact.type === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        <p className={`text-[11px] font-bold leading-snug px-3 py-2 rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-md border border-white/60 dark:border-white/10 ${impact.type === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                           {impact.msg}
                         </p>
                       )}
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-center gap-3 pt-2">
                         <button
                           onClick={() => handleSave(d.quarter)}
-                          disabled={!dateChanged(d.quarter) || saving === d.quarter}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-colors shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 dark:disabled:bg-dark-border disabled:text-slate-400 dark:disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed"
+                          disabled={!anyChanged(d.quarter) || saving === d.quarter}
+                          className="relative flex items-center gap-2 px-6 py-2.5 text-xs font-black rounded-2xl transition-all text-white bg-gradient-to-r from-indigo-500 to-violet-600 hover:shadow-lg hover:shadow-indigo-500/30 disabled:from-slate-200 disabled:to-slate-200 dark:disabled:from-slate-800 dark:disabled:to-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed group"
                         >
-                          <FloppyDisk size={14} weight="bold" />
+                          {anyChanged(d.quarter) && <div className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />}
+                          <FloppyDisk size={16} weight="bold" />
                           {saving === d.quarter ? 'Saving…' : 'Save'}
                         </button>
                         {d.isCustom && (
                           <button
                             onClick={() => handleReset(d)}
                             disabled={saving === d.quarter}
-                            className="flex items-center gap-1 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                            className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
                           >
-                            <ArrowCounterClockwise size={14} /> Reset
+                            <ArrowCounterClockwise size={16} weight="bold" /> Reset
                           </button>
                         )}
                       </div>
@@ -371,7 +472,7 @@ export default function AdminDeadlines() {
                   <div className="flex items-center gap-2.5">
                     <p className="text-sm font-black text-slate-700 dark:text-slate-200">Change History</p>
                     <span className="px-2 py-0.5 text-[10px] font-black rounded-lg bg-slate-100 dark:bg-dark-base text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-dark-border tabular-nums">
-                      {history.slice(0, 20).length} changes
+                      {history.slice(0, 20).length} change{history.slice(0, 20).length === 1 ? '' : 's'}
                     </span>
                   </div>
                   <CaretDown
@@ -405,8 +506,8 @@ export default function AdminDeadlines() {
                             {history.slice(0, 20).map(log => (
                               <tr key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors">
                                 <td className="px-4 py-2.5 pl-6 font-bold text-slate-700 dark:text-slate-300">Q{log.details?.quarter}</td>
-                                <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.details?.previousDate ? new Date(log.details.previousDate).toLocaleDateString('en-PH') : '—'}</td>
-                                <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.details?.newDate ? new Date(log.details.newDate).toLocaleDateString('en-PH') : '—'}</td>
+                                <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.details?.previousDate ? (() => { const [y,m,d] = log.details.previousDate.slice(0,10).split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-PH'); })() : '—'}</td>
+                                <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.details?.newDate ? (() => { const [y,m,d] = log.details.newDate.slice(0,10).split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-PH'); })() : '—'}</td>
                                 <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.admin?.name ?? log.admin?.email}</td>
                                 <td className="px-4 py-2.5 pr-6 text-slate-400 dark:text-slate-500 text-xs">{new Date(log.created_at).toLocaleDateString('en-PH')}</td>
                               </tr>

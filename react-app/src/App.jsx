@@ -20,6 +20,7 @@ import FormBackground from './components/ui/FormBackground';
 import AccessibilityPanel from './components/ui/AccessibilityPanel';
 import DashboardStats, { getActionPrompt } from './components/ui/DashboardStats';
 import SubmissionsHistory from './components/ui/SubmissionsHistory';
+import { auth } from './lib/auth';
 
 // CES pages
 import CESLayout from './ces/CESLayout.jsx';
@@ -39,10 +40,20 @@ import AdminSettings from './admin/pages/AdminSettings.jsx';
 
 const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID'];
 
+// Session validity check — compares a server-issued expiry timestamp stored in
+// sessionStorage against the current time. The actual JWT lives in an HttpOnly
+// cookie (set by the server) and is never accessible from JavaScript.
+const isTokenObsolete = () => {
+  if (auth.isExpired()) {
+    auth.clearSession();
+    return true;
+  }
+  return false;
+};
+
 // Simple Protected Route component
 const ProtectedRoute = ({ children }) => {
-  const token = sessionStorage.getItem('token');
-  if (!token) return <Navigate to="/login" replace />;
+  if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (user?.role === 'Admin') return <Navigate to="/admin" replace />;
@@ -56,8 +67,7 @@ const ProtectedRoute = ({ children }) => {
 
 // Division Personnel-only route guard
 const DivisionPersonnelRouteGuard = ({ children }) => {
-  const token = sessionStorage.getItem('token');
-  if (!token) return <Navigate to="/login" replace />;
+  if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (user?.role !== 'Division Personnel') return <Navigate to="/" replace />;
@@ -67,8 +77,7 @@ const DivisionPersonnelRouteGuard = ({ children }) => {
 
 // Admin-only route guard
 const AdminRouteGuard = ({ children }) => {
-  const token = sessionStorage.getItem('token');
-  if (!token) return <Navigate to="/login" replace />;
+  if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (user?.role !== 'Admin') return <Navigate to="/403" replace />;
@@ -80,8 +89,7 @@ const AdminRouteGuard = ({ children }) => {
 
 // CES route guard — allows CES-SGOD, CES-ASDS, CES-CID (and Admin for testing)
 const CESRouteGuard = ({ children }) => {
-  const token = sessionStorage.getItem('token');
-  if (!token) return <Navigate to="/login" replace />;
+  if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const u = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (!CES_ROLES.includes(u?.role) && u?.role !== 'Admin') return <Navigate to="/" replace />;
@@ -91,8 +99,7 @@ const CESRouteGuard = ({ children }) => {
 
 // Cluster Head route guard
 const ClusterHeadRouteGuard = ({ children }) => {
-  const token = sessionStorage.getItem('token');
-  if (!token) return <Navigate to="/login" replace />;
+  if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const u = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (u?.role !== 'Cluster Coordinator' && u?.role !== 'Admin') return <Navigate to="/" replace />;
@@ -112,8 +119,6 @@ const PIRRouteGuard = ({ children }) => {
     sessionStorage.removeItem('user');
   }
   const isDivisionPersonnel = user?.role === 'Division Personnel' || user?.role === 'Cluster Coordinator';
-  const token = sessionStorage.getItem('token');
-  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -125,10 +130,10 @@ const PIRRouteGuard = ({ children }) => {
       try {
         let dbExists = false;
         if (isDivisionPersonnel) {
-          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${user.id}/aip-status`, { headers: authHeaders });
+          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${user.id}/aip-status`, { withCredentials: true });
           dbExists = res.data.hasAIP;
         } else if (user.school_id) {
-          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`, { headers: authHeaders });
+          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`, { withCredentials: true });
           dbExists = res.data.hasAIP;
         }
         setHasAIP(dbExists);
@@ -167,7 +172,7 @@ function Dashboard() {
   } catch {
     sessionStorage.removeItem('user');
   }
-  const token = sessionStorage.getItem('token');
+  
 
   const [aipStatus, setAipStatus] = useState('none');
   const [dashboardData, setDashboardData] = useState(null);
@@ -180,7 +185,7 @@ function Dashboard() {
       try {
         // Fetch aggregated dashboard stats
         const dashRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` }
+          withCredentials: true
         });
         setDashboardData(dashRes.data);
 
@@ -191,7 +196,7 @@ function Dashboard() {
         } else {
           try {
             const draftRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, {
-              headers: { Authorization: `Bearer ${token}` }
+              withCredentials: true
             });
             setAipStatus(draftRes.data.hasDraft ? 'draft' : 'none');
           } catch {
@@ -211,10 +216,16 @@ function Dashboard() {
 
   const actionPrompt = dashboardData ? getActionPrompt(dashboardData, aipStatus) : '';
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     navigate('/login', { replace: true });
-    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('tokenExpiry');
     sessionStorage.removeItem('user');
+    // Clear the HttpOnly cookie server-side
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+        method: 'POST', credentials: 'include'
+      });
+    } catch { /* ignore network errors on logout */ }
   };
 
   return (

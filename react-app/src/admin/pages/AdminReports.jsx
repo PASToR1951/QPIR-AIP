@@ -13,7 +13,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 const TABS = [
   { key: 'compliance', label: 'AIP Compliance' },
@@ -67,7 +67,7 @@ async function downloadReport(type, format, year) {
     return;
   }
   const url = `${API}/api/admin/reports/${type}/export?format=${format}&year=${year}`;
-  const blob = await fetch(url, { headers: authHeaders() }).then(r => r.blob());
+  const blob = await fetch(url, { credentials: 'include'() }).then(r => r.blob());
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `${type}-report-${year}.${format}`;
@@ -95,7 +95,7 @@ function ComplianceReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/compliance?year=${year}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/reports/compliance?year=${year}`, { credentials: 'include'() })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load compliance report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -146,7 +146,7 @@ function QuarterlyReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/quarterly?year=${year}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/reports/quarterly?year=${year}`, { credentials: 'include'() })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load quarterly report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -177,7 +177,7 @@ function BudgetReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/budget?year=${year}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/reports/budget?year=${year}`, { credentials: 'include'() })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load budget report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -229,7 +229,7 @@ function WorkloadReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/workload?year=${year}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/reports/workload?year=${year}`, { credentials: 'include'() })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load workload report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -275,7 +275,7 @@ function AccomplishmentReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/accomplishment?year=${year}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/reports/accomplishment?year=${year}`, { credentials: 'include'() })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load accomplishment report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -332,7 +332,7 @@ function FactorsReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/factors?year=${year}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/reports/factors?year=${year}`, { credentials: 'include'() })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load factors report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -388,7 +388,7 @@ function BudgetSourcesReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/budget?year=${year}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/reports/budget?year=${year}`, { credentials: 'include'() })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load budget sources data.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -456,7 +456,7 @@ function AIPFunnelReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/aip-funnel?year=${year}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/reports/aip-funnel?year=${year}`, { credentials: 'include'() })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load AIP funnel data.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -520,7 +520,7 @@ function ClusterPIRSummary({ year }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/clusters`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/clusters`, { credentials: 'include'() })
       .then(r => setClusters(r.data))
       .catch(e => { console.error(e); /* non-critical — cluster list won't populate */ });
   }, []);
@@ -528,7 +528,7 @@ function ClusterPIRSummary({ year }) {
   useEffect(() => {
     if (!clusterId) { setData(null); return; }
     setLoading(true);
-    axios.get(`${API}/api/admin/reports/cluster-pir-summary?year=${year}&quarter=${quarter}&cluster=${clusterId}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/reports/cluster-pir-summary?year=${year}&quarter=${quarter}&cluster=${clusterId}`, { credentials: 'include'() })
       .then(r => setData(r.data))
       .catch(e => { console.error(e); setData(null); })
       .finally(() => setLoading(false));
@@ -551,7 +551,7 @@ function ClusterPIRSummary({ year }) {
       };
     });
     try {
-      await axios.patch(`${API}/api/admin/pirs/${pirId}/presented`, {}, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/pirs/${pirId}/presented`, {}, { credentials: 'include'() });
     } catch {
       // Revert on error
       setData(prev => {

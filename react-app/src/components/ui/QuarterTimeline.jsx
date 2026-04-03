@@ -1,11 +1,12 @@
 import React from 'react';
 
 const STATUS_CONFIG = {
-    'Submitted':     { bg: 'bg-emerald-500', ring: 'ring-emerald-100', text: 'text-emerald-700', label: 'Submitted', icon: '✓' },
-    'In Progress':   { bg: 'bg-blue-500',    ring: 'ring-blue-100',    text: 'text-blue-700',    label: 'In Progress', icon: null, pulse: true },
-    'Missed':        { bg: 'bg-rose-500',     ring: 'ring-rose-100',    text: 'text-rose-600',    label: 'Missed', icon: '✗' },
+    'Submitted':     { bg: 'bg-emerald-500', ring: 'ring-emerald-100', text: 'text-emerald-700', label: 'Submitted',     icon: '✓' },
+    'In Progress':   { bg: 'bg-blue-500',    ring: 'ring-blue-100',    text: 'text-blue-700',    label: 'In Progress',   icon: null, pulse: true },
+    'In Grace':      { bg: 'bg-amber-400',   ring: 'ring-amber-100',   text: 'text-amber-600',   label: 'Grace Period',  icon: '⏳', pulse: true },
+    'Missed':        { bg: 'bg-rose-500',     ring: 'ring-rose-100',    text: 'text-rose-600',    label: 'Missed',        icon: '✗' },
     'No Activities': { bg: 'bg-slate-300',    ring: 'ring-slate-100',   text: 'text-slate-400',   label: 'No Activities', icon: '—' },
-    'Locked':        { bg: 'bg-slate-200',    ring: 'ring-slate-50',    text: 'text-slate-400',   label: 'Locked', icon: null, locked: true },
+    'Locked':        { bg: 'bg-slate-200',    ring: 'ring-slate-50',    text: 'text-slate-400',   label: 'Locked',        icon: null, locked: true },
 };
 
 function formatDeadline(isoDate) {

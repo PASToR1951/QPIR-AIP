@@ -13,7 +13,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 const TERM_OPTIONS = [
   { type: 'Trimester', label: 'Trimester', periodCount: 3 },
@@ -107,7 +107,7 @@ export default function AdminSubmissions() {
       await axios.patch(
         `${API}/api/admin/term-config`,
         { termType: pendingTermType, periods: periodMonths.map((m, i) => ({ period: i + 1, startMonth: m.start, endMonth: m.end })) },
-        { headers: authHeaders() }
+        { credentials: 'include'() }
       );
       setTermSaved(true);
       setPendingTermType(null);
@@ -126,13 +126,13 @@ export default function AdminSubmissions() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/clusters`, { headers: authHeaders() }).then(r => setClusters(r.data)).catch(() => {});
-    axios.get(`${API}/api/admin/programs`, { headers: authHeaders() }).then(r => setPrograms(r.data)).catch(() => {});
+    axios.get(`${API}/api/admin/clusters`, { credentials: 'include'() }).then(r => setClusters(r.data)).catch(() => {});
+    axios.get(`${API}/api/admin/programs`, { credentials: 'include'() }).then(r => setPrograms(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (filters.cluster) {
-      axios.get(`${API}/api/admin/schools?cluster=${filters.cluster}`, { headers: authHeaders() })
+      axios.get(`${API}/api/admin/schools?cluster=${filters.cluster}`, { credentials: 'include'() })
         .then(r => setSchools(r.data)).catch(() => {});
     } else {
       setSchools([]);
@@ -151,7 +151,7 @@ export default function AdminSubmissions() {
     if (filters.year) params.set('year', filters.year);
     if (filters.status) params.set('status', filters.status);
     params.set('page', page);
-    axios.get(`${API}/api/admin/submissions?${params}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/submissions?${params}`, { credentials: 'include'() })
       .then(r => {
         setFetchError(null);
         setSubmissions(r.data.data);
@@ -177,7 +177,7 @@ export default function AdminSubmissions() {
     setViewItem(item);
     setViewLoading(true);
     try {
-      const r = await axios.get(`${API}/api/admin/submissions/${item.id}?type=${item.type.toLowerCase()}`, { headers: authHeaders() });
+      const r = await axios.get(`${API}/api/admin/submissions/${item.id}?type=${item.type.toLowerCase()}`, { credentials: 'include'() });
       setViewData(r.data);
 
       if (item.type === 'PIR' && item.status === 'Submitted') {
@@ -194,7 +194,7 @@ export default function AdminSubmissions() {
     underReviewTimerRef.current = null;
     setActionLoading(true);
     try {
-      await axios.patch(`${API}/api/admin/submissions/${id}/status`, { type: type.toLowerCase(), status, feedback }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/submissions/${id}/status`, { type: type.toLowerCase(), status, feedback }, { credentials: 'include'() });
       fetchSubmissions();
       setApproveItem(null);
       setReturnItem(null);
@@ -212,7 +212,7 @@ export default function AdminSubmissions() {
     try {
       const toApprove = submissions.filter(s => selectedIds.includes(s.id) && s.status !== 'Approved');
       for (const item of toApprove) {
-        await axios.patch(`${API}/api/admin/submissions/${item.id}/status`, { type: item.type.toLowerCase(), status: 'Approved', feedback: '' }, { headers: authHeaders() });
+        await axios.patch(`${API}/api/admin/submissions/${item.id}/status`, { type: item.type.toLowerCase(), status: 'Approved', feedback: '' }, { credentials: 'include'() });
       }
       setSelectedIds([]);
       fetchSubmissions();
@@ -225,7 +225,7 @@ export default function AdminSubmissions() {
     if (filters.year) params.set('year', filters.year);
     if (filters.status) params.set('status', filters.status);
     const url = `${API}/api/admin/submissions/export?${params}`;
-    const blob = await fetch(url, { headers: authHeaders() }).then(r => r.blob());
+    const blob = await fetch(url, { credentials: 'include'() }).then(r => r.blob());
     const blobUrl = URL.createObjectURL(blob);
     if (downloadRef.current) {
       downloadRef.current.href = blobUrl;

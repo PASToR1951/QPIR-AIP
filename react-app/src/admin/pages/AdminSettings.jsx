@@ -10,7 +10,7 @@ import { AdminLayout } from '../AdminLayout.jsx';
 import { CURRENT_VERSION } from '../../version.js';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 const MAX_CHARS = 280;
 
@@ -218,9 +218,9 @@ export default function AdminSettings() {
     // Core settings — required for page to render
     setLoading(true);
     Promise.all([
-      axios.get(`${API}/api/admin/announcements`,            { headers: authHeaders() }),
-      axios.get(`${API}/api/admin/settings/system-info`,     { headers: authHeaders() }),
-      axios.get(`${API}/api/admin/settings/division-config`, { headers: authHeaders() }),
+      axios.get(`${API}/api/admin/announcements`,            { credentials: 'include'() }),
+      axios.get(`${API}/api/admin/settings/system-info`,     { credentials: 'include'() }),
+      axios.get(`${API}/api/admin/settings/division-config`, { credentials: 'include'() }),
     ]).then(([ar, sr, dr]) => {
       if (ar.data) setAnnouncement({
         message:     ar.data.message     ?? '',
@@ -237,11 +237,11 @@ export default function AdminSettings() {
       .finally(() => setLoading(false));
 
     // Mention candidates — non-critical, loaded independently
-    axios.get(`${API}/api/admin/schools`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/schools`, { credentials: 'include'() })
       .then(res => setSchools(Array.isArray(res.data) ? res.data : []))
       .catch(() => {});
 
-    axios.get(`${API}/api/admin/users`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/users`, { credentials: 'include'() })
       .then(res => {
         const rawUsers = Array.isArray(res.data) ? res.data : [];
         // Only Division Personnel can be mentioned directly.
@@ -265,7 +265,7 @@ export default function AdminSettings() {
     setSaving(true);
     setFormError('');
     try {
-      await axios.post(`${API}/api/admin/announcements`, announcement, { headers: authHeaders() });
+      await axios.post(`${API}/api/admin/announcements`, announcement, { credentials: 'include'() });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
@@ -281,7 +281,7 @@ export default function AdminSettings() {
     setAnnouncement(updated);
     setAutoSaving(true);
     try {
-      await axios.post(`${API}/api/admin/announcements`, updated, { headers: authHeaders() });
+      await axios.post(`${API}/api/admin/announcements`, updated, { credentials: 'include'() });
       setAutoSaved(true);
       setTimeout(() => setAutoSaved(false), 2000);
     } catch {
@@ -297,7 +297,7 @@ export default function AdminSettings() {
     setSavingDiv(true);
     setDivError('');
     try {
-      await axios.post(`${API}/api/admin/settings/division-config`, divConfig, { headers: authHeaders() });
+      await axios.post(`${API}/api/admin/settings/division-config`, divConfig, { credentials: 'include'() });
       setSavedDiv(true);
       setTimeout(() => setSavedDiv(false), 2500);
     } catch (e) {

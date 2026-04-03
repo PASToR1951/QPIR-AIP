@@ -4,7 +4,7 @@ import axios from 'axios';
 import { ArrowRight, MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 const QUARTERS = ['1st', '2nd', '3rd', '4th'];
 const currentQ = Math.ceil((new Date().getMonth() + 1) / 3);
@@ -38,7 +38,7 @@ export default function CESDashboard() {
   const fetchPIRs = () => {
     setLoading(true);
     const params = quarter ? `?quarter=${encodeURIComponent(quarter)}` : '';
-    axios.get(`${API}/api/admin/ces/pirs${params}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/ces/pirs${params}`, { credentials: 'include'() })
       .then(r => setPirs(r.data))
       .catch(() => setPirs([]))
       .finally(() => setLoading(false));
@@ -70,7 +70,7 @@ export default function CESDashboard() {
       const endpoint = modal.type === 'note'
         ? `${API}/api/admin/ces/pirs/${modal.pirId}/note`
         : `${API}/api/admin/ces/pirs/${modal.pirId}/return`;
-      await axios.post(endpoint, { ces_remarks: remarks }, { headers: authHeaders() });
+      await axios.post(endpoint, { ces_remarks: remarks }, { credentials: 'include'() });
       setModal(null);
       fetchPIRs();
     } catch (err) {
