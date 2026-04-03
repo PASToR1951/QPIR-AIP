@@ -58,9 +58,7 @@ export function AnnouncementBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    fetch(`${API}/api/announcement`, { headers })
+    fetch(`${API}/api/announcement`, { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
         if (!data?.is_active) return;

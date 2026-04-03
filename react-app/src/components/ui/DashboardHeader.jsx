@@ -103,7 +103,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                 </div>
 
                                 <div className="px-2 py-1 border-t border-slate-100 dark:border-dark-border">
-                                    <Link to="/faq" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
+                                    <Link to="/faq" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/FAQ')} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
                                         <MessageCircle size={18} />
                                         FAQ
                                     </Link>
@@ -112,11 +112,11 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                         User Manual
                                         <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Alpha</span>
                                     </div>
-                                    <Link to="/docs" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
+                                    <Link to="/docs" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/SystemDocs')} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
                                         <BooksIcon size={18} />
                                         Documentation
                                     </Link>
-                                    <Link to="/changelog" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
+                                    <Link to="/changelog" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/Changelog')} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
                                         <TagIcon size={18} />
                                         Change Logs
                                     </Link>

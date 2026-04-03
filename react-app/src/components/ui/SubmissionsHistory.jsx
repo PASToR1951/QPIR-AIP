@@ -39,7 +39,7 @@ export default function SubmissionsHistory() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${API}/api/history`, { credentials: 'include' })
+    axios.get(`${API}/api/history`, { withCredentials: true })
       .then(r => {
         setHistory(r.data);
         const init = {};
@@ -57,7 +57,7 @@ export default function SubmissionsHistory() {
     try {
       const { data: d } = await axios.get(`${API}/api/aips`, {
         params: { program_title: programTitle, year },
-        credentials: 'include',
+        withCredentials: true,
       });
       setPreviewTitle('Annual Implementation Plan');
       setPreviewSubtitle(`${programTitle} — FY ${year}`);
@@ -89,7 +89,7 @@ export default function SubmissionsHistory() {
     try {
       const { data: d } = await axios.get(`${API}/api/pirs`, {
         params: { program_title: programTitle, quarter },
-        credentials: 'include',
+        withCredentials: true,
       });
       setPreviewTitle('Program Implementation Review');
       setPreviewSubtitle(`${programTitle} — ${quarter}`);
@@ -120,7 +120,7 @@ export default function SubmissionsHistory() {
   const handleRequestEdit = useCallback(async (aipId) => {
     setRequestingEditId(aipId);
     try {
-      await axios.post(`${API}/api/aips/${aipId}/request-edit`, {}, { credentials: 'include' });
+      await axios.post(`${API}/api/aips/${aipId}/request-edit`, {}, { withCredentials: true });
       setRequestedEditIds(prev => new Set(prev).add(aipId));
     } catch { /* silently fail — button stays active so user can retry */ } finally {
       setRequestingEditId(null);

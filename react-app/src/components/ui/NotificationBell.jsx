@@ -1,16 +1,23 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle } from '@phosphor-icons/react';
+import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API = import.meta.env.VITE_API_URL;
 
 
 const TYPE_ICON = {
-  approved:     <CheckCircle size={16} className="text-emerald-400 shrink-0" />,
-  returned:     <ArrowBendUpLeft size={16} className="text-amber-400 shrink-0" />,
-  remarked:     <NotePencil size={16} className="text-accent shrink-0" />,
-  under_review: <Bell size={16} className="text-indigo-400 shrink-0" />,
+  approved:                <CheckCircle size={16} className="text-emerald-400 shrink-0" />,
+  returned:                <ArrowBendUpLeft size={16} className="text-amber-400 shrink-0" />,
+  remarked:                <NotePencil size={16} className="text-accent shrink-0" />,
+  under_review:            <Bell size={16} className="text-indigo-400 shrink-0" />,
+  aip_submitted:           <FilePlus size={16} className="text-blue-400 shrink-0" />,
+  pir_submitted:           <FilePlus size={16} className="text-blue-400 shrink-0" />,
+  aip_edit_requested:      <PencilSimple size={16} className="text-orange-400 shrink-0" />,
+  for_ces_review:          <HourglassMedium size={16} className="text-violet-400 shrink-0" />,
+  for_cluster_head_review: <HourglassMedium size={16} className="text-violet-400 shrink-0" />,
+  submitted:               <CheckCircle size={16} className="text-slate-400 shrink-0" />,
+  announcement:            <Megaphone size={16} className="text-rose-400 shrink-0" />,
 };
 
 function timeAgo(dateStr) {
@@ -29,21 +36,25 @@ export function NotificationBell() {
   const ref = useRef(null);
 
   const fetchNotifications = useCallback(() => {
-    
-    if (!token) return;
     axios
-      .get(`${API}/api/notifications`, { credentials: 'include'() })
+      .get(`${API}/api/notifications`, { withCredentials: true })
       .then(r => setNotifications(r.data))
       .catch(() => {});
   }, []);
 
-  // Poll every 60 s and on window focus
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
+
+    const es = new EventSource(`${API}/api/notifications/stream`, { withCredentials: true });
+    es.addEventListener('notification', (e) => {
+      const notif = JSON.parse(e.data);
+      setNotifications(prev => [notif, ...prev]);
+    });
+
+    // Full resync on tab focus (handles gaps during inactivity / reconnects)
     window.addEventListener('focus', fetchNotifications);
     return () => {
-      clearInterval(interval);
+      es.close();
       window.removeEventListener('focus', fetchNotifications);
     };
   }, [fetchNotifications]);
@@ -61,14 +72,14 @@ export function NotificationBell() {
 
   const markOne = async (id) => {
     try {
-      await axios.patch(`${API}/api/notifications/${id}/read`, {}, { credentials: 'include'() });
+      await axios.patch(`${API}/api/notifications/${id}/read`, {}, { withCredentials: true });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch { /* silent */ }
   };
 
   const markAll = async () => {
     try {
-      await axios.patch(`${API}/api/notifications/read-all`, {}, { credentials: 'include'() });
+      await axios.patch(`${API}/api/notifications/read-all`, {}, { withCredentials: true });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch { /* silent */ }
   };
