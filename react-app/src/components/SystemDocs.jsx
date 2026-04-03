@@ -9,6 +9,7 @@ import { ArrowLeft, BookOpen, Tag, List, X, List as Menu } from '@phosphor-icons
 import { CURRENT_VERSION } from '../version';
 import docsContent from '../../../docs/SYSTEM_DOCUMENTATION_THESIS.md?raw';
 import ERDDiagram from './ui/ERDDiagram';
+import Footer from './ui/Footer';
 
 // Pre-parse the headings from the Markdown file to display in the Table of Contents
 const slugger = new GithubSlugger();
@@ -107,7 +108,7 @@ export default function SystemDocs() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-dark-base font-sans">
+    <div className="min-h-screen bg-slate-100 dark:bg-dark-base font-sans flex flex-col">
       {/* Top Nav */}
       <div className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border sticky top-0 z-50 shadow-sm print:hidden">
         <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
@@ -155,7 +156,7 @@ export default function SystemDocs() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 py-8 md:py-10">
+      <div className="max-w-7xl mx-auto px-4 py-8 md:py-10 flex-1">
         <div className="flex flex-col lg:flex-row gap-6 items-start">
 
           {/* ToC Sidebar */}
@@ -231,6 +232,7 @@ export default function SystemDocs() {
 
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
