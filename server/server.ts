@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { bodyLimit } from "hono/body-limit";
 import authRoutes from "./routes/auth.ts";
+import oauthRoutes from "./routes/oauth.ts";
 import dataRoutes from "./routes/data.ts";
 import adminRoutes from "./routes/admin.ts";
 import { prisma as _prisma } from "./db/client.ts";
@@ -98,6 +99,8 @@ app.get('/api/announcement', async (c) => {
 });
 
 // Mount modular routes
+// OAuth must be mounted BEFORE /api/auth to prevent path shadowing
+app.route('/api/auth/oauth', oauthRoutes);
 app.route('/api/auth', authRoutes);
 app.route('/api', dataRoutes);
 app.route('/api/admin', adminRoutes);

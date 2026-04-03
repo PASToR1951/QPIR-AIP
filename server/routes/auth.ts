@@ -1,10 +1,11 @@
 import { Hono } from "hono";
-import { setCookie, deleteCookie } from "hono/cookie";
+import { setCookie, deleteCookie, getCookie } from "hono/cookie";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { prisma } from "../db/client.ts";
 import { JWT_SECRET } from "../lib/config.ts";
 import { logger } from "../lib/logger.ts";
+import { getUserFromToken } from "../lib/auth.ts";
 
 const authRoutes = new Hono();
 
@@ -54,8 +55,8 @@ authRoutes.post('/login', async (c) => {
       where: { email },
       include: { school: true }
     });
-    if (!user || !user.is_active) {
-      // Record failed attempt
+    if (!user || !user.is_active || !user.password) {
+      // Also reject OAuth-only accounts (no password set) — they must use SSO
       const prev = loginAttempts.get(key);
       loginAttempts.set(key, { count: (prev?.count ?? 0) + 1, firstAttempt: prev?.firstAttempt ?? now });
       return c.json({ error: 'Invalid credentials' }, 401);
@@ -118,6 +119,48 @@ authRoutes.post('/login', async (c) => {
 authRoutes.post('/logout', (c) => {
   deleteCookie(c, 'token', { path: '/' });
   return c.json({ message: 'Logged out' });
+});
+
+// Returns the current user's profile — used by OAuthCallback and any future "refresh session" flow.
+// The JWT lives in the HttpOnly cookie; this endpoint lets the frontend read user metadata without
+// ever touching the raw token.
+authRoutes.get('/me', async (c) => {
+  const tokenUser = getUserFromToken(c);
+  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: tokenUser.id },
+      include: { school: true },
+    });
+    if (!user || !user.is_active) return c.json({ error: 'Unauthorized' }, 401);
+
+    // Extract the actual token expiry from the cookie so the frontend
+    // can sync its sessionStorage.tokenExpiry with the real JWT exp.
+    let expiresAt = Math.floor(Date.now() / 1000) + 86400; // fallback
+    const rawToken = getCookie(c, 'token');
+    if (rawToken) {
+      const decoded = jwt.decode(rawToken) as { exp?: number } | null;
+      if (decoded?.exp) expiresAt = decoded.exp;
+    }
+
+    return c.json({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      first_name: user.first_name,
+      middle_initial: user.middle_initial,
+      last_name: user.last_name,
+      school_id: user.school_id,
+      school_name: user.school?.name ?? null,
+      cluster_id: user.cluster_id ?? null,
+      expiresAt,
+    });
+  } catch (error) {
+    logger.error('GET /me failed', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
 });
 
 export default authRoutes;
