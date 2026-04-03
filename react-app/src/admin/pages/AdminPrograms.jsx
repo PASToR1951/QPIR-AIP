@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { PencilSimple, Trash, Plus, ArrowRight, ArrowLeft, Users, CheckCircle, X } from '@phosphor-icons/react';
-import { AdminLayout } from '../AdminLayout.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
@@ -75,8 +74,8 @@ export default function AdminPrograms() {
   const fetchPrograms = useCallback(() => {
     setLoadingPrograms(true);
     Promise.all([
-      axios.get(`${API}/api/admin/programs`, { credentials: 'include'() }),
-      axios.get(`${API}/api/admin/users?role=Division Personnel&status=active`, { credentials: 'include'() }),
+      axios.get(`${API}/api/admin/programs`, { withCredentials: true }),
+      axios.get(`${API}/api/admin/users?role=Division Personnel&status=active`, { withCredentials: true }),
     ]).then(([pr, ur]) => { setPrograms(pr.data); setAllPersonnel(ur.data); })
       .catch(e => { console.error(e); showToast('Failed to load programs. Please refresh.', 'error'); })
       .finally(() => setLoadingPrograms(false));
@@ -84,7 +83,7 @@ export default function AdminPrograms() {
 
   const fetchDivPrograms = useCallback(() => {
     setLoadingDivPrograms(true);
-    axios.get(`${API}/api/admin/division-programs`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/division-programs`, { withCredentials: true })
       .then(r => setDivPrograms(r.data))
       .catch(e => { console.error(e); showToast('Failed to load division programs. Please refresh.', 'error'); })
       .finally(() => setLoadingDivPrograms(false));
@@ -98,7 +97,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.post(`${API}/api/admin/programs`, programForm, { credentials: 'include'() });
+      await axios.post(`${API}/api/admin/programs`, programForm, { withCredentials: true });
       setAddProgramOpen(false);
       setProgramForm({ title: '', abbreviation: '', division: '', school_level_requirement: 'Both' });
       fetchPrograms();
@@ -112,7 +111,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/programs/${editProgram.id}`, { title: programForm.title, abbreviation: programForm.abbreviation, division: programForm.division || null, school_level_requirement: programForm.school_level_requirement }, { credentials: 'include'() });
+      await axios.patch(`${API}/api/admin/programs/${editProgram.id}`, { title: programForm.title, abbreviation: programForm.abbreviation, division: programForm.division || null, school_level_requirement: programForm.school_level_requirement }, { withCredentials: true });
       setEditProgram(null);
       fetchPrograms();
       showToast('Program updated successfully.');
@@ -125,7 +124,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/programs/${deleteProgram.id}`, { credentials: 'include'() });
+      await axios.delete(`${API}/api/admin/programs/${deleteProgram.id}`, { withCredentials: true });
       setDeleteProgram(null);
       fetchPrograms();
       showToast('Program deleted.');
@@ -138,7 +137,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/programs/${personnelProgram.id}/personnel`, { user_ids: assignedIds }, { credentials: 'include'() });
+      await axios.patch(`${API}/api/admin/programs/${personnelProgram.id}/personnel`, { user_ids: assignedIds }, { withCredentials: true });
       setPersonnelProgram(null);
       fetchPrograms();
       showToast('Personnel updated.');
@@ -152,7 +151,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.post(`${API}/api/admin/division-programs`, divForm, { credentials: 'include'() });
+      await axios.post(`${API}/api/admin/division-programs`, divForm, { withCredentials: true });
       setAddDivOpen(false);
       setDivForm({ title: '', abbreviation: '', division: 'CID' });
       fetchDivPrograms();
@@ -166,7 +165,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/division-programs/${editDivProgram.id}`, divForm, { credentials: 'include'() });
+      await axios.patch(`${API}/api/admin/division-programs/${editDivProgram.id}`, divForm, { withCredentials: true });
       setEditDivProgram(null);
       fetchDivPrograms();
       showToast('Division program updated.');
@@ -179,7 +178,7 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/division-programs/${deleteDivProgram.id}`, { credentials: 'include'() });
+      await axios.delete(`${API}/api/admin/division-programs/${deleteDivProgram.id}`, { withCredentials: true });
       setDeleteDivProgram(null);
       fetchDivPrograms();
       showToast('Division program deleted.');
@@ -205,7 +204,7 @@ export default function AdminPrograms() {
   const DIV_PILLS = ['All', ...DIVISIONS];
 
   return (
-    <AdminLayout>
+    <>
       <div className="space-y-4">
 
         {/* View Tabs */}
@@ -483,6 +482,6 @@ export default function AdminPrograms() {
           {toast.msg}
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

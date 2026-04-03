@@ -7,7 +7,6 @@ import {
   PieChart, Pie, Cell,
 } from 'recharts';
 import { DownloadSimple } from '@phosphor-icons/react';
-import { AdminLayout } from '../AdminLayout.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -67,7 +66,7 @@ async function downloadReport(type, format, year) {
     return;
   }
   const url = `${API}/api/admin/reports/${type}/export?format=${format}&year=${year}`;
-  const blob = await fetch(url, { credentials: 'include'() }).then(r => r.blob());
+  const blob = await fetch(url, { credentials: 'include' }).then(r => r.blob());
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `${type}-report-${year}.${format}`;
@@ -95,7 +94,7 @@ function ComplianceReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/compliance?year=${year}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/reports/compliance?year=${year}`, { withCredentials: true })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load compliance report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -146,7 +145,7 @@ function QuarterlyReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/quarterly?year=${year}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/reports/quarterly?year=${year}`, { withCredentials: true })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load quarterly report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -177,7 +176,7 @@ function BudgetReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/budget?year=${year}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/reports/budget?year=${year}`, { withCredentials: true })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load budget report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -229,7 +228,7 @@ function WorkloadReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/workload?year=${year}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/reports/workload?year=${year}`, { withCredentials: true })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load workload report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -275,7 +274,7 @@ function AccomplishmentReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/accomplishment?year=${year}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/reports/accomplishment?year=${year}`, { withCredentials: true })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load accomplishment report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -332,7 +331,7 @@ function FactorsReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/factors?year=${year}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/reports/factors?year=${year}`, { withCredentials: true })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load factors report.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -388,7 +387,7 @@ function BudgetSourcesReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/budget?year=${year}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/reports/budget?year=${year}`, { withCredentials: true })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load budget sources data.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -456,7 +455,7 @@ function AIPFunnelReport({ year }) {
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    axios.get(`${API}/api/admin/reports/aip-funnel?year=${year}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/reports/aip-funnel?year=${year}`, { withCredentials: true })
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load AIP funnel data.'); }).finally(() => setLoading(false));
   }, [year]);
 
@@ -520,7 +519,7 @@ function ClusterPIRSummary({ year }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/clusters`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/clusters`, { withCredentials: true })
       .then(r => setClusters(r.data))
       .catch(e => { console.error(e); /* non-critical — cluster list won't populate */ });
   }, []);
@@ -528,7 +527,7 @@ function ClusterPIRSummary({ year }) {
   useEffect(() => {
     if (!clusterId) { setData(null); return; }
     setLoading(true);
-    axios.get(`${API}/api/admin/reports/cluster-pir-summary?year=${year}&quarter=${quarter}&cluster=${clusterId}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/reports/cluster-pir-summary?year=${year}&quarter=${quarter}&cluster=${clusterId}`, { withCredentials: true })
       .then(r => setData(r.data))
       .catch(e => { console.error(e); setData(null); })
       .finally(() => setLoading(false));
@@ -551,7 +550,7 @@ function ClusterPIRSummary({ year }) {
       };
     });
     try {
-      await axios.patch(`${API}/api/admin/pirs/${pirId}/presented`, {}, { credentials: 'include'() });
+      await axios.patch(`${API}/api/admin/pirs/${pirId}/presented`, {}, { withCredentials: true });
     } catch {
       // Revert on error
       setData(prev => {
@@ -730,7 +729,7 @@ export default function AdminReports() {
   const YEARS = [year - 1, year, year + 1];
 
   return (
-    <AdminLayout>
+    <>
       <div className="space-y-4">
 
         {/* Tab Bar + Year + Export */}
@@ -795,6 +794,6 @@ export default function AdminReports() {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

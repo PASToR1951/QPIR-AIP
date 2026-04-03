@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, Check, ArrowBendUpLeft, DownloadSimple, XCircle, Funnel, CalendarDots, Warning, CheckCircle, FloppyDisk } from '@phosphor-icons/react';
-import { AdminLayout } from '../AdminLayout.jsx';
 import { DataTable } from '../components/DataTable.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
@@ -107,7 +106,7 @@ export default function AdminSubmissions() {
       await axios.patch(
         `${API}/api/admin/term-config`,
         { termType: pendingTermType, periods: periodMonths.map((m, i) => ({ period: i + 1, startMonth: m.start, endMonth: m.end })) },
-        { credentials: 'include'() }
+        { withCredentials: true }
       );
       setTermSaved(true);
       setPendingTermType(null);
@@ -126,13 +125,13 @@ export default function AdminSubmissions() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/clusters`, { credentials: 'include'() }).then(r => setClusters(r.data)).catch(() => {});
-    axios.get(`${API}/api/admin/programs`, { credentials: 'include'() }).then(r => setPrograms(r.data)).catch(() => {});
+    axios.get(`${API}/api/admin/clusters`, { withCredentials: true }).then(r => setClusters(r.data)).catch(() => {});
+    axios.get(`${API}/api/admin/programs`, { withCredentials: true }).then(r => setPrograms(r.data)).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (filters.cluster) {
-      axios.get(`${API}/api/admin/schools?cluster=${filters.cluster}`, { credentials: 'include'() })
+      axios.get(`${API}/api/admin/schools?cluster=${filters.cluster}`, { withCredentials: true })
         .then(r => setSchools(r.data)).catch(() => {});
     } else {
       setSchools([]);
@@ -151,7 +150,7 @@ export default function AdminSubmissions() {
     if (filters.year) params.set('year', filters.year);
     if (filters.status) params.set('status', filters.status);
     params.set('page', page);
-    axios.get(`${API}/api/admin/submissions?${params}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/submissions?${params}`, { withCredentials: true })
       .then(r => {
         setFetchError(null);
         setSubmissions(r.data.data);
@@ -177,7 +176,7 @@ export default function AdminSubmissions() {
     setViewItem(item);
     setViewLoading(true);
     try {
-      const r = await axios.get(`${API}/api/admin/submissions/${item.id}?type=${item.type.toLowerCase()}`, { credentials: 'include'() });
+      const r = await axios.get(`${API}/api/admin/submissions/${item.id}?type=${item.type.toLowerCase()}`, { withCredentials: true });
       setViewData(r.data);
 
       if (item.type === 'PIR' && item.status === 'Submitted') {
@@ -194,7 +193,7 @@ export default function AdminSubmissions() {
     underReviewTimerRef.current = null;
     setActionLoading(true);
     try {
-      await axios.patch(`${API}/api/admin/submissions/${id}/status`, { type: type.toLowerCase(), status, feedback }, { credentials: 'include'() });
+      await axios.patch(`${API}/api/admin/submissions/${id}/status`, { type: type.toLowerCase(), status, feedback }, { withCredentials: true });
       fetchSubmissions();
       setApproveItem(null);
       setReturnItem(null);
@@ -212,7 +211,7 @@ export default function AdminSubmissions() {
     try {
       const toApprove = submissions.filter(s => selectedIds.includes(s.id) && s.status !== 'Approved');
       for (const item of toApprove) {
-        await axios.patch(`${API}/api/admin/submissions/${item.id}/status`, { type: item.type.toLowerCase(), status: 'Approved', feedback: '' }, { credentials: 'include'() });
+        await axios.patch(`${API}/api/admin/submissions/${item.id}/status`, { type: item.type.toLowerCase(), status: 'Approved', feedback: '' }, { withCredentials: true });
       }
       setSelectedIds([]);
       fetchSubmissions();
@@ -225,7 +224,7 @@ export default function AdminSubmissions() {
     if (filters.year) params.set('year', filters.year);
     if (filters.status) params.set('status', filters.status);
     const url = `${API}/api/admin/submissions/export?${params}`;
-    const blob = await fetch(url, { credentials: 'include'() }).then(r => r.blob());
+    const blob = await fetch(url, { credentials: 'include' }).then(r => r.blob());
     const blobUrl = URL.createObjectURL(blob);
     if (downloadRef.current) {
       downloadRef.current.href = blobUrl;
@@ -358,7 +357,7 @@ export default function AdminSubmissions() {
   ];
 
   return (
-    <AdminLayout>
+    <>
       {/* Hidden download anchor for CSV export */}
       <a ref={downloadRef} className="hidden" />
       <div className="space-y-4">
@@ -747,6 +746,6 @@ export default function AdminSubmissions() {
         onClose={() => setReviewItem(null)}
         onStatusChange={fetchSubmissions}
       />
-    </AdminLayout>
+    </>
   );
 }

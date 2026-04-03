@@ -6,7 +6,6 @@ import {
   Info, Warning, WarningCircle, Megaphone, XCircle, LockSimple,
   Gear, CheckCircle, UserCircle, At, User,
 } from '@phosphor-icons/react';
-import { AdminLayout } from '../AdminLayout.jsx';
 import { CURRENT_VERSION } from '../../version.js';
 
 const API = import.meta.env.VITE_API_URL;
@@ -218,9 +217,9 @@ export default function AdminSettings() {
     // Core settings — required for page to render
     setLoading(true);
     Promise.all([
-      axios.get(`${API}/api/admin/announcements`,            { credentials: 'include'() }),
-      axios.get(`${API}/api/admin/settings/system-info`,     { credentials: 'include'() }),
-      axios.get(`${API}/api/admin/settings/division-config`, { credentials: 'include'() }),
+      axios.get(`${API}/api/admin/announcements`,            { withCredentials: true }),
+      axios.get(`${API}/api/admin/settings/system-info`,     { withCredentials: true }),
+      axios.get(`${API}/api/admin/settings/division-config`, { withCredentials: true }),
     ]).then(([ar, sr, dr]) => {
       if (ar.data) setAnnouncement({
         message:     ar.data.message     ?? '',
@@ -237,11 +236,11 @@ export default function AdminSettings() {
       .finally(() => setLoading(false));
 
     // Mention candidates — non-critical, loaded independently
-    axios.get(`${API}/api/admin/schools`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/schools`, { withCredentials: true })
       .then(res => setSchools(Array.isArray(res.data) ? res.data : []))
       .catch(() => {});
 
-    axios.get(`${API}/api/admin/users`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/users`, { withCredentials: true })
       .then(res => {
         const rawUsers = Array.isArray(res.data) ? res.data : [];
         // Only Division Personnel can be mentioned directly.
@@ -265,7 +264,7 @@ export default function AdminSettings() {
     setSaving(true);
     setFormError('');
     try {
-      await axios.post(`${API}/api/admin/announcements`, announcement, { credentials: 'include'() });
+      await axios.post(`${API}/api/admin/announcements`, announcement, { withCredentials: true });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
@@ -281,7 +280,7 @@ export default function AdminSettings() {
     setAnnouncement(updated);
     setAutoSaving(true);
     try {
-      await axios.post(`${API}/api/admin/announcements`, updated, { credentials: 'include'() });
+      await axios.post(`${API}/api/admin/announcements`, updated, { withCredentials: true });
       setAutoSaved(true);
       setTimeout(() => setAutoSaved(false), 2000);
     } catch {
@@ -297,7 +296,7 @@ export default function AdminSettings() {
     setSavingDiv(true);
     setDivError('');
     try {
-      await axios.post(`${API}/api/admin/settings/division-config`, divConfig, { credentials: 'include'() });
+      await axios.post(`${API}/api/admin/settings/division-config`, divConfig, { withCredentials: true });
       setSavedDiv(true);
       setTimeout(() => setSavedDiv(false), 2500);
     } catch (e) {
@@ -408,7 +407,7 @@ export default function AdminSettings() {
   const charsLeft = MAX_CHARS - announcement.message.length;
 
   return (
-    <AdminLayout>
+    <>
       {fetchError && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 text-sm font-medium mb-4">
           {fetchError}
@@ -712,6 +711,6 @@ export default function AdminSettings() {
 
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }
