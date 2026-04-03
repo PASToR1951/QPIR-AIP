@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Outlet } from 'react-router-dom';
 import axios from 'axios';
 import { AdminSidebar } from './AdminSidebar.jsx';
 import { AdminTopBar } from './AdminTopBar.jsx';
@@ -7,41 +7,51 @@ import { AdminTopBar } from './AdminTopBar.jsx';
 const API = import.meta.env.VITE_API_URL;
 
 
-export const AdminLayout = ({ children }) => {
+export const AdminLayout = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [deadline, setDeadline] = useState(null);
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/layout-info`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/layout-info`, { withCredentials: true })
       .then(r => setDeadline({ daysLeft: r.data.daysLeft, currentQuarter: r.data.currentQuarter }))
       .catch(() => {});
   }, []);
 
   const fetchNotifications = useCallback(() => {
-    axios.get(`${API}/api/notifications`, { credentials: 'include'() })
+    axios.get(`${API}/api/notifications`, { withCredentials: true })
       .then(r => setNotifications(r.data))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
+
+    const es = new EventSource(`${API}/api/notifications/stream`, { withCredentials: true });
+    es.addEventListener('notification', (e) => {
+      const notif = JSON.parse(e.data);
+      setNotifications(prev => [notif, ...prev]);
+    });
+
+    // Full resync on tab focus (handles gaps during inactivity / reconnects)
     window.addEventListener('focus', fetchNotifications);
-    return () => { clearInterval(interval); window.removeEventListener('focus', fetchNotifications); };
+    return () => {
+      es.close();
+      window.removeEventListener('focus', fetchNotifications);
+    };
   }, [fetchNotifications]);
 
   const markOne = async (id) => {
     try {
-      await axios.patch(`${API}/api/notifications/${id}/read`, {}, { credentials: 'include'() });
+      await axios.patch(`${API}/api/notifications/${id}/read`, {}, { withCredentials: true });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch { /* silent */ }
   };
 
   const markAll = async () => {
     try {
-      await axios.patch(`${API}/api/notifications/read-all`, {}, { credentials: 'include'() });
+      await axios.patch(`${API}/api/notifications/read-all`, {}, { withCredentials: true });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch { /* silent */ }
   };
@@ -79,7 +89,7 @@ export const AdminLayout = ({ children }) => {
           markAll={markAll}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 relative">
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>

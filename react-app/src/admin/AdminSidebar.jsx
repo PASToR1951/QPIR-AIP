@@ -13,21 +13,21 @@ const NAV_GROUPS = [
   {
     label: 'Monitoring',
     items: [
-      { to: '/admin', label: 'Dashboard', icon: House, end: true },
+      { to: '/admin', label: 'Dashboard', icon: House, end: true, preload: () => import('./pages/AdminOverview.jsx') },
     ],
   },
   {
     label: 'Submissions & Data',
     items: [
-      { to: '/admin/users', label: 'Users', icon: Users },
+      { to: '/admin/users', label: 'Users', icon: Users, preload: () => import('./pages/AdminUsers.jsx') },
     ],
   },
   {
     label: 'School Management',
     items: [
-      { to: '/admin/schools',   label: 'Schools',   icon: Buildings },
-      { to: '/admin/programs',  label: 'Programs',  icon: BookOpenIcon },
-      { to: '/admin/deadlines', label: 'Deadlines', icon: CalendarSlash },
+      { to: '/admin/schools',   label: 'Schools',   icon: Buildings,    preload: () => import('./pages/AdminSchools.jsx') },
+      { to: '/admin/programs',  label: 'Programs',  icon: BookOpenIcon, preload: () => import('./pages/AdminPrograms.jsx') },
+      { to: '/admin/deadlines', label: 'Deadlines', icon: CalendarSlash, preload: () => import('./pages/AdminDeadlines.jsx') },
     ],
   },
   {
@@ -38,17 +38,18 @@ const NAV_GROUPS = [
     label: 'System',
     items: [
       { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Alpha' },
-      { to: '/admin/settings', label: 'Settings',    icon: Gear },
+      { to: '/admin/settings', label: 'Settings',    icon: Gear, preload: () => import('./pages/AdminSettings.jsx') },
       { to: '/manual',         label: 'User Manual', icon: BookOpenUserIcon, badge: 'Alpha' },
     ],
   },
 ];
 
-const NavItem = ({ to, label, Icon, end, badge, onNavigate }) => (
+const NavItem = ({ to, label, Icon, end, badge, onNavigate, preload }) => (
   <NavLink
     to={to}
     end={end}
     onClick={onNavigate}
+    onMouseEnter={preload}
     className={({ isActive }) =>
       `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group relative select-none
       ${isActive
@@ -97,6 +98,7 @@ function CollapsibleSubmissions({ onNavigate }) {
     <div>
       <button
         onClick={() => setOpen(o => !o)}
+        onMouseEnter={() => import('./pages/AdminSubmissions.jsx')}
         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group select-none border
           ${isOnSubmissions
             ? 'bg-white/55 dark:bg-white/[0.10] text-slate-900 dark:text-slate-50 font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-sm border-white/60 dark:border-white/[0.08]'
@@ -175,6 +177,7 @@ function CollapsibleReports({ onNavigate }) {
     <div>
       <button
         onClick={() => setOpen(o => !o)}
+        onMouseEnter={() => import('./pages/AdminReports.jsx')}
         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group select-none border
           ${isOnReports
             ? 'bg-white/55 dark:bg-white/[0.10] text-slate-900 dark:text-slate-50 font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-sm border-white/60 dark:border-white/[0.08]'
@@ -260,8 +263,8 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
               {group.label}
             </p>
             <div className="space-y-0.5">
-              {group.items.map(({ to, label, icon: Icon, end, badge }) => (
-                <NavItem key={to} to={to} label={label} Icon={Icon} end={end} badge={badge} onNavigate={onMobileClose} />
+              {group.items.map(({ to, label, icon: Icon, end, badge, preload }) => (
+                <NavItem key={to} to={to} label={label} Icon={Icon} end={end} badge={badge} onNavigate={onMobileClose} preload={preload} />
               ))}
               {group.label === 'Submissions & Data' && (
                 <CollapsibleSubmissions onNavigate={onMobileClose} />
