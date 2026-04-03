@@ -1,12 +1,23 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { secureHeaders } from "hono/secure-headers";
 import authRoutes from "./routes/auth.ts";
 import dataRoutes from "./routes/data.ts";
 import adminRoutes from "./routes/admin.ts";
 import { prisma as _prisma } from "./db/client.ts";
 import { getUserFromToken } from "./lib/auth.ts";
+import { logger } from "./lib/logger.ts";
 
 const app = new Hono();
+
+// HTTP security headers — prevents clickjacking, MIME sniffing, XSS, and enforces HTTPS.
+app.use('*', secureHeaders({
+  xFrameOptions: 'DENY',
+  xContentTypeOptions: 'nosniff',
+  referrerPolicy: 'strict-origin-when-cross-origin',
+  strictTransportSecurity: 'max-age=63072000; includeSubDomains',
+  xXssProtection: '1; mode=block',
+}));
 
 app.use('*', cors({
   origin: Deno.env.get("ALLOWED_ORIGIN") || "http://localhost:5173",
@@ -14,6 +25,17 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
+
+// L-2: Structured request/response logging middleware
+app.use('*', async (c, next) => {
+  const start = Date.now();
+  await next();
+  const duration = Date.now() - start;
+  logger.info(`${c.req.method} ${new URL(c.req.url).pathname}`, {
+    status: c.res.status,
+    ms: duration,
+  });
+});
 
 // Root route
 app.get('/', (c) => {
@@ -57,8 +79,8 @@ app.get('/api/announcement', async (c) => {
   if (!hasSchoolMentions && !hasUserMentions) return c.json(a);
 
   // Targeted announcement — check if requesting user qualifies
-  const caller = getUserFromToken(c.req.header('Authorization'));
-  if (!caller) return c.json(null);
+  const caller = getUserFromToken(c);
+  if (!caller) return c.json({ error: 'Unauthorized' }, 401);
 
   const schoolMatch = hasSchoolMentions && caller.school_id != null &&
     a.mentioned_schools.some(ms => ms.school_id === caller.school_id);
@@ -74,6 +96,6 @@ app.route('/api', dataRoutes);
 app.route('/api/admin', adminRoutes);
 
 const PORT = parseInt(Deno.env.get("PORT") || "3001");
-console.log(`✅ Backend server running on http://localhost:${PORT}`);
+logger.info(`AIP-PIR backend running on http://localhost:${PORT}`);
 
 Deno.serve({ port: PORT }, app.fetch);
