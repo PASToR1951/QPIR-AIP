@@ -3,7 +3,7 @@ import axios from 'axios';
 import { MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 const QUARTERS = ['1st', '2nd', '3rd', '4th'];
 const currentQ = Math.ceil((new Date().getMonth() + 1) / 3);
@@ -41,7 +41,7 @@ export default function ClusterHeadDashboard() {
   const fetchPIRs = () => {
     setLoading(true);
     const params = quarter ? `?quarter=${encodeURIComponent(quarter)}` : '';
-    axios.get(`${API}/api/admin/cluster-head/pirs${params}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/cluster-head/pirs${params}`, { credentials: 'include'() })
       .then(r => setPirs(r.data))
       .catch(() => setPirs([]))
       .finally(() => setLoading(false));
@@ -82,7 +82,7 @@ export default function ClusterHeadDashboard() {
             clearInterval(countdownRef.current);
             if (startReviewFiredRef.current !== pir.id) {
               startReviewFiredRef.current = pir.id;
-              axios.post(`${API}/api/admin/cluster-head/pirs/${pir.id}/start-review`, {}, { headers: authHeaders() })
+              axios.post(`${API}/api/admin/cluster-head/pirs/${pir.id}/start-review`, {}, { credentials: 'include'() })
                 .then(() => setUnderReviewPirId(pir.id))
                 .catch(() => {});
             }
@@ -107,7 +107,7 @@ export default function ClusterHeadDashboard() {
       const endpoint = modal.type === 'note'
         ? `${API}/api/admin/cluster-head/pirs/${modal.pirId}/note`
         : `${API}/api/admin/cluster-head/pirs/${modal.pirId}/return`;
-      await axios.post(endpoint, { remarks }, { headers: authHeaders() });
+      await axios.post(endpoint, { remarks }, { credentials: 'include'() });
       setUnderReviewPirId(null);
       startReviewFiredRef.current = null;
       setModal(null);

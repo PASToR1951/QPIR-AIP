@@ -24,7 +24,7 @@ import { AdminLayout } from '../AdminLayout.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 const CHART_COLORS = ['#E94560', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316'];
 const BAR_COLORS = { Submitted: '#3b82f6', Approved: '#10b981', 'Under Review': '#f59e0b', Returned: '#E94560' };
@@ -262,7 +262,7 @@ export default function AdminOverview() {
   const nivoTheme = getNivoTheme(isDark);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/overview`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/overview`, { credentials: 'include'() })
       .then(r => setData(r.data))
       .catch(e => { console.error(e); setFetchError('Failed to load dashboard data. Please refresh and try again.'); })
       .finally(() => setLoading(false));

@@ -9,7 +9,7 @@ import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import { MultiSelect } from '../components/MultiSelect.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 const LEVELS = ['Elementary', 'Secondary', 'Both'];
 
 export default function AdminSchools() {
@@ -41,8 +41,8 @@ export default function AdminSchools() {
   const fetchAll = useCallback(() => {
     setLoading(true);
     Promise.all([
-      axios.get(`${API}/api/admin/clusters`, { headers: authHeaders() }),
-      axios.get(`${API}/api/admin/programs`, { headers: authHeaders() }),
+      axios.get(`${API}/api/admin/clusters`, { credentials: 'include'() }),
+      axios.get(`${API}/api/admin/programs`, { credentials: 'include'() }),
     ]).then(([cr, pr]) => { setClusters(cr.data); setPrograms(pr.data); })
       .catch(e => { console.error(e); setFetchError('Failed to load data. Please refresh and try again.'); })
       .finally(() => setLoading(false));
@@ -61,7 +61,7 @@ export default function AdminSchools() {
       setFormError('');
       const num = Number(clusterForm.cluster_number);
       // CONSTRAINT: Clusters have no meaningful name — identified by number only. Do not set name to "Cluster N"; that causes redundant display elsewhere.
-      await axios.post(`${API}/api/admin/clusters`, { cluster_number: num, name: String(num) }, { headers: authHeaders() });
+      await axios.post(`${API}/api/admin/clusters`, { cluster_number: num, name: String(num) }, { credentials: 'include'() });
       setAddClusterOpen(false); setClusterForm({ cluster_number: '' }); fetchAll();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -72,7 +72,7 @@ export default function AdminSchools() {
     try {
       setFormError('');
       const num = Number(clusterForm.cluster_number);
-      await axios.patch(`${API}/api/admin/clusters/${editCluster.id}`, { cluster_number: num, name: String(num) }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/clusters/${editCluster.id}`, { cluster_number: num, name: String(num) }, { credentials: 'include'() });
       setEditCluster(null); fetchAll();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -82,7 +82,7 @@ export default function AdminSchools() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/clusters/${deleteCluster.id}`, { headers: authHeaders() });
+      await axios.delete(`${API}/api/admin/clusters/${deleteCluster.id}`, { credentials: 'include'() });
       setDeleteCluster(null); fetchAll();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -94,7 +94,7 @@ export default function AdminSchools() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.post(`${API}/api/admin/schools`, schoolForm, { headers: authHeaders() });
+      await axios.post(`${API}/api/admin/schools`, schoolForm, { credentials: 'include'() });
       setAddSchoolOpen(false); setSchoolForm({ name: '', abbreviation: '', level: 'Elementary', cluster_id: null }); fetchAll();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -104,7 +104,7 @@ export default function AdminSchools() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/schools/${editSchool.id}`, { name: schoolForm.name, abbreviation: schoolForm.abbreviation, level: schoolForm.level, cluster_id: schoolForm.cluster_id }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/schools/${editSchool.id}`, { name: schoolForm.name, abbreviation: schoolForm.abbreviation, level: schoolForm.level, cluster_id: schoolForm.cluster_id }, { credentials: 'include'() });
       setEditSchool(null); fetchAll();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -114,7 +114,7 @@ export default function AdminSchools() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/schools/${deleteSchool.id}`, { headers: authHeaders() });
+      await axios.delete(`${API}/api/admin/schools/${deleteSchool.id}`, { credentials: 'include'() });
       setDeleteSchool(null); fetchAll();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -124,7 +124,7 @@ export default function AdminSchools() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/schools/${restrictSchool.id}/restrictions`, { restricted_program_ids: restrictedIds }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/schools/${restrictSchool.id}/restrictions`, { restricted_program_ids: restrictedIds }, { credentials: 'include'() });
       setRestrictSchool(null); fetchAll();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');

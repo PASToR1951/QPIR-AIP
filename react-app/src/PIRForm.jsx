@@ -44,8 +44,8 @@ export default function App() {
     } catch {
         sessionStorage.removeItem('user');
     }
-    const token = sessionStorage.getItem('token');
-    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+    
+    
     const isDivisionPersonnel = user?.role === 'Division Personnel';
 
     const saveTimerRef = useRef(null);
@@ -84,11 +84,11 @@ export default function App() {
         const init = async () => {
             try {
                 const requests = [
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { headers: authHeaders }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { credentials: 'include' }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { credentials: 'include' }),
                     axios.get(`${import.meta.env.VITE_API_URL}/api/config`),
                 ];
-                requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { headers: authHeaders }));
+                requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { credentials: 'include' }));
                 const results = await Promise.allSettled(requests);
                 const [withAIPsRes, withPIRsRes, configRes, draftRes] = results;
                 if (withAIPsRes.status === 'fulfilled') {
@@ -240,7 +240,7 @@ export default function App() {
                     ? { user_id: user?.id, program_title: program, year }
                     : { school_id: schoolId, program_title: program, year };
 
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/activities`, { params, headers: authHeaders });
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/activities`, { params, credentials: 'include' });
                 const aipActivities = res.data.activities;
                 if (aipActivities && aipActivities.length > 0) {
                     if (pirActivitiesLoaded.current) {
@@ -312,7 +312,7 @@ export default function App() {
             try {
                 const res = await axios.get(
                     `${import.meta.env.VITE_API_URL}/api/pirs`,
-                    { params: { program_title: selectedProgram, quarter: quarterString }, headers: authHeaders }
+                    { params: { program_title: selectedProgram, quarter: quarterString }, credentials: 'include' }
                 );
                 const d = res.data;
                 setPirId(d.id ?? null);
@@ -438,7 +438,7 @@ export default function App() {
             onConfirm: async () => {
                 closeModal();
                 try {
-                    await axios.delete(`${import.meta.env.VITE_API_URL}/api/pirs/${pirId}`, { headers: authHeaders });
+                    await axios.delete(`${import.meta.env.VITE_API_URL}/api/pirs/${pirId}`, { credentials: 'include' });
                     // Remove from completedPrograms and refresh
                     setCompletedPrograms(prev => prev.filter(p => p !== program));
                     setPirId(null);
@@ -467,7 +467,7 @@ export default function App() {
                 const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
                 const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips`, {
                     params: { program_title: program, year },
-                    headers: authHeaders
+                    credentials: 'include'
                 });
                 setAipDocumentData(res.data);
             } catch (e) {
@@ -512,7 +512,7 @@ export default function App() {
                         recommendations: factors[type]?.recommendations ?? '',
                     }])
                 ),
-            }, { headers: authHeaders });
+            }, { credentials: 'include' });
         } catch (e) {
             console.error("Failed to save draft:", e);
         }
@@ -668,7 +668,7 @@ export default function App() {
                 await axios.put(
                     `${import.meta.env.VITE_API_URL}/api/pirs/${pirId}`,
                     pirBody,
-                    { headers: authHeaders }
+                    { credentials: 'include' }
                 );
                 setIsEditing(false);
                 setPirStatus('Submitted');
@@ -684,7 +684,7 @@ export default function App() {
                 await axios.post(
                     `${import.meta.env.VITE_API_URL}/api/pirs`,
                     pirBody,
-                    { headers: authHeaders }
+                    { credentials: 'include' }
                 );
                 setIsSubmitted(true);
                 // Draft is promoted to Submitted in the backend — no separate delete needed
@@ -701,10 +701,11 @@ export default function App() {
             }
         } catch (error) {
             console.error("Failed to submit PIR:", error);
+            const isWindowError = error.response?.status === 403 && error.response?.data?.error?.toLowerCase().includes('submission window');
             setModal({
                 isOpen: true,
                 type: 'warning',
-                title: isEditing ? 'Update Failed' : 'Submission Failed',
+                title: isWindowError ? 'Submission Window Closed' : isEditing ? 'Update Failed' : 'Submission Failed',
                 message: error.response?.data?.error || 'An error occurred while saving the PIR. Please ensure the associated AIP exists.',
                 confirmText: 'Dismiss',
                 onConfirm: closeModal

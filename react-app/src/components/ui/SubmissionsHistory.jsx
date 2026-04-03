@@ -9,8 +9,8 @@ import { StatusBadge } from '../../admin/components/StatusBadge';
 const API = import.meta.env.VITE_API_URL;
 
 export default function SubmissionsHistory() {
-  const token = sessionStorage.getItem('token');
-  const authHeaders = { Authorization: `Bearer ${token}` };
+  
+  
   const currentYear = new Date().getFullYear();
 
   const [history, setHistory] = useState([]);
@@ -39,7 +39,7 @@ export default function SubmissionsHistory() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${API}/api/history`, { headers: authHeaders })
+    axios.get(`${API}/api/history`, { credentials: 'include' })
       .then(r => {
         setHistory(r.data);
         const init = {};
@@ -57,7 +57,7 @@ export default function SubmissionsHistory() {
     try {
       const { data: d } = await axios.get(`${API}/api/aips`, {
         params: { program_title: programTitle, year },
-        headers: authHeaders,
+        credentials: 'include',
       });
       setPreviewTitle('Annual Implementation Plan');
       setPreviewSubtitle(`${programTitle} — FY ${year}`);
@@ -89,7 +89,7 @@ export default function SubmissionsHistory() {
     try {
       const { data: d } = await axios.get(`${API}/api/pirs`, {
         params: { program_title: programTitle, quarter },
-        headers: authHeaders,
+        credentials: 'include',
       });
       setPreviewTitle('Program Implementation Review');
       setPreviewSubtitle(`${programTitle} — ${quarter}`);
@@ -120,7 +120,7 @@ export default function SubmissionsHistory() {
   const handleRequestEdit = useCallback(async (aipId) => {
     setRequestingEditId(aipId);
     try {
-      await axios.post(`${API}/api/aips/${aipId}/request-edit`, {}, { headers: authHeaders });
+      await axios.post(`${API}/api/aips/${aipId}/request-edit`, {}, { credentials: 'include' });
       setRequestedEditIds(prev => new Set(prev).add(aipId));
     } catch { /* silently fail — button stays active so user can retry */ } finally {
       setRequestingEditId(null);

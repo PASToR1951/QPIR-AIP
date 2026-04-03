@@ -4,7 +4,7 @@ import axios from 'axios';
 import { ArrowLeft, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 const formatCurrency = (val) => {
   const n = parseFloat(val);
@@ -36,7 +36,7 @@ export default function CESPIRReview() {
   const startReviewFiredRef = useRef(false);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/pirs/${id}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/pirs/${id}`, { credentials: 'include'() })
       .then(r => {
         setPir(r.data);
         // If already under review (e.g. re-opened), skip timer
@@ -59,7 +59,7 @@ export default function CESPIRReview() {
           clearInterval(countdownRef.current);
           if (!startReviewFiredRef.current) {
             startReviewFiredRef.current = true;
-            axios.post(`${API}/api/admin/ces/pirs/${id}/start-review`, {}, { headers: authHeaders() })
+            axios.post(`${API}/api/admin/ces/pirs/${id}/start-review`, {}, { credentials: 'include'() })
               .then(() => setIsUnderReview(true))
               .catch(() => {}); // silently fail — status update is best-effort
           }
@@ -79,7 +79,7 @@ export default function CESPIRReview() {
       const endpoint = modal === 'note'
         ? `${API}/api/admin/ces/pirs/${id}/note`
         : `${API}/api/admin/ces/pirs/${id}/return`;
-      await axios.post(endpoint, { ces_remarks: remarks }, { headers: authHeaders() });
+      await axios.post(endpoint, { ces_remarks: remarks }, { credentials: 'include'() });
       setDone(true);
     } catch (err) {
       setError(err?.response?.data?.error ?? 'Action failed. Please try again.');

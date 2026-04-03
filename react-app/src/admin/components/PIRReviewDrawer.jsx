@@ -9,7 +9,7 @@ import {
 import { StatusBadge } from './StatusBadge.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 const fmt = (n) => Number(n ?? 0).toLocaleString('en-PH');
 const fmtPeso = (n) => `₱${Number(n ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -102,7 +102,7 @@ function ActivityRow({ review, onSaveNotes, pirId }) {
       await axios.patch(
         `${API}/api/admin/pirs/${pirId}/activity-notes`,
         { activity_review_id: review.id, notes },
-        { headers: authHeaders() }
+        { credentials: 'include'() }
       );
       onSaveNotes(review.id, notes);
       setSaved(true);
@@ -287,7 +287,7 @@ function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes }) {
       await axios.patch(
         `${API}/api/admin/pirs/${pirId}/activity-notes`,
         { activity_review_id: review.id, notes },
-        { headers: authHeaders() }
+        { credentials: 'include'() }
       );
       onSaveNotes(review.id, notes);
       setSaved(true);
@@ -384,7 +384,7 @@ export function PIRReviewDrawer({ open, pir, onClose, onStatusChange }) {
     setData(null);
     notesCache.current = {};
     try {
-      const r = await axios.get(`${API}/api/admin/submissions/${pir.id}?type=pir`, { headers: authHeaders() });
+      const r = await axios.get(`${API}/api/admin/submissions/${pir.id}?type=pir`, { credentials: 'include'() });
       setData(r.data);
       setRemarks(r.data.remarks ?? '');
       // Seed notes cache
@@ -410,7 +410,7 @@ export function PIRReviewDrawer({ open, pir, onClose, onStatusChange }) {
     setRemarksError(null);
     setRemarksSaved(false);
     try {
-      await axios.patch(`${API}/api/admin/pirs/${pir.id}/remarks`, { remarks }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/pirs/${pir.id}/remarks`, { remarks }, { credentials: 'include'() });
       setRemarksSaved(true);
       setTimeout(() => setRemarksSaved(false), 2500);
     } catch { setRemarksError('Failed to save. Please try again.'); }
@@ -427,7 +427,7 @@ export function PIRReviewDrawer({ open, pir, onClose, onStatusChange }) {
       await axios.patch(
         `${API}/api/admin/submissions/${pir.id}/status`,
         { type: 'pir', status, feedback: returnFeedback },
-        { headers: authHeaders() }
+        { credentials: 'include'() }
       );
       onStatusChange?.();
       onClose();

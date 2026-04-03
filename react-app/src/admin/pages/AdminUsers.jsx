@@ -12,7 +12,7 @@ import { CreateUserWizard } from '../components/CreateUserWizard.jsx';
 import { UserProfileModal } from '../components/UserProfileModal.jsx';
 
 const API = import.meta.env.VITE_API_URL;
-const authHeaders = () => ({ Authorization: `Bearer ${sessionStorage.getItem('token')}` });
+
 
 const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin'];
 
@@ -156,7 +156,7 @@ export default function AdminUsers() {
     const params = new URLSearchParams();
     if (roleFilter !== 'All') params.set('role', roleFilter);
     if (search) params.set('search', search);
-    axios.get(`${API}/api/admin/users?${params}`, { headers: authHeaders() })
+    axios.get(`${API}/api/admin/users?${params}`, { credentials: 'include'() })
       .then(r => setUsers(r.data))
       .catch(e => { console.error(e); showToast('Failed to load users. Please refresh and try again.', 'error'); })
       .finally(() => setLoading(false));
@@ -164,15 +164,15 @@ export default function AdminUsers() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
   useEffect(() => {
-    axios.get(`${API}/api/admin/schools`, { headers: authHeaders() }).then(r => setSchools(r.data)).catch(() => {});
-    axios.get(`${API}/api/admin/programs`, { headers: authHeaders() }).then(r => setPrograms(r.data)).catch(() => {});
-    axios.get(`${API}/api/admin/clusters`, { headers: authHeaders() }).then(r => setClusters(r.data)).catch(() => {});
+    axios.get(`${API}/api/admin/schools`, { credentials: 'include'() }).then(r => setSchools(r.data)).catch(() => {});
+    axios.get(`${API}/api/admin/programs`, { credentials: 'include'() }).then(r => setPrograms(r.data)).catch(() => {});
+    axios.get(`${API}/api/admin/clusters`, { credentials: 'include'() }).then(r => setClusters(r.data)).catch(() => {});
   }, []);
 
   const handleCreate = async (wizardForm) => {
     setActionLoading(true); setFormError('');
     try {
-      await axios.post(`${API}/api/admin/users`, { ...wizardForm }, { headers: authHeaders() });
+      await axios.post(`${API}/api/admin/users`, { ...wizardForm }, { credentials: 'include'() });
       setCreateOpen(false); setForm(emptyForm); fetchAll();
       showToast('User created successfully.');
     } catch (e) {
@@ -183,7 +183,7 @@ export default function AdminUsers() {
   const handleEdit = async () => {
     setActionLoading(true); setFormError('');
     try {
-      await axios.patch(`${API}/api/admin/users/${editUser.id}`, { name: form.name, first_name: form.first_name, middle_initial: form.middle_initial, last_name: form.last_name, role: form.role, school_id: form.school_id, program_ids: form.program_ids }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/users/${editUser.id}`, { name: form.name, first_name: form.first_name, middle_initial: form.middle_initial, last_name: form.last_name, role: form.role, school_id: form.school_id, program_ids: form.program_ids }, { credentials: 'include'() });
       // If the edited user is the currently logged-in user, sync sessionStorage so
       // the header/sidebar reflect the new name without requiring a re-login.
       try {
@@ -208,7 +208,7 @@ export default function AdminUsers() {
   const handleDelete = async () => {
     setActionLoading(true);
     try {
-      await axios.delete(`${API}/api/admin/users/${deleteUser.id}`, { headers: authHeaders() });
+      await axios.delete(`${API}/api/admin/users/${deleteUser.id}`, { credentials: 'include'() });
       setDeleteUser(null); fetchAll();
     } finally { setActionLoading(false); }
   };
@@ -216,7 +216,7 @@ export default function AdminUsers() {
   const handleToggle = async () => {
     setActionLoading(true);
     try {
-      await axios.patch(`${API}/api/admin/users/${toggleUser.id}`, { is_active: !toggleUser.is_active }, { headers: authHeaders() });
+      await axios.patch(`${API}/api/admin/users/${toggleUser.id}`, { is_active: !toggleUser.is_active }, { credentials: 'include'() });
       setToggleUser(null); fetchAll();
     } finally { setActionLoading(false); }
   };
@@ -224,7 +224,7 @@ export default function AdminUsers() {
   const handleResetPassword = async () => {
     setActionLoading(true);
     try {
-      const r = await axios.post(`${API}/api/admin/users/${resetUser.id}/reset-password`, {}, { headers: authHeaders() });
+      const r = await axios.post(`${API}/api/admin/users/${resetUser.id}/reset-password`, {}, { credentials: 'include'() });
       setTempPassword(r.data.temporaryPassword); setResetUser(null);
     } finally { setActionLoading(false); }
   };
@@ -409,7 +409,7 @@ export default function AdminUsers() {
           setFormError('');
         }}
         onResetPassword={async (userId) => {
-          const r = await axios.post(`${API}/api/admin/users/${userId}/reset-password`, {}, { headers: authHeaders() });
+          const r = await axios.post(`${API}/api/admin/users/${userId}/reset-password`, {}, { credentials: 'include'() });
           return r.data.temporaryPassword;
         }}
         onToggle={() => { const u = viewUser; setViewUser(null); setToggleUser(u); }}

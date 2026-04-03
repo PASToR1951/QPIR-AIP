@@ -39,8 +39,8 @@ export default function App() {
     } catch {
         sessionStorage.removeItem('user');
     }
-    const token = sessionStorage.getItem('token');
-    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+    
+    
     const isDivisionPersonnel = user?.role === 'Division Personnel';
 
     const saveTimerRef = useRef(null);
@@ -190,11 +190,11 @@ export default function App() {
             try {
                 const schoolOrUserId = user?.school_id || user?.id;
                 const requests = [
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { headers: authHeaders }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { headers: authHeaders }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, { headers: authHeaders }),
-                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/coordinators`, { headers: authHeaders }) : Promise.resolve(null),
-                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/persons-terms`, { headers: authHeaders }) : Promise.resolve(null),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { credentials: 'include' }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { credentials: 'include' }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, { credentials: 'include' }),
+                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/coordinators`, { credentials: 'include' }) : Promise.resolve(null),
+                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/persons-terms`, { credentials: 'include' }) : Promise.resolve(null),
                 ];
                 const results = await Promise.allSettled(requests);
                 const [programsRes, completedRes, draftRes, coordsRes, termsRes] = results;
@@ -230,7 +230,7 @@ export default function App() {
                 const year = new Date().getFullYear();
                 const res = await axios.get(
                     `${import.meta.env.VITE_API_URL}/api/aips`,
-                    { params: { program_title: selectedProgram, year }, headers: authHeaders }
+                    { params: { program_title: selectedProgram, year }, credentials: 'include' }
                 );
                 const d = res.data;
                 setYear(String(d.year));
@@ -283,7 +283,7 @@ export default function App() {
                                 const currentYear = parseInt(year);
                                 const draftRes = await axios.get(
                                     `${import.meta.env.VITE_API_URL}/api/aips/draft`,
-                                    { params: { program_title: selectedProgram, year: currentYear }, headers: authHeaders }
+                                    { params: { program_title: selectedProgram, year: currentYear }, credentials: 'include' }
                                 );
                                 if (draftRes.data.hasDraft) loadDraftIntoState(draftRes.data.draftData);
                             } catch { /* proceed with blank form */ }
@@ -302,7 +302,7 @@ export default function App() {
                 const currentYear = parseInt(year);
                 const draftRes = await axios.get(
                     `${import.meta.env.VITE_API_URL}/api/aips/draft`,
-                    { params: { program_title: selectedProgram, year: currentYear }, headers: authHeaders }
+                    { params: { program_title: selectedProgram, year: currentYear }, credentials: 'include' }
                 );
                 if (draftRes.data.hasDraft) loadDraftIntoState(draftRes.data.draftData);
             } catch { /* proceed with blank form */ }
@@ -412,7 +412,7 @@ export default function App() {
                 approved_by_name: approvedByName,
                 approved_by_title: approvedByTitle,
                 activities
-            }, { headers: authHeaders });
+            }, { credentials: 'include' });
             localStorage.removeItem(`aip_draft_${depedProgram}_${year}`);
         } catch (e) {
         }
@@ -584,7 +584,7 @@ export default function App() {
                     programsToDelete.map(prog =>
                         axios.delete(`${import.meta.env.VITE_API_URL}/api/aips`, {
                             params: { program_title: prog, year: currentYear },
-                            headers: authHeaders
+                            credentials: 'include'
                         })
                     )
                 );
@@ -597,7 +597,7 @@ export default function App() {
                 }
             }
         });
-    }, [authHeaders, closeModal, hasDraft, loadedDraftData, showToast, year]);
+    }, [closeModal, hasDraft, loadedDraftData, showToast, year]);
 
     const handleDeleteSubmission = () => {
         setModal({
@@ -611,7 +611,7 @@ export default function App() {
                 try {
                     await axios.delete(
                         `${import.meta.env.VITE_API_URL}/api/aips`,
-                        { params: { program_title: depedProgram, year }, headers: authHeaders }
+                        { params: { program_title: depedProgram, year }, credentials: 'include' }
                     );
                     setCompletedPrograms(prev => prev.filter(p => p !== depedProgram));
                     setReturnedPrograms(prev => prev.filter(p => p !== depedProgram));
@@ -670,7 +670,7 @@ export default function App() {
                 approved_by_title: approvedByTitle,
                 activities: filledActivities
               },
-              { headers: authHeaders }
+              { credentials: 'include' }
             );
 
             setIsSubmitted(true);

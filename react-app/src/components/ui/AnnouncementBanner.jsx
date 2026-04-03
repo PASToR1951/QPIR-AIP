@@ -58,7 +58,7 @@ export function AnnouncementBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    const token = sessionStorage.getItem('token');
+    
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     fetch(`${API}/api/announcement`, { headers })
       .then(r => r.json())
