@@ -2,8 +2,19 @@ import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import { getCESRoleForDivisionPIR } from "../lib/routing.ts";
 import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
+import { logger } from "../lib/logger.ts";
 
 const dataRoutes = new Hono();
+
+async function verifySchoolCluster(tokenUser: TokenPayload): Promise<string | null> {
+  if (tokenUser.role === 'School' && tokenUser.school_id && tokenUser.cluster_id !== undefined) {
+    const school = await prisma.school.findUnique({ where: { id: tokenUser.school_id } });
+    if (school && school.cluster_id !== tokenUser.cluster_id) {
+      return 'Cluster assignment mismatch. Please re-authenticate or contact administrator.';
+    }
+  }
+  return null;
+}
 
 // ==========================================
 // NORMALIZATION HELPERS
@@ -28,7 +39,7 @@ function normalizeIndicators(indicators: any[]): any[] {
 // POST /api/aips/draft — save or update an AIP draft
 dataRoutes.post('/aips/draft', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const body = await c.req.json();
@@ -122,7 +133,7 @@ dataRoutes.post('/aips/draft', async (c) => {
 
     return c.json({ message: 'Draft saved successfully', aip });
   } catch (error) {
-    console.error('Failed to save AIP draft:', error);
+    logger.error('Failed to save AIP draft', error);
     return c.json({ error: 'Failed to save draft' }, 500);
   }
 });
@@ -130,7 +141,7 @@ dataRoutes.post('/aips/draft', async (c) => {
 // GET /api/aips/draft — check if the current user has an AIP draft
 dataRoutes.get('/aips/draft', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
@@ -182,7 +193,7 @@ dataRoutes.get('/aips/draft', async (c) => {
 
     return c.json({ hasDraft: true, draftData, lastSaved: aip.created_at });
   } catch (error) {
-    console.error('Failed to load AIP draft:', error);
+    logger.error('Failed to load AIP draft', error);
     return c.json({ error: 'Failed to load draft' }, 500);
   }
 });
@@ -190,7 +201,7 @@ dataRoutes.get('/aips/draft', async (c) => {
 // DELETE /api/aips/draft — delete an AIP draft for the current user
 dataRoutes.delete('/aips/draft', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title');
@@ -214,7 +225,7 @@ dataRoutes.delete('/aips/draft', async (c) => {
 
     return c.json({ message: 'Draft deleted' });
   } catch (error) {
-    console.error('Failed to delete AIP draft:', error);
+    logger.error('Failed to delete AIP draft', error);
     return c.json({ error: 'Failed to delete draft' }, 500);
   }
 });
@@ -222,7 +233,7 @@ dataRoutes.delete('/aips/draft', async (c) => {
 // POST /api/pirs/draft — save or update a PIR draft
 dataRoutes.post('/pirs/draft', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const body = await c.req.json();
@@ -344,7 +355,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
 
     return c.json({ message: 'PIR draft saved successfully', pir });
   } catch (error) {
-    console.error('Failed to save PIR draft:', error);
+    logger.error('Failed to save PIR draft', error);
     return c.json({ error: 'Failed to save PIR draft' }, 500);
   }
 });
@@ -352,7 +363,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
 // GET /api/pirs/draft — check if the current user has a PIR draft
 dataRoutes.get('/pirs/draft', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title');
@@ -446,7 +457,7 @@ dataRoutes.get('/pirs/draft', async (c) => {
       lastSaved: pir.created_at
     });
   } catch (error) {
-    console.error('Failed to load PIR draft:', error);
+    logger.error('Failed to load PIR draft', error);
     return c.json({ error: 'Failed to load PIR draft' }, 500);
   }
 });
@@ -454,7 +465,7 @@ dataRoutes.get('/pirs/draft', async (c) => {
 // DELETE /api/pirs/draft — delete a PIR draft
 dataRoutes.delete('/pirs/draft', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title');
@@ -491,7 +502,7 @@ dataRoutes.delete('/pirs/draft', async (c) => {
 
     return c.json({ message: 'Draft deleted' });
   } catch (error) {
-    console.error('Failed to delete PIR draft:', error);
+    logger.error('Failed to delete PIR draft', error);
     return c.json({ error: 'Failed to delete PIR draft' }, 500);
   }
 });
@@ -499,7 +510,7 @@ dataRoutes.delete('/pirs/draft', async (c) => {
 // GET all Schools (authenticated users only)
 dataRoutes.get('/schools', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const schools = await prisma.school.findMany({
@@ -507,7 +518,7 @@ dataRoutes.get('/schools', async (c) => {
     });
     return c.json(schools);
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch schools' }, 500);
   }
 });
@@ -518,7 +529,7 @@ dataRoutes.get('/schools', async (c) => {
 // - Unauthenticated (or no matching user in DB): all programs (fallback for dev/admin)
 dataRoutes.get('/programs', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
 
     if (!tokenUser) {
       // Fallback: return all programs (unauthenticated or dev use)
@@ -576,7 +587,7 @@ dataRoutes.get('/programs', async (c) => {
     const programs = await prisma.program.findMany({ orderBy: { title: 'asc' } });
     return c.json(programs);
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch programs' }, 500);
   }
 });
@@ -584,7 +595,7 @@ dataRoutes.get('/programs', async (c) => {
 // GET Programs that have at least one AIP for the current user/school
 dataRoutes.get('/programs/with-aips', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
@@ -607,7 +618,7 @@ dataRoutes.get('/programs/with-aips', async (c) => {
     const programs = aips.map((aip: any) => ({ ...aip.program, aip_status: aip.status })).sort((a: any, b: any) => a.title.localeCompare(b.title));
     return c.json(programs);
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch programs with AIPs' }, 500);
   }
 });
@@ -615,7 +626,7 @@ dataRoutes.get('/programs/with-aips', async (c) => {
 // GET Programs that have at least one PIR for the current user/school
 dataRoutes.get('/programs/with-pirs', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
@@ -647,14 +658,14 @@ dataRoutes.get('/programs/with-pirs', async (c) => {
 
     return c.json(programs);
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch programs with PIRs' }, 500);
   }
 });
 
 // GET AIP status for a school
 dataRoutes.get('/schools/:id/aip-status', async (c) => {
-  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
   const school_id = parseInt(c.req.param('id'));
@@ -669,14 +680,14 @@ dataRoutes.get('/schools/:id/aip-status', async (c) => {
     const aipCount = await prisma.aIP.count({ where: { school_id, year } });
     return c.json({ hasAIP: aipCount > 0, count: aipCount });
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch AIP status' }, 500);
   }
 });
 
 // GET /api/schools/:id/coordinators — distinct project coordinator names for autocomplete
 dataRoutes.get('/schools/:id/coordinators', async (c) => {
-  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
   const school_id = parseInt(c.req.param('id'));
@@ -705,14 +716,14 @@ dataRoutes.get('/schools/:id/coordinators', async (c) => {
 
     return c.json(coordinators);
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch coordinators' }, 500);
   }
 });
 
 // GET /api/schools/:id/persons-terms — distinct persons_involved values for fuzzy autocomplete
 dataRoutes.get('/schools/:id/persons-terms', async (c) => {
-  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
   const school_id = parseInt(c.req.param('id'));
@@ -742,14 +753,14 @@ dataRoutes.get('/schools/:id/persons-terms', async (c) => {
 
     return c.json(terms);
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch persons terms' }, 500);
   }
 });
 
 // GET AIP status for a Division Personnel user
 dataRoutes.get('/users/:id/aip-status', async (c) => {
-  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
   const user_id = parseInt(c.req.param('id'));
@@ -766,7 +777,7 @@ dataRoutes.get('/users/:id/aip-status', async (c) => {
     });
     return c.json({ hasAIP: aipCount > 0, count: aipCount });
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch AIP status' }, 500);
   }
 });
@@ -774,7 +785,7 @@ dataRoutes.get('/users/:id/aip-status', async (c) => {
 // GET AIP activities for PIR pre-population — scoped to the authenticated user
 dataRoutes.get('/aips/activities', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
@@ -841,7 +852,7 @@ dataRoutes.get('/aips/activities', async (c) => {
       }))
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch AIP activities' }, 500);
   }
 });
@@ -849,7 +860,7 @@ dataRoutes.get('/aips/activities', async (c) => {
 // GET full AIP record for read-only view (submitted form)
 dataRoutes.get('/aips', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
@@ -902,7 +913,7 @@ dataRoutes.get('/aips', async (c) => {
       })),
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch AIP' }, 500);
   }
 });
@@ -910,7 +921,7 @@ dataRoutes.get('/aips', async (c) => {
 // DELETE /api/aips — delete a submitted AIP (only allowed for Submitted or Returned status)
 dataRoutes.delete('/aips', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title');
@@ -936,14 +947,15 @@ dataRoutes.delete('/aips', async (c) => {
 
     const deletableStatuses = ['Draft', 'Returned'];
     if (!deletableStatuses.includes(aip.status)) {
-      return c.json({ error: `Cannot delete an AIP with status '${aip.status}'. Only Draft or Returned AIPs can be deleted.` }, 403);
+      logger.warn('AIP deletion blocked by status', { aipId: aip.id, status: aip.status, userId: tokenUser.id });
+      return c.json({ error: 'This AIP cannot be deleted in its current state.' }, 403);
     }
 
     await prisma.aIP.delete({ where: { id: aip.id } });
 
     return c.json({ message: 'AIP deleted successfully' });
   } catch (error) {
-    console.error('Failed to delete AIP:', error);
+    logger.error('Failed to delete AIP', error);
     return c.json({ error: 'Failed to delete AIP' }, 500);
   }
 });
@@ -951,7 +963,7 @@ dataRoutes.delete('/aips', async (c) => {
 // GET full PIR record for read-only view (submitted form)
 dataRoutes.get('/pirs', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
@@ -991,8 +1003,11 @@ dataRoutes.get('/pirs', async (c) => {
     if (!pir) return c.json({ error: 'No submitted PIR found for this quarter' }, 404);
 
     // Verify ownership — the PIR must belong to the requesting user
+    if (tokenUser.role === 'School' && aip.school_id !== tokenUser.school_id) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
     if (pir.created_by_user_id !== null && pir.created_by_user_id !== tokenUser.id &&
-        tokenUser.role !== 'Division Personnel') {
+        tokenUser.role !== 'Division Personnel' && tokenUser.role !== 'School') {
       return c.json({ error: 'Forbidden' }, 403);
     }
 
@@ -1004,6 +1019,17 @@ dataRoutes.get('/pirs', async (c) => {
         recommendations: (f as any).recommendations ?? '',
       };
     }
+
+    // Log the read access per M-6 audit requirement
+    await prisma.auditLog.create({
+      data: {
+        admin_id: tokenUser.id,
+        action: 'user_read_pir',
+        entity_type: 'PIR',
+        entity_id: pir.id,
+        details: { quarter: pir.quarter },
+      }
+    });
 
     return c.json({
       id: pir.id,
@@ -1038,7 +1064,7 @@ dataRoutes.get('/pirs', async (c) => {
       factors: factorsMap,
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to fetch PIR' }, 500);
   }
 });
@@ -1047,10 +1073,12 @@ dataRoutes.get('/pirs', async (c) => {
 dataRoutes.post('/aips', async (c) => {
   try {
     // Get the requesting user from JWT
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) {
       return c.json({ error: 'Authentication required' }, 401);
     }
+    const clusterErr = await verifySchoolCluster(tokenUser);
+    if (clusterErr) return c.json({ error: clusterErr }, 403);
 
     const body = await c.req.json();
     const { program_title, year, outcome, sip_title, project_coordinator,
@@ -1138,8 +1166,9 @@ dataRoutes.post('/aips', async (c) => {
       if ((existingDraft as any).archived) {
         return c.json({ error: 'This AIP has been archived and cannot be modified' }, 409);
       }
+      logger.warn('AIP creation blocked — record already exists', { status: (existingDraft as any).status, userId: tokenUser.id });
       return c.json(
-        { error: `An AIP for this program and year already exists (status: ${existingDraft.status}).` },
+        { error: 'An AIP for this program and year already exists.' },
         409
       );
     } else {
@@ -1157,9 +1186,13 @@ dataRoutes.post('/aips', async (c) => {
     }
 
     // Notify all admins that a new AIP was submitted
-    const schoolLabel = aip.school_id
-      ? (await prisma.school.findUnique({ where: { id: aip.school_id }, select: { name: true } }))?.name ?? 'A school'
-      : (tokenUser.name ?? tokenUser.email ?? 'Division Personnel');
+    let schoolLabel: string;
+    if (aip.school_id) {
+      schoolLabel = (await prisma.school.findUnique({ where: { id: aip.school_id }, select: { name: true } }))?.name ?? 'A school';
+    } else {
+      const submitter = await prisma.user.findUnique({ where: { id: tokenUser.id }, select: { name: true, email: true } });
+      schoolLabel = submitter?.name ?? submitter?.email ?? 'Division Personnel';
+    }
     const admins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
     if (admins.length > 0) {
       await prisma.notification.createMany({
@@ -1184,7 +1217,7 @@ dataRoutes.post('/aips', async (c) => {
 
     return c.json({ message: 'AIP created successfully', aip });
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to create AIP' }, 500);
   }
 });
@@ -1192,7 +1225,7 @@ dataRoutes.post('/aips', async (c) => {
 // POST request to edit an approved AIP (notifies admins)
 dataRoutes.post('/aips/:id/request-edit', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) {
       return c.json({ error: 'Authentication required' }, 401);
     }
@@ -1219,9 +1252,13 @@ dataRoutes.post('/aips/:id/request-edit', async (c) => {
       return c.json({ error: 'Edit requests can only be made for Approved AIPs' }, 409);
     }
 
-    const requesterLabel = aip.school
-      ? aip.school.name
-      : (tokenUser.name ?? tokenUser.email ?? 'Division Personnel');
+    let requesterLabel: string;
+    if (aip.school) {
+      requesterLabel = aip.school.name;
+    } else {
+      const requester = await prisma.user.findUnique({ where: { id: tokenUser.id }, select: { name: true, email: true } });
+      requesterLabel = requester?.name ?? requester?.email ?? 'Division Personnel';
+    }
 
     const admins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
     if (admins.length > 0) {
@@ -1237,7 +1274,7 @@ dataRoutes.post('/aips/:id/request-edit', async (c) => {
 
     return c.json({ message: 'Edit request sent to admin' });
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to send edit request' }, 500);
   }
 });
@@ -1260,10 +1297,12 @@ dataRoutes.post('/pirs', async (c) => {
     } = body;
 
     // Get the requesting user from JWT
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) {
       return c.json({ error: 'Authentication required' }, 401);
     }
+    const clusterErr = await verifySchoolCluster(tokenUser);
+    if (clusterErr) return c.json({ error: clusterErr }, 403);
 
     // Look up program
     const program = await prisma.program.findFirst({
@@ -1276,6 +1315,29 @@ dataRoutes.post('/pirs', async (c) => {
     // Extract year from "Xth Quarter CY 2026"
     const yearMatch = quarter.match(/CY (\d{4})/);
     const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+
+    // Extract quarter number and enforce submission window
+    const qNumMatch = quarter.match(/(\d+)(?:st|nd|rd|th) Quarter/);
+    const quarterNum = qNumMatch ? parseInt(qNumMatch[1]) : null;
+    if (quarterNum) {
+      const deadlineRecord = await prisma.deadline.findUnique({
+        where: { year_quarter: { year, quarter: quarterNum } }
+      });
+      const deadline = buildDeadline(year, quarterNum, deadlineRecord?.date ?? undefined);
+      const graceDays = deadlineRecord?.grace_period_days ?? 0;
+      const graceEnd = new Date(deadline.getTime() + graceDays * 86400000);
+      graceEnd.setHours(23, 59, 59, 999);
+      const quarterStarts: Record<number, Date> = {
+        1: new Date(year, 0, 1), 2: new Date(year, 3, 1),
+        3: new Date(year, 6, 1), 4: new Date(year, 9, 1),
+      };
+      const openDate = deadlineRecord?.open_date
+        ? new Date(deadlineRecord.open_date)
+        : quarterStarts[quarterNum];
+      const now = new Date();
+      if (now < openDate) return c.json({ error: 'Submission window has not opened yet for this quarter.' }, 403);
+      if (now > graceEnd) return c.json({ error: 'The submission window for this quarter is closed.' }, 403);
+    }
 
     let aip: any;
 
@@ -1383,7 +1445,13 @@ dataRoutes.post('/pirs', async (c) => {
     }
 
     // Notify the appropriate reviewer(s) and all admins
-    const submitterLabel = aip.school?.name ?? tokenUser.name ?? tokenUser.email ?? 'A user';
+    let submitterLabel: string;
+    if (aip.school?.name) {
+      submitterLabel = aip.school.name;
+    } else {
+      const submitter = await prisma.user.findUnique({ where: { id: tokenUser.id }, select: { name: true, email: true } });
+      submitterLabel = submitter?.name ?? submitter?.email ?? 'A user';
+    }
     const pirAdmins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
     let reviewerIds: number[] = [];
 
@@ -1419,7 +1487,7 @@ dataRoutes.post('/pirs', async (c) => {
 
     return c.json({ message: 'PIR created successfully', pir });
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to create PIR' }, 500);
   }
 });
@@ -1427,8 +1495,11 @@ dataRoutes.post('/pirs', async (c) => {
 // PUT /api/pirs/:id — update a submitted PIR (only allowed if status === "Submitted")
 dataRoutes.put('/pirs/:id', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const clusterErr = await verifySchoolCluster(tokenUser);
+    if (clusterErr) return c.json({ error: clusterErr }, 403);
 
     const pirId = parseInt(c.req.param('id'));
     if (isNaN(pirId)) return c.json({ error: 'Invalid PIR id' }, 400);
@@ -1494,7 +1565,7 @@ dataRoutes.put('/pirs/:id', async (c) => {
 
     return c.json({ message: 'PIR updated successfully', pir: updated });
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to update PIR' }, 500);
   }
 });
@@ -1502,7 +1573,7 @@ dataRoutes.put('/pirs/:id', async (c) => {
 // DELETE /api/pirs/:id — delete a submitted PIR (only allowed if status === "Submitted")
 dataRoutes.delete('/pirs/:id', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const pirId = parseInt(c.req.param('id'));
@@ -1524,7 +1595,7 @@ dataRoutes.delete('/pirs/:id', async (c) => {
 
     return c.json({ message: 'PIR deleted successfully' });
   } catch (error) {
-    console.error(error);
+    logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to delete PIR' }, 500);
   }
 });
@@ -1567,7 +1638,7 @@ function buildDeadline(year: number, quarter: number, customDate?: Date): Date {
 // each AIP includes its non-draft PIRs.
 dataRoutes.get('/history', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const aipWhere = tokenUser.role === 'School' && tokenUser.school_id
@@ -1617,7 +1688,7 @@ dataRoutes.get('/history', async (c) => {
 
     return c.json(result);
   } catch (err) {
-    console.error('Failed to fetch history:', err);
+    logger.error('Failed to fetch history', err);
     return c.json({ error: 'Failed to fetch history' }, 500);
   }
 });
@@ -1629,7 +1700,7 @@ dataRoutes.get('/history', async (c) => {
 // GET /api/dashboard — aggregated stats for the authenticated user
 dataRoutes.get('/dashboard', async (c) => {
   try {
-    const tokenUser = getUserFromToken(c.req.header('Authorization'));
+    const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
@@ -1726,9 +1797,21 @@ dataRoutes.get('/dashboard', async (c) => {
     , 0);
 
     // ── Quarters (timeline-aware) ─────────────────────────
+    const quarterStarts: Record<number, Date> = {
+      1: new Date(year, 0, 1), 2: new Date(year, 3, 1),
+      3: new Date(year, 6, 1), 4: new Date(year, 9, 1),
+    };
     const quarters = await Promise.all([1, 2, 3, 4].map(async (q) => {
+      const customRec = customDeadlines.find(d => d.quarter === q);
       const deadline = getDeadline(q);
       const label = getQuarterLabel(q, year);
+
+      const openDate: Date = customRec?.open_date
+        ? new Date(customRec.open_date)
+        : quarterStarts[q];
+      const graceDays: number = customRec?.grace_period_days ?? 0;
+      const graceEnd = new Date(deadline.getTime() + graceDays * 86400000);
+      graceEnd.setHours(23, 59, 59, 999);
 
       // Check if any AIPs have activities in this quarter
       const hasActivities = userAIPsWithActivities.some(
@@ -1747,12 +1830,14 @@ dataRoutes.get('/dashboard', async (c) => {
       let status: string;
       if (!hasActivities && allAipIds.length > 0) {
         status = 'No Activities';
-      } else if (q > currentQuarter) {
+      } else if (today < openDate) {
         status = 'Locked';
-      } else if (q === currentQuarter && today <= deadline) {
+      } else if (today <= deadline) {
         status = 'In Progress';
+      } else if (graceDays > 0 && today <= graceEnd) {
+        status = 'In Grace';
       } else {
-        // Past quarter or deadline has passed
+        // Window fully closed
         status = qSubmitted >= qTotal && qTotal > 0 ? 'Submitted' : (qTotal > 0 ? 'Missed' : 'No Activities');
       }
 
@@ -1760,6 +1845,8 @@ dataRoutes.get('/dashboard', async (c) => {
         name: `Q${q}`,
         status,
         deadline: deadline.toISOString(),
+        open_date: openDate.toISOString(),
+        grace_end: graceEnd.toISOString(),
         submitted: qSubmitted,
         total: qTotal
       };
@@ -1777,7 +1864,7 @@ dataRoutes.get('/dashboard', async (c) => {
       quarters
     });
   } catch (error) {
-    console.error('Dashboard error:', error);
+    logger.error('Dashboard error', error);
     return c.json({ error: 'Failed to fetch dashboard data' }, 500);
   }
 });
@@ -1793,7 +1880,7 @@ dataRoutes.get('/dashboard', async (c) => {
 // ==========================================
 
 dataRoutes.get("/notifications", async (c) => {
-  const tokenUser = getUserFromToken(c.req.header("Authorization"));
+  const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
 
   const notifications = await prisma.notification.findMany({
@@ -1806,7 +1893,7 @@ dataRoutes.get("/notifications", async (c) => {
 });
 
 dataRoutes.patch("/notifications/:id/read", async (c) => {
-  const tokenUser = getUserFromToken(c.req.header("Authorization"));
+  const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
 
   const id = parseInt(c.req.param("id"));
@@ -1818,7 +1905,7 @@ dataRoutes.patch("/notifications/:id/read", async (c) => {
 });
 
 dataRoutes.patch("/notifications/read-all", async (c) => {
-  const tokenUser = getUserFromToken(c.req.header("Authorization"));
+  const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
 
   await prisma.notification.updateMany({
@@ -1827,6 +1914,49 @@ dataRoutes.patch("/notifications/read-all", async (c) => {
   });
 
   return c.json({ success: true });
+});
+
+// ==========================================
+// DATA PORTABILITY (RA 10173 §24 / GDPR Art. 20)
+// Returns all personal data held about the currently authenticated user.
+// ==========================================
+
+dataRoutes.get("/me/export", async (c) => {
+  const tokenUser = getUserFromToken(c);
+  if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
+
+  const user = await prisma.user.findUnique({
+    where: { id: tokenUser.id },
+    select: {
+      id: true,
+      email: true,
+      role: true,
+      name: true,
+      first_name: true,
+      middle_initial: true,
+      last_name: true,
+      is_active: true,
+      created_at: true,
+      deleted_at: true,
+      school: { select: { id: true, name: true } },
+      cluster: { select: { id: true, name: true } },
+      aips: {
+        select: { id: true, year: true, status: true, created_at: true,
+                  program: { select: { title: true } } },
+      },
+      pirs: {
+        select: { id: true, quarter: true, status: true, created_at: true },
+      },
+    },
+  });
+
+  if (!user) return c.json({ error: "User not found" }, 404);
+
+  return c.json({
+    exported_at: new Date().toISOString(),
+    notice: "This export contains all personal data held about you under RA 10173 (Data Privacy Act of 2012).",
+    data: user,
+  });
 });
 
 export default dataRoutes;

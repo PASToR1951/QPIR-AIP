@@ -3,23 +3,26 @@ import { prisma } from "../db/client.ts";
 import bcrypt from "bcrypt";
 import { getCESRoleForDivisionPIR, CES_ROLES } from "../lib/routing.ts";
 import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
+import { logger } from "../lib/logger.ts";
 
 const adminRoutes = new Hono();
 
-function requireAdmin(authHeader: string | undefined): TokenPayload | null {
-  const user = getUserFromToken(authHeader);
+import type { Context } from "hono";
+
+function requireAdmin(c: Context | string | undefined): TokenPayload | null {
+  const user = getUserFromToken(c);
   if (!user || user.role !== "Admin") return null;
   return user;
 }
 
-function requireCES(authHeader: string | undefined): TokenPayload | null {
-  const user = getUserFromToken(authHeader);
+function requireCES(c: Context | string | undefined): TokenPayload | null {
+  const user = getUserFromToken(c);
   if (!user || !(CES_ROLES as readonly string[]).includes(user.role)) return null;
   return user;
 }
 
-function requireClusterHead(authHeader: string | undefined): TokenPayload | null {
-  const user = getUserFromToken(authHeader);
+function requireClusterHead(c: Context | string | undefined): TokenPayload | null {
+  const user = getUserFromToken(c);
   if (!user || user.role !== "Cluster Coordinator") return null;
   return user;
 }
@@ -29,10 +32,12 @@ async function writeAuditLog(
   action: string,
   entityType: string,
   entityId: number,
+  // deno-lint-ignore no-explicit-any
   details: Record<string, unknown>
 ) {
   await prisma.auditLog.create({
-    data: { admin_id: adminId, action, entity_type: entityType, entity_id: entityId, details },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: { admin_id: adminId, action, entity_type: entityType, entity_id: entityId, details: details as any },
   });
 }
 
@@ -64,7 +69,7 @@ function toCSV(rows: Record<string, unknown>[]): string {
 // Wrap every admin handler with auth check
 // GET /admin/pirs — list submitted PIRs (Admin + CES + Cluster Coordinator)
 adminRoutes.get('/pirs', async (c) => {
-  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
   const readableRoles = ['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'];
   if (!readableRoles.includes(tokenUser.role)) {
@@ -100,7 +105,7 @@ adminRoutes.get('/pirs', async (c) => {
 
 // GET /admin/pirs/:id — single PIR with full data (Admin + Reviewer + CES + Cluster Coordinator)
 adminRoutes.get('/pirs/:id', async (c) => {
-  const tokenUser = getUserFromToken(c.req.header('Authorization'));
+  const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
   const readableRoles = ['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'];
   if (!readableRoles.includes(tokenUser.role)) {
@@ -167,7 +172,7 @@ adminRoutes.get('/pirs/:id', async (c) => {
 // ==========================================
 
 adminRoutes.get('/ces/pirs', async (c) => {
-  const tokenUser = requireCES(c.req.header('Authorization'));
+  const tokenUser = requireCES(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
   const quarter = c.req.query('quarter');
@@ -214,7 +219,7 @@ adminRoutes.get('/ces/pirs', async (c) => {
 });
 
 adminRoutes.post('/ces/pirs/:id/start-review', async (c) => {
-  const tokenUser = requireCES(c.req.header('Authorization'));
+  const tokenUser = requireCES(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
   const pirId = parseInt(c.req.param('id'));
@@ -223,25 +228,28 @@ adminRoutes.post('/ces/pirs/:id/start-review', async (c) => {
   if (!['For CES Review', 'Under Review'].includes((pir as any).status)) {
     return c.json({ error: 'PIR is not in a reviewable state' }, 409);
   }
-  // Already under review by someone else — still allow (idempotent)
-  await prisma.pIR.update({
-    where: { id: pirId },
+  const updated = await prisma.pIR.updateMany({
+    where: { id: pirId, active_reviewer_id: null },
     data: {
       status: 'Under Review',
       active_reviewer_id: tokenUser.id,
       active_review_started_at: new Date(),
     },
   });
+  if (updated.count === 0) return c.json({ error: 'PIR is already under review' }, 409);
   await writeAuditLog(tokenUser.id, 'started_pir_review', 'PIR', pirId, {});
   return c.json({ success: true });
 });
 
 adminRoutes.post('/ces/pirs/:id/note', async (c) => {
-  const tokenUser = requireCES(c.req.header('Authorization'));
+  const tokenUser = requireCES(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
   const pirId = parseInt(c.req.param('id'));
   const { ces_remarks } = await c.req.json();
+  if (ces_remarks && ces_remarks.length > 5000) {
+    return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
+  }
 
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
@@ -283,11 +291,14 @@ adminRoutes.post('/ces/pirs/:id/note', async (c) => {
 });
 
 adminRoutes.post('/ces/pirs/:id/return', async (c) => {
-  const tokenUser = requireCES(c.req.header('Authorization'));
+  const tokenUser = requireCES(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
   const pirId = parseInt(c.req.param('id'));
   const { ces_remarks } = await c.req.json();
+  if (ces_remarks && ces_remarks.length > 5000) {
+    return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
+  }
 
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
@@ -331,7 +342,7 @@ adminRoutes.post('/ces/pirs/:id/return', async (c) => {
 // ==========================================
 
 adminRoutes.get('/cluster-head/pirs', async (c) => {
-  const tokenUser = requireClusterHead(c.req.header('Authorization'));
+  const tokenUser = requireClusterHead(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
   const quarter = c.req.query('quarter');
@@ -365,7 +376,7 @@ adminRoutes.get('/cluster-head/pirs', async (c) => {
 });
 
 adminRoutes.post('/cluster-head/pirs/:id/start-review', async (c) => {
-  const tokenUser = requireClusterHead(c.req.header('Authorization'));
+  const tokenUser = requireClusterHead(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
   const pirId = parseInt(c.req.param('id'));
@@ -380,24 +391,28 @@ adminRoutes.post('/cluster-head/pirs/:id/start-review', async (c) => {
   if ((pir as any).aip.school?.cluster_id !== tokenUser.cluster_id) {
     return c.json({ error: 'Forbidden' }, 403);
   }
-  await prisma.pIR.update({
-    where: { id: pirId },
+  const updated = await prisma.pIR.updateMany({
+    where: { id: pirId, active_reviewer_id: null },
     data: {
       status: 'Under Review',
       active_reviewer_id: tokenUser.id,
       active_review_started_at: new Date(),
     },
   });
+  if (updated.count === 0) return c.json({ error: 'PIR is already under review' }, 409);
   await writeAuditLog(tokenUser.id, 'started_pir_review', 'PIR', pirId, {});
   return c.json({ success: true });
 });
 
 adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
-  const tokenUser = requireClusterHead(c.req.header('Authorization'));
+  const tokenUser = requireClusterHead(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
   const pirId = parseInt(c.req.param('id'));
   const { remarks } = await c.req.json();
+  if (remarks && remarks.length > 5000) {
+    return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
+  }
 
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
@@ -441,11 +456,14 @@ adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
 });
 
 adminRoutes.post('/cluster-head/pirs/:id/return', async (c) => {
-  const tokenUser = requireClusterHead(c.req.header('Authorization'));
+  const tokenUser = requireClusterHead(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
   const pirId = parseInt(c.req.param('id'));
   const { remarks } = await c.req.json();
+  if (remarks && remarks.length > 5000) {
+    return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
+  }
 
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
@@ -486,7 +504,7 @@ adminRoutes.post('/cluster-head/pirs/:id/return', async (c) => {
 });
 
 adminRoutes.use("*", async (c, next) => {
-  if (!requireAdmin(c.req.header("Authorization"))) {
+  if (!requireAdmin(c)) {
     return c.json({ error: "Forbidden" }, 403);
   }
   await next();
@@ -876,12 +894,15 @@ adminRoutes.get("/submissions", async (c) => {
     totalPages: Math.ceil(total / limit),
   });
   } catch (e: unknown) {
-    console.error("GET /submissions error:", e);
+    logger.error("GET /submissions error", e);
     return c.json({ error: e instanceof Error ? e.message : "Internal server error" }, 500);
   }
 });
 
 adminRoutes.get("/submissions/export", async (c) => {
+  const exporter = getUserFromToken(c);
+  if (!exporter) return c.json({ error: "Unauthorized" }, 401);
+
   const format = c.req.query("format") || "csv";
   const type = c.req.query("type");
   const year = c.req.query("year") ? parseInt(c.req.query("year")!) : undefined;
@@ -928,6 +949,10 @@ adminRoutes.get("/submissions/export", async (c) => {
     })),
   ];
 
+  await writeAuditLog(exporter.id, "exported_submissions", "Export", 0, {
+    format, type: type ?? "all", year: year ?? "all", status: status ?? "all", row_count: rows.length,
+  });
+
   if (format === "csv") {
     return new Response(toCSV(rows), {
       headers: {
@@ -955,6 +980,12 @@ adminRoutes.get("/submissions/:id", async (c) => {
       },
     });
     if (!pir) return c.json({ error: "Not found" }, 404);
+
+    const admin = requireAdmin(c);
+    if (admin) {
+      await writeAuditLog(admin.id, 'read_pir', 'PIR', pir.id, { quarter: pir.quarter });
+    }
+
     return c.json(pir);
   }
 
@@ -967,7 +998,7 @@ adminRoutes.get("/submissions/:id", async (c) => {
 });
 
 adminRoutes.patch("/submissions/:id/status", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   const { type, status, feedback } = await c.req.json();
@@ -1038,13 +1069,16 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
 // ==========================================
 
 adminRoutes.patch("/pirs/:id/remarks", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   const { remarks } = await c.req.json();
 
   if (typeof remarks !== "string") {
     return c.json({ error: "remarks must be a string" }, 400);
+  }
+  if (remarks.length > 5000) {
+    return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
   }
 
   const pir = await prisma.pIR.update({
@@ -1071,7 +1105,7 @@ adminRoutes.patch("/pirs/:id/remarks", async (c) => {
 });
 
 adminRoutes.patch("/pirs/:id/presented", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
 
@@ -1089,13 +1123,16 @@ adminRoutes.patch("/pirs/:id/presented", async (c) => {
 });
 
 adminRoutes.patch("/pirs/:id/activity-notes", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const pirId = parseInt(c.req.param("id"));
   const { activity_review_id, notes } = await c.req.json();
 
   if (!activity_review_id || typeof notes !== "string") {
     return c.json({ error: "activity_review_id and notes are required" }, 400);
+  }
+  if (notes.length > 5000) {
+    return c.json({ error: 'Notes cannot exceed 5000 characters' }, 400);
   }
 
   await prisma.pIRActivityReview.update({
@@ -1116,7 +1153,7 @@ adminRoutes.patch("/pirs/:id/activity-notes", async (c) => {
 // ==========================================
 
 adminRoutes.get("/users", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const search = c.req.query("search");
   const role = c.req.query("role");
   const status = c.req.query("status");
@@ -1191,7 +1228,7 @@ adminRoutes.get("/users", async (c) => {
 });
 
 adminRoutes.post("/users", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { name, first_name, middle_initial, last_name, email, password, role, school_id, cluster_id, program_ids } = await c.req.json();
 
@@ -1205,6 +1242,17 @@ adminRoutes.post("/users", async (c) => {
   if (!email || !password || !role) {
     return c.json({ error: "email, password, role are required" }, 400);
   }
+
+  function validatePassword(p: string): string | null {
+    if (p.length < 8)          return 'Minimum 8 characters required';
+    if (!/[A-Z]/.test(p))      return 'Must contain an uppercase letter';
+    if (!/[a-z]/.test(p))      return 'Must contain a lowercase letter';
+    if (!/[0-9]/.test(p))      return 'Must contain a number';
+    if (!/[!@#$%^&*]/.test(p)) return 'Must contain a special character';
+    return null;
+  }
+  const pwError = validatePassword(password);
+  if (pwError) return c.json({ error: pwError }, 400);
 
   const cesRoles = ["CES-SGOD", "CES-ASDS", "CES-CID"];
   if (cesRoles.includes(role)) {
@@ -1242,8 +1290,9 @@ adminRoutes.post("/users", async (c) => {
           }),
         },
       });
+      // Audit log stores only non-PII identifiers — names and email are omitted (RA 10173 §19).
       await tx.auditLog.create({
-        data: { admin_id: admin.id, action: "created_user", entity_type: "User", entity_id: u.id, details: { name, first_name, last_name, email, role } },
+        data: { admin_id: admin.id, action: "created_user", entity_type: "User", entity_id: u.id, details: { role, school_id: school_id ?? null, cluster_id: cluster_id ?? null } },
       });
       return u;
     });
@@ -1251,13 +1300,13 @@ adminRoutes.post("/users", async (c) => {
   } catch (e: unknown) {
     const code = (e as { code?: string })?.code;
     if (code === "P2002") return c.json({ error: "Email already exists" }, 409);
-    console.error("Unexpected error creating user:", e);
+    logger.error("Unexpected error creating user", e);
     return c.json({ error: "Internal server error" }, 500);
   }
 });
 
 adminRoutes.patch("/users/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   const body = await c.req.json();
@@ -1305,13 +1354,13 @@ adminRoutes.patch("/users/:id", async (c) => {
     await writeAuditLog(admin.id, "updated_user", "User", id, body);
     return c.json({ id: user.id, email: user.email, role: user.role, is_active: user.is_active });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return c.json({ error: msg }, 500);
+    logger.error("Error updating user", err);
+    return c.json({ error: "Failed to update user." }, 500);
   }
 });
 
 adminRoutes.delete("/users/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
 
@@ -1321,12 +1370,13 @@ adminRoutes.delete("/users/:id", async (c) => {
   if (!user) return c.json({ error: "Not found" }, 404);
 
   await prisma.user.delete({ where: { id } });
-  await writeAuditLog(admin.id, "deleted_user", "User", id, { email: user.email, role: user.role });
+  // Audit log stores only non-PII identifiers — email is omitted (RA 10173 §19).
+  await writeAuditLog(admin.id, "deleted_user", "User", id, { role: user.role });
   return c.json({ success: true });
 });
 
 adminRoutes.post("/users/:id/reset-password", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
 
@@ -1339,7 +1389,9 @@ adminRoutes.post("/users/:id/reset-password", async (c) => {
   await prisma.user.update({ where: { id }, data: { password: hashed } });
   await writeAuditLog(admin.id, "reset_password", "User", id, {});
 
-  return c.json({ temporaryPassword: tempPassword });
+  // Return the temporary password ONLY in the API response body (over HTTPS to the admin).
+  // Never log credentials to stdout — they would be captured by container logs.
+  return c.json({ success: true, temporaryPassword: tempPassword, message: "Password reset successful. Share this temporary password securely with the user." });
 });
 
 // ==========================================
@@ -1347,7 +1399,7 @@ adminRoutes.post("/users/:id/reset-password", async (c) => {
 // ==========================================
 
 adminRoutes.get("/clusters", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const clusters = await prisma.cluster.findMany({
     include: {
       schools: {
@@ -1364,7 +1416,7 @@ adminRoutes.get("/clusters", async (c) => {
 });
 
 adminRoutes.post("/clusters", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { cluster_number, name } = await c.req.json();
   if (!cluster_number) return c.json({ error: "Cluster number is required" }, 400);
@@ -1379,7 +1431,7 @@ adminRoutes.post("/clusters", async (c) => {
 });
 
 adminRoutes.patch("/clusters/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   const { cluster_number, name } = await c.req.json();
@@ -1395,7 +1447,7 @@ adminRoutes.patch("/clusters/:id", async (c) => {
 });
 
 adminRoutes.delete("/clusters/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   const schoolCount = await prisma.school.count({ where: { cluster_id: id } });
@@ -1408,7 +1460,7 @@ adminRoutes.delete("/clusters/:id", async (c) => {
 });
 
 adminRoutes.get("/schools", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const clusterId = c.req.query("cluster") ? parseInt(c.req.query("cluster")!) : undefined;
   const schools = await prisma.school.findMany({
     where: clusterId ? { cluster_id: clusterId } : undefined,
@@ -1424,7 +1476,7 @@ adminRoutes.get("/schools", async (c) => {
 });
 
 adminRoutes.post("/schools", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { name, abbreviation, level, cluster_id } = await c.req.json();
   const school = await prisma.school.create({ data: { name, abbreviation: abbreviation || null, level, cluster_id } });
@@ -1433,7 +1485,7 @@ adminRoutes.post("/schools", async (c) => {
 });
 
 adminRoutes.patch("/schools/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   const body = await c.req.json();
@@ -1452,7 +1504,7 @@ adminRoutes.patch("/schools/:id", async (c) => {
 });
 
 adminRoutes.delete("/schools/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   await prisma.school.delete({ where: { id } });
@@ -1461,7 +1513,7 @@ adminRoutes.delete("/schools/:id", async (c) => {
 });
 
 adminRoutes.patch("/schools/:id/restrictions", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   const { restricted_program_ids } = await c.req.json();
@@ -1482,7 +1534,7 @@ adminRoutes.patch("/schools/:id/restrictions", async (c) => {
 // ==========================================
 
 adminRoutes.get("/programs", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const programs = await prisma.program.findMany({
     include: {
       personnel: { select: { id: true, name: true, email: true, first_name: true, last_name: true, middle_initial: true } },
@@ -1495,7 +1547,7 @@ adminRoutes.get("/programs", async (c) => {
 });
 
 adminRoutes.post("/programs", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { title, abbreviation, division, school_level_requirement } = await c.req.json();
   try {
@@ -1509,7 +1561,7 @@ adminRoutes.post("/programs", async (c) => {
 });
 
 adminRoutes.patch("/programs/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   const { title, abbreviation, division, school_level_requirement } = await c.req.json();
@@ -1527,7 +1579,7 @@ adminRoutes.patch("/programs/:id", async (c) => {
 });
 
 adminRoutes.delete("/programs/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   await prisma.program.delete({ where: { id } });
@@ -1536,7 +1588,7 @@ adminRoutes.delete("/programs/:id", async (c) => {
 });
 
 adminRoutes.patch("/programs/:id/personnel", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   const { user_ids } = await c.req.json();
@@ -1553,7 +1605,7 @@ adminRoutes.patch("/programs/:id/personnel", async (c) => {
 // ==========================================
 
 adminRoutes.get("/division-programs", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const programs = await prisma.divisionProgram.findMany({
     orderBy: [{ division: "asc" }, { title: "asc" }],
   });
@@ -1561,7 +1613,7 @@ adminRoutes.get("/division-programs", async (c) => {
 });
 
 adminRoutes.post("/division-programs", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { title, abbreviation, division } = await c.req.json();
   try {
@@ -1577,7 +1629,7 @@ adminRoutes.post("/division-programs", async (c) => {
 });
 
 adminRoutes.patch("/division-programs/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   const { title, abbreviation, division } = await c.req.json();
@@ -1595,7 +1647,7 @@ adminRoutes.patch("/division-programs/:id", async (c) => {
 });
 
 adminRoutes.delete("/division-programs/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   await prisma.divisionProgram.delete({ where: { id } });
@@ -1608,7 +1660,7 @@ adminRoutes.delete("/division-programs/:id", async (c) => {
 // ==========================================
 
 adminRoutes.get("/deadlines", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   const deadlines = await prisma.deadline.findMany({ where: { year } });
   const defaults: Record<number, string> = {
@@ -1620,6 +1672,8 @@ adminRoutes.get("/deadlines", async (c) => {
       quarter: q,
       year,
       date: custom ? custom.date : new Date(defaults[q]),
+      open_date: custom?.open_date ?? null,
+      grace_period_days: custom?.grace_period_days ?? 0,
       isCustom: !!custom,
       id: custom?.id ?? null,
     };
@@ -1628,14 +1682,23 @@ adminRoutes.get("/deadlines", async (c) => {
 });
 
 adminRoutes.post("/deadlines", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { year, quarter, date } = await c.req.json();
+  const { year, quarter, date, open_date, grace_period_days } = await c.req.json();
   const existing = await prisma.deadline.findUnique({ where: { year_quarter: { year, quarter } } });
   const deadline = await prisma.deadline.upsert({
     where: { year_quarter: { year, quarter } },
-    update: { date: new Date(date) },
-    create: { year, quarter, date: new Date(date) },
+    update: {
+      date: new Date(date),
+      open_date: open_date ? new Date(open_date) : null,
+      grace_period_days: grace_period_days ?? 0,
+    },
+    create: {
+      year, quarter,
+      date: new Date(date),
+      open_date: open_date ? new Date(open_date) : null,
+      grace_period_days: grace_period_days ?? 0,
+    },
   });
   await writeAuditLog(admin.id, "changed_deadline", "Deadline", deadline.id, {
     year, quarter, newDate: date, previousDate: existing?.date ?? null,
@@ -1644,7 +1707,7 @@ adminRoutes.post("/deadlines", async (c) => {
 });
 
 adminRoutes.delete("/deadlines/:id", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = parseInt(c.req.param("id"));
   await prisma.deadline.delete({ where: { id } });
@@ -1653,7 +1716,7 @@ adminRoutes.delete("/deadlines/:id", async (c) => {
 });
 
 adminRoutes.get("/deadlines/history", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const logs = await prisma.auditLog.findMany({
     where: { entity_type: "Deadline" },
     include: { admin: { select: { name: true, email: true } } },
@@ -1667,8 +1730,26 @@ adminRoutes.get("/deadlines/history", async (c) => {
 // REPORTS
 // ==========================================
 
+const reportRequests = new Map<number, number[]>();
+const MAX_REPORT_REQUESTS = 20;
+const REPORT_WINDOW_MS = 60 * 1000;
+
+adminRoutes.use("/reports/*", async (c, next) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+  const now = Date.now();
+  let timestamps = reportRequests.get(admin.id) || [];
+  timestamps = timestamps.filter(t => now - t < REPORT_WINDOW_MS);
+  if (timestamps.length >= MAX_REPORT_REQUESTS) {
+    return c.json({ error: "Rate limit exceeded for reports. Please wait." }, 429);
+  }
+  timestamps.push(now);
+  reportRequests.set(admin.id, timestamps);
+  await next();
+});
+
 adminRoutes.get("/reports/compliance", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
   const clusterRaw = c.req.query("cluster");
@@ -1706,7 +1787,7 @@ adminRoutes.get("/reports/compliance", async (c) => {
 });
 
 adminRoutes.get("/reports/quarterly", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
   const clusterRaw = c.req.query("cluster");
@@ -1734,7 +1815,7 @@ adminRoutes.get("/reports/quarterly", async (c) => {
 });
 
 adminRoutes.get("/reports/budget", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
 
@@ -1757,7 +1838,7 @@ adminRoutes.get("/reports/budget", async (c) => {
 });
 
 adminRoutes.get("/reports/workload", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
   const personnel = await prisma.user.findMany({
@@ -1782,7 +1863,7 @@ adminRoutes.get("/reports/workload", async (c) => {
 });
 
 adminRoutes.get("/reports/accomplishment", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
 
@@ -1826,7 +1907,7 @@ adminRoutes.get("/reports/accomplishment", async (c) => {
 });
 
 adminRoutes.get("/reports/factors", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
 
@@ -1848,7 +1929,7 @@ adminRoutes.get("/reports/factors", async (c) => {
 });
 
 adminRoutes.get("/reports/aip-funnel", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
 
@@ -1867,7 +1948,7 @@ adminRoutes.get("/reports/aip-funnel", async (c) => {
 });
 
 adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
   const quarter = parseInt(c.req.query("quarter") || "1");
@@ -1952,7 +2033,8 @@ adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
 });
 
 adminRoutes.get("/reports/:type/export", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  const reportExporter = requireAdmin(c);
+  if (!reportExporter) return c.json({ error: "Unauthorized" }, 401);
   const type = c.req.param("type");
   const format = c.req.query("format") || "csv";
   const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
@@ -2012,6 +2094,10 @@ adminRoutes.get("/reports/:type/export", async (c) => {
     }));
   }
 
+  await writeAuditLog(reportExporter.id, "exported_report", "Export", 0, {
+    report_type: type, year, format, row_count: rows.length,
+  });
+
   if (format === "csv") {
     return new Response(toCSV(rows), {
       headers: {
@@ -2029,7 +2115,7 @@ adminRoutes.get("/reports/:type/export", async (c) => {
 // ==========================================
 
 adminRoutes.get("/announcements", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const announcement = await prisma.announcement.findFirst({
     orderBy: { updated_at: "desc" },
     include: {
@@ -2041,7 +2127,7 @@ adminRoutes.get("/announcements", async (c) => {
 });
 
 adminRoutes.post("/announcements", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { message, type, is_active, dismissible, expires_at } = await c.req.json();
 
@@ -2149,7 +2235,7 @@ adminRoutes.post("/announcements", async (c) => {
 
 // NOTE: No frontend consumer yet — retained for future Admin Audit Log page
 adminRoutes.get("/audit-log", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const page = parseInt(c.req.query("page") || "1");
   const limit = parseInt(c.req.query("limit") || "50");
   const [logs, total] = await Promise.all([
@@ -2170,7 +2256,7 @@ adminRoutes.get("/audit-log", async (c) => {
 
 // Lightweight endpoint for AdminLayout — avoids the full /overview query
 adminRoutes.get("/layout-info", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = new Date().getFullYear();
   const month = new Date().getMonth() + 1;
   const currentQuarter = Math.ceil(month / 3);
@@ -2195,7 +2281,7 @@ adminRoutes.get("/layout-info", async (c) => {
 });
 
 adminRoutes.get("/settings/system-info", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const [userCount, schoolCount, programCount] = await Promise.all([
     prisma.user.count(),
     prisma.school.count(),
@@ -2209,13 +2295,13 @@ adminRoutes.get("/settings/system-info", async (c) => {
 // ==========================================
 
 adminRoutes.get("/settings/division-config", async (c) => {
-  if (!requireAdmin(c.req.header("Authorization"))) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const config = await prisma.divisionConfig.findFirst();
   return c.json(config ?? { supervisor_name: "", supervisor_title: "" });
 });
 
 adminRoutes.post("/settings/division-config", async (c) => {
-  const admin = requireAdmin(c.req.header("Authorization"));
+  const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { supervisor_name, supervisor_title } = await c.req.json();
   const existing = await prisma.divisionConfig.findFirst();
@@ -2232,6 +2318,80 @@ adminRoutes.post("/settings/division-config", async (c) => {
   }
   await writeAuditLog(admin.id, "updated_division_config", "DivisionConfig", config.id, { supervisor_name, supervisor_title });
   return c.json(config);
+});
+
+// ==========================================
+// AUDIT LOG VIEWER (RA 10173 §20 — data controller access)
+// ==========================================
+
+adminRoutes.get("/audit-logs", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const page = Math.max(1, parseInt(c.req.query("page") || "1"));
+  const limit = Math.min(100, parseInt(c.req.query("limit") || "50"));
+  const action = c.req.query("action");
+  const entity_type = c.req.query("entity_type");
+  const from = c.req.query("from") ? new Date(c.req.query("from")!) : undefined;
+  const to = c.req.query("to") ? new Date(c.req.query("to")!) : undefined;
+
+  const where = {
+    ...(action && { action: { contains: action } }),
+    ...(entity_type && { entity_type }),
+    ...(from || to ? { created_at: { ...(from && { gte: from }), ...(to && { lte: to }) } } : {}),
+  };
+
+  const [logs, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      where,
+      orderBy: { created_at: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+      select: {
+        id: true,
+        admin_id: true,
+        action: true,
+        entity_type: true,
+        entity_id: true,
+        details: true,
+        created_at: true,
+      },
+    }),
+    prisma.auditLog.count({ where }),
+  ]);
+
+  return c.json({ logs, total, page, limit, pages: Math.ceil(total / limit) });
+});
+
+// ==========================================
+// USER ANONYMIZATION (RA 10173 §23 — Right to Erasure)
+// Nulls out PII fields while preserving the user record for audit trail integrity.
+// ==========================================
+
+adminRoutes.post("/users/:id/anonymize", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+  const id = parseInt(c.req.param("id"));
+
+  const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
+  if (!user) return c.json({ error: "Not found" }, 404);
+
+  await prisma.user.update({
+    where: { id },
+    data: {
+      name: null,
+      first_name: null,
+      middle_initial: null,
+      last_name: null,
+      email: `anonymized_${id}@deleted.local`,
+      password: "ANONYMIZED",
+      is_active: false,
+      deleted_at: new Date(),
+    },
+  });
+
+  await writeAuditLog(admin.id, "anonymized_user", "User", id, { role: user.role });
+  return c.json({ success: true, message: "User PII has been anonymized (RA 10173 §23)." });
 });
 
 export default adminRoutes;

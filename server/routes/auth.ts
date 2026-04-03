@@ -1,8 +1,10 @@
 import { Hono } from "hono";
+import { setCookie, deleteCookie } from "hono/cookie";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { prisma } from "../db/client.ts";
 import { JWT_SECRET } from "../lib/config.ts";
+import { logger } from "../lib/logger.ts";
 
 const authRoutes = new Hono();
 
@@ -70,26 +72,31 @@ authRoutes.post('/login', async (c) => {
     // Successful login — clear rate-limit counter
     loginAttempts.delete(key);
 
-    // Issue JWT
+    // Issue JWT — payload contains only non-PII identifiers needed for authorization.
+    // Names, email, and school_name are NOT embedded; fetch from DB when needed.
     const token = jwt.sign(
       {
         id: user.id,
-        email: user.email,
         role: user.role,
         school_id: user.school_id,
-        school_name: user.school?.name,
-        name: user.name,
-        first_name: user.first_name,
-        middle_initial: user.middle_initial,
-        last_name: user.last_name,
+        cluster_id: user.cluster_id ?? user.school?.cluster_id ?? null,
       },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
 
+    // Set HttpOnly cookie
+    setCookie(c, 'token', token, {
+      path: '/',
+      secure: process.env.NODE_ENV !== 'development', // Uses Secure flag in production/https
+      httpOnly: true,
+      maxAge: 86400,
+      sameSite: 'Strict',
+    });
+
     return c.json({
       message: 'Login successful',
-      token,
+      expiresAt: Math.floor(Date.now() / 1000) + 86400,
       user: {
         id: user.id,
         email: user.email,
@@ -103,10 +110,14 @@ authRoutes.post('/login', async (c) => {
       }
     });
   } catch (error) {
-    console.error(error);
+    logger.error('Login failed', error);
     return c.json({ error: 'Login failed' }, 500);
   }
 });
 
+authRoutes.post('/logout', (c) => {
+  deleteCookie(c, 'token', { path: '/' });
+  return c.json({ message: 'Logged out' });
+});
 
 export default authRoutes;

@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, MapPinIcon as MapPin, EnvelopeIcon as Mail, FacebookLogoIcon as Facebook,PhoneIcon as Phone } from '@phosphor-icons/react';
 import { Input } from './components/ui/Input';
-
+import { auth } from './lib/auth';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
   const navigate = useNavigate();
 
   // Animation Refs
@@ -43,11 +44,10 @@ export default function Login() {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         email: finalEmail,
         password,
-      });
+      }, { withCredentials: true });
 
-      const { token, user } = response.data;
-      sessionStorage.setItem('token', token);
-      sessionStorage.setItem('user', JSON.stringify(user));
+      const { expiresAt, user } = response.data;
+      auth.setSession(user, expiresAt);
       navigate(user.role === 'Admin' ? '/admin' : '/');
     } catch (err) {
       shakeCard();
@@ -134,9 +134,34 @@ export default function Login() {
               />
             </div>
 
+            {/* RA 10173 (Data Privacy Act of 2012) — informed consent notice */}
+            <div className="text-left bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl p-3 space-y-2">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                By signing in, you acknowledge that DepEd Division of Guihulngan City collects and
+                processes your personal information (name, email, school affiliation) for the purpose
+                of managing the AIP-PIR system, in accordance with the{' '}
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                  Data Privacy Act of 2012 (RA 10173)
+                </span>
+                . Your data will not be shared with unauthorized parties.
+              </p>
+              <label className="flex items-start gap-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  id="privacy-consent"
+                  checked={consentChecked}
+                  onChange={(e) => setConsentChecked(e.target.checked)}
+                  className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer flex-shrink-0"
+                />
+                <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium group-hover:text-slate-800 dark:group-hover:text-slate-100 transition-colors">
+                  I have read and agree to the data privacy notice above.
+                </span>
+              </label>
+            </div>
+
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !consentChecked}
               className="mt-8 group relative w-full flex justify-center items-center gap-2 py-3.5 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? (
