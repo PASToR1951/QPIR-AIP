@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, MapPinIcon as MapPin, EnvelopeIcon as Mail, FacebookLogoIcon as Facebook,PhoneIcon as Phone } from '@phosphor-icons/react';
+import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, MapPinIcon as MapPin, EnvelopeIcon as Mail, FacebookLogoIcon as Facebook, PhoneIcon as Phone } from '@phosphor-icons/react';
 import { Input } from './components/ui/Input';
 import { auth } from './lib/auth';
 export default function Login() {
@@ -140,9 +140,9 @@ export default function Login() {
                 By signing in, you acknowledge that DepEd Division of Guihulngan City collects and
                 processes your personal information (name, email, school affiliation) for the purpose
                 of managing the AIP-PIR system, in accordance with the{' '}
-                <Link to="/privacy" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+                <a href="https://privacy.gov.ph/data-privacy-act/#w16" target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
                   Data Privacy Act of 2012 (RA 10173)
-                </Link>
+                </a>
                 . Your data will not be shared with unauthorized parties. See our{' '}
                 <Link to="/privacy" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
                   Privacy Notice
