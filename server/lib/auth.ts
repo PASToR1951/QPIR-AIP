@@ -9,14 +9,41 @@ export interface TokenPayload {
   role: string;
   school_id: number | null;
   cluster_id?: number | null;
-  email: string;
-  name: string | null;
 }
 
-export function getUserFromToken(authHeader: string | undefined): TokenPayload | null {
-  if (!authHeader?.startsWith("Bearer ")) return null;
+const VALID_ROLES = ['School', 'Division Personnel', 'Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'] as const;
+
+import type { Context } from "hono";
+import { getCookie } from "hono/cookie";
+
+export function getUserFromToken(cOrHeader: Context | string | undefined): TokenPayload | null {
+  let token: string | undefined;
+
+  if (typeof cOrHeader === 'string') {
+    if (cOrHeader.startsWith("Bearer ")) {
+      token = cOrHeader.slice(7);
+    } else {
+      token = cOrHeader;
+    }
+  } else if (cOrHeader && typeof cOrHeader.req === 'object') {
+    // It's a Hono context
+    const authHeader = cOrHeader.req.header('Authorization');
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.slice(7);
+    } else {
+      token = getCookie(cOrHeader, 'token');
+    }
+  }
+
+  if (!token) return null;
+
   try {
-    return jwt.verify(authHeader.slice(7), JWT_SECRET) as TokenPayload;
+    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!VALID_ROLES.includes(payload.role as any)) {
+      return null;
+    }
+    return payload;
   } catch {
     return null;
   }
