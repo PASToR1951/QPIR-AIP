@@ -5,6 +5,8 @@ import { getCESRoleForDivisionPIR, CES_ROLES } from "../lib/routing.ts";
 import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
 import { logger } from "../lib/logger.ts";
 import { pushNotification, pushNotifications } from "../lib/notifStream.ts";
+import { safeParseInt } from "../lib/safeParseInt.ts";
+import { sanitizeObject } from "../lib/sanitize.ts";
 
 const adminRoutes = new Hono();
 
@@ -113,7 +115,7 @@ adminRoutes.get('/pirs/:id', async (c) => {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
-  const pirId = parseInt(c.req.param('id'));
+  const pirId = safeParseInt(c.req.param('id'), 0);
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
     include: {
@@ -223,7 +225,7 @@ adminRoutes.post('/ces/pirs/:id/start-review', async (c) => {
   const tokenUser = requireCES(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
-  const pirId = parseInt(c.req.param('id'));
+  const pirId = safeParseInt(c.req.param('id'), 0);
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
     include: { aip: { include: { program: true } } },
@@ -260,8 +262,8 @@ adminRoutes.post('/ces/pirs/:id/note', async (c) => {
   const tokenUser = requireCES(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
-  const pirId = parseInt(c.req.param('id'));
-  const { ces_remarks } = await c.req.json();
+  const pirId = safeParseInt(c.req.param('id'), 0);
+  const { ces_remarks } = sanitizeObject(await c.req.json());
   if (ces_remarks && ces_remarks.length > 5000) {
     return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
   }
@@ -310,8 +312,8 @@ adminRoutes.post('/ces/pirs/:id/return', async (c) => {
   const tokenUser = requireCES(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
-  const pirId = parseInt(c.req.param('id'));
-  const { ces_remarks } = await c.req.json();
+  const pirId = safeParseInt(c.req.param('id'), 0);
+  const { ces_remarks } = sanitizeObject(await c.req.json());
   if (ces_remarks && ces_remarks.length > 5000) {
     return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
   }
@@ -396,7 +398,7 @@ adminRoutes.post('/cluster-head/pirs/:id/start-review', async (c) => {
   const tokenUser = requireClusterHead(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
-  const pirId = parseInt(c.req.param('id'));
+  const pirId = safeParseInt(c.req.param('id'), 0);
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
     include: { aip: { include: { program: true, school: true } } },
@@ -436,8 +438,8 @@ adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
   const tokenUser = requireClusterHead(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
-  const pirId = parseInt(c.req.param('id'));
-  const { remarks } = await c.req.json();
+  const pirId = safeParseInt(c.req.param('id'), 0);
+  const { remarks } = sanitizeObject(await c.req.json());
   if (remarks && remarks.length > 5000) {
     return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
   }
@@ -488,8 +490,8 @@ adminRoutes.post('/cluster-head/pirs/:id/return', async (c) => {
   const tokenUser = requireClusterHead(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
 
-  const pirId = parseInt(c.req.param('id'));
-  const { remarks } = await c.req.json();
+  const pirId = safeParseInt(c.req.param('id'), 0);
+  const { remarks } = sanitizeObject(await c.req.json());
   if (remarks && remarks.length > 5000) {
     return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
   }
@@ -545,7 +547,7 @@ adminRoutes.use("*", async (c, next) => {
 // ==========================================
 
 adminRoutes.get("/overview", async (c) => {
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
 
   // Current quarter (needed early for PIR queries)
   const month = new Date().getMonth() + 1;
@@ -799,14 +801,14 @@ adminRoutes.get("/submissions", async (c) => {
   try {
   const q = (key: string) => c.req.query(key);
   const type = q("type"); // "aip" | "pir" | undefined
-  const clusterId = q("cluster") ? parseInt(q("cluster")!) : undefined;
-  const schoolId = q("school") ? parseInt(q("school")!) : undefined;
-  const programId = q("program") ? parseInt(q("program")!) : undefined;
+  const clusterId = q("cluster") ? safeParseInt(q("cluster"), 0) : undefined;
+  const schoolId = q("school") ? safeParseInt(q("school"), 0) : undefined;
+  const programId = q("program") ? safeParseInt(q("program"), 0) : undefined;
   const quarter = q("quarter");
-  const year = q("year") ? parseInt(q("year")!) : undefined;
+  const year = q("year") ? safeParseInt(q("year"), 0) : undefined;
   const status = q("status");
-  const page = parseInt(q("page") || "1");
-  const limit = Math.min(100, parseInt(q("limit") || "25"));
+  const page = safeParseInt(q("page"), 1);
+  const limit = Math.min(100, safeParseInt(q("limit"), 25));
   const skip = (page - 1) * limit;
 
   const schoolFilter = schoolId
@@ -935,7 +937,7 @@ adminRoutes.get("/submissions/export", async (c) => {
 
   const format = c.req.query("format") || "csv";
   const type = c.req.query("type");
-  const year = c.req.query("year") ? parseInt(c.req.query("year")!) : undefined;
+  const year = c.req.query("year") ? safeParseInt(c.req.query("year"), 0) : undefined;
   const status = c.req.query("status");
 
   const aips = (!type || type === "aip" || type === "all")
@@ -996,7 +998,7 @@ adminRoutes.get("/submissions/export", async (c) => {
 });
 
 adminRoutes.get("/submissions/:id", async (c) => {
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
   const type = c.req.query("type") || "aip";
 
   if (type === "pir") {
@@ -1030,8 +1032,8 @@ adminRoutes.get("/submissions/:id", async (c) => {
 adminRoutes.patch("/submissions/:id/status", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
-  const { type, status, feedback } = await c.req.json();
+  const id = safeParseInt(c.req.param("id"), 0);
+  const { type, status, feedback } = sanitizeObject(await c.req.json());
 
   if (!["Submitted", "Under Review", "For CES Review", "For Cluster Head Review", "Approved", "Returned"].includes(status)) {
     return c.json({ error: "Invalid status" }, 400);
@@ -1103,8 +1105,8 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
 adminRoutes.patch("/pirs/:id/remarks", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
-  const { remarks } = await c.req.json();
+  const id = safeParseInt(c.req.param("id"), 0);
+  const { remarks } = sanitizeObject(await c.req.json());
 
   if (typeof remarks !== "string") {
     return c.json({ error: "remarks must be a string" }, 400);
@@ -1140,7 +1142,7 @@ adminRoutes.patch("/pirs/:id/remarks", async (c) => {
 adminRoutes.patch("/pirs/:id/presented", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
 
   const pir = await prisma.pIR.findUnique({ where: { id } });
   if (!pir) return c.json({ error: "PIR not found" }, 404);
@@ -1158,8 +1160,8 @@ adminRoutes.patch("/pirs/:id/presented", async (c) => {
 adminRoutes.patch("/pirs/:id/activity-notes", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const pirId = parseInt(c.req.param("id"));
-  const { activity_review_id, notes } = await c.req.json();
+  const pirId = safeParseInt(c.req.param("id"), 0);
+  const { activity_review_id, notes } = sanitizeObject(await c.req.json());
 
   if (!activity_review_id || typeof notes !== "string") {
     return c.json({ error: "activity_review_id and notes are required" }, 400);
@@ -1263,7 +1265,7 @@ adminRoutes.get("/users", async (c) => {
 adminRoutes.post("/users", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { name, first_name, middle_initial, last_name, email, password, role, school_id, cluster_id, program_ids } = await c.req.json();
+  const { name, first_name, middle_initial, last_name, email, password, role, school_id, cluster_id, program_ids } = sanitizeObject(await c.req.json());
 
   const systemRoles = ["Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Cluster Coordinator"];
   if (systemRoles.includes(role) && !name) {
@@ -1341,8 +1343,8 @@ adminRoutes.post("/users", async (c) => {
 adminRoutes.patch("/users/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
-  const body = await c.req.json();
+  const id = safeParseInt(c.req.param("id"), 0);
+  const body = sanitizeObject(await c.req.json());
   const { name, first_name, middle_initial, last_name, role, school_id, cluster_id, program_ids, is_active } = body;
 
   const cesRoles = ["CES-SGOD", "CES-ASDS", "CES-CID"];
@@ -1395,7 +1397,7 @@ adminRoutes.patch("/users/:id", async (c) => {
 adminRoutes.delete("/users/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
 
   if (id === admin.id) return c.json({ error: "Cannot delete your own account" }, 400);
 
@@ -1411,7 +1413,7 @@ adminRoutes.delete("/users/:id", async (c) => {
 adminRoutes.post("/users/:id/reset-password", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
 
   const tempPassword = Array.from(crypto.getRandomValues(new Uint8Array(8)))
     .map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 10);
@@ -1451,7 +1453,7 @@ adminRoutes.get("/clusters", async (c) => {
 adminRoutes.post("/clusters", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { cluster_number, name } = await c.req.json();
+  const { cluster_number, name } = sanitizeObject(await c.req.json());
   if (!cluster_number) return c.json({ error: "Cluster number is required" }, 400);
   try {
     const cluster = await prisma.cluster.create({ data: { cluster_number: Number(cluster_number), name } });
@@ -1466,8 +1468,8 @@ adminRoutes.post("/clusters", async (c) => {
 adminRoutes.patch("/clusters/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
-  const { cluster_number, name } = await c.req.json();
+  const id = safeParseInt(c.req.param("id"), 0);
+  const { cluster_number, name } = sanitizeObject(await c.req.json());
   if (!cluster_number) return c.json({ error: "Cluster number is required" }, 400);
   try {
     const cluster = await prisma.cluster.update({ where: { id }, data: { cluster_number: Number(cluster_number), name } });
@@ -1482,7 +1484,7 @@ adminRoutes.patch("/clusters/:id", async (c) => {
 adminRoutes.delete("/clusters/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
   const schoolCount = await prisma.school.count({ where: { cluster_id: id } });
   if (schoolCount > 0) {
     return c.json({ error: "Cannot delete a cluster that has schools assigned to it" }, 400);
@@ -1494,7 +1496,7 @@ adminRoutes.delete("/clusters/:id", async (c) => {
 
 adminRoutes.get("/schools", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const clusterId = c.req.query("cluster") ? parseInt(c.req.query("cluster")!) : undefined;
+  const clusterId = c.req.query("cluster") ? safeParseInt(c.req.query("cluster"), 0) : undefined;
   const schools = await prisma.school.findMany({
     where: clusterId ? { cluster_id: clusterId } : undefined,
     include: {
@@ -1511,7 +1513,7 @@ adminRoutes.get("/schools", async (c) => {
 adminRoutes.post("/schools", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { name, abbreviation, level, cluster_id } = await c.req.json();
+  const { name, abbreviation, level, cluster_id } = sanitizeObject(await c.req.json());
   const school = await prisma.school.create({ data: { name, abbreviation: abbreviation || null, level, cluster_id } });
   await writeAuditLog(admin.id, "created_school", "School", school.id, { name, abbreviation, level, cluster_id });
   return c.json(school);
@@ -1520,8 +1522,8 @@ adminRoutes.post("/schools", async (c) => {
 adminRoutes.patch("/schools/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
-  const body = await c.req.json();
+  const id = safeParseInt(c.req.param("id"), 0);
+  const body = sanitizeObject(await c.req.json());
   const { name, abbreviation, level, cluster_id } = body;
   const school = await prisma.school.update({
     where: { id },
@@ -1539,7 +1541,7 @@ adminRoutes.patch("/schools/:id", async (c) => {
 adminRoutes.delete("/schools/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
   await prisma.school.delete({ where: { id } });
   await writeAuditLog(admin.id, "deleted_school", "School", id, {});
   return c.json({ success: true });
@@ -1548,7 +1550,7 @@ adminRoutes.delete("/schools/:id", async (c) => {
 adminRoutes.patch("/schools/:id/restrictions", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
   const { restricted_program_ids } = await c.req.json();
   await prisma.school.update({
     where: { id },
@@ -1582,7 +1584,7 @@ adminRoutes.get("/programs", async (c) => {
 adminRoutes.post("/programs", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { title, abbreviation, division, school_level_requirement } = await c.req.json();
+  const { title, abbreviation, division, school_level_requirement } = sanitizeObject(await c.req.json());
   try {
     const program = await prisma.program.create({ data: { title, abbreviation: abbreviation || null, division: division || null, school_level_requirement } });
     await writeAuditLog(admin.id, "created_program", "Program", program.id, { title });
@@ -1596,8 +1598,8 @@ adminRoutes.post("/programs", async (c) => {
 adminRoutes.patch("/programs/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
-  const { title, abbreviation, division, school_level_requirement } = await c.req.json();
+  const id = safeParseInt(c.req.param("id"), 0);
+  const { title, abbreviation, division, school_level_requirement } = sanitizeObject(await c.req.json());
   try {
     const program = await prisma.program.update({
       where: { id },
@@ -1614,7 +1616,7 @@ adminRoutes.patch("/programs/:id", async (c) => {
 adminRoutes.delete("/programs/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
   await prisma.program.delete({ where: { id } });
   await writeAuditLog(admin.id, "deleted_program", "Program", id, {});
   return c.json({ success: true });
@@ -1623,7 +1625,7 @@ adminRoutes.delete("/programs/:id", async (c) => {
 adminRoutes.patch("/programs/:id/personnel", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
   const { user_ids } = await c.req.json();
   await prisma.program.update({
     where: { id },
@@ -1648,7 +1650,7 @@ adminRoutes.get("/division-programs", async (c) => {
 adminRoutes.post("/division-programs", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { title, abbreviation, division } = await c.req.json();
+  const { title, abbreviation, division } = sanitizeObject(await c.req.json());
   try {
     const program = await prisma.divisionProgram.create({
       data: { title, abbreviation: abbreviation || null, division },
@@ -1664,8 +1666,8 @@ adminRoutes.post("/division-programs", async (c) => {
 adminRoutes.patch("/division-programs/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
-  const { title, abbreviation, division } = await c.req.json();
+  const id = safeParseInt(c.req.param("id"), 0);
+  const { title, abbreviation, division } = sanitizeObject(await c.req.json());
   try {
     const program = await prisma.divisionProgram.update({
       where: { id },
@@ -1682,7 +1684,7 @@ adminRoutes.patch("/division-programs/:id", async (c) => {
 adminRoutes.delete("/division-programs/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
   await prisma.divisionProgram.delete({ where: { id } });
   await writeAuditLog(admin.id, "deleted_division_program", "DivisionProgram", id, {});
   return c.json({ success: true });
@@ -1694,7 +1696,7 @@ adminRoutes.delete("/division-programs/:id", async (c) => {
 
 adminRoutes.get("/deadlines", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
   const deadlines = await prisma.deadline.findMany({ where: { year } });
   const defaults: Record<number, string> = {
     1: `${year}-03-31`, 2: `${year}-06-30`, 3: `${year}-09-30`, 4: `${year}-12-31`,
@@ -1742,7 +1744,7 @@ adminRoutes.post("/deadlines", async (c) => {
 adminRoutes.delete("/deadlines/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
   await prisma.deadline.delete({ where: { id } });
   await writeAuditLog(admin.id, "reset_deadline", "Deadline", id, {});
   return c.json({ success: true });
@@ -1783,10 +1785,10 @@ adminRoutes.use("/reports/*", async (c, next) => {
 
 adminRoutes.get("/reports/compliance", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
   const clusterRaw = c.req.query("cluster");
-  const clusterId = clusterRaw ? parseInt(clusterRaw) : undefined;
+  const clusterId = clusterRaw ? safeParseInt(clusterRaw, 0) : undefined;
   if (clusterId !== undefined && (isNaN(clusterId) || clusterId < 1)) return c.json({ error: "Invalid cluster" }, 400);
 
   const schools = await prisma.school.findMany({
@@ -1821,10 +1823,10 @@ adminRoutes.get("/reports/compliance", async (c) => {
 
 adminRoutes.get("/reports/quarterly", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
   const clusterRaw = c.req.query("cluster");
-  const clusterId = clusterRaw ? parseInt(clusterRaw) : undefined;
+  const clusterId = clusterRaw ? safeParseInt(clusterRaw, 0) : undefined;
   if (clusterId !== undefined && (isNaN(clusterId) || clusterId < 1)) return c.json({ error: "Invalid cluster" }, 400);
 
   const pirs = await prisma.pIR.findMany({
@@ -1849,7 +1851,7 @@ adminRoutes.get("/reports/quarterly", async (c) => {
 
 adminRoutes.get("/reports/budget", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
 
   const activities = await prisma.aIPActivity.findMany({
@@ -1872,7 +1874,7 @@ adminRoutes.get("/reports/budget", async (c) => {
 
 adminRoutes.get("/reports/workload", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
   const personnel = await prisma.user.findMany({
     where: { role: "Division Personnel", is_active: true },
@@ -1897,7 +1899,7 @@ adminRoutes.get("/reports/workload", async (c) => {
 
 adminRoutes.get("/reports/accomplishment", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
 
   const reviews = await prisma.pIRActivityReview.findMany({
@@ -1941,7 +1943,7 @@ adminRoutes.get("/reports/accomplishment", async (c) => {
 
 adminRoutes.get("/reports/factors", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
 
   const factors = await prisma.pIRFactor.findMany({
@@ -1963,7 +1965,7 @@ adminRoutes.get("/reports/factors", async (c) => {
 
 adminRoutes.get("/reports/aip-funnel", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
 
   const aips = await prisma.aIP.findMany({
@@ -1982,12 +1984,12 @@ adminRoutes.get("/reports/aip-funnel", async (c) => {
 
 adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
-  const quarter = parseInt(c.req.query("quarter") || "1");
+  const quarter = safeParseInt(c.req.query("quarter"), 1);
   if (![1, 2, 3, 4].includes(quarter)) return c.json({ error: "Quarter must be 1-4" }, 400);
   const clusterRaw = c.req.query("cluster");
-  const clusterId = clusterRaw ? parseInt(clusterRaw) : undefined;
+  const clusterId = clusterRaw ? safeParseInt(clusterRaw, 0) : undefined;
   if (!clusterId || isNaN(clusterId) || clusterId < 1) return c.json({ error: "cluster parameter is required" }, 400);
 
   const quarterPrefixes: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
@@ -2070,7 +2072,7 @@ adminRoutes.get("/reports/:type/export", async (c) => {
   if (!reportExporter) return c.json({ error: "Unauthorized" }, 401);
   const type = c.req.param("type");
   const format = c.req.query("format") || "csv";
-  const year = parseInt(c.req.query("year") || String(new Date().getFullYear()));
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
   if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
 
   let rows: Record<string, unknown>[] = [];
@@ -2162,7 +2164,7 @@ adminRoutes.get("/announcements", async (c) => {
 adminRoutes.post("/announcements", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { message, type, is_active, dismissible, expires_at } = await c.req.json();
+  const { message, type, is_active, dismissible, expires_at } = sanitizeObject(await c.req.json());
 
   const expiresAtDate = expires_at ? new Date(expires_at) : null;
 
@@ -2275,8 +2277,8 @@ adminRoutes.post("/announcements", async (c) => {
 // NOTE: No frontend consumer yet — retained for future Admin Audit Log page
 adminRoutes.get("/audit-log", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const page = parseInt(c.req.query("page") || "1");
-  const limit = Math.min(100, parseInt(c.req.query("limit") || "50"));
+  const page = safeParseInt(c.req.query("page"), 1);
+  const limit = Math.min(100, safeParseInt(c.req.query("limit"), 50));
   const [logs, total] = await Promise.all([
     prisma.auditLog.findMany({
       skip: (page - 1) * limit,
@@ -2342,7 +2344,7 @@ adminRoutes.get("/settings/division-config", async (c) => {
 adminRoutes.post("/settings/division-config", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { supervisor_name, supervisor_title } = await c.req.json();
+  const { supervisor_name, supervisor_title } = sanitizeObject(await c.req.json());
   const existing = await prisma.divisionConfig.findFirst();
   let config;
   if (existing) {
@@ -2367,8 +2369,8 @@ adminRoutes.get("/audit-logs", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
 
-  const page = Math.max(1, parseInt(c.req.query("page") || "1"));
-  const limit = Math.min(100, parseInt(c.req.query("limit") || "50"));
+  const page = Math.max(1, safeParseInt(c.req.query("page"), 1));
+  const limit = Math.min(100, safeParseInt(c.req.query("limit"), 50));
   const action = c.req.query("action");
   const entity_type = c.req.query("entity_type");
   const from = c.req.query("from") ? new Date(c.req.query("from")!) : undefined;
@@ -2410,7 +2412,7 @@ adminRoutes.get("/audit-logs", async (c) => {
 adminRoutes.post("/users/:id/anonymize", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
 
   const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
   if (!user) return c.json({ error: "Not found" }, 404);

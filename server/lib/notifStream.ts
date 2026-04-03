@@ -17,10 +17,19 @@ type Sender = (notif: Notif) => void;
 
 const clients = new Map<number, Set<Sender>>();
 
-/** Register an SSE connection. Returns an unsubscribe cleanup function. */
-export function subscribe(userId: number, sender: Sender): () => void {
+/** Maximum concurrent SSE connections per user to prevent memory exhaustion. */
+const MAX_CONNECTIONS_PER_USER = 5;
+
+/** Register an SSE connection. Returns an unsubscribe cleanup function, or null if limit exceeded. */
+export function subscribe(userId: number, sender: Sender): (() => void) | null {
   if (!clients.has(userId)) clients.set(userId, new Set());
-  clients.get(userId)!.add(sender);
+  const userClients = clients.get(userId)!;
+
+  if (userClients.size >= MAX_CONNECTIONS_PER_USER) {
+    return null; // Connection limit exceeded
+  }
+
+  userClients.add(sender);
   return () => {
     const set = clients.get(userId);
     if (!set) return;
