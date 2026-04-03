@@ -41,7 +41,7 @@ export default function ClusterHeadDashboard() {
   const fetchPIRs = () => {
     setLoading(true);
     const params = quarter ? `?quarter=${encodeURIComponent(quarter)}` : '';
-    axios.get(`${API}/api/admin/cluster-head/pirs${params}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/cluster-head/pirs${params}`, { withCredentials: true })
       .then(r => setPirs(r.data))
       .catch(() => setPirs([]))
       .finally(() => setLoading(false));
@@ -82,7 +82,7 @@ export default function ClusterHeadDashboard() {
             clearInterval(countdownRef.current);
             if (startReviewFiredRef.current !== pir.id) {
               startReviewFiredRef.current = pir.id;
-              axios.post(`${API}/api/admin/cluster-head/pirs/${pir.id}/start-review`, {}, { credentials: 'include'() })
+              axios.post(`${API}/api/admin/cluster-head/pirs/${pir.id}/start-review`, {}, { withCredentials: true })
                 .then(() => setUnderReviewPirId(pir.id))
                 .catch(() => {});
             }
@@ -107,7 +107,7 @@ export default function ClusterHeadDashboard() {
       const endpoint = modal.type === 'note'
         ? `${API}/api/admin/cluster-head/pirs/${modal.pirId}/note`
         : `${API}/api/admin/cluster-head/pirs/${modal.pirId}/return`;
-      await axios.post(endpoint, { remarks }, { credentials: 'include'() });
+      await axios.post(endpoint, { remarks }, { withCredentials: true });
       setUnderReviewPirId(null);
       startReviewFiredRef.current = null;
       setModal(null);

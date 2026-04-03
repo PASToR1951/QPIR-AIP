@@ -36,7 +36,7 @@ export default function CESPIRReview() {
   const startReviewFiredRef = useRef(false);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/pirs/${id}`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/pirs/${id}`, { withCredentials: true })
       .then(r => {
         setPir(r.data);
         // If already under review (e.g. re-opened), skip timer
@@ -59,7 +59,7 @@ export default function CESPIRReview() {
           clearInterval(countdownRef.current);
           if (!startReviewFiredRef.current) {
             startReviewFiredRef.current = true;
-            axios.post(`${API}/api/admin/ces/pirs/${id}/start-review`, {}, { credentials: 'include'() })
+            axios.post(`${API}/api/admin/ces/pirs/${id}/start-review`, {}, { withCredentials: true })
               .then(() => setIsUnderReview(true))
               .catch(() => {}); // silently fail — status update is best-effort
           }
@@ -79,7 +79,7 @@ export default function CESPIRReview() {
       const endpoint = modal === 'note'
         ? `${API}/api/admin/ces/pirs/${id}/note`
         : `${API}/api/admin/ces/pirs/${id}/return`;
-      await axios.post(endpoint, { ces_remarks: remarks }, { credentials: 'include'() });
+      await axios.post(endpoint, { ces_remarks: remarks }, { withCredentials: true });
       setDone(true);
     } catch (err) {
       setError(err?.response?.data?.error ?? 'Action failed. Please try again.');
