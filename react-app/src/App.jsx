@@ -12,6 +12,7 @@ import ErrorPage from './ErrorPage';
 import Changelog from './components/Changelog';
 import SystemDocs from './components/SystemDocs';
 import FAQ from './components/FAQ';
+import PrivacyPolicy from './components/PrivacyPolicy';
 import { DashboardHeader } from './components/ui/DashboardHeader';
 import { AnnouncementBanner } from './components/ui/AnnouncementBanner';
 import Footer from './components/ui/Footer';
@@ -457,6 +458,7 @@ function AnimatedRoutes() {
           <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
           <Route path="/docs" element={<PageTransition><SystemDocs /></PageTransition>} />
           <Route path="/faq" element={<PageTransition><FAQ /></PageTransition>} />
+          <Route path="/privacy" element={<PageTransition><PrivacyPolicy /></PageTransition>} />
 
           {/* Protected Routes */}
           <Route

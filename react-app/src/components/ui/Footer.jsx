@@ -81,6 +81,7 @@ const Footer = () => {
             </p>
             <div className="flex items-center gap-6">
               <Link to="/docs" className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-indigo-600 transition-colors cursor-pointer">Docs</Link>
+              <Link to="/privacy" className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest hover:text-indigo-600 transition-colors cursor-pointer">Privacy</Link>
               <Link to="/changelog" className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-slate-100 dark:bg-dark-border px-3 py-1 rounded-full hover:bg-indigo-100 hover:text-indigo-600 transition-colors cursor-pointer">v{CURRENT_VERSION}</Link>
               <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
                 <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-12 w-auto drop-shadow-sm" />
