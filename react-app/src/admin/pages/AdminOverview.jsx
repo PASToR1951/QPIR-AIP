@@ -20,7 +20,6 @@ const staggerContainer = {
   visible: { transition: { staggerChildren: 0.08 } },
 };
 import { Buildings, BookOpen, Eye, ChartBar, ChartDonut, ArrowRight, Users, UserCircle, Warning, ClockCountdown, CaretDown, CaretUp, Info, ClockCounterClockwise, Notification } from '@phosphor-icons/react';
-import { AdminLayout } from '../AdminLayout.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 
 const API = import.meta.env.VITE_API_URL;
@@ -262,7 +261,7 @@ export default function AdminOverview() {
   const nivoTheme = getNivoTheme(isDark);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/overview`, { credentials: 'include'() })
+    axios.get(`${API}/api/admin/overview`, { withCredentials: true })
       .then(r => setData(r.data))
       .catch(e => { console.error(e); setFetchError('Failed to load dashboard data. Please refresh and try again.'); })
       .finally(() => setLoading(false));
@@ -299,7 +298,7 @@ export default function AdminOverview() {
   })();
 
   return (
-    <AdminLayout>
+    <>
       {fetchError && (
         <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 text-sm font-medium mb-4">
           {fetchError}
@@ -708,6 +707,6 @@ export default function AdminOverview() {
 
         </motion.div>
       )}
-    </AdminLayout>
+    </>
   );
 }

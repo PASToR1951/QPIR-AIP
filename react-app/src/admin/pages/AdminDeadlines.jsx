@@ -6,7 +6,6 @@ import {
   ClockCountdown, CaretDown, Hourglass, Warning, Info, LockSimple,
   CheckCircle, Timer,
 } from '@phosphor-icons/react';
-import { AdminLayout } from '../AdminLayout.jsx';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -143,8 +142,8 @@ export default function AdminDeadlines() {
   const fetchDeadlines = useCallback(() => {
     setLoading(true);
     Promise.all([
-      axios.get(`${API}/api/admin/deadlines?year=${year}`, { credentials: 'include'() }),
-      axios.get(`${API}/api/admin/deadlines/history`,      { credentials: 'include'() }),
+      axios.get(`${API}/api/admin/deadlines?year=${year}`, { withCredentials: true }),
+      axios.get(`${API}/api/admin/deadlines/history`,      { withCredentials: true }),
     ]).then(([dr, hr]) => {
       setDeadlines(dr.data);
       setLocalDates(Object.fromEntries(dr.data.map(d => [d.quarter, {
@@ -170,7 +169,7 @@ export default function AdminDeadlines() {
         date:              ld.date,
         open_date:         ld.openDate || null,
         grace_period_days: parseInt(ld.graceDays) || 0,
-      }, { credentials: 'include'() });
+      }, { withCredentials: true });
       fetchDeadlines();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -182,7 +181,7 @@ export default function AdminDeadlines() {
     setSaving(deadline.quarter);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/deadlines/${deadline.id}`, { credentials: 'include'() });
+      await axios.delete(`${API}/api/admin/deadlines/${deadline.id}`, { withCredentials: true });
       fetchDeadlines();
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
@@ -222,7 +221,7 @@ export default function AdminDeadlines() {
   const nextDays = nextDeadline ? daysLeft(nextDeadline.date) : null;
 
   return (
-    <AdminLayout>
+    <>
       <div className="relative space-y-8">
         {/* Decorative Background Orbs */}
         <div className="absolute top-[5%] left-[-5%] w-[40%] h-[30%] rounded-full bg-indigo-500/20 dark:bg-indigo-600/10 blur-[120px] pointer-events-none" />
@@ -523,6 +522,6 @@ export default function AdminDeadlines() {
           </>
         )}
       </div>
-    </AdminLayout>
+    </>
   );
 }
