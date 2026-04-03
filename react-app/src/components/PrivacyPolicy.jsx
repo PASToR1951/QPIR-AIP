@@ -230,19 +230,29 @@ const Section = ({ section }) => {
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col">
+      {/* Sticky Header */}
+      <div className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border sticky top-0 z-50 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link
+              to="/"
+              className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all"
+            >
+              <ArrowLeft size={20} weight="bold" />
+            </Link>
+            <div>
+              <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">Privacy Notice</h1>
+              <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">DepEd Division of Guihulngan City</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex-1">
         {/* Hero */}
         <div className="relative bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/60 to-purple-50/40 dark:from-indigo-950/20 dark:to-purple-950/10 pointer-events-none" />
           <div className="max-w-4xl mx-auto px-6 py-12 md:py-16 relative">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors mb-8"
-            >
-              <ArrowLeft size={16} />
-              Back to Login
-            </Link>
-
             <div className="flex items-start gap-4">
               <span className="flex-shrink-0 w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 flex items-center justify-center shadow-sm">
                 <Shield size={28} className="text-indigo-600 dark:text-indigo-400" />

@@ -2,6 +2,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom';
 import { ClipboardText, SignOut } from '@phosphor-icons/react';
 import CESDashboard from './CESDashboard.jsx';
 import CESPIRReview from './CESPIRReview.jsx';
+import Footer from '../components/ui/Footer.jsx';
 
 export default function CESLayout() {
   const navigate = useNavigate();
@@ -67,6 +68,7 @@ export default function CESLayout() {
           <Route path="pirs/:id" element={<CESPIRReview />} />
         </Routes>
       </main>
+      <Footer />
     </div>
   );
 }

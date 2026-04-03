@@ -18,6 +18,7 @@ import {
   BookOpen,
 } from '@phosphor-icons/react';
 import { CURRENT_VERSION, getChangelog } from '../version';
+import Footer from './ui/Footer';
 
 const TYPE_CONFIG = {
   feature: {
@@ -244,7 +245,7 @@ const Changelog = () => {
     : changelog;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-base font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-base font-sans flex flex-col">
       {/* Header */}
       <div className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -267,7 +268,7 @@ const Changelog = () => {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 flex-1">
         {/* System info banner */}
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 md:p-8 mb-8 relative overflow-hidden">
           <div className="absolute inset-0 opacity-10">
@@ -359,6 +360,7 @@ const Changelog = () => {
           </p>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { ClipboardText, SignOut } from '@phosphor-icons/react';
 import ClusterHeadDashboard from './ClusterHeadDashboard.jsx';
+import Footer from '../components/ui/Footer.jsx';
 
 export default function ClusterHeadLayout() {
   const navigate = useNavigate();
@@ -58,6 +59,7 @@ export default function ClusterHeadLayout() {
           <Route index element={<ClusterHeadDashboard />} />
         </Routes>
       </main>
+      <Footer />
     </div>
   );
 }
