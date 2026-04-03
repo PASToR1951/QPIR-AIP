@@ -10,6 +10,12 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Division {
+  SGOD
+  OSDS
+  CID
+}
+
 
 model Cluster {
   id             Int      @id @default(autoincrement())
@@ -45,7 +51,7 @@ model Program {
   id                       Int     @id @default(autoincrement())
   title                    String
   abbreviation             String? // Short name / acronym, e.g. "SPED"
-  division                 String? // "SGOD" | "OSDS" | "CID" — determines CES routing for Division Personnel PIRs
+  division                 Division? // "SGOD" | "OSDS" | "CID" — determines CES routing for Division Personnel PIRs
   school_level_requirement String  // "Elementary", "Secondary", "Both", "Select Schools", "Division"
 
   // Relations
@@ -67,6 +73,7 @@ model User {
   middle_initial  String?
   last_name       String?
   is_active       Boolean   @default(true)
+  deleted_at      DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
 
   // Relation to School (For School Role Users)
   school_id  Int?
@@ -117,6 +124,7 @@ model AIP {
   status              String   @default("Approved") // "Draft" | "Approved" | "Returned"
   archived            Boolean  @default(false)
   archived_at         DateTime?
+  deleted_at          DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
   created_at          DateTime @default(now())
 
   // Relations
@@ -162,6 +170,7 @@ model PIR {
   action_items                Json     @default("[]")
   // Shape: [{action: string, response_asds: string, response_sds: string}]
   status                      String   @default("For CES Review") // "Draft" | "For CES Review" | "For Cluster Head Review" | "Under Review" | "Approved" | "Returned"
+  deleted_at                  DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
   remarks                     String?  // Admin remarks/annotations on this PIR
   presented                   Boolean  @default(false) // Admin-toggled: whether school presented this PIR
   // CES review tracking
@@ -236,12 +245,14 @@ model Notification {
 }
 
 model Deadline {
-  id         Int      @id @default(autoincrement())
-  year       Int      // Fiscal year, e.g. 2026
-  quarter    Int      // 1, 2, 3, or 4
-  date       DateTime // Admin-set deadline (overrides calendar default)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id                 Int       @id @default(autoincrement())
+  year               Int       // Fiscal year, e.g. 2026
+  quarter            Int       // 1, 2, 3, or 4
+  date               DateTime  // Admin-set deadline (overrides calendar default)
+  open_date          DateTime? // When submissions open (null = start of quarter)
+  grace_period_days  Int       @default(0) // Days after deadline still allowed
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
 
   @@unique([year, quarter])
   @@map("deadlines")
@@ -291,7 +302,7 @@ model DivisionProgram {
   id           Int     @id @default(autoincrement())
   title        String
   abbreviation String? // Short name / acronym
-  division     String  // NOT NULL: "CID" | "OSDS" | "SGOD" — clear indicator of functional division
+  division     Division  // NOT NULL: clear indicator of functional division
 
   @@unique([title, division])
   @@map("division_programs")
@@ -308,14 +319,15 @@ model DivisionConfig {
 
 model AuditLog {
   id          Int      @id @default(autoincrement())
-  admin_id    Int
+  admin_id    Int?     // Nullable — set to NULL when the acting user's account is deleted (evidence preservation)
   action      String   // e.g. "created_user", "approved_aip", "changed_deadline"
   entity_type String   // "User", "AIP", "PIR", "School", "Program", etc.
   entity_id   Int
   details     Json
   created_at  DateTime @default(now())
 
-  admin       User     @relation(fields: [admin_id], references: [id], onDelete: Cascade)
+  // SetNull preserves the audit record when the admin account is deleted (evidence retention).
+  admin       User?    @relation(fields: [admin_id], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
 }
