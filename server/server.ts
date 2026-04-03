@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
+import { bodyLimit } from "hono/body-limit";
 import authRoutes from "./routes/auth.ts";
 import dataRoutes from "./routes/data.ts";
 import adminRoutes from "./routes/admin.ts";
@@ -24,6 +25,12 @@ app.use('*', cors({
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
+}));
+
+// NEW-01: Request body size limit (2MB) to prevent memory exhaustion DoS
+app.use('*', bodyLimit({
+  maxSize: 2 * 1024 * 1024, // 2MB
+  onError: (c) => c.json({ error: 'Request body too large (max 2MB)' }, 413),
 }));
 
 // L-2: Structured request/response logging middleware

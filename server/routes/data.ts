@@ -5,6 +5,8 @@ import { getCESRoleForDivisionPIR } from "../lib/routing.ts";
 import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
 import { logger } from "../lib/logger.ts";
 import { subscribe, pushNotification, pushNotifications } from "../lib/notifStream.ts";
+import { sanitizeString, sanitizeObject } from "../lib/sanitize.ts";
+import { safeParseInt } from "../lib/safeParseInt.ts";
 
 const dataRoutes = new Hono();
 
@@ -44,17 +46,18 @@ dataRoutes.post('/aips/draft', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const body = await c.req.json();
+    const body = sanitizeObject(await c.req.json());
     const { program_title, year: rawYear, outcome, sip_title, project_coordinator,
             objectives, indicators, prepared_by_name, prepared_by_title,
             approved_by_name, approved_by_title, activities } = body;
 
     if (!program_title) return c.json({ error: 'program_title is required' }, 400);
+    const clean_program_title = sanitizeString(program_title);
 
-    const program = await prisma.program.findFirst({ where: { title: program_title } });
-    if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
+    const program = await prisma.program.findFirst({ where: { title: clean_program_title } });
+    if (!program) return c.json({ error: `Program '${clean_program_title}' not found` }, 404);
 
-    const year = parseInt(rawYear) || new Date().getFullYear();
+    const year = safeParseInt(rawYear, new Date().getFullYear());
     const school_id = tokenUser.role === 'School' ? tokenUser.school_id : null;
 
     // Try to find an existing draft or submitted AIP to update
@@ -98,10 +101,10 @@ dataRoutes.post('/aips/draft', async (c) => {
         phase: act.phase || '',
         activity_name: act.name || '',
         implementation_period: act.period || '',
-        period_start_month: act.periodStartMonth ? parseInt(act.periodStartMonth) : null,
-        period_end_month: act.periodEndMonth ? parseInt(act.periodEndMonth) : null,
+        period_start_month: act.periodStartMonth ? safeParseInt(act.periodStartMonth, 0) : null,
+        period_end_month: act.periodEndMonth ? safeParseInt(act.periodEndMonth, 0) : null,
         persons_involved: act.persons || '',
-        outputs: act.outputs || '',
+        outputs: act.outputs,
         budget_amount: amount,
         budget_source: normalizeBudgetSource(amount, act.budgetSource)
       };
@@ -146,7 +149,7 @@ dataRoutes.get('/aips/draft', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
 
     let drafts: any[];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
@@ -207,7 +210,7 @@ dataRoutes.delete('/aips/draft', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title');
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
 
     let where: any = { status: 'Draft', year };
 
@@ -238,18 +241,15 @@ dataRoutes.post('/pirs/draft', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const body = await c.req.json();
+    const body = sanitizeObject(await c.req.json());
     const { program_title, quarter, program_owner, budget_from_division, budget_from_co_psf,
             functional_division,
             indicator_quarterly_targets, action_items, activity_reviews, factors } = body;
 
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
-    // Strip null bytes and other control characters to prevent DB crashes
-    // eslint-disable-next-line no-control-regex
-    const sanitized_title = String(program_title).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
-    // eslint-disable-next-line no-control-regex
-    const sanitized_quarter = String(quarter).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
+    const sanitized_title = sanitizeString(program_title);
+    const sanitized_quarter = sanitizeString(quarter);
 
     if (!sanitized_title || !sanitized_quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
@@ -257,7 +257,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
     if (!program) return c.json({ error: `Program '${sanitized_title}' not found` }, 404);
 
     const yearMatch = sanitized_quarter.match(/CY (\d{4})/);
-    const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear()) : new Date().getFullYear();
 
     let aip: any;
     if (tokenUser.role === 'School' && tokenUser.school_id) {
@@ -312,7 +312,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
           },
           activity_reviews: {
             create: (activity_reviews || []).map((rev: any) => ({
-              aip_activity_id: rev.aip_activity_id ? parseInt(rev.aip_activity_id) : null,
+              aip_activity_id: rev.aip_activity_id ? safeParseInt(rev.aip_activity_id, 0) : null,
               complied: rev.complied ?? null,
               actual_tasks_conducted: rev.actual_tasks_conducted ?? '',
               contributory_performance_indicators: rev.contributory_performance_indicators ?? '',
@@ -345,7 +345,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
           },
           activity_reviews: {
             create: (activity_reviews || []).map((rev: any) => ({
-              aip_activity_id: rev.aip_activity_id ? parseInt(rev.aip_activity_id) : null,
+              aip_activity_id: rev.aip_activity_id ? safeParseInt(rev.aip_activity_id, 0) : null,
               complied: rev.complied ?? null,
               actual_tasks_conducted: rev.actual_tasks_conducted ?? '',
               contributory_performance_indicators: rev.contributory_performance_indicators ?? '',
@@ -398,7 +398,7 @@ dataRoutes.get('/pirs/draft', async (c) => {
     }
 
     const yearMatch = quarter?.match(/CY (\d{4})/);
-    const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear()) : new Date().getFullYear();
 
     const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ hasDraft: false });
@@ -484,7 +484,7 @@ dataRoutes.delete('/pirs/draft', async (c) => {
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter required' }, 400);
 
     const yearMatch = quarter.match(/CY (\d{4})/);
-    const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear()) : new Date().getFullYear();
 
     const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ message: 'No draft found' });
@@ -608,7 +608,7 @@ dataRoutes.get('/programs/with-aips', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
 
     const db = prisma.aIP as any;
     const SUBMITTED_AIP_STATUSES = ['Submitted', 'Verified', 'Under Review', 'Approved', 'Returned'];
@@ -639,7 +639,7 @@ dataRoutes.get('/programs/with-pirs', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
 
     let pirs: any[];
     const FILED_STATUSES = ['Submitted', 'Under Review', 'Approved', 'Returned'];
@@ -678,8 +678,8 @@ dataRoutes.get('/schools/:id/aip-status', async (c) => {
   const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-  const school_id = parseInt(c.req.param('id'));
-  const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+  const school_id = safeParseInt(c.req.param('id'), 0);
+  const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
 
   // School users may only query their own school's status
   if (tokenUser.role === 'School' && tokenUser.school_id !== school_id) {
@@ -700,7 +700,7 @@ dataRoutes.get('/schools/:id/coordinators', async (c) => {
   const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-  const school_id = parseInt(c.req.param('id'));
+  const school_id = safeParseInt(c.req.param('id'), 0);
 
   if (tokenUser.role === 'School' && tokenUser.school_id !== school_id) {
     return c.json({ error: 'Forbidden' }, 403);
@@ -736,7 +736,7 @@ dataRoutes.get('/schools/:id/persons-terms', async (c) => {
   const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-  const school_id = parseInt(c.req.param('id'));
+  const school_id = safeParseInt(c.req.param('id'), 0);
 
   if (tokenUser.role === 'School' && tokenUser.school_id !== school_id) {
     return c.json({ error: 'Forbidden' }, 403);
@@ -773,8 +773,8 @@ dataRoutes.get('/users/:id/aip-status', async (c) => {
   const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-  const user_id = parseInt(c.req.param('id'));
-  const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+  const user_id = safeParseInt(c.req.param('id'), 0);
+  const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
 
   // Users may only query their own status
   if (tokenUser.id !== user_id) {
@@ -799,7 +799,7 @@ dataRoutes.get('/aips/activities', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
 
     if (!program_title) {
       return c.json({ error: 'program_title is required' }, 400);
@@ -874,7 +874,7 @@ dataRoutes.get('/aips', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
 
     if (!program_title) return c.json({ error: 'program_title is required' }, 400);
 
@@ -935,7 +935,7 @@ dataRoutes.delete('/aips', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title');
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
 
     if (!program_title) return c.json({ error: 'program_title is required' }, 400);
 
@@ -982,7 +982,7 @@ dataRoutes.get('/pirs', async (c) => {
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
     const yearMatch = quarter.match(/CY (\d{4})/);
-    const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear()) : new Date().getFullYear();
 
     const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
@@ -1090,7 +1090,7 @@ dataRoutes.post('/aips', async (c) => {
     const clusterErr = await verifySchoolCluster(tokenUser);
     if (clusterErr) return c.json({ error: clusterErr }, 403);
 
-    const body = await c.req.json();
+    const body = sanitizeObject(await c.req.json());
     const { program_title, year, outcome, sip_title, project_coordinator,
             objectives, indicators, prepared_by_name, prepared_by_title,
             approved_by_name, approved_by_title, activities } = body;
@@ -1117,7 +1117,7 @@ dataRoutes.post('/aips', async (c) => {
     }
 
     const school_id = tokenUser.role === 'School' ? tokenUser.school_id : null;
-    const parsedYear = parseInt(year);
+    const parsedYear = safeParseInt(year, new Date().getFullYear());
 
     const aipFields = {
       outcome,
@@ -1138,8 +1138,8 @@ dataRoutes.post('/aips', async (c) => {
         phase: act.phase,
         activity_name: act.name,
         implementation_period: act.period,
-        period_start_month: act.periodStartMonth ? parseInt(act.periodStartMonth) : null,
-        period_end_month: act.periodEndMonth ? parseInt(act.periodEndMonth) : null,
+        period_start_month: act.periodStartMonth ? safeParseInt(act.periodStartMonth, 0) : null,
+        period_end_month: act.periodEndMonth ? safeParseInt(act.periodEndMonth, 0) : null,
         persons_involved: act.persons,
         outputs: act.outputs,
         budget_amount: amount,
@@ -1242,7 +1242,7 @@ dataRoutes.post('/aips/:id/request-edit', async (c) => {
       return c.json({ error: 'Authentication required' }, 401);
     }
 
-    const aipId = parseInt(c.req.param('id'));
+    const aipId = safeParseInt(c.req.param('id'), 0);
     const aip = await prisma.aIP.findUnique({
       where: { id: aipId },
       include: { program: true, school: true },
@@ -1295,7 +1295,7 @@ dataRoutes.post('/aips/:id/request-edit', async (c) => {
 // POST a new PIR
 dataRoutes.post('/pirs', async (c) => {
   try {
-    const body = await c.req.json();
+    const body = sanitizeObject(await c.req.json());
     const {
       program_title,
       quarter,
@@ -1317,21 +1317,25 @@ dataRoutes.post('/pirs', async (c) => {
     const clusterErr = await verifySchoolCluster(tokenUser);
     if (clusterErr) return c.json({ error: clusterErr }, 403);
 
+    // Sanitize user-supplied strings before DB use
+    const clean_program_title = sanitizeString(program_title);
+    const clean_quarter = sanitizeString(quarter);
+
     // Look up program
     const program = await prisma.program.findFirst({
-      where: { title: program_title }
+      where: { title: clean_program_title }
     });
     if (!program) {
-      return c.json({ error: `Program '${program_title}' not found` }, 404);
+      return c.json({ error: `Program '${clean_program_title}' not found` }, 404);
     }
 
     // Extract year from "Xth Quarter CY 2026"
-    const yearMatch = quarter.match(/CY (\d{4})/);
-    const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear();
+    const yearMatch = clean_quarter.match(/CY (\d{4})/);
+    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear()) : new Date().getFullYear();
 
     // Extract quarter number and enforce submission window
-    const qNumMatch = quarter.match(/(\d+)(?:st|nd|rd|th) Quarter/);
-    const quarterNum = qNumMatch ? parseInt(qNumMatch[1]) : null;
+    const qNumMatch = clean_quarter.match(/(\d+)(?:st|nd|rd|th) Quarter/);
+    const quarterNum = qNumMatch ? safeParseInt(qNumMatch[1], 0) : null;
     if (quarterNum) {
       const deadlineRecord = await prisma.deadline.findUnique({
         where: { year_quarter: { year, quarter: quarterNum } }
@@ -1396,7 +1400,7 @@ dataRoutes.post('/pirs', async (c) => {
     }));
 
     const reviewData = activity_reviews.map((rev: any) => ({
-      aip_activity_id: rev.aip_activity_id ? parseInt(rev.aip_activity_id) : null,
+      aip_activity_id: rev.aip_activity_id ? safeParseInt(rev.aip_activity_id, 0) : null,
       complied: rev.complied ?? null,
       actual_tasks_conducted: rev.actual_tasks_conducted ?? '',
       contributory_performance_indicators: rev.contributory_performance_indicators ?? '',
@@ -1412,7 +1416,7 @@ dataRoutes.post('/pirs', async (c) => {
 
     // Check if a PIR already exists for this aip + quarter
     const existingDraft = await prisma.pIR.findUnique({
-      where: { aip_id_quarter: { aip_id: aip.id, quarter } }
+      where: { aip_id_quarter: { aip_id: aip.id, quarter: clean_quarter } }
     });
 
     const inProgressStatuses = ['For CES Review', 'For Cluster Head Review', 'Under Review'];
@@ -1443,7 +1447,7 @@ dataRoutes.post('/pirs', async (c) => {
         data: {
           aip_id: aip.id,
           created_by_user_id: tokenUser.id,
-          quarter,
+          quarter: clean_quarter,
           program_owner,
           budget_from_division: parseFloat(budget_from_division) || 0,
           budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
@@ -1492,7 +1496,7 @@ dataRoutes.post('/pirs', async (c) => {
         data: notifyIds.map((userId: number) => ({
           user_id: userId,
           title: 'New PIR Submitted',
-          message: `${submitterLabel} submitted a PIR for ${program_title} (${quarter}).`,
+          message: `${submitterLabel} submitted a PIR for ${clean_program_title} (${clean_quarter}).`,
           type: 'pir_submitted',
         })),
       });
@@ -1515,8 +1519,8 @@ dataRoutes.put('/pirs/:id', async (c) => {
     const clusterErr = await verifySchoolCluster(tokenUser);
     if (clusterErr) return c.json({ error: clusterErr }, 403);
 
-    const pirId = parseInt(c.req.param('id'));
-    if (isNaN(pirId)) return c.json({ error: 'Invalid PIR id' }, 400);
+    const pirId = safeParseInt(c.req.param('id'), 0);
+    if (pirId === 0) return c.json({ error: 'Invalid PIR id' }, 400);
 
     const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
     if (!pir) return c.json({ error: 'PIR not found' }, 404);
@@ -1530,7 +1534,7 @@ dataRoutes.put('/pirs/:id', async (c) => {
       return c.json({ error: 'This PIR can no longer be edited — it is currently under review.' }, 409);
     }
 
-    const body = await c.req.json();
+    const body = sanitizeObject(await c.req.json());
     const {
       program_owner, budget_from_division, budget_from_co_psf, functional_division,
       indicator_quarterly_targets, action_items, activity_reviews, factors
@@ -1544,7 +1548,7 @@ dataRoutes.put('/pirs/:id', async (c) => {
     }));
 
     const reviewData = activity_reviews.map((rev: any) => ({
-      aip_activity_id: rev.aip_activity_id ? parseInt(rev.aip_activity_id) : null,
+      aip_activity_id: rev.aip_activity_id ? safeParseInt(rev.aip_activity_id, 0) : null,
       complied: rev.complied ?? null,
       actual_tasks_conducted: rev.actual_tasks_conducted ?? '',
       contributory_performance_indicators: rev.contributory_performance_indicators ?? '',
@@ -1590,8 +1594,8 @@ dataRoutes.delete('/pirs/:id', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const pirId = parseInt(c.req.param('id'));
-    if (isNaN(pirId)) return c.json({ error: 'Invalid PIR id' }, 400);
+    const pirId = safeParseInt(c.req.param('id'), 0);
+    if (pirId === 0) return c.json({ error: 'Invalid PIR id' }, 400);
 
     const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
     if (!pir) return c.json({ error: 'PIR not found' }, 404);
@@ -1717,7 +1721,7 @@ dataRoutes.get('/dashboard', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = parseInt(c.req.query('year') || new Date().getFullYear().toString());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
     const today = new Date();
     const currentQuarter = Math.ceil((today.getMonth() + 1) / 3);
 
@@ -1903,6 +1907,11 @@ dataRoutes.get("/notifications/stream", async (c) => {
       stream.writeSSE({ event: "notification", data: JSON.stringify(notif) }).catch(() => {});
     });
 
+    if (!unsubscribe) {
+      await stream.writeSSE({ event: "error", data: JSON.stringify({ message: "Too many connections" }) });
+      return;
+    }
+
     await stream.writeSSE({ event: "connected", data: "{}" });
 
     const heartbeat = setInterval(() => {
@@ -1937,7 +1946,7 @@ dataRoutes.patch("/notifications/:id/read", async (c) => {
   const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
 
-  const id = parseInt(c.req.param("id"));
+  const id = safeParseInt(c.req.param("id"), 0);
   const notif = await prisma.notification.findUnique({ where: { id } });
   if (!notif || notif.user_id !== tokenUser.id) return c.json({ error: "Not found" }, 404);
 
