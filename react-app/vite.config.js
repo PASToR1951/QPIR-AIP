@@ -10,4 +10,16 @@ export default defineConfig({
       port: 5173,
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react':  ['react', 'react-dom', 'react-router-dom'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-icons':  ['@phosphor-icons/react'],
+          'vendor-axios':  ['axios'],
+        },
+      },
+    },
+  },
 })

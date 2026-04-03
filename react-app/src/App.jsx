@@ -1,18 +1,9 @@
-import { useState, useEffect, Component } from 'react';
+import { useState, useEffect, Component, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { useAccessibility } from './context/AccessibilityContext';
 import axios from 'axios';
 import { NotePencil, Table, LockKey as Lock, Warning as AlertTriangle, CaretCircleRight } from '@phosphor-icons/react';
-import Login from './Login';
-import AIPForm from './AIPForm';
-import PIRForm from './PIRForm';
-import NotFound from './NotFound';
-import ErrorPage from './ErrorPage';
-import Changelog from './components/Changelog';
-import SystemDocs from './components/SystemDocs';
-import FAQ from './components/FAQ';
-import PrivacyPolicy from './components/PrivacyPolicy';
 import { DashboardHeader } from './components/ui/DashboardHeader';
 import { AnnouncementBanner } from './components/ui/AnnouncementBanner';
 import Footer from './components/ui/Footer';
@@ -23,23 +14,58 @@ import DashboardStats, { getActionPrompt } from './components/ui/DashboardStats'
 import SubmissionsHistory from './components/ui/SubmissionsHistory';
 import { auth } from './lib/auth';
 
+// Route-level lazy imports — each becomes its own chunk
+const Login          = lazy(() => import('./Login'));
+const AIPForm        = lazy(() => import('./AIPForm'));
+const PIRForm        = lazy(() => import('./PIRForm'));
+const NotFound       = lazy(() => import('./NotFound'));
+const ErrorPage      = lazy(() => import('./ErrorPage'));
+const Changelog      = lazy(() => import('./components/Changelog'));
+const SystemDocs     = lazy(() => import('./components/SystemDocs'));
+const FAQ            = lazy(() => import('./components/FAQ'));
+const PrivacyPolicy  = lazy(() => import('./components/PrivacyPolicy'));
+
 // CES pages
-import CESLayout from './ces/CESLayout.jsx';
+const CESLayout      = lazy(() => import('./ces/CESLayout.jsx'));
 
 // Cluster Head pages
-import ClusterHeadLayout from './cluster-head/ClusterHeadLayout.jsx';
+const ClusterHeadLayout = lazy(() => import('./cluster-head/ClusterHeadLayout.jsx'));
 
-// Admin pages
-import AdminOverview from './admin/pages/AdminOverview.jsx';
-import AdminSubmissions from './admin/pages/AdminSubmissions.jsx';
-import AdminUsers from './admin/pages/AdminUsers.jsx';
-import AdminSchools from './admin/pages/AdminSchools.jsx';
-import AdminPrograms from './admin/pages/AdminPrograms.jsx';
-import AdminDeadlines from './admin/pages/AdminDeadlines.jsx';
-import AdminReports from './admin/pages/AdminReports.jsx';
-import AdminSettings from './admin/pages/AdminSettings.jsx';
+// Admin layout + pages
+const AdminLayout     = lazy(() => import('./admin/AdminLayout.jsx'));
+const AdminOverview   = lazy(() => import('./admin/pages/AdminOverview.jsx'));
+const AdminSubmissions = lazy(() => import('./admin/pages/AdminSubmissions.jsx'));
+const AdminUsers      = lazy(() => import('./admin/pages/AdminUsers.jsx'));
+const AdminSchools    = lazy(() => import('./admin/pages/AdminSchools.jsx'));
+const AdminPrograms   = lazy(() => import('./admin/pages/AdminPrograms.jsx'));
+const AdminDeadlines  = lazy(() => import('./admin/pages/AdminDeadlines.jsx'));
+const AdminReports    = lazy(() => import('./admin/pages/AdminReports.jsx'));
+const AdminSettings   = lazy(() => import('./admin/pages/AdminSettings.jsx'));
 
 const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID'];
+
+// Preload only the chunks the logged-in user's role will actually navigate to.
+// Called once after session is confirmed — runs in the background, never blocks rendering.
+function preloadForRole(role) {
+  if (role === 'Admin') {
+    import('./admin/pages/AdminOverview.jsx');
+    import('./admin/pages/AdminSubmissions.jsx');
+    import('./admin/pages/AdminUsers.jsx');
+    import('./admin/pages/AdminSchools.jsx');
+    import('./admin/pages/AdminPrograms.jsx');
+    import('./admin/pages/AdminDeadlines.jsx');
+    import('./admin/pages/AdminReports.jsx');
+    import('./admin/pages/AdminSettings.jsx');
+  } else if (CES_ROLES.includes(role)) {
+    import('./ces/CESLayout.jsx');
+  } else if (role === 'Cluster Coordinator') {
+    import('./cluster-head/ClusterHeadLayout.jsx');
+  } else {
+    // School / Division Personnel
+    import('./AIPForm');
+    import('./PIRForm');
+  }
+}
 
 // Session validity check — compares a server-issued expiry timestamp stored in
 // sessionStorage against the current time. The actual JWT lives in an HttpOnly
@@ -305,7 +331,7 @@ function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* AIP Card */}
-          <Link to="/aip" className="group block bg-white dark:bg-dark-surface rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 dark:border-dark-border hover:border-pink-200 dark:hover:border-pink-400 relative">
+          <Link to="/aip" onMouseEnter={() => import('./AIPForm')} className="group block bg-white dark:bg-dark-surface rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 dark:border-dark-border hover:border-pink-200 dark:hover:border-pink-400 relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-pink-50 dark:bg-pink-950 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
 
             <div className="p-8 md:p-10 relative z-10 flex flex-col h-full">
@@ -349,7 +375,7 @@ function Dashboard() {
           {/* PIR Card */}
           {hasAIP ? (
             <div className="group block bg-white dark:bg-dark-surface rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 dark:border-dark-border hover:border-blue-200 dark:hover:border-blue-400 relative">
-              <Link to="/pir" className="absolute inset-0 z-10"></Link>
+              <Link to="/pir" onMouseEnter={() => import('./PIRForm')} className="absolute inset-0 z-10"></Link>
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 dark:bg-blue-950 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
 
               <div className="p-8 md:p-10 relative z-0 flex flex-col h-full">
@@ -446,12 +472,44 @@ function Dashboard() {
 function AnimatedRoutes() {
   const location = useLocation();
   const formOrb = location.pathname === '/pir' ? 'blue' : 'pink';
+  const isAdminPath = location.pathname.startsWith('/admin');
+
+  // Kick off background preloads for the user's role once, after mount
+  useEffect(() => {
+    try {
+      const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+      if (user?.role) preloadForRole(user.role);
+    } catch { /* session not ready yet */ }
+  }, []);
+
+  // Admin routes rendered outside AnimatePresence (no location key) so
+  // AdminLayout stays mounted — prevents repeated /notifications fetches
+  // on every admin navigation.
+  if (isAdminPath) {
+    return (
+      <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-slate-50 dark:bg-dark-base"><div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-pink-500 animate-spin" /></div>}>
+        <Routes location={location}>
+          <Route path="/admin" element={<AdminRouteGuard><AdminLayout /></AdminRouteGuard>}>
+            <Route index element={<AdminOverview />} />
+            <Route path="submissions" element={<AdminSubmissions />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="schools" element={<AdminSchools />} />
+            <Route path="programs" element={<AdminPrograms />} />
+            <Route path="deadlines" element={<AdminDeadlines />} />
+            <Route path="reports" element={<AdminReports />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    );
+  }
 
   return (
     <>
       {['/aip', '/pir'].includes(location.pathname) && (
         <FormBackground orb={formOrb} />
       )}
+      <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-slate-50 dark:bg-dark-base"><div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-pink-500 animate-spin" /></div>}>
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
@@ -494,16 +552,6 @@ function AnimatedRoutes() {
           {/* Cluster Head Routes */}
           <Route path="/cluster-head/*" element={<ClusterHeadRouteGuard><ClusterHeadLayout /></ClusterHeadRouteGuard>} />
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminRouteGuard><AdminOverview /></AdminRouteGuard>} />
-          <Route path="/admin/submissions" element={<AdminRouteGuard><AdminSubmissions /></AdminRouteGuard>} />
-          <Route path="/admin/users" element={<AdminRouteGuard><AdminUsers /></AdminRouteGuard>} />
-          <Route path="/admin/schools" element={<AdminRouteGuard><AdminSchools /></AdminRouteGuard>} />
-          <Route path="/admin/programs" element={<AdminRouteGuard><AdminPrograms /></AdminRouteGuard>} />
-          <Route path="/admin/deadlines" element={<AdminRouteGuard><AdminDeadlines /></AdminRouteGuard>} />
-          <Route path="/admin/reports" element={<AdminRouteGuard><AdminReports /></AdminRouteGuard>} />
-          <Route path="/admin/settings" element={<AdminRouteGuard><AdminSettings /></AdminRouteGuard>} />
-
           {/* Error Pages */}
           <Route path="/403" element={<PageTransition><ErrorPage type="403" /></PageTransition>} />
           <Route path="/500" element={<PageTransition><ErrorPage type="500" /></PageTransition>} />
@@ -512,6 +560,7 @@ function AnimatedRoutes() {
           <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
         </Routes>
       </AnimatePresence>
+      </Suspense>
     </>
   );
 }

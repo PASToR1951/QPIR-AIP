@@ -19,6 +19,10 @@ server/prisma/dbml/
 docs-update-prompt.txt
 *.prompt.txt
 
+# ── Audit scripts & ephemeral token cache ────────────────────────────────────
+server/scripts/.audit_tokens.json
+AUDIT_REPORT.md
+
 # ── Environment variables ─────────────────────────────────────────────────────
 .env
 .env.local
