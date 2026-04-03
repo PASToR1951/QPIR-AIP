@@ -11,7 +11,7 @@ export interface TokenPayload {
   cluster_id?: number | null;
 }
 
-const VALID_ROLES = ['School', 'Division Personnel', 'Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'] as const;
+const VALID_ROLES = ['School', 'Division Personnel', 'Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Pending'] as const;
 
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
