@@ -24,6 +24,7 @@ const Changelog      = lazy(() => import('./components/Changelog'));
 const SystemDocs     = lazy(() => import('./components/SystemDocs'));
 const FAQ            = lazy(() => import('./components/FAQ'));
 const PrivacyPolicy  = lazy(() => import('./components/PrivacyPolicy'));
+const OAuthCallback  = lazy(() => import('./OAuthCallback'));
 
 // CES pages
 const CESLayout      = lazy(() => import('./ces/CESLayout.jsx'));
@@ -513,6 +514,7 @@ function AnimatedRoutes() {
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+          <Route path="/oauth/callback" element={<OAuthCallback />} />
           <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
           <Route path="/docs" element={<PageTransition><SystemDocs /></PageTransition>} />
           <Route path="/faq" element={<PageTransition><FAQ /></PageTransition>} />
