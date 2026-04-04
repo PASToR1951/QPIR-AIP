@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import bcrypt from "bcrypt";
+import * as XLSX from "xlsx";
 import { getCESRoleForDivisionPIR, CES_ROLES } from "../lib/routing.ts";
 import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
 import { logger } from "../lib/logger.ts";
@@ -67,6 +68,13 @@ function toCSV(rows: Record<string, unknown>[]): string {
     headers.map((h) => JSON.stringify(r[h] ?? "")).join(",")
   );
   return "\uFEFF" + [headers.join(","), ...lines].join("\r\n");
+}
+
+function toXLSX(rows: Record<string, unknown>[], sheetName = "Sheet1"): Buffer {
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  return XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 }
 
 // Wrap every admin handler with auth check
@@ -547,7 +555,7 @@ adminRoutes.use("*", async (c, next) => {
 // ==========================================
 
 adminRoutes.get("/overview", async (c) => {
-  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear(), 2020, 2100);
 
   // Current quarter (needed early for PIR queries)
   const month = new Date().getMonth() + 1;
@@ -994,7 +1002,16 @@ adminRoutes.get("/submissions/export", async (c) => {
     });
   }
 
-  return c.json({ error: "Unsupported export format. Use 'csv'." }, 400);
+  if (format === "xlsx") {
+    return new Response(toXLSX(rows, "Submissions"), {
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="submissions-export.xlsx"`,
+      },
+    });
+  }
+
+  return c.json({ error: "Unsupported export format. Use 'csv' or 'xlsx'." }, 400);
 });
 
 adminRoutes.get("/submissions/:id", async (c) => {
@@ -1696,7 +1713,7 @@ adminRoutes.delete("/division-programs/:id", async (c) => {
 
 adminRoutes.get("/deadlines", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
+  const year = safeParseInt(c.req.query("year"), new Date().getFullYear(), 2020, 2100);
   const deadlines = await prisma.deadline.findMany({ where: { year } });
   const defaults: Record<number, string> = {
     1: `${year}-03-31`, 2: `${year}-06-30`, 3: `${year}-09-30`, 4: `${year}-12-31`,
@@ -1720,23 +1737,60 @@ adminRoutes.post("/deadlines", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { year, quarter, date, open_date, grace_period_days } = await c.req.json();
-  const existing = await prisma.deadline.findUnique({ where: { year_quarter: { year, quarter } } });
+
+  // Validate year
+  const parsedYear = safeParseInt(year, 0, 2020, 2100);
+  if (parsedYear < 2020 || parsedYear > 2100) {
+    return c.json({ error: "Invalid year (must be 2020–2100)" }, 400);
+  }
+
+  // Validate quarter
+  if (![1, 2, 3, 4].includes(quarter)) {
+    return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
+  }
+
+  // Validate deadline date
+  const deadlineDate = new Date(date);
+  if (isNaN(deadlineDate.getTime())) {
+    return c.json({ error: "Invalid date" }, 400);
+  }
+
+  // Validate open_date if provided
+  let openDate: Date | null = null;
+  if (open_date) {
+    openDate = new Date(open_date);
+    if (isNaN(openDate.getTime())) {
+      return c.json({ error: "Invalid open_date" }, 400);
+    }
+    if (openDate >= deadlineDate) {
+      return c.json({ error: "Open date must be before deadline" }, 400);
+    }
+  }
+
+  // Validate grace_period_days
+  const graceDays = safeParseInt(grace_period_days, 0, 0, 30);
+  if (graceDays < 0 || graceDays > 30) {
+    return c.json({ error: "Grace period must be between 0 and 30 days" }, 400);
+  }
+
+  const existing = await prisma.deadline.findUnique({ where: { year_quarter: { year: parsedYear, quarter } } });
   const deadline = await prisma.deadline.upsert({
-    where: { year_quarter: { year, quarter } },
+    where: { year_quarter: { year: parsedYear, quarter } },
     update: {
-      date: new Date(date),
-      open_date: open_date ? new Date(open_date) : null,
-      grace_period_days: grace_period_days ?? 0,
+      date: deadlineDate,
+      open_date: openDate,
+      grace_period_days: graceDays,
     },
     create: {
-      year, quarter,
-      date: new Date(date),
-      open_date: open_date ? new Date(open_date) : null,
-      grace_period_days: grace_period_days ?? 0,
+      year: parsedYear,
+      quarter,
+      date: deadlineDate,
+      open_date: openDate,
+      grace_period_days: graceDays,
     },
   });
   await writeAuditLog(admin.id, "changed_deadline", "Deadline", deadline.id, {
-    year, quarter, newDate: date, previousDate: existing?.date ?? null,
+    year: parsedYear, quarter, newDate: date, previousDate: existing?.date ?? null,
   });
   return c.json(deadline);
 });
@@ -2127,17 +2181,81 @@ adminRoutes.get("/reports/:type/export", async (c) => {
       Year: p.aip.year,
       Status: p.status,
     }));
+  } else if (type === "accomplishment") {
+    const reviews = await prisma.pIRActivityReview.findMany({
+      where: { pir: { aip: { year } } },
+      include: { pir: { include: { aip: { include: { school: { include: { cluster: true } } } } } } },
+    });
+    const bySchool: Record<string, { school: string; cluster: string; physSum: number; physCount: number; finSum: number; finCount: number }> = {};
+    for (const r of reviews) {
+      const school = r.pir.aip.school?.name ?? "Division";
+      const cluster = r.pir.aip.school?.cluster?.name ?? "Division";
+      if (!bySchool[school]) bySchool[school] = { school, cluster, physSum: 0, physCount: 0, finSum: 0, finCount: 0 };
+      const physTarget = Number(r.physical_target);
+      const finTarget = Number(r.financial_target);
+      if (physTarget > 0) { bySchool[school].physSum += (Number(r.physical_accomplished) / physTarget) * 100; bySchool[school].physCount += 1; }
+      if (finTarget > 0) { bySchool[school].finSum += (Number(r.financial_accomplished) / finTarget) * 100; bySchool[school].finCount += 1; }
+    }
+    rows = Object.values(bySchool).map((s) => ({
+      School: s.school,
+      Cluster: s.cluster,
+      "Physical Rate (%)": s.physCount > 0 ? Math.round(s.physSum / s.physCount) : 0,
+      "Financial Rate (%)": s.finCount > 0 ? Math.round(s.finSum / s.finCount) : 0,
+    }));
+  } else if (type === "factors") {
+    const factors = await prisma.pIRFactor.findMany({ where: { pir: { aip: { year } } } });
+    const TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
+    rows = TYPES.map((t) => {
+      const matching = factors.filter((f) => f.factor_type.trim() === t);
+      const facilitating = matching.filter((f) => f.facilitating_factors?.trim()).length;
+      const hindering = matching.filter((f) => f.hindering_factors?.trim()).length;
+      return { "Factor Type": t, Facilitating: facilitating, Hindering: hindering, Total: facilitating + hindering };
+    });
+  } else if (type === "sources") {
+    const activities = await prisma.aIPActivity.findMany({
+      where: { aip: { year } },
+      select: { budget_source: true, budget_amount: true },
+    });
+    const sourceMap: Record<string, number> = {};
+    for (const a of activities) {
+      const key = a.budget_source?.trim() || "Unspecified";
+      sourceMap[key] = (sourceMap[key] ?? 0) + Number(a.budget_amount);
+    }
+    rows = Object.entries(sourceMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([source, total]) => ({ Source: source, "Total Amount": total }));
+  } else if (type === "funnel") {
+    const aips = await prisma.aIP.findMany({ where: { year }, select: { status: true } });
+    const STATUSES = ["Draft", "Submitted", "Under Review", "Approved", "Returned"];
+    const total = aips.length;
+    rows = STATUSES.map((s) => {
+      const count = aips.filter((a) => a.status === s).length;
+      return { Status: s, Count: count, "% of Total": total > 0 ? ((count / total) * 100).toFixed(1) + "%" : "0.0%" };
+    }).filter((r) => Number(r.Count) > 0);
   }
 
   await writeAuditLog(reportExporter.id, "exported_report", "Export", 0, {
     report_type: type, year, format, row_count: rows.length,
   });
 
+  if (!rows.length) {
+    return c.json({ error: `No data found for report type '${type}' in year ${year}.` }, 404);
+  }
+
   if (format === "csv") {
     return new Response(toCSV(rows), {
       headers: {
         "Content-Type": "text/csv",
         "Content-Disposition": `attachment; filename="${type}-report-${year}.csv"`,
+      },
+    });
+  }
+
+  if (format === "xlsx") {
+    return new Response(toXLSX(rows, type), {
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${type}-report-${year}.xlsx"`,
       },
     });
   }

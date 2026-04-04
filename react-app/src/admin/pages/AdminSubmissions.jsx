@@ -234,6 +234,21 @@ export default function AdminSubmissions() {
     }
   };
 
+  const handleExportXLSX = async () => {
+    const params = new URLSearchParams({ format: 'xlsx', ...(tab !== 'all' ? { type: tab } : {}) });
+    if (filters.year) params.set('year', filters.year);
+    if (filters.status) params.set('status', filters.status);
+    const url = `${API}/api/admin/submissions/export?${params}`;
+    const blob = await fetch(url, { credentials: 'include' }).then(r => r.blob());
+    const blobUrl = URL.createObjectURL(blob);
+    if (downloadRef.current) {
+      downloadRef.current.href = blobUrl;
+      downloadRef.current.download = 'submissions.xlsx';
+      downloadRef.current.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    }
+  };
+
   // Bug fix: accepts `item` directly instead of reading `viewItem` from state.
   // Previously, calling this via a .then() chain captured a stale viewItem=null
   // from the render at click time, causing the export to always bail out early.
@@ -398,6 +413,10 @@ export default function AdminSubmissions() {
             <button onClick={handleExportCSV} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors">
               <DownloadSimple size={16} /> CSV
             </button>
+            <button onClick={handleExportXLSX} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors">
+              <DownloadSimple size={16} /> XLSX
+            </button>
+
           </div>
         </div>
 
@@ -559,6 +578,7 @@ export default function AdminSubmissions() {
             <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400">{selectedIds.length} selected</span>
             <button onClick={handleBulkApprove} disabled={actionLoading} className="text-xs font-bold text-emerald-600 hover:underline disabled:opacity-50">{actionLoading ? 'Approving...' : 'Approve Selected'}</button>
             <button onClick={handleExportCSV} className="text-xs font-bold text-indigo-600 hover:underline">Export CSV</button>
+            <button onClick={handleExportXLSX} className="text-xs font-bold text-indigo-600 hover:underline">Export XLSX</button>
             <button onClick={() => setSelectedIds([])} className="ml-auto text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-200">Clear</button>
           </div>
         )}

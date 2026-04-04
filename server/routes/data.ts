@@ -36,6 +36,14 @@ function normalizeIndicators(indicators: any[]): any[] {
   }));
 }
 
+function validateBudgetAmount(raw: unknown): number {
+  const amount = parseFloat(String(raw ?? 0));
+  if (Number.isNaN(amount) || amount < 0 || amount > 999_999_999_999) {
+    throw new Error('Invalid budget amount: must be a non-negative number not exceeding 999,999,999,999');
+  }
+  return amount;
+}
+
 // ==========================================
 // DRAFTS (stored as AIP/PIR rows with status = "Draft")
 // ==========================================
@@ -55,9 +63,9 @@ dataRoutes.post('/aips/draft', async (c) => {
     const clean_program_title = sanitizeString(program_title);
 
     const program = await prisma.program.findFirst({ where: { title: clean_program_title } });
-    if (!program) return c.json({ error: `Program '${clean_program_title}' not found` }, 404);
+    if (!program) return c.json({ error: 'Resource not found' }, 404);
 
-    const year = safeParseInt(rawYear, new Date().getFullYear());
+    const year = safeParseInt(rawYear, new Date().getFullYear(), 2020, 2100);
     const school_id = tokenUser.role === 'School' ? tokenUser.school_id : null;
 
     // Try to find an existing draft or submitted AIP to update
@@ -95,14 +103,21 @@ dataRoutes.post('/aips/draft', async (c) => {
       status: 'Draft',
     };
 
+    for (const act of (activities || [])) {
+      const raw = parseFloat(String(act.budgetAmount ?? 0));
+      if (Number.isNaN(raw) || raw < 0 || raw > 999_999_999_999) {
+        return c.json({ error: 'Invalid budget amount: must be a non-negative number' }, 400);
+      }
+    }
+
     const activityData = (activities || []).map((act: any) => {
-      const amount = parseFloat(act.budgetAmount || 0);
+      const amount = validateBudgetAmount(act.budgetAmount);
       return {
         phase: act.phase || '',
         activity_name: act.name || '',
         implementation_period: act.period || '',
-        period_start_month: act.periodStartMonth ? safeParseInt(act.periodStartMonth, 0) : null,
-        period_end_month: act.periodEndMonth ? safeParseInt(act.periodEndMonth, 0) : null,
+        period_start_month: act.periodStartMonth ? safeParseInt(act.periodStartMonth, 0, 1, 12) : null,
+        period_end_month: act.periodEndMonth ? safeParseInt(act.periodEndMonth, 0, 1, 12) : null,
         persons_involved: act.persons || '',
         outputs: act.outputs,
         budget_amount: amount,
@@ -149,7 +164,7 @@ dataRoutes.get('/aips/draft', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
 
     let drafts: any[];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
@@ -210,7 +225,7 @@ dataRoutes.delete('/aips/draft', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title');
-    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
 
     let where: any = { status: 'Draft', year };
 
@@ -254,10 +269,10 @@ dataRoutes.post('/pirs/draft', async (c) => {
     if (!sanitized_title || !sanitized_quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
     const program = await prisma.program.findFirst({ where: { title: sanitized_title } });
-    if (!program) return c.json({ error: `Program '${sanitized_title}' not found` }, 404);
+    if (!program) return c.json({ error: 'Resource not found' }, 404);
 
     const yearMatch = sanitized_quarter.match(/CY (\d{4})/);
-    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear()) : new Date().getFullYear();
+    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100) : new Date().getFullYear();
 
     let aip: any;
     if (tokenUser.role === 'School' && tokenUser.school_id) {
@@ -272,7 +287,7 @@ dataRoutes.post('/pirs/draft', async (c) => {
       });
     }
 
-    if (!aip) return c.json({ error: 'Associated AIP not found' }, 404);
+    if (!aip) return c.json({ error: 'Resource not found' }, 404);
 
     // Check for existing PIR draft
     const existing = await prisma.pIR.findUnique({
@@ -283,10 +298,19 @@ dataRoutes.post('/pirs/draft', async (c) => {
       return c.json({ error: 'A PIR has already been submitted for this quarter' }, 409);
     }
 
+    const budgetDiv = parseFloat(String(budget_from_division ?? 0));
+    const budgetPsf = parseFloat(String(budget_from_co_psf ?? 0));
+    if (Number.isNaN(budgetDiv) || budgetDiv < 0 || budgetDiv > 999_999_999_999) {
+      return c.json({ error: 'Invalid budget_from_division: must be a non-negative number' }, 400);
+    }
+    if (Number.isNaN(budgetPsf) || budgetPsf < 0 || budgetPsf > 999_999_999_999) {
+      return c.json({ error: 'Invalid budget_from_co_psf: must be a non-negative number' }, 400);
+    }
+
     const pirData = {
       program_owner: program_owner || '',
-      budget_from_division: parseFloat(budget_from_division) || 0,
-      budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+      budget_from_division: budgetDiv,
+      budget_from_co_psf: budgetPsf,
       functional_division: functional_division ?? null,
       indicator_quarterly_targets: indicator_quarterly_targets ?? [],
       action_items: action_items ?? [],
@@ -398,7 +422,7 @@ dataRoutes.get('/pirs/draft', async (c) => {
     }
 
     const yearMatch = quarter?.match(/CY (\d{4})/);
-    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear()) : new Date().getFullYear();
+    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100) : new Date().getFullYear();
 
     const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ hasDraft: false });
@@ -484,7 +508,7 @@ dataRoutes.delete('/pirs/draft', async (c) => {
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter required' }, 400);
 
     const yearMatch = quarter.match(/CY (\d{4})/);
-    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear()) : new Date().getFullYear();
+    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100) : new Date().getFullYear();
 
     const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ message: 'No draft found' });
@@ -523,6 +547,15 @@ dataRoutes.get('/schools', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
+    // School users only get their own school; Admin/Division can see all
+    if (tokenUser.role === 'School' && tokenUser.school_id) {
+      const school = await prisma.school.findUnique({
+        where: { id: tokenUser.school_id },
+        include: { cluster: true },
+      });
+      return c.json(school ? [school] : []);
+    }
+
     const schools = await prisma.school.findMany({
       include: { cluster: true }
     });
@@ -542,9 +575,7 @@ dataRoutes.get('/programs', async (c) => {
     const tokenUser = getUserFromToken(c);
 
     if (!tokenUser) {
-      // Fallback: return all programs (unauthenticated or dev use)
-      const programs = await prisma.program.findMany({ orderBy: { title: 'asc' } });
-      return c.json(programs);
+      return c.json({ error: 'Authentication required' }, 401);
     }
 
     if (tokenUser.role === 'Division Personnel') {
@@ -608,7 +639,7 @@ dataRoutes.get('/programs/with-aips', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
 
     const db = prisma.aIP as any;
     const SUBMITTED_AIP_STATUSES = ['Submitted', 'Verified', 'Under Review', 'Approved', 'Returned'];
@@ -639,7 +670,7 @@ dataRoutes.get('/programs/with-pirs', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
 
     let pirs: any[];
     const FILED_STATUSES = ['Submitted', 'Under Review', 'Approved', 'Returned'];
@@ -679,7 +710,7 @@ dataRoutes.get('/schools/:id/aip-status', async (c) => {
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
   const school_id = safeParseInt(c.req.param('id'), 0);
-  const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+  const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
 
   // School users may only query their own school's status
   if (tokenUser.role === 'School' && tokenUser.school_id !== school_id) {
@@ -774,7 +805,7 @@ dataRoutes.get('/users/:id/aip-status', async (c) => {
   if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
   const user_id = safeParseInt(c.req.param('id'), 0);
-  const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+  const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
 
   // Users may only query their own status
   if (tokenUser.id !== user_id) {
@@ -799,7 +830,7 @@ dataRoutes.get('/aips/activities', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
-    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
 
     if (!program_title) {
       return c.json({ error: 'program_title is required' }, 400);
@@ -807,7 +838,7 @@ dataRoutes.get('/aips/activities', async (c) => {
 
     const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) {
-      return c.json({ error: `Program '${program_title}' not found` }, 404);
+      return c.json({ error: 'Resource not found' }, 404);
     }
 
     let aip: any;
@@ -874,7 +905,7 @@ dataRoutes.get('/aips', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title') || '';
-    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
 
     if (!program_title) return c.json({ error: 'program_title is required' }, 400);
 
@@ -935,7 +966,7 @@ dataRoutes.delete('/aips', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const program_title = c.req.query('program_title');
-    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
 
     if (!program_title) return c.json({ error: 'program_title is required' }, 400);
 
@@ -982,7 +1013,7 @@ dataRoutes.get('/pirs', async (c) => {
     if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
     const yearMatch = quarter.match(/CY (\d{4})/);
-    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear()) : new Date().getFullYear();
+    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100) : new Date().getFullYear();
 
     const program = await prisma.program.findFirst({ where: { title: program_title } });
     if (!program) return c.json({ error: `Program '${program_title}' not found` }, 404);
@@ -1100,7 +1131,7 @@ dataRoutes.post('/aips', async (c) => {
       where: { title: program_title }
     });
     if (!program) {
-      return c.json({ error: `Program '${program_title}' not found` }, 404);
+      return c.json({ error: 'Resource not found' }, 404);
     }
 
     // Division Personnel: verify program is assigned to them
@@ -1117,7 +1148,7 @@ dataRoutes.post('/aips', async (c) => {
     }
 
     const school_id = tokenUser.role === 'School' ? tokenUser.school_id : null;
-    const parsedYear = safeParseInt(year, new Date().getFullYear());
+    const parsedYear = safeParseInt(year, new Date().getFullYear(), 2020, 2100);
 
     const aipFields = {
       outcome,
@@ -1129,17 +1160,24 @@ dataRoutes.post('/aips', async (c) => {
       prepared_by_title: prepared_by_title || '',
       approved_by_name: approved_by_name || '',
       approved_by_title: approved_by_title || '',
-      status: 'Approved',
+      status: 'Submitted',
     };
 
+    for (const act of activities) {
+      const raw = parseFloat(String(act.budgetAmount ?? 0));
+      if (Number.isNaN(raw) || raw < 0 || raw > 999_999_999_999) {
+        return c.json({ error: 'Invalid budget amount: must be a non-negative number' }, 400);
+      }
+    }
+
     const activityFields = activities.map((act: any) => {
-      const amount = parseFloat(act.budgetAmount || 0);
+      const amount = validateBudgetAmount(act.budgetAmount);
       return {
         phase: act.phase,
         activity_name: act.name,
         implementation_period: act.period,
-        period_start_month: act.periodStartMonth ? safeParseInt(act.periodStartMonth, 0) : null,
-        period_end_month: act.periodEndMonth ? safeParseInt(act.periodEndMonth, 0) : null,
+        period_start_month: act.periodStartMonth ? safeParseInt(act.periodStartMonth, 0, 1, 12) : null,
+        period_end_month: act.periodEndMonth ? safeParseInt(act.periodEndMonth, 0, 1, 12) : null,
         persons_involved: act.persons,
         outputs: act.outputs,
         budget_amount: amount,
@@ -1178,7 +1216,7 @@ dataRoutes.post('/aips', async (c) => {
       }
       logger.warn('AIP creation blocked — record already exists', { status: (existingDraft as any).status, userId: tokenUser.id });
       return c.json(
-        { error: 'An AIP for this program and year already exists.' },
+        { error: 'A record already exists for this request' },
         409
       );
     } else {
@@ -1198,31 +1236,31 @@ dataRoutes.post('/aips', async (c) => {
     // Notify all admins that a new AIP was submitted
     let schoolLabel: string;
     if (aip.school_id) {
-      schoolLabel = (await prisma.school.findUnique({ where: { id: aip.school_id }, select: { name: true } }))?.name ?? 'A school';
+      schoolLabel = sanitizeString((await prisma.school.findUnique({ where: { id: aip.school_id }, select: { name: true } }))?.name ?? 'A school');
     } else {
       const submitter = await prisma.user.findUnique({ where: { id: tokenUser.id }, select: { name: true, email: true } });
-      schoolLabel = submitter?.name ?? submitter?.email ?? 'Division Personnel';
+      schoolLabel = sanitizeString(submitter?.name ?? submitter?.email ?? 'Division Personnel');
     }
     const admins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
     if (admins.length > 0) {
       const adminNotifs = await prisma.notification.createManyAndReturn({
         data: admins.map(admin => ({
           user_id: admin.id,
-          title: 'New AIP Received (Pre-approved)',
-          message: `${schoolLabel} submitted a pre-approved AIP for ${program_title} (FY ${year}).`,
+          title: 'New AIP Received for Review',
+          message: `${schoolLabel} submitted an AIP for ${program_title} (FY ${year}) awaiting your review.`,
           type: 'aip_submitted',
         })),
       });
       pushNotifications(adminNotifs);
     }
 
-    // Notify the submitter that their AIP is pre-approved
+    // Notify the submitter that their AIP has been submitted for review
     const submitterNotif = await prisma.notification.create({
       data: {
         user_id: tokenUser.id,
-        title: 'AIP Approved',
-        message: `Your AIP for ${program_title} (FY ${year}) has been received and is pre-approved.`,
-        type: 'approved',
+        title: 'AIP Submitted',
+        message: `Your AIP for ${program_title} (FY ${year}) has been submitted and is awaiting review.`,
+        type: 'aip_submitted',
       },
     });
     pushNotification(submitterNotif);
@@ -1326,16 +1364,16 @@ dataRoutes.post('/pirs', async (c) => {
       where: { title: clean_program_title }
     });
     if (!program) {
-      return c.json({ error: `Program '${clean_program_title}' not found` }, 404);
+      return c.json({ error: 'Resource not found' }, 404);
     }
 
     // Extract year from "Xth Quarter CY 2026"
     const yearMatch = clean_quarter.match(/CY (\d{4})/);
-    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear()) : new Date().getFullYear();
+    const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100) : new Date().getFullYear();
 
     // Extract quarter number and enforce submission window
     const qNumMatch = clean_quarter.match(/(\d+)(?:st|nd|rd|th) Quarter/);
-    const quarterNum = qNumMatch ? safeParseInt(qNumMatch[1], 0) : null;
+    const quarterNum = qNumMatch ? safeParseInt(qNumMatch[1], 0, 1, 4) : null;
     if (quarterNum) {
       const deadlineRecord = await prisma.deadline.findUnique({
         where: { year_quarter: { year, quarter: quarterNum } }
@@ -1384,12 +1422,21 @@ dataRoutes.post('/pirs', async (c) => {
     }
 
     if (!aip) {
-      return c.json({ error: 'Associated AIP not found for this program and year' }, 404);
+      return c.json({ error: 'Resource not found' }, 404);
     }
 
     // Verify the user can access this AIP
     if (tokenUser.role === 'Division Personnel' && aip.created_by_user_id !== tokenUser.id) {
       return c.json({ error: 'Access denied' }, 403);
+    }
+
+    const pirBudgetDiv = parseFloat(String(budget_from_division ?? 0));
+    const pirBudgetPsf = parseFloat(String(budget_from_co_psf ?? 0));
+    if (Number.isNaN(pirBudgetDiv) || pirBudgetDiv < 0 || pirBudgetDiv > 999_999_999_999) {
+      return c.json({ error: 'Invalid budget_from_division: must be a non-negative number' }, 400);
+    }
+    if (Number.isNaN(pirBudgetPsf) || pirBudgetPsf < 0 || pirBudgetPsf > 999_999_999_999) {
+      return c.json({ error: 'Invalid budget_from_co_psf: must be a non-negative number' }, 400);
     }
 
     const factorData = Object.entries(factors).map(([type, data]: [string, any]) => ({
@@ -1432,12 +1479,12 @@ dataRoutes.post('/pirs', async (c) => {
         where: { id: existingDraft.id },
         data: {
           program_owner,
-          budget_from_division: parseFloat(budget_from_division) || 0,
-          budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+          budget_from_division: pirBudgetDiv,
+          budget_from_co_psf: pirBudgetPsf,
           functional_division: functional_division ?? null,
           indicator_quarterly_targets: indicator_quarterly_targets ?? [],
           action_items: action_items ?? [],
-          status: tokenUser.role === 'School' ? 'For Cluster Head Review' : 'For CES Review',
+          status: aip.school_id !== null ? 'For Cluster Head Review' : 'For CES Review',
           factors: { create: factorData },
           activity_reviews: { create: reviewData }
         }
@@ -1449,12 +1496,12 @@ dataRoutes.post('/pirs', async (c) => {
           created_by_user_id: tokenUser.id,
           quarter: clean_quarter,
           program_owner,
-          budget_from_division: parseFloat(budget_from_division) || 0,
-          budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+          budget_from_division: pirBudgetDiv,
+          budget_from_co_psf: pirBudgetPsf,
           functional_division: functional_division ?? null,
           indicator_quarterly_targets: indicator_quarterly_targets ?? [],
           action_items: action_items ?? [],
-          status: tokenUser.role === 'School' ? 'For Cluster Head Review' : 'For CES Review',
+          status: aip.school_id !== null ? 'For Cluster Head Review' : 'For CES Review',
           factors: { create: factorData },
           activity_reviews: { create: reviewData }
         }
@@ -1464,10 +1511,10 @@ dataRoutes.post('/pirs', async (c) => {
     // Notify the appropriate reviewer(s) and all admins
     let submitterLabel: string;
     if (aip.school?.name) {
-      submitterLabel = aip.school.name;
+      submitterLabel = sanitizeString(aip.school.name);
     } else {
       const submitter = await prisma.user.findUnique({ where: { id: tokenUser.id }, select: { name: true, email: true } });
-      submitterLabel = submitter?.name ?? submitter?.email ?? 'A user';
+      submitterLabel = sanitizeString(submitter?.name ?? submitter?.email ?? 'A user');
     }
     const pirAdmins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
     let reviewerIds: number[] = [];
@@ -1525,8 +1572,8 @@ dataRoutes.put('/pirs/:id', async (c) => {
     const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
     if (!pir) return c.json({ error: 'PIR not found' }, 404);
 
-    // Ownership check
-    if (pir.created_by_user_id !== null && pir.created_by_user_id !== tokenUser.id) {
+    // Ownership check — null creator is treated as unowned (no access)
+    if (pir.created_by_user_id === null || pir.created_by_user_id !== tokenUser.id) {
       return c.json({ error: 'Forbidden' }, 403);
     }
     // Only allow editing if awaiting review or returned to submitter
@@ -1539,6 +1586,15 @@ dataRoutes.put('/pirs/:id', async (c) => {
       program_owner, budget_from_division, budget_from_co_psf, functional_division,
       indicator_quarterly_targets, action_items, activity_reviews, factors
     } = body;
+
+    const putBudgetDiv = parseFloat(String(budget_from_division ?? 0));
+    const putBudgetPsf = parseFloat(String(budget_from_co_psf ?? 0));
+    if (Number.isNaN(putBudgetDiv) || putBudgetDiv < 0 || putBudgetDiv > 999_999_999_999) {
+      return c.json({ error: 'Invalid budget_from_division: must be a non-negative number' }, 400);
+    }
+    if (Number.isNaN(putBudgetPsf) || putBudgetPsf < 0 || putBudgetPsf > 999_999_999_999) {
+      return c.json({ error: 'Invalid budget_from_co_psf: must be a non-negative number' }, 400);
+    }
 
     const factorData = Object.entries(factors).map(([type, data]: [string, any]) => ({
       factor_type: type,
@@ -1562,6 +1618,10 @@ dataRoutes.put('/pirs/:id', async (c) => {
       actions_to_address_gap: rev.actions ?? '',
     }));
 
+    // Determine review queue from actual AIP data, not JWT role claim
+    const pirAip = await prisma.aIP.findUnique({ where: { id: pir.aip_id }, select: { school_id: true } });
+    const resubmitStatus = pirAip?.school_id !== null ? 'For Cluster Head Review' : 'For CES Review';
+
     // Replace related records and update fields
     await prisma.pIRActivityReview.deleteMany({ where: { pir_id: pirId } });
     await prisma.pIRFactor.deleteMany({ where: { pir_id: pirId } });
@@ -1570,12 +1630,12 @@ dataRoutes.put('/pirs/:id', async (c) => {
       where: { id: pirId },
       data: {
         program_owner,
-        budget_from_division: parseFloat(budget_from_division) || 0,
-        budget_from_co_psf: parseFloat(budget_from_co_psf) || 0,
+        budget_from_division: putBudgetDiv,
+        budget_from_co_psf: putBudgetPsf,
         functional_division: functional_division ?? null,
         indicator_quarterly_targets: indicator_quarterly_targets ?? [],
         action_items: action_items ?? [],
-        status: tokenUser.role === 'School' ? 'For Cluster Head Review' : 'For CES Review', // Re-enter queue on resubmission
+        status: resubmitStatus, // Re-enter queue on resubmission
         factors: { create: factorData },
         activity_reviews: { create: reviewData },
       },
@@ -1600,8 +1660,8 @@ dataRoutes.delete('/pirs/:id', async (c) => {
     const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
     if (!pir) return c.json({ error: 'PIR not found' }, 404);
 
-    // Ownership check
-    if (pir.created_by_user_id !== null && pir.created_by_user_id !== tokenUser.id) {
+    // Ownership check — null creator is treated as unowned (no access)
+    if (pir.created_by_user_id === null || pir.created_by_user_id !== tokenUser.id) {
       return c.json({ error: 'Forbidden' }, 403);
     }
     // Only allow deletion if awaiting review or returned to submitter
@@ -1721,7 +1781,7 @@ dataRoutes.get('/dashboard', async (c) => {
     const tokenUser = getUserFromToken(c);
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
-    const year = safeParseInt(c.req.query('year'), new Date().getFullYear());
+    const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
     const today = new Date();
     const currentQuarter = Math.ceil((today.getMonth() + 1) / 3);
 
