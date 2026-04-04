@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, MapPinIcon as MapPin, EnvelopeIcon as Mail, FacebookLogoIcon as Facebook, PhoneIcon as Phone } from '@phosphor-icons/react';
@@ -15,6 +15,12 @@ export default function Login() {
   const [consentChecked, setConsentChecked] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // Prefetch Dashboard chunk during idle time so it's ready after login
+  useEffect(() => {
+    const id = requestIdleCallback(() => import('./Dashboard'), { timeout: 3000 });
+    return () => cancelIdleCallback(id);
+  }, []);
 
   // Display error messages redirected from OAuth callbacks
   useEffect(() => {
@@ -40,21 +46,74 @@ export default function Login() {
     }
   }, [searchParams]);
 
-  const cardRef = useRef(null);
-  const orb1Ref = useRef(null);
-  const orb2Ref = useRef(null);
+  const cardRef     = useRef(null);
+  const ssoTabRef   = useRef(null);
+  const emailTabRef = useRef(null);
+  const contentRef  = useRef(null);
 
-  const handleCardAnimationEnd = (e) => {
-    if (e.animationName === 'login-card-entrance') {
-      cardRef.current?.classList.remove('login-card-entrance');
+  // Set initial content height and hide email panel before first paint
+  useLayoutEffect(() => {
+    if (!contentRef.current || !ssoTabRef.current || !emailTabRef.current) return;
+    contentRef.current.style.height = ssoTabRef.current.scrollHeight + 'px';
+    emailTabRef.current.style.opacity = '0';
+    emailTabRef.current.style.pointerEvents = 'none';
+  }, []);
+
+  const switchTab = (newTab) => {
+    if (newTab === activeTab) return;
+
+    const reducedMotion =
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      document.documentElement.classList.contains('a11y-reduce-motion');
+
+    const outgoing = activeTab === 'sso' ? ssoTabRef.current : emailTabRef.current;
+    const incoming = newTab   === 'sso' ? ssoTabRef.current : emailTabRef.current;
+
+    setActiveTab(newTab);
+    setError('');
+
+    if (reducedMotion) {
+      outgoing.style.transition = 'none';
+      outgoing.style.opacity = '0';
+      outgoing.style.pointerEvents = 'none';
+      incoming.style.transition = 'none';
+      incoming.style.opacity = '1';
+      incoming.style.pointerEvents = 'auto';
+      contentRef.current.style.transition = 'none';
+      contentRef.current.style.height = incoming.scrollHeight + 'px';
+      return;
     }
+
+    // Fade out outgoing panel
+    outgoing.style.transition = 'opacity 0.15s ease-in';
+    outgoing.style.opacity = '0';
+    outgoing.style.pointerEvents = 'none';
+
+    // Bounce-expand/retract content height — cubic-bezier mimics back.out(2)
+    contentRef.current.style.transition = 'height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    contentRef.current.style.height = incoming.scrollHeight + 'px';
+
+    // Slide + fade incoming panel in after outgoing fades
+    setTimeout(() => {
+      incoming.style.transition = 'none';
+      incoming.style.transform = `translateX(${newTab === 'email' ? '12px' : '-12px'})`;
+      incoming.style.opacity = '0';
+      incoming.style.pointerEvents = 'auto';
+      incoming.offsetHeight; // force reflow
+      incoming.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+      incoming.style.transform = 'translateX(0)';
+      incoming.style.opacity = '1';
+    }, 120);
   };
 
   const shakeCard = () => {
-    if (cardRef.current) {
-      cardRef.current.classList.add('login-shake');
-      setTimeout(() => cardRef.current?.classList.remove('login-shake'), 300);
-    }
+    if (!cardRef.current) return;
+    cardRef.current.classList.remove('login-shake');
+    cardRef.current.offsetHeight; // force reflow to restart animation
+    cardRef.current.classList.add('login-shake');
+    cardRef.current.addEventListener('animationend', () => {
+      cardRef.current?.classList.remove('login-shake');
+    }, { once: true });
   };
 
   const handleLogin = async (e) => {
@@ -124,32 +183,31 @@ export default function Login() {
       <div className="absolute inset-0 bg-slate-900/10 bg-grid [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-10" />
 
       {/* Glowing orbs */}
-      <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 dark:opacity-30 rounded-full blur-3xl opacity-40 pointer-events-none z-0 login-orb-float-1" />
-      <div ref={orb2Ref} className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/30 dark:opacity-30 rounded-full blur-3xl opacity-40 pointer-events-none z-0 login-orb-float-2" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 dark:opacity-30 rounded-full blur-2xl opacity-40 pointer-events-none z-0 login-orb-float-1" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-400/30 dark:opacity-30 rounded-full blur-2xl opacity-40 pointer-events-none z-0 login-orb-float-2" />
 
       {/* Main Content */}
       <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center flex-1 w-full py-8 md:pb-32">
         <div
           ref={cardRef}
-          onAnimationEnd={handleCardAnimationEnd}
           className="bg-[#fafafa]/90 dark:bg-dark-surface/90 border border-slate-200 dark:border-dark-border rounded-[2rem] p-6 md:p-8 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 dark:ring-dark-border/30 backdrop-blur-md login-card-entrance"
         >
           {/* Logo + Title */}
-          <div className="mb-3 flex justify-center">
-            <img src="/AIP-PIR-logo.png" alt="AIP-PIR Logo" className="h-16 w-auto drop-shadow-sm" />
+          <div className="mb-3 flex justify-center login-stagger-child" style={{'--stagger-i': 0}}>
+            <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-16 w-auto drop-shadow-sm" fetchPriority="high" />
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tighter text-slate-900 dark:text-slate-100">
+          <h2 className="text-2xl font-extrabold tracking-tighter text-slate-900 dark:text-slate-100 login-stagger-child" style={{'--stagger-i': 1}}>
             AIP-PIR System
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 mb-5 px-4">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 mb-5 px-4 login-stagger-child" style={{'--stagger-i': 2}}>
             Tracking of Education Programs: Program Implementation Review System.
           </p>
 
           {/* Tab switcher */}
-          <div className="flex bg-slate-100 dark:bg-dark-base rounded-xl p-1 gap-1 mb-5">
+          <div className="flex bg-slate-100 dark:bg-dark-base rounded-xl p-1 gap-1 mb-5 login-stagger-child" style={{'--stagger-i': 3}}>
             <button
               type="button"
-              onClick={() => { setActiveTab('sso'); setError(''); }}
+              onClick={() => switchTab('sso')}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                 activeTab === 'sso'
                   ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-sm'
@@ -160,7 +218,7 @@ export default function Login() {
             </button>
             <button
               type="button"
-              onClick={() => { setActiveTab('email'); setError(''); }}
+              onClick={() => switchTab('email')}
               className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
                 activeTab === 'email'
                   ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-sm'
@@ -194,9 +252,11 @@ export default function Login() {
             </div>
           )}
 
-          {/* ── SSO Tab ── */}
-          {activeTab === 'sso' && (
-            <div className="space-y-3">
+          {/* ── Tab content — both always mounted, height driven by GSAP ── */}
+          <div ref={contentRef} className="relative overflow-hidden">
+
+            {/* SSO panel */}
+            <div ref={ssoTabRef} className="space-y-3 absolute inset-x-0 top-0">
               {privacyNotice}
               <a
                 href={consentChecked ? `${import.meta.env.VITE_API_URL}/api/auth/oauth/microsoft` : undefined}
@@ -225,11 +285,9 @@ export default function Login() {
                 Continue with Google (DepEd)
               </a>
             </div>
-          )}
 
-          {/* ── Email Tab ── */}
-          {activeTab === 'email' && (
-            <form className="space-y-4" onSubmit={handleLogin}>
+            {/* Email panel */}
+            <form ref={emailTabRef} className="space-y-4 absolute inset-x-0 top-0" onSubmit={handleLogin}>
               <div className="space-y-3">
                 <Input
                   theme="indigo"
@@ -283,34 +341,29 @@ export default function Login() {
                 )}
               </button>
             </form>
-          )}
+
+          </div>
         </div>
       </div>
 
       {/* Pill Footer */}
-      <footer className="md:absolute md:bottom-6 w-full z-40 p-4">
-        <div className="container mx-auto max-w-6xl bg-white/90 dark:bg-dark-surface/90 backdrop-blur-xl border border-slate-200 dark:border-dark-border rounded-[2.5rem] md:rounded-full shadow-xl shadow-slate-200/50 py-6 md:py-3 px-6 md:px-8">
+      <footer className="md:absolute md:bottom-6 w-full z-40 p-4 login-footer-entrance">
+        <div className="footer-pill container mx-auto max-w-6xl bg-white/90 dark:bg-dark-surface/90 backdrop-blur-xl border border-slate-200 dark:border-dark-border rounded-[2.5rem] md:rounded-full shadow-xl shadow-slate-200/50 py-6 md:py-3 px-6 md:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 text-slate-500 dark:text-slate-400 text-xs">
 
-            <div className="flex items-center justify-center gap-3 md:gap-4">
-              <a href="https://www.deped.gov.ph/transparency/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                <img src="/transparency-seal.webp" alt="Transparency Seal" className="h-8 md:h-10 w-auto transition-all duration-300" />
+            <div className="footer-item flex items-center gap-2 md:gap-3" style={{'--footer-i': 0}}>
+              <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
+                <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 md:h-10 w-auto drop-shadow-sm transition-all duration-300" fetchPriority="low" />
               </a>
-              <div className="h-6 md:h-8 w-px bg-slate-300 dark:bg-dark-border" />
-              <div className="flex items-center gap-2 md:gap-3">
-                <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                  <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 md:h-10 w-auto drop-shadow-sm transition-all duration-300" />
-                </a>
-                <a href="https://depednir.net/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                  <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-8 md:h-10 w-auto drop-shadow-sm transition-all duration-300" />
-                </a>
-                <a href="https://depedguihulngan.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
-                  <img src="/Division_Logo.webp" alt="Division Logo" className="h-8 md:h-10 w-auto drop-shadow-sm transition-all duration-300" />
-                </a>
-              </div>
+              <a href="https://depednir.net/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
+                <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-8 md:h-10 w-auto drop-shadow-sm transition-all duration-300" fetchPriority="low" />
+              </a>
+              <a href="https://depedguihulngan.ph/" target="_blank" rel="noopener noreferrer" className="transition-all hover:scale-105">
+                <img src="/Division_Logo.webp" alt="Division Logo" className="h-8 md:h-10 w-auto drop-shadow-sm transition-all duration-300" fetchPriority="low" />
+              </a>
             </div>
 
-            <div className="flex flex-col items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 font-medium text-center">
+            <div className="footer-item flex flex-col items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 font-medium text-center" style={{'--footer-i': 1}}>
               <div className="flex flex-wrap justify-center items-center gap-2">
                 <span className="flex items-center gap-1"><MapPin size={12} className="text-slate-300" /> Osmeña Avenue, City of Guihulngan, Negros Oriental</span>
                 <span className="hidden lg:inline text-slate-300">•</span>
@@ -321,7 +374,7 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-3">
+            <div className="footer-item flex items-center justify-center gap-3" style={{'--footer-i': 2}}>
               <a href="mailto:guihulngan.city@deped.gov.ph" className="flex items-center gap-2 px-4 py-2 bg-pink-500 border border-pink-500 rounded-full text-[10px] font-bold text-white hover:bg-pink-600 hover:border-pink-600 transition-all shadow-sm">
                 <Mail size={16} />
                 <span className="hidden lg:inline">Email Us</span>

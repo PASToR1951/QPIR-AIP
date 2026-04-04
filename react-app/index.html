@@ -10,9 +10,12 @@
   <title>AIP-PIR Portal — DepEd Guihulngan City Division</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap"
-    rel="stylesheet" />
+  <!-- Preload only the LCP image — the login-card logo.
+       Other images (background, footer logos) load naturally after JS. -->
+  <link rel="preload" as="image" href="/AIP-PIR-logo.webp" />
+  <!-- Load fonts asynchronously — avoids render-blocking on external font CDN -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;900&display=swap" /></noscript>
 </head>
 
 <body>

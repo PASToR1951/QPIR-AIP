@@ -21,7 +21,7 @@ const Footer = () => {
             <div className="flex flex-col items-center md:items-start text-center md:text-left lg:col-span-2">
               <div className="flex items-center gap-4 mb-6">
                 <a href="#" onClick={(e) => e.preventDefault()} className="transition-transform hover:scale-105">
-                  <img src="/AIP-PIR-logo.png" alt="AIP-PIR Logo" className="h-12 w-auto drop-shadow-sm transition-all duration-300 hover:drop-shadow-md" />
+                  <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-12 w-auto drop-shadow-sm transition-all duration-300 hover:drop-shadow-md" />
                 </a>
                 <div className="h-10 w-px bg-slate-200 dark:bg-dark-border/60 mx-2 hidden sm:block"></div>
                 <a href="https://www.deped.gov.ph/" target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105 hidden sm:block">

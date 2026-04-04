@@ -1,6 +1,16 @@
 import React, { useState } from 'react';
 import { ArrowUp, ArrowDown, CaretLeft, CaretRight } from '@phosphor-icons/react';
 
+export function withResponsiveHide(columns, hideBelow = {}) {
+  const keyToBreakpoint = {};
+  for (const [bp, keys] of Object.entries(hideBelow)) {
+    for (const k of keys) keyToBreakpoint[k] = bp;
+  }
+  return columns.map(col =>
+    keyToBreakpoint[col.key] ? { ...col, hideBelow: keyToBreakpoint[col.key] } : col
+  );
+}
+
 export const DataTable = ({
   columns,
   data,
@@ -160,7 +170,7 @@ export const DataTable = ({
                   <th
                     key={col.key}
                     onClick={col.sortable ? () => handleSort(col.key) : undefined}
-                    className={`px-4 py-3 text-left font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide text-[11px] whitespace-nowrap ${col.sortable ? 'cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-200' : ''} ${col.className || ''}`}
+                    className={`px-4 py-3 text-left font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide text-[11px] whitespace-nowrap ${col.sortable ? 'cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-200' : ''} ${col.hideBelow ? `hidden ${col.hideBelow}:table-cell` : ''} ${col.className || ''}`}
                   >
                     <div className="flex items-center gap-1">
                       {col.label}
@@ -191,7 +201,7 @@ export const DataTable = ({
                       </td>
                     )}
                     {columns.map(col => (
-                      <td key={col.key} className={`px-4 py-3 text-slate-600 dark:text-slate-400 ${col.cellClassName || ''}`}>
+                      <td key={col.key} className={`px-4 py-3 text-slate-600 dark:text-slate-400 ${col.hideBelow ? `hidden ${col.hideBelow}:table-cell` : ''} ${col.cellClassName || ''}`}>
                         {col.render ? col.render(row[col.key], row) : row[col.key]}
                       </td>
                     ))}

@@ -494,9 +494,15 @@ export default function AdminDeadlines() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-slate-100 dark:border-dark-border bg-slate-50/50 dark:bg-white/[0.02]">
-                              {['Quarter', 'Previous', 'New Date', 'Changed By', 'Date'].map(h => (
-                                <th key={h} className="px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wide first:pl-6 last:pr-6">
-                                  {h}
+                              {[
+                                { label: 'Quarter', cls: 'first:pl-6' },
+                                { label: 'Previous', cls: '' },
+                                { label: 'New Date', cls: '' },
+                                { label: 'Changed By', cls: 'hidden sm:table-cell' },
+                                { label: 'Date', cls: 'hidden md:table-cell last:pr-6' },
+                              ].map(h => (
+                                <th key={h.label} className={`px-4 py-3 text-left text-[11px] font-black text-slate-400 uppercase tracking-wide ${h.cls}`}>
+                                  {h.label}
                                 </th>
                               ))}
                             </tr>
@@ -507,8 +513,8 @@ export default function AdminDeadlines() {
                                 <td className="px-4 py-2.5 pl-6 font-bold text-slate-700 dark:text-slate-300">Q{log.details?.quarter}</td>
                                 <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.details?.previousDate ? (() => { const [y,m,d] = log.details.previousDate.slice(0,10).split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-PH'); })() : '—'}</td>
                                 <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.details?.newDate ? (() => { const [y,m,d] = log.details.newDate.slice(0,10).split('-').map(Number); return new Date(y,m-1,d).toLocaleDateString('en-PH'); })() : '—'}</td>
-                                <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs">{log.admin?.name ?? log.admin?.email}</td>
-                                <td className="px-4 py-2.5 pr-6 text-slate-400 dark:text-slate-500 text-xs">{new Date(log.created_at).toLocaleDateString('en-PH')}</td>
+                                <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400 text-xs hidden sm:table-cell">{log.admin?.name ?? log.admin?.email}</td>
+                                <td className="px-4 py-2.5 pr-6 text-slate-400 dark:text-slate-500 text-xs hidden md:table-cell">{new Date(log.created_at).toLocaleDateString('en-PH')}</td>
                               </tr>
                             ))}
                           </tbody>

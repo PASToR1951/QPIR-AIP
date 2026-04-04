@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, Check, ArrowBendUpLeft, DownloadSimple, XCircle, Funnel, CalendarDots, Warning, CheckCircle, FloppyDisk } from '@phosphor-icons/react';
-import { DataTable } from '../components/DataTable.jsx';
+import { DataTable, withResponsiveHide } from '../components/DataTable.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
@@ -310,7 +310,7 @@ export default function AdminSubmissions() {
   const currentYear = new Date().getFullYear();
   const YEAR_OPTIONS = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => ({ value: y, label: String(y) }));
 
-  const columns = [
+  const columns = withResponsiveHide([
     { key: 'school', label: 'School', sortable: true, render: v => <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px] block">{v}</span> },
     { key: 'cluster', label: 'Cluster', sortable: true, render: v => <span className="text-xs font-bold bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-lg">{v}</span> },
     { key: 'program', label: 'Program', sortable: true, cardFullWidth: true, render: v => <span className="truncate max-w-[180px] block text-slate-600 dark:text-slate-400">{v}</span> },
@@ -354,7 +354,10 @@ export default function AdminSubmissions() {
         </div>
       )
     },
-  ];
+  ], {
+    lg: ['cluster', 'quarter', 'year', 'dateSubmitted'],
+    xl: ['program', 'submittedBy'],
+  });
 
   return (
     <>

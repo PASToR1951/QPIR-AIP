@@ -2270,6 +2270,22 @@ adminRoutes.post("/announcements", async (c) => {
   return c.json(announcement);
 });
 
+adminRoutes.delete("/announcements", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+  const existing = await prisma.announcement.findFirst({ orderBy: { created_at: "desc" } });
+  if (!existing) return c.json({ ok: true });
+  await prisma.$transaction([
+    prisma.announcementMentionSchool.deleteMany({ where: { announcement_id: existing.id } }),
+    prisma.announcementMentionUser.deleteMany({ where: { announcement_id: existing.id } }),
+    prisma.announcement.delete({ where: { id: existing.id } }),
+  ]);
+  await prisma.auditLog.create({
+    data: { admin_id: admin.id, action: "deleted_announcement", entity_type: "Announcement", entity_id: existing.id, details: {} },
+  });
+  return c.json({ ok: true });
+});
+
 // ==========================================
 // AUDIT LOG
 // ==========================================

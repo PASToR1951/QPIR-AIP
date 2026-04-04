@@ -10,13 +10,23 @@ export default defineConfig({
       port: 5173,
     },
   },
+  // Pre-bundle heavy deps in dev mode so they are served as single files
+  // instead of hundreds of individual ESM requests.
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'framer-motion',
+      'axios',
+    ],
+  },
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
           'vendor-react':  ['react', 'react-dom', 'react-router-dom'],
           'vendor-motion': ['framer-motion'],
-          'vendor-icons':  ['@phosphor-icons/react'],
           'vendor-axios':  ['axios'],
         },
       },
