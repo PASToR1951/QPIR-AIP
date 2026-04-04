@@ -68,21 +68,28 @@ async function downloadReport(type, format, year) {
     pdf.save(`${type}-report-${year}.pdf`);
     return;
   }
+  const ext = format === 'xlsx' ? 'xlsx' : format;
   const url = `${API}/api/admin/reports/${type}/export?format=${format}&year=${year}`;
   const blob = await fetch(url, { credentials: 'include' }).then(r => r.blob());
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${type}-report-${year}.${format}`;
+  a.download = `${type}-report-${year}.${ext}`;
   a.click();
 }
 
+
+const EXPORT_STYLES = {
+  csv: 'hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400',
+  xlsx: 'hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-700 dark:hover:text-blue-400',
+  pdf: 'hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-700 dark:hover:text-rose-400',
+};
+
 function ExportButtons({ type, year }) {
-  const formats = type === 'workload' ? ['csv'] : ['csv', 'pdf'];
   return (
     <div className="flex items-center gap-2">
-      {formats.map(fmt => (
+      {['csv', 'xlsx', 'pdf'].map(fmt => (
         <button key={fmt} onClick={() => downloadReport(type, fmt, year)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl hover:bg-slate-50 dark:hover:bg-dark-border transition-colors uppercase">
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl transition-colors uppercase ${EXPORT_STYLES[fmt]}`}>
           <DownloadSimple size={15} /> {fmt}
         </button>
       ))}
@@ -513,7 +520,7 @@ function CsvButton({ rows, filename }) {
   return (
     <div className="flex justify-end">
       <button onClick={() => downloadCSV(rows, filename)}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl hover:bg-slate-50 dark:hover:bg-dark-border transition-colors uppercase">
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl transition-colors uppercase hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400">
         <DownloadSimple size={15} /> CSV
       </button>
     </div>
@@ -540,7 +547,7 @@ function AccomplishmentReport({ year }) {
 
   return (
     <div className="space-y-6">
-      <CsvButton rows={data.data.map(r => ({ School: r.school, Cluster: r.cluster, 'Physical Rate (%)': r.physicalRate, 'Financial Rate (%)': r.financialRate }))} filename={`accomplishment-${year}.csv`} />
+      <ExportButtons type="accomplishment" year={year} />
       <ResponsiveContainer width="100%" height={Math.max(320, sorted.length * 42)}>
         <BarChart data={sorted} layout="vertical" barCategoryGap="25%">
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid-line)" />
@@ -596,7 +603,7 @@ function FactorsReport({ year }) {
 
   return (
     <div className="space-y-6">
-      <CsvButton rows={data.data.map(r => ({ 'Factor Type': r.type, Facilitating: r.facilitating, Hindering: r.hindering }))} filename={`factors-${year}.csv`} />
+      <ExportButtons type="factors" year={year} />
       <ResponsiveContainer width="100%" height={Math.max(280, data.data.length * 50)}>
         <BarChart data={data.data} layout="vertical" barCategoryGap="30%">
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid-line)" />
@@ -665,7 +672,7 @@ function BudgetSourcesReport({ year }) {
 
   return (
     <div className="space-y-8">
-      <CsvButton rows={pieData.map(r => ({ Source: r.name, 'Total Amount': r.value }))} filename={`budget-sources-${year}.csv`} />
+      <ExportButtons type="sources" year={year} />
       <div>
         <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Total Budget by Funding Source</p>
         <ResponsiveContainer width="100%" height={300}>
@@ -720,7 +727,7 @@ function AIPFunnelReport({ year }) {
 
   return (
     <div className="space-y-6">
-      <CsvButton rows={data.data.map(r => ({ Status: r.status, Count: r.count, '% of Total': ((r.count / total) * 100).toFixed(1) + '%' }))} filename={`aip-funnel-${year}.csv`} />
+      <ExportButtons type="funnel" year={year} />
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={data.data} barCategoryGap="35%">
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid-line)" />
@@ -1027,17 +1034,21 @@ export default function AdminReports() {
           <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm mb-4">Quick Export</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'AIP Compliance', type: 'compliance', formats: ['csv', 'pdf'] },
-              { label: 'PIR Quarterly', type: 'quarterly', formats: ['csv', 'pdf'] },
-              { label: 'Budget Summary', type: 'budget', formats: ['csv', 'pdf'] },
-              { label: 'Personnel Workload', type: 'workload', formats: ['csv'] },
+              { label: 'AIP Compliance', type: 'compliance' },
+              { label: 'PIR Quarterly', type: 'quarterly' },
+              { label: 'Budget Summary', type: 'budget' },
+              { label: 'Personnel Workload', type: 'workload' },
+              { label: 'Accomplishment Rates', type: 'accomplishment' },
+              { label: 'Factors Analysis', type: 'factors' },
+              { label: 'Budget Sources', type: 'sources' },
+              { label: 'AIP Status Funnel', type: 'funnel' },
             ].map(item => (
               <div key={item.type} className="border border-slate-200 dark:border-dark-border rounded-xl p-3 space-y-2">
                 <p className="text-xs font-black text-slate-700 dark:text-slate-300">{item.label}</p>
                 <div className="flex items-center gap-1.5">
-                  {item.formats.map(fmt => (
+                  {['csv', 'xlsx', 'pdf'].map(fmt => (
                     <button key={fmt} onClick={() => downloadReport(item.type, fmt, year)}
-                      className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 rounded-lg transition-colors uppercase">
+                      className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-dark-border rounded-lg transition-colors uppercase ${EXPORT_STYLES[fmt]}`}>
                       <DownloadSimple size={13} /> {fmt}
                     </button>
                   ))}
