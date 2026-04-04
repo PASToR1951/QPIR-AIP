@@ -28,16 +28,67 @@ export const AdminLayout = () => {
   useEffect(() => {
     fetchNotifications();
 
-    const es = new EventSource(`${API}/api/notifications/stream`, { withCredentials: true });
-    es.addEventListener('notification', (e) => {
-      const notif = JSON.parse(e.data);
-      setNotifications(prev => [notif, ...prev]);
-    });
+    let abortController = null;
+    let retryTimer = null;
+    let retryDelay = 2000;
+    let dead = false;
+
+    async function connect() {
+      if (dead) return;
+      abortController = new AbortController();
+
+      try {
+        const res = await fetch(`${API}/api/notifications/stream`, {
+          signal: abortController.signal,
+          credentials: 'include',
+          headers: {
+            'Accept': 'text/event-stream',
+          },
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        retryDelay = 2000; // reset backoff on successful connect
+
+        while (!dead) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const notif = JSON.parse(line.slice(6));
+                setNotifications(prev => [notif, ...prev]);
+              } catch { /* malformed event — ignore */ }
+            }
+          }
+        }
+      } catch (err) {
+        if (!dead && err.name !== 'AbortError') {
+          retryTimer = setTimeout(() => {
+            retryDelay = Math.min(retryDelay * 2, 30_000);
+            connect();
+          }, retryDelay);
+        }
+      }
+    }
+
+    connect();
 
     // Full resync on tab focus (handles gaps during inactivity / reconnects)
     window.addEventListener('focus', fetchNotifications);
     return () => {
-      es.close();
+      dead = true;
+      clearTimeout(retryTimer);
+      abortController?.abort();
       window.removeEventListener('focus', fetchNotifications);
     };
   }, [fetchNotifications]);
