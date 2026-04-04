@@ -279,7 +279,7 @@ oauthRoutes.get('/microsoft/callback', async (c) => {
       secure: Deno.env.get('NODE_ENV') !== 'development',
       httpOnly: true,
       maxAge: 86400,
-      sameSite: 'Strict',
+      sameSite: 'Lax',
     });
     return c.redirect(`${fe}/oauth/callback`);
   } catch (err) {
@@ -374,7 +374,7 @@ oauthRoutes.get('/google/callback', async (c) => {
       secure: Deno.env.get('NODE_ENV') !== 'development',
       httpOnly: true,
       maxAge: 86400,
-      sameSite: 'Strict',
+      sameSite: 'Lax',
     });
     return c.redirect(`${fe}/oauth/callback`);
   } catch (err) {

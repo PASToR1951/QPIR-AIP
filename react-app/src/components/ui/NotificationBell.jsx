@@ -45,16 +45,56 @@ export function NotificationBell() {
   useEffect(() => {
     fetchNotifications();
 
-    const es = new EventSource(`${API}/api/notifications/stream`, { withCredentials: true });
-    es.addEventListener('notification', (e) => {
-      const notif = JSON.parse(e.data);
-      setNotifications(prev => [notif, ...prev]);
-    });
+    let abortController = null;
+    let dead = false;
 
-    // Full resync on tab focus (handles gaps during inactivity / reconnects)
+    async function connect() {
+      if (dead) return;
+      abortController = new AbortController();
+
+      try {
+        const res = await fetch(`${API}/api/notifications/stream`, {
+          signal: abortController.signal,
+          credentials: 'include',
+          headers: { 'Accept': 'text/event-stream' },
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (!dead) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const notif = JSON.parse(line.slice(6));
+                setNotifications(prev => [notif, ...prev]);
+              } catch { /* malformed event — ignore */ }
+            }
+          }
+        }
+      } catch (err) {
+        if (!dead && err.name !== 'AbortError') {
+          setTimeout(connect, 5000);
+        }
+      }
+    }
+
+    connect();
+
     window.addEventListener('focus', fetchNotifications);
     return () => {
-      es.close();
+      dead = true;
+      abortController?.abort();
       window.removeEventListener('focus', fetchNotifications);
     };
   }, [fetchNotifications]);

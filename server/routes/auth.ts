@@ -92,7 +92,7 @@ authRoutes.post('/login', async (c) => {
       secure: process.env.NODE_ENV !== 'development', // Uses Secure flag in production/https
       httpOnly: true,
       maxAge: 86400,
-      sameSite: 'Strict',
+      sameSite: 'Lax',
     });
 
     return c.json({

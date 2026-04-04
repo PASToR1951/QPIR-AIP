@@ -11,11 +11,9 @@ import {
   CheckCircle, Warning, Buildings, ChartBar,
 } from '@phosphor-icons/react';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { exportReport, REPORT_TEMPLATES } from '../../lib/reportExport.js';
 
 const API = import.meta.env.VITE_API_URL;
-
 
 const TABS = [
   { key: 'compliance', label: 'AIP Compliance' },
@@ -29,53 +27,8 @@ const TABS = [
   { key: 'cluster-pir', label: 'Cluster Summary' },
 ];
 
-function downloadCSV(rows, filename) {
-  if (!rows.length) return;
-  const headers = Object.keys(rows[0]);
-  const csv = [headers.join(','), ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(','))].join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = filename;
-  a.click();
-}
-
 const SOURCE_PALETTE = ['#6366f1', '#10b981', '#3b82f6', '#f59e0b', '#E94560', '#8b5cf6', '#06b6d4'];
 const STATUS_COLORS_FUNNEL = { Draft: '#94a3b8', Submitted: '#3b82f6', Pending: '#f59e0b', Verified: '#06b6d4', 'Under Review': '#8b5cf6', Approved: '#10b981', Returned: '#E94560' };
-
-async function downloadReport(type, format, year) {
-  if (format === 'pdf') {
-    const el = document.getElementById('report-content');
-    if (!el) return;
-    const canvas = await html2canvas(el, { scale: 1.5, useCORS: true });
-    const imgData = canvas.toDataURL('image/jpeg', 0.85);
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-    const pageW = 297;
-    const pageH = 210;
-    const imgW = pageW;
-    const imgH = (canvas.height * imgW) / canvas.width;
-    if (imgH <= pageH) {
-      pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH);
-    } else {
-      let position = 0;
-      let remaining = imgH;
-      while (remaining > 0) {
-        pdf.addImage(imgData, 'JPEG', 0, -position, imgW, imgH);
-        remaining -= pageH;
-        position += pageH;
-        if (remaining > 0) pdf.addPage();
-      }
-    }
-    pdf.save(`${type}-report-${year}.pdf`);
-    return;
-  }
-  const ext = format === 'xlsx' ? 'xlsx' : format;
-  const url = `${API}/api/admin/reports/${type}/export?format=${format}&year=${year}`;
-  const blob = await fetch(url, { credentials: 'include' }).then(r => r.blob());
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${type}-report-${year}.${ext}`;
-  a.click();
-}
 
 
 const EXPORT_STYLES = {
@@ -88,7 +41,7 @@ function ExportButtons({ type, year }) {
   return (
     <div className="flex items-center gap-2">
       {['csv', 'xlsx', 'pdf'].map(fmt => (
-        <button key={fmt} onClick={() => downloadReport(type, fmt, year)}
+        <button key={fmt} onClick={() => exportReport(type, fmt, year)}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl transition-colors uppercase ${EXPORT_STYLES[fmt]}`}>
           <DownloadSimple size={15} /> {fmt}
         </button>
@@ -1029,34 +982,6 @@ export default function AdminReports() {
           {tab === 'cluster-pir' && <ClusterPIRSummary year={year} />}
         </div>
 
-        {/* Export Center */}
-        <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm mb-4">Quick Export</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: 'AIP Compliance', type: 'compliance' },
-              { label: 'PIR Quarterly', type: 'quarterly' },
-              { label: 'Budget Summary', type: 'budget' },
-              { label: 'Personnel Workload', type: 'workload' },
-              { label: 'Accomplishment Rates', type: 'accomplishment' },
-              { label: 'Factors Analysis', type: 'factors' },
-              { label: 'Budget Sources', type: 'sources' },
-              { label: 'AIP Status Funnel', type: 'funnel' },
-            ].map(item => (
-              <div key={item.type} className="border border-slate-200 dark:border-dark-border rounded-xl p-3 space-y-2">
-                <p className="text-xs font-black text-slate-700 dark:text-slate-300">{item.label}</p>
-                <div className="flex items-center gap-1.5">
-                  {['csv', 'xlsx', 'pdf'].map(fmt => (
-                    <button key={fmt} onClick={() => downloadReport(item.type, fmt, year)}
-                      className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-dark-border rounded-lg transition-colors uppercase ${EXPORT_STYLES[fmt]}`}>
-                      <DownloadSimple size={13} /> {fmt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </>
   );

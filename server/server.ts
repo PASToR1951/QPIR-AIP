@@ -46,6 +46,7 @@ app.use('*', cors({
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
+  exposeHeaders: ['Content-Type'],
 }));
 
 // NEW-01: Request body size limit (2MB) to prevent memory exhaustion DoS
