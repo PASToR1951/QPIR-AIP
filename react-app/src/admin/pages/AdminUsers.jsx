@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { PencilSimple, Key, LockKey, LockKeyOpen, Trash, Plus, MagnifyingGlass, Copy, Check, XCircle, CheckCircle } from '@phosphor-icons/react';
-import { DataTable } from '../components/DataTable.jsx';
+import { DataTable, withResponsiveHide } from '../components/DataTable.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
@@ -237,7 +237,7 @@ export default function AdminUsers() {
     return u.name || u.email || '';
   };
 
-  const columns = [
+  const columns = withResponsiveHide([
     { key: 'name', label: 'Name', sortable: true, render: (v, row) => {
       const display = row.role === 'Division Personnel' && row.first_name && row.last_name
         ? `${row.first_name}${row.middle_initial ? ` ${row.middle_initial}.` : ''} ${row.last_name}`
@@ -283,7 +283,10 @@ export default function AdminUsers() {
         </div>
       )
     },
-  ];
+  ], {
+    lg: ['email', 'school'],
+    xl: ['programs'],
+  });
 
   const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin'];
 

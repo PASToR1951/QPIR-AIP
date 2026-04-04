@@ -6,7 +6,10 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   PieChart, Pie, Cell,
 } from 'recharts';
-import { DownloadSimple } from '@phosphor-icons/react';
+import {
+  DownloadSimple, MagnifyingGlass, X, CaretDown, CaretUp,
+  CheckCircle, Warning, Buildings, ChartBar,
+} from '@phosphor-icons/react';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -92,6 +95,12 @@ function ComplianceReport({ year }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [viewMode, setViewMode] = useState('summary');
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [sort, setSort] = useState('name');
+  const [expandedRows, setExpandedRows] = useState(new Set());
+
   useEffect(() => {
     setLoading(true); setError(null);
     axios.get(`${API}/api/admin/reports/compliance?year=${year}`, { withCredentials: true })
@@ -102,38 +111,282 @@ function ComplianceReport({ year }) {
   if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;
   if (!data) return null;
 
-  const STATUS_COLORS = { submitted: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400', missing: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400', na: 'bg-slate-100 text-slate-400 dark:bg-dark-border dark:text-slate-600' };
-  const STATUS_SYMBOLS = { submitted: '✓', missing: '✗', na: '—' };
+  function rateBarColor(rate) {
+    if (rate >= 80) return 'bg-emerald-500';
+    if (rate >= 50) return 'bg-amber-500';
+    return 'bg-rose-500';
+  }
+  function rateBarTrack(rate) {
+    if (rate >= 80) return 'bg-emerald-100 dark:bg-emerald-900/30';
+    if (rate >= 50) return 'bg-amber-100 dark:bg-amber-900/30';
+    return 'bg-rose-100 dark:bg-rose-900/30';
+  }
+  function rateTextColor(rate) {
+    if (rate >= 80) return 'text-emerald-600 dark:text-emerald-400';
+    if (rate >= 50) return 'text-amber-600 dark:text-amber-400';
+    return 'text-rose-600 dark:text-rose-400';
+  }
+  function rowBorderColor(rate) {
+    if (rate === null) return 'border-l-slate-300 dark:border-l-slate-600';
+    if (rate >= 80) return 'border-l-emerald-400 dark:border-l-emerald-600';
+    if (rate >= 50) return 'border-l-amber-400 dark:border-l-amber-600';
+    return 'border-l-rose-400 dark:border-l-rose-600';
+  }
+
+  const enrichedRows = data.matrix.map(row => {
+    const eligible = data.programs.filter(p => row[p] !== 'na').length;
+    const submitted = data.programs.filter(p => row[p] === 'submitted').length;
+    const missing = data.programs.filter(p => row[p] === 'missing').length;
+    const rate = eligible === 0 ? null : Math.round((submitted / eligible) * 100);
+    const missingPrograms = data.programs.filter(p => row[p] === 'missing');
+    return { ...row, eligible, submitted, missing, rate, missingPrograms };
+  });
+
+  const totalSubmitted = enrichedRows.reduce((s, r) => s + r.submitted, 0);
+  const totalEligible = enrichedRows.reduce((s, r) => s + r.eligible, 0);
+  const kpi = {
+    total: enrichedRows.length,
+    compliant: enrichedRows.filter(r => r.missing === 0 && r.eligible > 0).length,
+    withMissing: enrichedRows.filter(r => r.missing > 0).length,
+    overallRate: totalEligible === 0 ? 0 : Math.round((totalSubmitted / totalEligible) * 100),
+  };
+
+  let filteredRows = enrichedRows;
+  if (search.trim()) {
+    const q = search.trim().toLowerCase();
+    filteredRows = filteredRows.filter(r => r.school.toLowerCase().includes(q));
+  }
+  if (filter === 'missing') filteredRows = filteredRows.filter(r => r.missing > 0);
+  if (filter === 'compliant') filteredRows = filteredRows.filter(r => r.missing === 0 && r.eligible > 0);
+  if (sort === 'name') filteredRows = [...filteredRows].sort((a, b) => a.school.localeCompare(b.school));
+  if (sort === 'rate-asc') filteredRows = [...filteredRows].sort((a, b) => (a.rate ?? 101) - (b.rate ?? 101));
+
+  const STATUS_PILL = {
+    submitted: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
+    missing: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400',
+    na: 'bg-slate-100 text-slate-400 dark:bg-dark-border dark:text-slate-600',
+  };
+  const STATUS_SYM = { submitted: '✓', missing: '✗', na: '—' };
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs border-collapse">
-        <thead>
-          <tr className="bg-slate-50 dark:bg-dark-surface">
-            <th className="px-3 py-2 text-left font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap sticky left-0 bg-slate-50 dark:bg-dark-surface">School</th>
-            {data.programs.map(p => (
-              <th key={p} className="px-3 py-2 text-center font-black text-slate-500 dark:text-slate-400 max-w-[100px] truncate" title={p}>{p.slice(0, 14)}{p.length > 14 ? '…' : ''}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
-          {data.matrix.map(row => (
-            <tr key={row.schoolId} className="hover:bg-slate-50 dark:hover:bg-dark-border/20">
-              <td className="px-3 py-2 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap sticky left-0 bg-white dark:bg-dark-surface">{row.school}</td>
-              {data.programs.map(p => {
-                const status = row[p] ?? 'na';
+    <div className="space-y-5">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          {
+            icon: <Buildings size={18} className="text-indigo-600 dark:text-indigo-400" />,
+            iconBg: 'bg-indigo-100 dark:bg-indigo-950/40',
+            value: kpi.total,
+            label: 'Total Schools',
+            valueClass: 'text-slate-800 dark:text-slate-100',
+          },
+          {
+            icon: <CheckCircle size={18} weight="fill" className="text-emerald-600 dark:text-emerald-400" />,
+            iconBg: 'bg-emerald-100 dark:bg-emerald-950/40',
+            value: kpi.compliant,
+            label: 'Fully Compliant',
+            valueClass: 'text-emerald-600 dark:text-emerald-400',
+          },
+          {
+            icon: <Warning size={18} weight="fill" className="text-rose-600 dark:text-rose-400" />,
+            iconBg: 'bg-rose-100 dark:bg-rose-950/40',
+            value: kpi.withMissing,
+            label: 'With Missing AIPs',
+            valueClass: 'text-rose-600 dark:text-rose-400',
+          },
+          {
+            icon: <ChartBar size={18} className={rateTextColor(kpi.overallRate)} />,
+            iconBg: kpi.overallRate >= 80 ? 'bg-emerald-100 dark:bg-emerald-950/40' : kpi.overallRate >= 50 ? 'bg-amber-100 dark:bg-amber-950/40' : 'bg-rose-100 dark:bg-rose-950/40',
+            value: `${kpi.overallRate}%`,
+            label: 'Overall Rate',
+            valueClass: rateTextColor(kpi.overallRate),
+          },
+        ].map((card, i) => (
+          <div key={i} className="bg-slate-50 dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-2 ${card.iconBg}`}>{card.icon}</div>
+            <p className={`text-2xl font-black ${card.valueClass}`}>{card.value}</p>
+            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-0.5">{card.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[180px]">
+          <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search schools…"
+            className="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {[{ key: 'all', label: 'All' }, { key: 'missing', label: 'Non-Compliant' }, { key: 'compliant', label: 'Fully Compliant' }].map(f => (
+            <button key={f.key} onClick={() => setFilter(f.key)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${filter === f.key ? 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border'}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          {[{ key: 'name', label: 'Name' }, { key: 'rate-asc', label: 'Worst First' }].map(s => (
+            <button key={s.key} onClick={() => setSort(s.key)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${sort === s.key ? 'bg-slate-200 dark:bg-dark-border text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-dark-border/50'}`}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-dark-border rounded-xl">
+          {[{ key: 'summary', label: 'Summary' }, { key: 'matrix', label: 'Matrix' }].map(v => (
+            <button key={v.key} onClick={() => setViewMode(v.key)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${viewMode === v.key ? 'bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-200 shadow-sm' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+              {v.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary View */}
+      {viewMode === 'summary' && (
+        <div className="border border-slate-200 dark:border-dark-border rounded-2xl overflow-hidden">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border">
+                <th className="px-4 py-3 text-left font-black text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wide sticky left-0 bg-slate-50 dark:bg-dark-surface z-10 min-w-[180px]">School</th>
+                <th className="px-4 py-3 text-left font-black text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wide">Level</th>
+                <th className="px-4 py-3 text-center font-black text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wide">Submitted</th>
+                <th className="px-4 py-3 text-left font-black text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wide min-w-[140px]">Rate</th>
+                <th className="px-4 py-3 text-left font-black text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wide min-w-[220px]">Missing Programs</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
+              {filteredRows.map(row => {
+                const isExpanded = expandedRows.has(row.schoolId);
                 return (
-                  <td key={p} className="px-3 py-2 text-center">
-                    <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-[11px] font-black ${STATUS_COLORS[status]}`}>
-                      {STATUS_SYMBOLS[status]}
-                    </span>
-                  </td>
+                  <React.Fragment key={row.schoolId}>
+                    <tr
+                      onClick={() => setExpandedRows(prev => { const n = new Set(prev); n.has(row.schoolId) ? n.delete(row.schoolId) : n.add(row.schoolId); return n; })}
+                      className={`cursor-pointer hover:bg-slate-50 dark:hover:bg-dark-border/20 border-l-4 transition-colors ${rowBorderColor(row.rate)}`}
+                    >
+                      <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap sticky left-0 bg-white dark:bg-dark-surface z-10">
+                        <div className="flex items-center gap-2">
+                          {isExpanded ? <CaretUp size={13} className="text-slate-400 shrink-0" /> : <CaretDown size={13} className="text-slate-400 shrink-0" />}
+                          {row.school}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center font-bold rounded-lg text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 dark:bg-dark-border dark:text-slate-400">{row.level}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center tabular-nums">
+                        <span className="font-black text-emerald-600 dark:text-emerald-400">{row.submitted}</span>
+                        <span className="text-slate-400 dark:text-slate-500 text-xs"> / {row.eligible}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.rate === null ? (
+                          <span className="text-xs text-slate-400">—</span>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className={`flex-1 h-2 rounded-full ${rateBarTrack(row.rate)}`}>
+                              <div className={`h-full rounded-full ${rateBarColor(row.rate)}`} style={{ width: `${Math.max(row.rate, 3)}%` }} />
+                            </div>
+                            <span className={`text-xs font-black tabular-nums w-9 text-right ${rateTextColor(row.rate)}`}>{row.rate}%</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.missingPrograms.length === 0
+                          ? <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">All submitted</span>
+                          : (
+                            <div className="flex flex-wrap gap-1">
+                              {row.missingPrograms.slice(0, 3).map(p => (
+                                <span key={p} title={p} className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 max-w-[100px] truncate">{p}</span>
+                              ))}
+                              {row.missingPrograms.length > 3 && (
+                                <span className="inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 dark:bg-dark-border dark:text-slate-400">+{row.missingPrograms.length - 3} more</span>
+                              )}
+                            </div>
+                          )
+                        }
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className={`border-l-4 ${rowBorderColor(row.rate)}`}>
+                        <td colSpan={5} className="px-6 py-4 bg-slate-50 dark:bg-dark-surface/60">
+                          <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Full Program Breakdown — {row.school}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {data.programs.map(p => {
+                              const status = row[p] ?? 'na';
+                              return (
+                                <div key={p} title={p} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold ${STATUS_PILL[status]}`}>
+                                  <span>{STATUS_SYM[status]}</span>
+                                  <span className="max-w-[130px] truncate">{p}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              {filteredRows.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 font-bold text-sm">No schools match the current filters.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Matrix View */}
+      {viewMode === 'matrix' && (
+        <div className="overflow-x-auto border border-slate-200 dark:border-dark-border rounded-2xl">
+          <table className="text-xs border-collapse" style={{ minWidth: 'max-content' }}>
+            <thead>
+              <tr className="bg-slate-50 dark:bg-dark-surface">
+                <th className="px-3 py-2 text-left font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap sticky left-0 bg-slate-50 dark:bg-dark-surface z-20 border-r border-slate-200 dark:border-dark-border">School</th>
+                {data.programs.map(p => (
+                  <th key={p} title={p} className="px-1 w-7 h-20 align-bottom relative">
+                    <div className="relative h-full flex items-end justify-center pb-2">
+                      <span className="absolute origin-bottom-left -rotate-45 whitespace-nowrap text-[9px] font-black text-slate-500 dark:text-slate-400 bottom-2 left-3" style={{ width: '80px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {p}
+                      </span>
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
+              {filteredRows.map(row => (
+                <tr key={row.schoolId} className={`hover:bg-slate-50 dark:hover:bg-dark-border/20 border-l-4 ${rowBorderColor(row.rate)}`}>
+                  <td className="px-3 py-1.5 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap sticky left-0 bg-white dark:bg-dark-surface z-10 border-r border-slate-200 dark:border-dark-border">{row.school}</td>
+                  {data.programs.map(p => {
+                    const status = row[p] ?? 'na';
+                    return (
+                      <td key={p} className="px-1 py-1.5 text-center">
+                        <span className={`inline-flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-black ${STATUS_PILL[status]}`}>{STATUS_SYM[status]}</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+              {filteredRows.length === 0 && (
+                <tr>
+                  <td colSpan={data.programs.length + 1} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500 font-bold text-sm">No schools match the current filters.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

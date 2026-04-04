@@ -26,7 +26,7 @@ export default function CESLayout() {
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <img src="/AIP-PIR-logo.png" alt="AIP-PIR Logo" className="h-8 w-auto drop-shadow-sm" />
+              <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-8 w-auto drop-shadow-sm" />
               <div className="w-px h-6 bg-slate-200 dark:bg-dark-border/60 mx-1 hidden sm:block" />
               <img src="/DepEd_Seal.webp" alt="DepEd Seal" loading="lazy" className="h-8 w-auto drop-shadow-sm hidden sm:block" />
               <img src="/Division_Logo.webp" alt="Division Logo" loading="lazy" className="h-8 w-auto drop-shadow-sm hidden sm:block" />

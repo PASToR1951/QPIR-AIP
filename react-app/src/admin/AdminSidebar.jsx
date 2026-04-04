@@ -248,7 +248,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
     <div className="flex flex-col h-full w-[240px]">
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-4 pt-5 pb-4">
-        <img src="/AIP-PIR-logo.png" alt="AIP-PIR" className="h-8 w-auto shrink-0" />
+        <img src="/AIP-PIR-logo.webp" alt="AIP-PIR" className="h-8 w-auto shrink-0" />
         <div className="flex flex-col">
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight tracking-[-0.01em]">AIP-PIR</span>
           <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-tight tracking-wide">Admin</span>

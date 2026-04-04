@@ -372,7 +372,7 @@ export default function AdminOverview() {
               <div className="relative flex-1 p-6 sm:p-10 md:p-12 flex flex-col justify-center gap-6 min-h-[240px] overflow-hidden">
                 {/* AIP-PIR watermark */}
                 <img
-                  src="/AIP-PIR-logo.png"
+                  src="/AIP-PIR-logo.webp"
                   alt=""
                   className="absolute right-4 top-1/2 -translate-y-1/2 h-52 md:h-64 lg:h-72 w-auto object-contain opacity-[0.05] dark:opacity-[0.04] pointer-events-none select-none"
                 />
