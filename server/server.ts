@@ -12,6 +12,26 @@ import { logger } from "./lib/logger.ts";
 
 const app = new Hono();
 
+// In-memory sliding window rate limiter
+const rateLimitWindows = new Map<string, number[]>();
+
+function makeRateLimiter(limit: number, windowMs: number) {
+  return async (c: any, next: any) => {
+    const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const key = `${c.req.path}|${ip}`;
+    const now = Date.now();
+    const windowStart = now - windowMs;
+
+    const timestamps = (rateLimitWindows.get(key) || []).filter(t => t > windowStart);
+    if (timestamps.length >= limit) {
+      return c.json({ error: 'Too many requests, please try again later.' }, 429);
+    }
+    timestamps.push(now);
+    rateLimitWindows.set(key, timestamps);
+    await next();
+  };
+}
+
 // HTTP security headers — prevents clickjacking, MIME sniffing, XSS, and enforces HTTPS.
 app.use('*', secureHeaders({
   xFrameOptions: 'DENY',
@@ -33,6 +53,10 @@ app.use('*', bodyLimit({
   maxSize: 2 * 1024 * 1024, // 2MB
   onError: (c) => c.json({ error: 'Request body too large (max 2MB)' }, 413),
 }));
+
+// Rate limiting — global 100 req/min, strict 10 req/min on login
+app.use('*', makeRateLimiter(100, 60_000));
+app.use('/api/auth/login', makeRateLimiter(10, 60_000));
 
 // L-2: Structured request/response logging middleware
 app.use('*', async (c, next) => {

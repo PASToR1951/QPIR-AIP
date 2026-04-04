@@ -1,10 +1,23 @@
 // Control character regex: null bytes, backspace, tab escapes, etc.
 const CONTROL_CHARS = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
 
-/** Strip control characters from a string value. Returns original if not a string. */
+// HTML special characters that must be encoded to prevent XSS
+const HTML_ENTITIES: [RegExp, string][] = [
+  [/&/g, '&amp;'],
+  [/</g, '&lt;'],
+  [/>/g, '&gt;'],
+  [/"/g, '&quot;'],
+  [/'/g, '&#x27;'],
+];
+
+/** Strip control characters and HTML-encode special characters to prevent XSS. Returns empty string if not a string. */
 export function sanitizeString(value: unknown): string {
   if (typeof value !== 'string') return String(value ?? '');
-  return value.replace(CONTROL_CHARS, '');
+  let cleaned = value.replace(CONTROL_CHARS, '');
+  for (const [pattern, replacement] of HTML_ENTITIES) {
+    cleaned = cleaned.replace(pattern, replacement);
+  }
+  return cleaned;
 }
 
 /** Recursively sanitize an object, applying sanitization to all string values. */

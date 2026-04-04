@@ -20,21 +20,33 @@ const clients = new Map<number, Set<Sender>>();
 /** Maximum concurrent SSE connections per user to prevent memory exhaustion. */
 const MAX_CONNECTIONS_PER_USER = 5;
 
+/** Maximum total SSE connections across all users to prevent server memory exhaustion. */
+const MAX_GLOBAL_CONNECTIONS = 500;
+
+/** Current total active SSE connections. */
+let totalConnections = 0;
+
 /** Register an SSE connection. Returns an unsubscribe cleanup function, or null if limit exceeded. */
 export function subscribe(userId: number, sender: Sender): (() => void) | null {
+  if (totalConnections >= MAX_GLOBAL_CONNECTIONS) {
+    return null; // Global connection limit exceeded
+  }
+
   if (!clients.has(userId)) clients.set(userId, new Set());
   const userClients = clients.get(userId)!;
 
   if (userClients.size >= MAX_CONNECTIONS_PER_USER) {
-    return null; // Connection limit exceeded
+    return null; // Per-user connection limit exceeded
   }
 
   userClients.add(sender);
+  totalConnections++;
   return () => {
     const set = clients.get(userId);
     if (!set) return;
     set.delete(sender);
     if (set.size === 0) clients.delete(userId);
+    totalConnections--;
   };
 }
 
