@@ -51,7 +51,14 @@ const Footer = () => {
                   <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase flex items-center gap-1.5">
                     <MapPin size={16} className="text-slate-400 dark:text-slate-500" /> Office Address
                   </span>
-                  <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">Osmeña Avenue, City of Guihulngan, <br className="hidden md:block" />Negros Oriental</span>
+                  <a
+                    href="https://www.google.com/maps/search/?api=1&query=Osme%C3%B1a+Avenue+City+of+Guihulngan+Negros+Oriental"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-600 dark:text-slate-300 text-sm font-medium hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors underline decoration-dotted underline-offset-2"
+                  >
+                    Osmeña Avenue, City of Guihulngan, <br className="hidden md:block" />Negros Oriental
+                  </a>
                 </div>
                 <div className="flex flex-col gap-1 items-center md:items-start">
                   <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase flex items-center gap-1.5">

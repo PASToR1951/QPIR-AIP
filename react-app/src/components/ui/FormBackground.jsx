@@ -16,7 +16,7 @@ export default function FormBackground({ orb = 'pink' }) {
     return createPortal(
         <>
             {/* Grid + facade image */}
-            <div className="form-bg-fade fixed inset-0 bg-slate-50 dark:bg-dark-base bg-grid [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden">
+            <div className="form-bg-fade fixed inset-0 bg-slate-50 dark:bg-dark-base [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0 print:hidden">
                 <div
                     className="absolute inset-0 opacity-100 pointer-events-none grayscale mix-blend-multiply dark:mix-blend-screen"
                     style={{

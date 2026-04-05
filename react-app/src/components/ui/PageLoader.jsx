@@ -28,7 +28,7 @@ export const PageLoader = ({ message = "Loading..." }) => {
   return (
     <div className="fixed inset-0 bg-slate-50 dark:bg-dark-base z-[100] flex flex-col items-center justify-center">
       {/* Grid Background Overlay */}
-      <div className="absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_130%)] pointer-events-none opacity-30"></div>
+      <div className="absolute inset-0 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_130%)] pointer-events-none opacity-30"></div>
       
       {/* Glowing Orbs */}
       <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-indigo-400/20 rounded-full blur-[80px] pointer-events-none animate-pulse"></div>

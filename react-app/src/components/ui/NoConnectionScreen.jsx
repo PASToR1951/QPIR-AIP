@@ -69,7 +69,7 @@ const NoConnectionScreen = ({ children }) => {
           <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-400/20 rounded-full blur-[120px] animate-pulse pointer-events-none z-[2]" style={{ animationDelay: '1.5s' }} />
 
           {/* Grid overlay */}
-          <div className="absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_130%)] pointer-events-none z-[3] opacity-30" />
+          <div className="absolute inset-0 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_130%)] pointer-events-none z-[3] opacity-30" />
 
           {/* Content */}
           <div className="relative z-10 flex flex-col items-center text-center max-w-xl w-full px-4">

@@ -170,7 +170,7 @@ export const ViewModeSelector = ({
 
     const Background = () => (
         <>
-            <div className="fixed inset-0 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0 bg-grid">
+            <div className="fixed inset-0 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0">
                 <div
                     className="absolute inset-0 pointer-events-none grayscale mix-blend-multiply backdrop-blur-none opacity-60"
                     style={{ backgroundImage: `url('/SDO_Facade.webp')`, backgroundSize: 'cover', backgroundPosition: 'center 25%', filter: 'blur(3px)', transform: 'scale(1.05)' }}
@@ -196,7 +196,7 @@ export const ViewModeSelector = ({
                         <h1 className="text-4xl md:text-[2.75rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-100 leading-tight mb-3">
                             Select a Program
                         </h1>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+                        <p className="text-slate-600 dark:text-slate-200 text-sm leading-relaxed drop-shadow-sm">
                             {theme === 'blue'
                                 ? 'Only programs with a submitted AIP are available.'
                                 : 'Choose the DepEd program this plan is aligned to.'}
@@ -234,14 +234,16 @@ export const ViewModeSelector = ({
                                             key={key}
                                             onClick={() => setSortFilter(key)}
                                             className={[
-                                                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150',
+                                                'group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-150',
                                                 sortFilter === key ? c.filterActive : c.filterInactive,
                                             ].join(' ')}
                                         >
                                             {label}
                                             <span className={[
-                                                'text-[10px] font-black px-1 rounded',
-                                                sortFilter === key ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-400 dark:text-slate-500',
+                                                'text-[10px] font-black px-1 rounded transition-colors duration-150',
+                                                sortFilter === key
+                                                    ? 'bg-white/20 text-white'
+                                                    : 'bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 group-hover:bg-slate-200 dark:group-hover:bg-white/80 dark:group-hover:text-slate-900',
                                             ].join(' ')}>
                                                 {count}
                                             </span>
