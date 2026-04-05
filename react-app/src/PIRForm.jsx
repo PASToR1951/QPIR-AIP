@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 
+import { getFriendlyError } from './lib/errorMessages.js';
+
 const FACTOR_TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
 
 import { Input } from './components/ui/Input';
@@ -486,8 +488,8 @@ export default function App() {
                 program_title: program,
                 quarter: quarterString,
                 program_owner: owner,
-                budget_from_division: budgetFromDivision,
-                budget_from_co_psf: budgetFromCoPSF,
+                budget_from_division: parseFloat(budgetFromDivision) || 0,
+                budget_from_co_psf: parseFloat(budgetFromCoPSF) || 0,
                 functional_division: isDivisionPersonnel ? functionalDivision : null,
                 indicator_quarterly_targets: indicatorTargets,
                 action_items: actionItems.filter(item => item.action?.trim()),
@@ -705,7 +707,7 @@ export default function App() {
                 isOpen: true,
                 type: 'warning',
                 title: isWindowError ? 'Submission Window Closed' : isEditing ? 'Update Failed' : 'Submission Failed',
-                message: error.response?.data?.error || 'An error occurred while saving the PIR. Please ensure the associated AIP exists.',
+                message: getFriendlyError(error.response?.data?.error, 'An error occurred while saving the PIR. Please ensure the associated AIP exists.'),
                 confirmText: 'Dismiss',
                 onConfirm: closeModal
             });
