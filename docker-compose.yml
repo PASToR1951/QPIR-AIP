@@ -1,5 +1,5 @@
 # =============================================================================
-# QPIR-AIP — Docker Compose
+# AIP-PIR — Docker Compose
 #
 # Quick start:
 #   1. cp .env.docker .env

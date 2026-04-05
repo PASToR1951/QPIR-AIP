@@ -26,7 +26,7 @@ export default function ClusterHeadLayout() {
             <div className="w-px h-6 bg-slate-200 dark:bg-dark-border/60 hidden sm:block" />
             <div className="flex flex-col">
               <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest select-none leading-none">
-                QPIR-AIP
+                AIP-PIR
               </span>
               <span className="text-[9px] font-black text-amber-600 tracking-[0.2em] uppercase mt-0.5 select-none">
                 Cluster Head Review Portal

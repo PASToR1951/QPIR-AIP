@@ -31,7 +31,7 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 ## Project Structure
 
 ```
-QPIR-AIP/
+AIP-PIR/
 ├── react-app/          # React frontend (Vite)
 │   ├── src/
 │   │   ├── components/ # Reusable UI and document components
@@ -68,7 +68,7 @@ QPIR-AIP/
 
 ```bash
 git clone <repo-url>
-cd QPIR-AIP/react-app
+cd AIP-PIR/react-app
 npm install
 ```
 
