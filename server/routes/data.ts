@@ -671,17 +671,18 @@ dataRoutes.get('/programs/with-pirs', async (c) => {
     if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
 
     const year = safeParseInt(c.req.query('year'), new Date().getFullYear(), 2020, 2100);
+    const quarter = c.req.query('quarter') || null;
 
     let pirs: any[];
     const FILED_STATUSES = ['Submitted', 'Under Review', 'Approved', 'Returned'];
     if (tokenUser.role === 'School' && tokenUser.school_id) {
       pirs = await prisma.pIR.findMany({
-        where: { status: { in: FILED_STATUSES }, aip: { school_id: tokenUser.school_id, year } },
+        where: { status: { in: FILED_STATUSES }, ...(quarter ? { quarter } : {}), aip: { school_id: tokenUser.school_id, year } },
         include: { aip: { include: { program: true } } }
       });
     } else {
       pirs = await prisma.pIR.findMany({
-        where: { status: { in: FILED_STATUSES }, aip: { created_by_user_id: tokenUser.id, school_id: null, year } },
+        where: { status: { in: FILED_STATUSES }, ...(quarter ? { quarter } : {}), aip: { created_by_user_id: tokenUser.id, school_id: null, year } },
         include: { aip: { include: { program: true } } }
       });
     }
@@ -928,6 +929,7 @@ dataRoutes.get('/aips', async (c) => {
     if (!aip) return c.json({ error: 'No submitted AIP found' }, 404);
 
     return c.json({
+      id: aip.id,
       year: aip.year,
       status: aip.status,
       depedProgram: aip.program.title,
@@ -1269,6 +1271,83 @@ dataRoutes.post('/aips', async (c) => {
   } catch (error) {
     logger.error('Unhandled route error', error);
     return c.json({ error: 'Failed to create AIP' }, 500);
+  }
+});
+
+// PUT /api/aips/:id — update a submitted AIP (only allowed if status is 'Submitted' or 'Returned')
+dataRoutes.put('/aips/:id', async (c) => {
+  try {
+    const tokenUser = getUserFromToken(c);
+    if (!tokenUser) return c.json({ error: 'Authentication required' }, 401);
+
+    const aipId = safeParseInt(c.req.param('id'), 0);
+    if (aipId === 0) return c.json({ error: 'Invalid AIP id' }, 400);
+
+    const aip = await prisma.aIP.findUnique({
+      where: { id: aipId },
+      include: { program: true }
+    });
+    if (!aip) return c.json({ error: 'AIP not found' }, 404);
+
+    // Ownership check
+    const isOwner =
+      aip.created_by_user_id === tokenUser.id ||
+      (tokenUser.school_id != null && aip.school_id === tokenUser.school_id);
+    if (!isOwner) return c.json({ error: 'Forbidden' }, 403);
+
+    if (aip.status !== 'Submitted' && aip.status !== 'Returned') {
+      return c.json({ error: 'This AIP can no longer be edited in its current state.' }, 409);
+    }
+
+    const body = sanitizeObject(await c.req.json());
+    const { outcome, sip_title, project_coordinator, objectives, indicators,
+            prepared_by_name, prepared_by_title, approved_by_name, approved_by_title, activities } = body;
+
+    for (const act of activities) {
+      const raw = parseFloat(String(act.budgetAmount ?? 0));
+      if (Number.isNaN(raw) || raw < 0 || raw > 999_999_999_999) {
+        return c.json({ error: 'Invalid budget amount: must be a non-negative number' }, 400);
+      }
+    }
+
+    const activityFields = activities.map((act: any) => {
+      const amount = validateBudgetAmount(act.budgetAmount);
+      return {
+        phase: act.phase,
+        activity_name: act.name,
+        implementation_period: act.period,
+        period_start_month: act.periodStartMonth ? safeParseInt(act.periodStartMonth, 0, 1, 12) : null,
+        period_end_month: act.periodEndMonth ? safeParseInt(act.periodEndMonth, 0, 1, 12) : null,
+        persons_involved: act.persons,
+        outputs: act.outputs,
+        budget_amount: amount,
+        budget_source: normalizeBudgetSource(amount, act.budgetSource)
+      };
+    });
+
+    await prisma.aIPActivity.deleteMany({ where: { aip_id: aipId } });
+    const updated = await prisma.aIP.update({
+      where: { id: aipId },
+      data: {
+        outcome,
+        sip_title,
+        project_coordinator,
+        objectives,
+        indicators: normalizeIndicators(indicators),
+        prepared_by_name: prepared_by_name || '',
+        prepared_by_title: prepared_by_title || '',
+        approved_by_name: approved_by_name || '',
+        approved_by_title: approved_by_title || '',
+        status: 'Submitted',
+        activities: { create: activityFields }
+      },
+      include: { activities: true }
+    });
+
+    return c.json({ message: 'AIP updated successfully', aip: updated });
+  } catch (error) {
+    logger.error('Unhandled route error', error);
+    return c.json({ error: 'Failed to update AIP' }, 500);
   }
 });
 

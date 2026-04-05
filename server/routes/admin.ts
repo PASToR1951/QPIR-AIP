@@ -1820,7 +1820,7 @@ adminRoutes.get("/deadlines/history", async (c) => {
 // ==========================================
 
 const reportRequests = new Map<number, number[]>();
-const MAX_REPORT_REQUESTS = 20;
+const MAX_REPORT_REQUESTS = 60;
 const REPORT_WINDOW_MS = 60 * 1000;
 
 adminRoutes.use("/reports/*", async (c, next) => {
@@ -1835,6 +1835,17 @@ adminRoutes.use("/reports/*", async (c, next) => {
   timestamps.push(now);
   reportRequests.set(admin.id, timestamps);
   await next();
+});
+
+adminRoutes.get("/reports/years", async (c) => {
+  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
+  const rows = await prisma.aIP.findMany({
+    select: { year: true },
+    distinct: ["year"],
+    orderBy: { year: "desc" },
+  });
+  const years = rows.map((r) => r.year);
+  return c.json({ years });
 });
 
 adminRoutes.get("/reports/compliance", async (c) => {

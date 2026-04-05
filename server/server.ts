@@ -17,7 +17,10 @@ const rateLimitWindows = new Map<string, number[]>();
 
 function makeRateLimiter(limit: number, windowMs: number) {
   return async (c: any, next: any) => {
-    const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown';
+    const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip');
+    // Without a proxy providing the real IP, all requests would share one bucket
+    // and legitimate users would be blocked. Skip rate limiting in that case.
+    if (!ip) { await next(); return; }
     const key = `${c.req.path}|${ip}`;
     const now = Date.now();
     const windowStart = now - windowMs;
