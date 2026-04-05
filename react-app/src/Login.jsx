@@ -180,7 +180,7 @@ export default function Login() {
       />
 
       {/* Grid overlay */}
-      <div className="absolute inset-0 bg-slate-900/10 bg-grid [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-10" />
+      <div className="absolute inset-0 bg-slate-900/10 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-10" />
 
       {/* Glowing orbs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-400/30 dark:opacity-30 rounded-full blur-2xl opacity-40 pointer-events-none z-0 login-orb-float-1" />
@@ -365,7 +365,14 @@ export default function Login() {
 
             <div className="footer-item flex flex-col items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 font-medium text-center" style={{'--footer-i': 1}}>
               <div className="flex flex-wrap justify-center items-center gap-2">
-                <span className="flex items-center gap-1"><MapPin size={12} className="text-slate-300" /> Osmeña Avenue, City of Guihulngan, Negros Oriental</span>
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=Osme%C3%B1a+Avenue+City+of+Guihulngan+Negros+Oriental"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors underline decoration-dotted underline-offset-2"
+                >
+                  <MapPin size={12} className="text-slate-300" /> Osmeña Avenue, City of Guihulngan, Negros Oriental
+                </a>
                 <span className="hidden lg:inline text-slate-300">•</span>
                 <span className="flex items-center gap-1"><Phone size={12} className="text-slate-300" /> (035) 410-4069 • (035) 410-4066 • 0956-964-7346</span>
               </div>

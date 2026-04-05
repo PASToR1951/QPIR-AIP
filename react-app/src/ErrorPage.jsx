@@ -58,7 +58,7 @@ const ErrorPage = ({ type = "500", title, message, onRetry }) => {
       <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-400/20 rounded-full blur-[120px] animate-pulse pointer-events-none z-[5]" style={{ animationDelay: '2s' }}></div>
 
       {/* 4. Grid Pattern Overlay */}
-      <div className="absolute inset-0 bg-grid [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_130%)] pointer-events-none z-[6] opacity-30"></div>
+      <div className="absolute inset-0 [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_130%)] pointer-events-none z-[6] opacity-30"></div>
 
       <div className="relative z-20 flex flex-col items-center text-center max-w-2xl px-4">
         {/* Branding */}

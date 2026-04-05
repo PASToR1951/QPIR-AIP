@@ -114,6 +114,11 @@ export default function App() {
     const autosaveTimerRef = useRef(null);
     const [lastAutoSavedTime, setLastAutoSavedTime] = useState(null);
 
+    // Submitted AIP tracking (for edit)
+    const [aipId, setAipId] = useState(null);
+    const [aipStatus, setAipStatus] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+
     // Splash stage-2 selection (program chosen but no mode yet)
     const [splashSelectedProgram, setSplashSelectedProgram] = useState(null);
 
@@ -190,11 +195,11 @@ export default function App() {
             try {
                 const schoolOrUserId = user?.school_id || user?.id;
                 const requests = [
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { credentials: 'include' }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { credentials: 'include' }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, { credentials: 'include' }),
-                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/coordinators`, { credentials: 'include' }) : Promise.resolve(null),
-                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/persons-terms`, { credentials: 'include' }) : Promise.resolve(null),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { withCredentials: true }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { withCredentials: true }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, { withCredentials: true }),
+                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/coordinators`, { withCredentials: true }) : Promise.resolve(null),
+                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/persons-terms`, { withCredentials: true }) : Promise.resolve(null),
                 ];
                 const results = await Promise.allSettled(requests);
                 const [programsRes, completedRes, draftRes, coordsRes, termsRes] = results;
@@ -230,9 +235,11 @@ export default function App() {
                 const year = new Date().getFullYear();
                 const res = await axios.get(
                     `${import.meta.env.VITE_API_URL}/api/aips`,
-                    { params: { program_title: selectedProgram, year }, credentials: 'include' }
+                    { params: { program_title: selectedProgram, year }, withCredentials: true }
                 );
                 const d = res.data;
+                setAipId(d.id ?? null);
+                setAipStatus(d.status ?? null);
                 setYear(String(d.year));
                 setOutcome(d.outcome || "");
                 setSelectedTarget(d.indicators?.[0]?.description || "");
@@ -283,7 +290,7 @@ export default function App() {
                                 const currentYear = parseInt(year);
                                 const draftRes = await axios.get(
                                     `${import.meta.env.VITE_API_URL}/api/aips/draft`,
-                                    { params: { program_title: selectedProgram, year: currentYear }, credentials: 'include' }
+                                    { params: { program_title: selectedProgram, year: currentYear }, withCredentials: true }
                                 );
                                 if (draftRes.data.hasDraft) loadDraftIntoState(draftRes.data.draftData);
                             } catch { /* proceed with blank form */ }
@@ -302,7 +309,7 @@ export default function App() {
                 const currentYear = parseInt(year);
                 const draftRes = await axios.get(
                     `${import.meta.env.VITE_API_URL}/api/aips/draft`,
-                    { params: { program_title: selectedProgram, year: currentYear }, credentials: 'include' }
+                    { params: { program_title: selectedProgram, year: currentYear }, withCredentials: true }
                 );
                 if (draftRes.data.hasDraft) loadDraftIntoState(draftRes.data.draftData);
             } catch { /* proceed with blank form */ }
@@ -346,6 +353,12 @@ export default function App() {
     };
 
     const handleBack = () => {
+        if (isEditing) {
+            setIsEditing(false);
+            setAppMode('readonly');
+            setSearchParams({ program: depedProgram, mode: 'readonly' }, { replace: true });
+            return;
+        }
         if (appMode === 'splash') {
             navigate('/');
         } else {
@@ -412,7 +425,7 @@ export default function App() {
                 approved_by_name: approvedByName,
                 approved_by_title: approvedByTitle,
                 activities
-            }, { credentials: 'include' });
+            }, { withCredentials: true });
             localStorage.removeItem(`aip_draft_${depedProgram}_${year}`);
         } catch (e) {
         }
@@ -584,7 +597,7 @@ export default function App() {
                     programsToDelete.map(prog =>
                         axios.delete(`${import.meta.env.VITE_API_URL}/api/aips`, {
                             params: { program_title: prog, year: currentYear },
-                            credentials: 'include'
+                            withCredentials: true
                         })
                     )
                 );
@@ -599,6 +612,13 @@ export default function App() {
         });
     }, [closeModal, hasDraft, loadedDraftData, showToast, year]);
 
+    const handleEditAIP = () => {
+        setIsEditing(true);
+        setCurrentStep(1);
+        setAppMode('wizard');
+        setSearchParams({ program: depedProgram, mode: 'wizard' }, { replace: true });
+    };
+
     const handleDeleteSubmission = () => {
         setModal({
             isOpen: true,
@@ -611,7 +631,7 @@ export default function App() {
                 try {
                     await axios.delete(
                         `${import.meta.env.VITE_API_URL}/api/aips`,
-                        { params: { program_title: depedProgram, year }, credentials: 'include' }
+                        { params: { program_title: depedProgram, year }, withCredentials: true }
                     );
                     setCompletedPrograms(prev => prev.filter(p => p !== depedProgram));
                     setReturnedPrograms(prev => prev.filter(p => p !== depedProgram));
@@ -653,44 +673,64 @@ export default function App() {
             return;
         }
 
-        try {
-            await axios.post(
-              `${import.meta.env.VITE_API_URL}/api/aips`,
-              {
-                program_title: depedProgram,
-                year: parseInt(year),
-                outcome,
-                sip_title: sipTitle,
-                project_coordinator: projectCoord,
-                objectives: objectives.filter(o => o.trim() !== ''),
-                indicators: indicators.filter(ind => ind.description.trim() !== ''),
-                prepared_by_name: preparedByName,
-                prepared_by_title: preparedByTitle,
-                approved_by_name: approvedByName,
-                approved_by_title: approvedByTitle,
-                activities: filledActivities
-              },
-              { credentials: 'include' }
-            );
+        const aipBody = {
+            program_title: depedProgram,
+            year: parseInt(year),
+            outcome,
+            sip_title: sipTitle,
+            project_coordinator: projectCoord,
+            objectives: objectives.filter(o => o.trim() !== ''),
+            indicators: indicators.filter(ind => ind.description.trim() !== ''),
+            prepared_by_name: preparedByName,
+            prepared_by_title: preparedByTitle,
+            approved_by_name: approvedByName,
+            approved_by_title: approvedByTitle,
+            activities: filledActivities
+        };
 
-            setIsSubmitted(true);
-            localStorage.removeItem(`aip_draft_${depedProgram}_${year}`);
-            // Draft or returned AIP is now promoted to Approved in the backend — no separate delete needed
-            setModal({
-                isOpen: true,
-                type: 'success',
-                title: 'Success!',
-                message: 'The Annual Implementation Plan has been saved to the database.',
-                confirmText: 'Back to Dashboard',
-                onConfirm: () => { closeModal(); navigate('/'); },
-                hideCancelButton: true,
-                extraAction: { text: 'View Programs', onClick: () => { closeModal(); navigate('/aip'); } }
-            });
+        try {
+            if (isEditing && aipId) {
+                await axios.put(
+                    `${import.meta.env.VITE_API_URL}/api/aips/${aipId}`,
+                    aipBody,
+                    { withCredentials: true }
+                );
+                setIsEditing(false);
+                setAipStatus('Submitted');
+                setModal({
+                    isOpen: true,
+                    type: 'success',
+                    title: 'AIP Updated!',
+                    message: 'Your changes have been saved.',
+                    confirmText: 'View Submission',
+                    onConfirm: () => { closeModal(); setAppMode('readonly'); setSearchParams({ program: depedProgram, mode: 'readonly' }, { replace: true }); },
+                    hideCancelButton: true,
+                    extraAction: { text: 'Back to Dashboard', onClick: () => { closeModal(); navigate('/'); } }
+                });
+            } else {
+                await axios.post(
+                    `${import.meta.env.VITE_API_URL}/api/aips`,
+                    aipBody,
+                    { withCredentials: true }
+                );
+                setIsSubmitted(true);
+                localStorage.removeItem(`aip_draft_${depedProgram}_${year}`);
+                setModal({
+                    isOpen: true,
+                    type: 'success',
+                    title: 'Success!',
+                    message: 'The Annual Implementation Plan has been saved to the database.',
+                    confirmText: 'Back to Dashboard',
+                    onConfirm: () => { closeModal(); navigate('/'); },
+                    hideCancelButton: true,
+                    extraAction: { text: 'View Programs', onClick: () => { closeModal(); navigate('/aip'); } }
+                });
+            }
         } catch (error) {
             setModal({
                 isOpen: true,
                 type: 'warning',
-                title: 'Submission Failed',
+                title: isEditing ? 'Update Failed' : 'Submission Failed',
                 message: error.response?.data?.error || 'An error occurred while saving the AIP. Please try again.',
                 confirmText: 'Dismiss',
                 onConfirm: closeModal
@@ -723,8 +763,8 @@ export default function App() {
             onConfirm={() => { setShowFinalConfirm(false); handleConfirmSubmit(); }}
             type="warning"
             title="Submit AIP — Final Confirmation"
-            message="Once submitted, your AIP cannot be edited. If corrections are needed later, you will need to request an edit from the Admin. Do you want to proceed?"
-            confirmText="Yes, Submit"
+            message={isEditing ? "Save your changes to this AIP? It will remain in the review queue." : "Submit this AIP for review? You can still edit it while it is pending review."}
+            confirmText={isEditing ? "Yes, Save Changes" : "Yes, Submit"}
             cancelText="Cancel"
         />
         {toast && (
@@ -824,16 +864,29 @@ export default function App() {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600 shrink-0">
                                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                                 </svg>
-                                <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex-1">This form has been submitted and is read-only.</span>
-                                <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex-1">
+                                    This form has been submitted{aipStatus && aipStatus !== 'Submitted' ? ` — currently ${aipStatus.toLowerCase()}` : ' and is read-only'}.
+                                </span>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {(aipStatus === 'Submitted' || aipStatus === 'Returned') && (
+                                        <button
+                                            onClick={handleEditAIP}
+                                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-pink-600 text-white text-xs font-bold hover:bg-pink-700 transition-colors"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                            </svg>
+                                            Edit
+                                        </button>
+                                    )}
                                     <button
                                         onClick={handleDeleteSubmission}
-                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 transition-colors"
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 border border-red-200 dark:border-red-900/50 text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                                         </svg>
-                                        Delete Submission
+                                        Delete
                                     </button>
                                     <button
                                         onClick={() => window.print()}
@@ -872,11 +925,11 @@ export default function App() {
                 <motion.div key="form" {...motionProps}>
                     <div className="bg-slate-50 dark:bg-dark-base min-h-screen flex flex-col text-slate-800 dark:text-slate-100 font-sans relative print:py-0 print:bg-white print:text-black">
             <FormHeader
-                title="Annual Implementation Plan"
+                title={isEditing ? 'Edit Annual Implementation Plan' : 'Annual Implementation Plan'}
                 programName={depedProgram}
-                onSave={handleSaveForLater}
+                onSave={isEditing ? undefined : handleSaveForLater}
                 onBack={handleBack}
-                onHome={handleHome}
+                onHome={isEditing ? undefined : handleHome}
                 isSaving={isSaving}
                 isSaved={isSaved}
                 lastSavedTime={lastSavedTime}
@@ -1137,7 +1190,7 @@ export default function App() {
                                         className="inline-flex h-14 items-center justify-center rounded-2xl bg-pink-600 px-8 py-1 text-sm font-bold text-white transition-colors gap-3 hover:bg-pink-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-md"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                                        {isSubmitted ? "Submitted" : "Confirm & Submit"}
+                                        {isSubmitted ? "Submitted" : isEditing ? "Save Changes" : "Confirm & Submit"}
                                     </button>
                                 </div>
                             </div>

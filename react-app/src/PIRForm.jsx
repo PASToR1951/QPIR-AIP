@@ -84,11 +84,11 @@ export default function App() {
         const init = async () => {
             try {
                 const requests = [
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { credentials: 'include' }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { credentials: 'include' }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { withCredentials: true }),
+                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { params: { quarter: quarterString }, withCredentials: true }),
                     axios.get(`${import.meta.env.VITE_API_URL}/api/config`),
                 ];
-                requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { credentials: 'include' }));
+                requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { withCredentials: true }));
                 const results = await Promise.allSettled(requests);
                 const [withAIPsRes, withPIRsRes, configRes, draftRes] = results;
                 if (withAIPsRes.status === 'fulfilled') {
@@ -240,7 +240,7 @@ export default function App() {
                     ? { user_id: user?.id, program_title: program, year }
                     : { school_id: schoolId, program_title: program, year };
 
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/activities`, { params, credentials: 'include' });
+                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/activities`, { params, withCredentials: true });
                 const aipActivities = res.data.activities;
                 if (aipActivities && aipActivities.length > 0) {
                     if (pirActivitiesLoaded.current) {
@@ -312,7 +312,7 @@ export default function App() {
             try {
                 const res = await axios.get(
                     `${import.meta.env.VITE_API_URL}/api/pirs`,
-                    { params: { program_title: selectedProgram, quarter: quarterString }, credentials: 'include' }
+                    { params: { program_title: selectedProgram, quarter: quarterString }, withCredentials: true }
                 );
                 const d = res.data;
                 setPirId(d.id ?? null);
@@ -438,7 +438,7 @@ export default function App() {
             onConfirm: async () => {
                 closeModal();
                 try {
-                    await axios.delete(`${import.meta.env.VITE_API_URL}/api/pirs/${pirId}`, { credentials: 'include' });
+                    await axios.delete(`${import.meta.env.VITE_API_URL}/api/pirs/${pirId}`, { withCredentials: true });
                     // Remove from completedPrograms and refresh
                     setCompletedPrograms(prev => prev.filter(p => p !== program));
                     setPirId(null);
@@ -467,7 +467,7 @@ export default function App() {
                 const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
                 const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips`, {
                     params: { program_title: program, year },
-                    credentials: 'include'
+                    withCredentials: true
                 });
                 setAipDocumentData(res.data);
             } catch (e) {
@@ -512,7 +512,7 @@ export default function App() {
                         recommendations: factors[type]?.recommendations ?? '',
                     }])
                 ),
-            }, { credentials: 'include' });
+            }, { withCredentials: true });
         } catch (e) {
             console.error("Failed to save draft:", e);
         }
@@ -635,8 +635,8 @@ export default function App() {
             program_title: program,
             quarter: quarterString,
             program_owner: owner,
-            budget_from_division: budgetFromDivision,
-            budget_from_co_psf: budgetFromCoPSF,
+            budget_from_division: parseFloat(budgetFromDivision) || 0,
+            budget_from_co_psf: parseFloat(budgetFromCoPSF) || 0,
             functional_division: isDivisionPersonnel ? functionalDivision : null,
             indicator_quarterly_targets: indicatorTargets,
             action_items: actionItems.filter(item => item.action?.trim()),
@@ -668,23 +668,22 @@ export default function App() {
                 await axios.put(
                     `${import.meta.env.VITE_API_URL}/api/pirs/${pirId}`,
                     pirBody,
-                    { credentials: 'include' }
+                    { withCredentials: true }
                 );
                 setIsEditing(false);
-                setPirStatus('Submitted');
                 setModal({
                     isOpen: true,
                     type: 'success',
                     title: 'PIR Updated!',
-                    message: 'Your changes have been saved.',
+                    message: 'Your changes have been saved and re-submitted for review.',
                     confirmText: 'View Submission',
-                    onConfirm: () => { closeModal(); setAppMode('readonly'); setSearchParams({ program, mode: 'readonly' }, { replace: true }); }
+                    onConfirm: () => { closeModal(); handleStart('readonly', program); }
                 });
             } else {
                 await axios.post(
                     `${import.meta.env.VITE_API_URL}/api/pirs`,
                     pirBody,
-                    { credentials: 'include' }
+                    { withCredentials: true }
                 );
                 setIsSubmitted(true);
                 // Draft is promoted to Submitted in the backend — no separate delete needed
@@ -693,10 +692,10 @@ export default function App() {
                     type: 'success',
                     title: 'Success!',
                     message: 'The QPIR document has been saved to the database.',
-                    confirmText: 'Back to Dashboard',
-                    onConfirm: () => { closeModal(); navigate('/'); },
+                    confirmText: 'View Submission',
+                    onConfirm: () => { closeModal(); handleStart('readonly', program); },
                     hideCancelButton: true,
-                    extraAction: { text: 'View Programs', onClick: () => { closeModal(); navigate('/pir'); } }
+                    extraAction: { text: 'Back to Dashboard', onClick: () => { closeModal(); navigate('/'); } }
                 });
             }
         } catch (error) {
@@ -764,7 +763,7 @@ export default function App() {
                                         This form has been submitted{pirStatus && pirStatus !== 'Submitted' ? ` — currently ${pirStatus.toLowerCase()} by reviewers` : ' and is read-only'}.
                                     </span>
                                     <div className="flex items-center gap-2">
-                                        {pirStatus === 'Submitted' && (
+                                        {['For CES Review', 'For Cluster Head Review', 'Returned'].includes(pirStatus) && (
                                             <>
                                                 <button
                                                     onClick={handleEditPIR}
