@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.ts";
 import oauthRoutes from "./routes/oauth.ts";
 import dataRoutes from "./routes/data.ts";
 import adminRoutes from "./routes/admin.ts";
+import backupRoutes from "./routes/backup.ts";
 import { prisma as _prisma } from "./db/client.ts";
 import { getUserFromToken } from "./lib/auth.ts";
 import { logger } from "./lib/logger.ts";
@@ -132,6 +133,7 @@ app.route('/api/auth/oauth', oauthRoutes);
 app.route('/api/auth', authRoutes);
 app.route('/api', dataRoutes);
 app.route('/api/admin', adminRoutes);
+app.route('/api/admin/backup', backupRoutes);
 
 const PORT = parseInt(Deno.env.get("PORT") || "3001");
 logger.info(`AIP-PIR backend running on http://localhost:${PORT}`);
