@@ -37,6 +37,7 @@ const AdminPrograms   = lazy(() => import('./admin/pages/AdminPrograms.jsx'));
 const AdminDeadlines  = lazy(() => import('./admin/pages/AdminDeadlines.jsx'));
 const AdminReports    = lazy(() => import('./admin/pages/AdminReports.jsx'));
 const AdminSettings   = lazy(() => import('./admin/pages/AdminSettings.jsx'));
+const AdminBackups    = lazy(() => import('./admin/pages/AdminBackups.jsx'));
 
 const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID'];
 
@@ -51,6 +52,7 @@ function preloadForRole(role) {
     import('./admin/pages/AdminDeadlines.jsx');
     import('./admin/pages/AdminReports.jsx');
     import('./admin/pages/AdminSettings.jsx');
+    import('./admin/pages/AdminBackups.jsx');
   } else if (CES_ROLES.includes(role)) {
     import('./ces/CESLayout.jsx');
   } else if (role === 'Cluster Coordinator') {
@@ -214,6 +216,7 @@ export default function AnimatedContent() {
               <Route path="deadlines" element={<AdminDeadlines />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="settings" element={<AdminSettings />} />
+              <Route path="backups" element={<AdminBackups />} />
             </Route>
           </Routes>
         </Suspense>
