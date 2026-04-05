@@ -45,6 +45,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pir_system}?schema=public
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       PORT: 3001
+    volumes:
+      - ./backups:/app/backups:ro
     ports:
       - "3001:3001"
 
@@ -62,6 +64,31 @@ services:
       - backend
     ports:
       - "${FRONTEND_PORT:-80}:80"
+
+  # ── Backup Service ──────────────────────────────────────────────────────────
+  backup:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.backup
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backups:/app/backups
+      - ${RCLONE_CONFIG_PATH:-~/.config/rclone/rclone.conf}:/root/.config/rclone/rclone.conf:ro
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-pir_system}
+      BACKUP_DB_USER: ${BACKUP_DB_USER:-backup_reader}
+      BACKUP_DB_PASSWORD: ${BACKUP_DB_PASSWORD:?Set BACKUP_DB_PASSWORD in .env}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:?Set BACKUP_ENCRYPTION_KEY in .env}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-5}
+      BACKUP_CLOUD_ENABLED: ${BACKUP_CLOUD_ENABLED:-false}
+      BACKUP_RCLONE_REMOTE: ${BACKUP_RCLONE_REMOTE:-my_remote}
+      BACKUP_RCLONE_PATH: ${BACKUP_RCLONE_PATH:-/QPIR-AIP-Backups}
 
   # ── Claude DevTools ──────────────────────────────────────────────────────────
   devtools:

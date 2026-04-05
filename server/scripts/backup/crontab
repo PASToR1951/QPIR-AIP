@@ -1,0 +1,11 @@
+# QPIR-AIP Backup Cron Schedule
+# All times are in the container's timezone (set TZ env if needed)
+
+# Hourly soft backup at :00 every hour
+0 * * * * /app/scripts/backup/backup_hourly.sh >> /var/log/backup.log 2>&1
+
+# Daily hard backup at 2:00 AM
+0 2 * * * /app/scripts/backup/backup_daily.sh >> /var/log/backup.log 2>&1
+
+# Health check every 30 minutes
+*/30 * * * * /app/scripts/backup/backup_healthcheck.sh >> /var/log/backup.log 2>&1
