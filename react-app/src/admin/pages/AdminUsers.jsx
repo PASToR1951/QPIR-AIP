@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
+import { getFriendlyError } from '../../lib/errorMessages.js';
 import { PencilSimple, Key, LockKey, LockKeyOpen, Trash, Plus, MagnifyingGlass, Copy, Check, XCircle, CheckCircle } from '@phosphor-icons/react';
 import { DataTable, withResponsiveHide } from '../components/DataTable.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
@@ -175,7 +176,7 @@ export default function AdminUsers() {
       setCreateOpen(false); setForm(emptyForm); fetchAll();
       showToast('User created successfully.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Failed to create user');
+      setFormError(getFriendlyError(e.response?.data?.error, 'Failed to create user'));
     } finally { setActionLoading(false); }
   };
 
@@ -200,7 +201,7 @@ export default function AdminUsers() {
       setEditUser(null); fetchAll();
       showToast('User updated successfully.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Failed to update user');
+      setFormError(getFriendlyError(e.response?.data?.error, 'Failed to update user'));
     } finally { setActionLoading(false); }
   };
 
