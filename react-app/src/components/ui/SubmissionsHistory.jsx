@@ -1,12 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { ClockCounterClockwise, CaretDown, CaretUp, Eye, SpinnerGap, Tray, PencilSimple, CheckCircle } from '@phosphor-icons/react';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
 import { AIPDocument } from '../docs/AIPDocument';
 import { PIRDocument } from '../docs/PIRDocument';
 import { StatusBadge } from '../../admin/components/StatusBadge';
+import { useTextMeasure } from '../../lib/useTextMeasure';
 
 const API = import.meta.env.VITE_API_URL;
+
+const ROW_PADDING_Y = 40;
+const PIR_BUTTON_HEIGHT = 32;
 
 export default function SubmissionsHistory() {
   
@@ -28,6 +32,27 @@ export default function SubmissionsHistory() {
 
   const [supervisorName, setSupervisorName] = useState('');
   const [supervisorTitle, setSupervisorTitle] = useState('');
+
+  const { measureText } = useTextMeasure({
+    font: '14px Inter',
+    lineHeight: 20,
+  });
+
+  const rowHeights = useMemo(() => {
+    if (!history.length) return {};
+    const heights = {};
+    for (const yearEntry of history) {
+      for (const aip of yearEntry.aips) {
+        const titleWidth = measureText(aip.abbreviation ?? aip.program).lineCount * 20;
+        const pirCount = aip.pirs.length;
+        const pirHeight = pirCount > 0
+          ? Math.ceil(pirCount / Math.floor(600 / 120)) * (PIR_BUTTON_HEIGHT + 8) + 8
+          : 24;
+        heights[aip.id] = titleWidth + pirHeight + ROW_PADDING_Y;
+      }
+    }
+    return heights;
+  }, [history, measureText]);
 
   useEffect(() => {
     axios.get(`${API}/api/config`)
@@ -192,7 +217,7 @@ export default function SubmissionsHistory() {
                 {isOpen && (
                   <div className="border-t border-slate-100 dark:border-dark-border divide-y divide-slate-100 dark:divide-dark-border">
                     {aips.map((aip) => (
-                      <div key={aip.id} className="px-8 py-5">
+                      <div key={aip.id} className="px-8 py-5" style={{ minHeight: `${rowHeights[aip.id] ?? 0}px` }}>
                         <div className="flex items-center justify-between gap-4">
                           <button
                             onClick={() => handlePreviewAIP(aip.program, year)}

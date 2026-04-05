@@ -11,6 +11,7 @@
     "changelog": "node scripts/changelog.mjs"
   },
   "dependencies": {
+    "@chenglou/pretext": "^0.0.4",
     "@nivo/bar": "^0.99.0",
     "@nivo/pie": "^0.99.0",
     "@phosphor-icons/react": "^2.1.10",

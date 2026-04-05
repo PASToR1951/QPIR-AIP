@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import {
@@ -7,6 +7,7 @@ import {
   Warning, ChartBar, CurrencyCircleDollar, Checks, XCircle,
 } from '@phosphor-icons/react';
 import { StatusBadge } from './StatusBadge.jsx';
+import { useTextMeasure } from '../../lib/useTextMeasure';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -83,7 +84,7 @@ function RateBar({ value, max = 100 }) {
 }
 
 // ─── Activity Row (inline mode) ───────────────────────────────────────────────
-function ActivityRow({ review, onSaveNotes, pirId }) {
+function ActivityRow({ review, onSaveNotes, pirId, measureText }) {
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(review.admin_notes ?? '');
   const [saving, setSaving] = useState(false);
@@ -93,6 +94,11 @@ function ActivityRow({ review, onSaveNotes, pirId }) {
   const finGap = calculateGap(review.financial_target, review.financial_accomplished);
   const flags = getValidationFlags(review);
   const aip = review.aip_activity;
+
+  const actionsHeight = useMemo(() => {
+    if (!review.actions_to_address_gap) return 0;
+    return measureText(review.actions_to_address_gap, 200).height;
+  }, [review.actions_to_address_gap, measureText]);
 
   const handleBlur = async () => {
     if (notes === (review.admin_notes ?? '')) return;
@@ -179,7 +185,7 @@ function ActivityRow({ review, onSaveNotes, pirId }) {
         </td>
 
         {/* Actions to Address Gap (from school) */}
-        <td className="px-3 py-3">
+        <td className="px-3 py-3" style={{ minHeight: actionsHeight > 0 ? `${actionsHeight + 12}px` : undefined }}>
           {review.actions_to_address_gap ? (
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{review.actions_to_address_gap}</p>
           ) : (
@@ -236,7 +242,7 @@ function ActivityRow({ review, onSaveNotes, pirId }) {
 }
 
 // ─── Side-by-side mode ────────────────────────────────────────────────────────
-function SideBySideView({ reviews, allAipActivities, pirId, onSaveNotes }) {
+function SideBySideView({ reviews, allAipActivities, pirId, onSaveNotes, measureText }) {
   const reviewed = reviews;
   const reviewedIds = new Set(reviews.map(r => r.aip_activity_id));
   const unreviewed = allAipActivities.filter(a => !reviewedIds.has(a.id));
@@ -253,7 +259,7 @@ function SideBySideView({ reviews, allAipActivities, pirId, onSaveNotes }) {
           const physPct = pct(review.physical_accomplished, review.physical_target);
           const finPct = pct(review.financial_accomplished, review.financial_target);
           return (
-            <SidePIRCard key={review.id} review={review} flags={flags} physPct={physPct} finPct={finPct} pirId={pirId} onSaveNotes={onSaveNotes} />
+            <SidePIRCard key={review.id} review={review} flags={flags} physPct={physPct} finPct={finPct} pirId={pirId} onSaveNotes={onSaveNotes} measureText={measureText} />
           );
         })}
       </div>
@@ -274,7 +280,7 @@ function SideBySideView({ reviews, allAipActivities, pirId, onSaveNotes }) {
   );
 }
 
-function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes }) {
+function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes, measureText }) {
   const [notes, setNotes] = useState(review.admin_notes ?? '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -295,6 +301,11 @@ function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes }) {
     } catch { /* silent */ }
     finally { setSaving(false); }
   };
+
+  const gapTextHeight = useMemo(() => {
+    if (!review.actions_to_address_gap) return 0;
+    return measureText(review.actions_to_address_gap, 280).height;
+  }, [review.actions_to_address_gap, measureText]);
 
   return (
     <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl p-3 space-y-2">
@@ -319,7 +330,7 @@ function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes }) {
         </div>
       </div>
       {review.actions_to_address_gap && (
-        <p className="text-xs text-slate-500 dark:text-slate-400 italic">Gap actions: {review.actions_to_address_gap}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 italic" style={{ minHeight: `${gapTextHeight}px` }}>Gap actions: {review.actions_to_address_gap}</p>
       )}
       <div className="relative">
         <textarea
@@ -377,6 +388,11 @@ export function PIRReviewDrawer({ open, pir, onClose, onStatusChange }) {
 
   // Mutable notes cache
   const notesCache = useRef({});
+
+  const { measureText } = useTextMeasure({
+    font: '12px Inter',
+    lineHeight: 18,
+  });
 
   const load = useCallback(async () => {
     if (!pir) return;
@@ -730,7 +746,7 @@ export function PIRReviewDrawer({ open, pir, onClose, onStatusChange }) {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
                           {reviews.map(review => (
-                            <ActivityRow key={review.id} review={review} pirId={pir.id} onSaveNotes={handleSaveNotes} />
+                            <ActivityRow key={review.id} review={review} pirId={pir.id} onSaveNotes={handleSaveNotes} measureText={measureText} />
                           ))}
                         </tbody>
                       </table>
@@ -762,6 +778,7 @@ export function PIRReviewDrawer({ open, pir, onClose, onStatusChange }) {
                       allAipActivities={allAipActivities}
                       pirId={pir.id}
                       onSaveNotes={handleSaveNotes}
+                      measureText={measureText}
                     />
                   )}
                 </div>

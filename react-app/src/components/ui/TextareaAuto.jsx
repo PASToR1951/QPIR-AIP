@@ -1,33 +1,48 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { cn } from './Input';
+import { useTextMeasure } from '../../lib/useTextMeasure';
 
 export const TextareaAuto = React.forwardRef(({ className, value, onChange, onKeyDown: parentOnKeyDown, ...props }, forwardedRef) => {
     const [localValue, setLocalValue] = useState(value || '');
-    const textareaRef = useRef(null);
+    const chromeOffset = useRef(0);
+
+    const { measureText, containerRef } = useTextMeasure({
+        font: '16px Inter',
+        lineHeight: 20,
+    });
 
     // Sync local state when value prop changes (e.g. initial load or parent reset)
     useEffect(() => {
         setLocalValue(value || '');
     }, [value]);
 
-    // Auto-resize when value changes (initial load, prop updates, etc.)
+    // Compute padding+border chrome once (avoids per-keystroke reflow)
     useEffect(() => {
-        const el = textareaRef.current;
+        const el = containerRef.current;
         if (!el) return;
-        el.style.height = 'auto';
-        el.style.height = `${el.scrollHeight}px`;
-    }, [localValue]);
+        const cs = getComputedStyle(el);
+        chromeOffset.current =
+            parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) +
+            parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+    }, []);
+
+    // Auto-resize when value or container width changes — no scrollHeight reflow
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const { height } = measureText(localValue);
+        el.style.height = `${Math.max(height + chromeOffset.current, 40)}px`;
+    }, [localValue, measureText]);
 
     const handleInput = useCallback((e) => {
         setLocalValue(e.target.value);
 
-        const el = textareaRef.current;
+        const el = containerRef.current;
         if (!el) return;
 
-        // Prevent layout thrashing: only recalculate height here, do not trigger parent onChange
-        el.style.height = 'auto';
-        el.style.height = `${el.scrollHeight}px`;
-    }, []);
+        const { height } = measureText(e.target.value);
+        el.style.height = `${Math.max(height + chromeOffset.current, 40)}px`;
+    }, [measureText]);
 
     const handleKeyDown = useCallback((e) => {
         if (e.key === 'Enter') {
@@ -51,15 +66,14 @@ export const TextareaAuto = React.forwardRef(({ className, value, onChange, onKe
         }
     }, [onChange, localValue, value, props.onBlur]);
 
-    // Use a combined ref so both internal height calculation and forwarded refs work
     const combinedRef = useCallback((node) => {
-        textareaRef.current = node;
+        containerRef.current = node;
         if (typeof forwardedRef === 'function') {
             forwardedRef(node);
         } else if (forwardedRef) {
             forwardedRef.current = node;
         }
-    }, [forwardedRef]);
+    }, [forwardedRef, containerRef]);
 
     return (
         <textarea
