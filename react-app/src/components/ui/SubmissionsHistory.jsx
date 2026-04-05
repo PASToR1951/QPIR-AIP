@@ -29,6 +29,7 @@ export default function SubmissionsHistory() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [requestedEditIds, setRequestedEditIds] = useState(new Set());
   const [requestingEditId, setRequestingEditId] = useState(null);
+  const [editRequestToast, setEditRequestToast] = useState(null);
 
   const [supervisorName, setSupervisorName] = useState('');
   const [supervisorTitle, setSupervisorTitle] = useState('');
@@ -147,6 +148,8 @@ export default function SubmissionsHistory() {
     try {
       await axios.post(`${API}/api/aips/${aipId}/request-edit`, {}, { withCredentials: true });
       setRequestedEditIds(prev => new Set(prev).add(aipId));
+      setEditRequestToast('Edit request sent — an admin will be notified.');
+      setTimeout(() => setEditRequestToast(null), 3500);
     } catch { /* silently fail — button stays active so user can retry */ } finally {
       setRequestingEditId(null);
     }
@@ -173,6 +176,15 @@ export default function SubmissionsHistory() {
           <div className="flex flex-col items-center gap-3">
             <SpinnerGap size={36} className="text-indigo-500 animate-spin" />
             <span className="text-sm font-bold text-white">Loading document…</span>
+          </div>
+        </div>
+      )}
+
+      {editRequestToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-xl text-sm font-semibold">
+            <CheckCircle size={18} weight="fill" className="text-emerald-400 dark:text-emerald-600 shrink-0" />
+            {editRequestToast}
           </div>
         </div>
       )}
