@@ -935,7 +935,7 @@ adminRoutes.get("/submissions", async (c) => {
   });
   } catch (e: unknown) {
     logger.error("GET /submissions error", e);
-    return c.json({ error: e instanceof Error ? e.message : "Internal server error" }, 500);
+    return c.json({ error: "Internal server error" }, 500);
   }
 });
 
@@ -1851,7 +1851,7 @@ adminRoutes.get("/reports/years", async (c) => {
 adminRoutes.get("/reports/compliance", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
   const clusterRaw = c.req.query("cluster");
   const clusterId = clusterRaw ? safeParseInt(clusterRaw, 0) : undefined;
   if (clusterId !== undefined && (isNaN(clusterId) || clusterId < 1)) return c.json({ error: "Invalid cluster" }, 400);
@@ -1889,7 +1889,7 @@ adminRoutes.get("/reports/compliance", async (c) => {
 adminRoutes.get("/reports/quarterly", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
   const clusterRaw = c.req.query("cluster");
   const clusterId = clusterRaw ? safeParseInt(clusterRaw, 0) : undefined;
   if (clusterId !== undefined && (isNaN(clusterId) || clusterId < 1)) return c.json({ error: "Invalid cluster" }, 400);
@@ -1917,7 +1917,7 @@ adminRoutes.get("/reports/quarterly", async (c) => {
 adminRoutes.get("/reports/budget", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
 
   const activities = await prisma.aIPActivity.findMany({
     where: { aip: { year } },
@@ -1940,7 +1940,7 @@ adminRoutes.get("/reports/budget", async (c) => {
 adminRoutes.get("/reports/workload", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
   const personnel = await prisma.user.findMany({
     where: { role: "Division Personnel", is_active: true },
     include: {
@@ -1965,7 +1965,7 @@ adminRoutes.get("/reports/workload", async (c) => {
 adminRoutes.get("/reports/accomplishment", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
 
   const reviews = await prisma.pIRActivityReview.findMany({
     where: { pir: { aip: { year } } },
@@ -2009,7 +2009,7 @@ adminRoutes.get("/reports/accomplishment", async (c) => {
 adminRoutes.get("/reports/factors", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
 
   const factors = await prisma.pIRFactor.findMany({
     where: { pir: { aip: { year } } },
@@ -2031,7 +2031,7 @@ adminRoutes.get("/reports/factors", async (c) => {
 adminRoutes.get("/reports/aip-funnel", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
 
   const aips = await prisma.aIP.findMany({
     where: { year },
@@ -2050,16 +2050,16 @@ adminRoutes.get("/reports/aip-funnel", async (c) => {
 adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
   const quarter = safeParseInt(c.req.query("quarter"), 1);
-  if (![1, 2, 3, 4].includes(quarter)) return c.json({ error: "Quarter must be 1-4" }, 400);
+  if (![1, 2, 3, 4].includes(quarter)) return c.json({ error: "Invalid quarter (must be 1\u20134)" }, 400);
   const clusterRaw = c.req.query("cluster");
   const clusterId = clusterRaw ? safeParseInt(clusterRaw, 0) : undefined;
   if (!clusterId || isNaN(clusterId) || clusterId < 1) return c.json({ error: "cluster parameter is required" }, 400);
 
   const quarterPrefixes: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
   const qPrefix = quarterPrefixes[quarter];
-  if (!qPrefix) return c.json({ error: "quarter must be 1-4" }, 400);
+  if (!qPrefix) return c.json({ error: "Invalid quarter (must be 1\u20134)" }, 400);
 
   const programs = await prisma.program.findMany({
     where: { school_level_requirement: { not: "Division" } },
@@ -2138,7 +2138,7 @@ adminRoutes.get("/reports/:type/export", async (c) => {
   const type = c.req.param("type");
   const format = c.req.query("format") || "csv";
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
 
   let rows: Record<string, unknown>[] = [];
 

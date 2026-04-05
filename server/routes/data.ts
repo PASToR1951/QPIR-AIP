@@ -505,7 +505,7 @@ dataRoutes.delete('/pirs/draft', async (c) => {
     const program_title = c.req.query('program_title');
     const quarter = c.req.query('quarter');
 
-    if (!program_title || !quarter) return c.json({ error: 'program_title and quarter required' }, 400);
+    if (!program_title || !quarter) return c.json({ error: 'program_title and quarter are required' }, 400);
 
     const yearMatch = quarter.match(/CY (\d{4})/);
     const year = yearMatch ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100) : new Date().getFullYear();

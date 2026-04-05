@@ -142,9 +142,23 @@ const EXACT_MAP = {
   'Cluster number is required':
     'A cluster number is required.',
 
+  // ── Admin validation ─────────────────────────────────────────────────────────
+  'Invalid cluster':
+    'The cluster value is not valid. Please select a valid cluster.',
+  'Invalid status':
+    'The status value is not valid. Please select a valid status.',
+  "Unsupported export format. Use 'csv' or 'xlsx'.":
+    "Unsupported export format. Please choose either CSV or XLSX.",
+
+  // ── Auth ─────────────────────────────────────────────────────────────────────
+  'Login failed':
+    'Sign-in failed due to an unexpected error. Please try again.',
+
   // ── System / rate limiting ───────────────────────────────────────────────────
   'Too many requests, please try again later.':
     'Too many requests have been made. Please wait a moment and try again.',
+  'Rate limit exceeded for reports. Please wait.':
+    'Too many report requests have been made. Please wait a moment and try again.',
   'Request body too large (max 2MB)':
     'The submitted data is too large. Please reduce the amount of content and try again.',
 };
