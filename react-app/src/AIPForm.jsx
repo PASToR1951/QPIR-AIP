@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 
+import { getFriendlyError } from './lib/errorMessages.js';
 import { Input } from './components/ui/Input';
 import { Select } from './components/ui/Select';
 import { TextareaAuto } from './components/ui/TextareaAuto';
@@ -644,7 +645,7 @@ export default function App() {
                         isOpen: true,
                         type: 'warning',
                         title: 'Deletion Failed',
-                        message: error.response?.data?.error || 'An error occurred while deleting the AIP. Please try again.',
+                        message: getFriendlyError(error.response?.data?.error, 'An error occurred while deleting the AIP. Please try again.'),
                         confirmText: 'Dismiss',
                         onConfirm: closeModal
                     });
@@ -731,7 +732,7 @@ export default function App() {
                 isOpen: true,
                 type: 'warning',
                 title: isEditing ? 'Update Failed' : 'Submission Failed',
-                message: error.response?.data?.error || 'An error occurred while saving the AIP. Please try again.',
+                message: getFriendlyError(error.response?.data?.error, 'An error occurred while saving the AIP. Please try again.'),
                 confirmText: 'Dismiss',
                 onConfirm: closeModal
             });
