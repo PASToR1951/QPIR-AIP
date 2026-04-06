@@ -141,6 +141,7 @@ model AIP {
   approved_by_name    String   @default("")
   approved_by_title   String   @default("")
   status              String   @default("Approved") // "Draft" | "Approved" | "Returned"
+  edit_requested      Boolean  @default(false)       // true while user is waiting for admin to unlock
   archived            Boolean  @default(false)
   archived_at         DateTime?
   deleted_at          DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
@@ -251,14 +252,16 @@ model PIRFactor {
 }
 
 model Notification {
-  id         Int      @id @default(autoincrement())
-  user_id    Int
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  title      String
-  message    String
-  type       String   // "approved" | "returned" | "remarked" | "under_review"
-  read       Boolean  @default(false)
-  created_at DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  title       String
+  message     String
+  type        String   // "approved" | "returned" | "remarked" | "under_review"
+  entity_id   Int?     // ID of the related PIR, AIP, or Announcement
+  entity_type String?  // "pir" | "aip" | "announcement"
+  read        Boolean  @default(false)
+  created_at  DateTime @default(now())
 
   @@map("notifications")
 }
