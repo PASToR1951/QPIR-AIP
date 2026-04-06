@@ -19,6 +19,10 @@ server/prisma/dbml/
 docs-update-prompt.txt
 *.prompt.txt
 
+# ── Local LLM / AI assistant artifacts ───────────────────────────────────────
+/.claude/
+/.codex
+
 # ── Audit scripts & ephemeral token cache ────────────────────────────────────
 server/scripts/.audit_tokens.json
 AUDIT_REPORT.md
