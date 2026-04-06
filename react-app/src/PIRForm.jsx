@@ -1021,7 +1021,7 @@ export default function App() {
                                                         FACTOR_TYPES={FACTOR_TYPES}
                                                         factors={factors}
                                                         handleFactorChange={handleFactorChange}
-                                                        showRecommendations={false}
+                                                        showRecommendations={true}
                                                     />
 
                                                     {/* -------------------------------------------------------- */}
@@ -1162,4 +1162,3 @@ export default function App() {
         </div>
     );
 }
-

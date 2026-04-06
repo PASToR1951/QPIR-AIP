@@ -271,31 +271,6 @@ adminRoutes.post('/ces/pirs/:id/start-review', async (c) => {
   return c.json({ success: true });
 });
 
-adminRoutes.post('/ces/pirs/:id/update-recommendations', async (c) => {
-  const tokenUser = requireCES(c);
-  if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
-
-  const pirId = safeParseInt(c.req.param('id'), 0);
-  const { recommendations } = sanitizeObject(await c.req.json());
-  if (!recommendations || typeof recommendations !== 'object') {
-    return c.json({ error: 'Invalid recommendations data' }, 400);
-  }
-
-  const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
-  if (!pir) return c.json({ error: 'PIR not found' }, 404);
-
-  for (const [factorType, text] of Object.entries(recommendations)) {
-    if (typeof text !== 'string') continue;
-    await prisma.pIRFactor.updateMany({
-      where: { pir_id: pirId, factor_type: factorType },
-      data: { recommendations: text },
-    });
-  }
-
-  await writeAuditLog(tokenUser.id, 'updated_pir_recommendations', 'PIR', pirId, {});
-  return c.json({ success: true });
-});
-
 adminRoutes.post('/ces/pirs/:id/note', async (c) => {
   const tokenUser = requireCES(c);
   if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);

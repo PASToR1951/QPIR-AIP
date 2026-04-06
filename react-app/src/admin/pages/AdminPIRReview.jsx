@@ -901,7 +901,7 @@ export default function AdminPIRReview() {
                 <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-dark-border">
                   <FactorCell label="Facilitating" value={f?.facilitating} accent="text-emerald-600 dark:text-emerald-400" />
                   <FactorCell label="Hindering" value={f?.hindering} accent="text-rose-600 dark:text-rose-400" />
-                  <FactorCell label="CES Recommendations" value={f?.recommendations || null} accent="text-blue-600 dark:text-blue-400" />
+                  <FactorCell label="Recommendations" value={f?.recommendations || null} accent="text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
             );
