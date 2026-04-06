@@ -93,12 +93,12 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                     <div className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 dark:text-slate-600 rounded-xl cursor-not-allowed select-none">
                                         <IdentificationCardIcon size={18} />
                                         Profile
-                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Alpha</span>
+                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Beta</span>
                                     </div>
                                     <div className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 dark:text-slate-600 rounded-xl cursor-not-allowed select-none">
                                         <ListBulletsIcon size={18} />
                                         User Logs
-                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Alpha</span>
+                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Beta</span>
                                     </div>
                                 </div>
 
@@ -110,7 +110,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                     <div className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-300 dark:text-slate-600 rounded-xl cursor-not-allowed select-none">
                                         <BookOpenUserIcon size={18} />
                                         User Manual
-                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Alpha</span>
+                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Beta</span>
                                     </div>
                                     <Link to="/docs" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/SystemDocs')} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-xl transition-colors">
                                         <BooksIcon size={18} />

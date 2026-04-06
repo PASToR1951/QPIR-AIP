@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
+import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone, LockKeyOpen, LockKey } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API = import.meta.env.VITE_API_URL;
@@ -18,6 +19,8 @@ const TYPE_ICON = {
   for_cluster_head_review: <HourglassMedium size={16} className="text-violet-400 shrink-0" />,
   submitted:               <CheckCircle size={16} className="text-slate-400 shrink-0" />,
   announcement:            <Megaphone size={16} className="text-rose-400 shrink-0" />,
+  aip_edit_approved:       <LockKeyOpen size={16} className="text-emerald-400 shrink-0" />,
+  aip_edit_denied:         <LockKey size={16} className="text-red-400 shrink-0" />,
 };
 
 function timeAgo(dateStr) {
@@ -30,10 +33,50 @@ function timeAgo(dateStr) {
   return `${Math.floor(hr / 24)}d ago`;
 }
 
+function resolveNotificationRoute(n, role) {
+  const { type, entity_id, entity_type } = n;
+
+  // Group A — reviewer: deep-link to the entity
+  if (role === 'Admin') {
+    if (entity_type === 'pir' && entity_id)
+      return `/admin/submissions?type=pir&review=${entity_id}`;
+    if (entity_type === 'aip' && entity_id)
+      return `/admin/submissions?type=aip&review=${entity_id}`;
+    return '/admin/submissions';
+  }
+  if (['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(role)) {
+    if (entity_type === 'pir' && entity_id) return `/ces/pirs/${entity_id}`;
+    return '/ces';
+  }
+  if (role === 'Cluster Coordinator' && type === 'pir_submitted') {
+    if (entity_id) return `/ces/pirs/${entity_id}`;
+    return '/cluster-head';
+  }
+
+  // Group B — creator fix & resubmit
+  if (type === 'aip_edit_approved') return '/aip';
+  if (type === 'aip_edit_denied') return '/';
+  if (type === 'returned' || type === 'remarked') {
+    if (entity_type === 'aip') return '/aip';
+    if (entity_type === 'pir') return '/pir';
+  }
+
+  // Group D — announcements: no navigation
+  if (type === 'announcement') return null;
+
+  // Group C — all other status updates: go to dashboard
+  return '/';
+}
+
 export function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const navigate = useNavigate();
+  const role = (() => {
+    try { return JSON.parse(sessionStorage.getItem('user') ?? '{}')?.role ?? ''; }
+    catch { return ''; }
+  })();
 
   const fetchNotifications = useCallback(() => {
     axios
@@ -124,6 +167,13 @@ export function NotificationBell() {
     } catch { /* silent */ }
   };
 
+  const handleNotificationClick = async (n) => {
+    if (!n.read) await markOne(n.id);
+    setOpen(false);
+    const route = resolveNotificationRoute(n, role);
+    if (route) navigate(route);
+  };
+
   return (
     <div className="relative" ref={ref}>
       {/* Bell button */}
@@ -176,7 +226,7 @@ export function NotificationBell() {
                 notifications.map(n => (
                   <div
                     key={n.id}
-                    onClick={() => !n.read && markOne(n.id)}
+                    onClick={() => handleNotificationClick(n)}
                     className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors ${!n.read ? 'bg-indigo-50/60 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/30' : 'hover:bg-slate-50 dark:hover:bg-dark-base'}`}
                   >
                     <div className="mt-0.5">{TYPE_ICON[n.type] ?? <Bell size={16} className="text-slate-400 shrink-0" />}</div>

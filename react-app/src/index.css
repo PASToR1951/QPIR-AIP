@@ -397,6 +397,24 @@ html:not(.dark).a11y-high-contrast .border-slate-200 {
 .nc-check-circle { animation: nc-stroke-draw 0.6s ease-out both; }
 .nc-check-path   { animation: nc-check-draw 0.4s ease-out 0.3s both; stroke-dashoffset: 40; }
 
+/* --- Row deep-link highlight flash --- */
+@keyframes row-highlight-flash {
+  0%   { background-color: #fef9c3; }
+  40%  { background-color: #fde68a; }
+  100% { background-color: transparent; }
+}
+@keyframes row-highlight-flash-dark {
+  0%   { background-color: rgba(120, 100, 20, 0.50); }
+  40%  { background-color: rgba(99, 82, 15, 0.35); }
+  100% { background-color: transparent; }
+}
+.row-highlight {
+  animation: row-highlight-flash 1.8s ease-out both;
+}
+.dark .row-highlight {
+  animation: row-highlight-flash-dark 1.8s ease-out both;
+}
+
 /* --- Reduce Motion --- */
 .a11y-reduce-motion .animate-pulse,
 .a11y-reduce-motion .animate-spin,
@@ -413,6 +431,7 @@ html:not(.dark).a11y-high-contrast .border-slate-200 {
 .a11y-reduce-motion .nc-slide-up,
 .a11y-reduce-motion .nc-check-circle,
 .a11y-reduce-motion .nc-check-path,
+.a11y-reduce-motion .row-highlight,
 .a11y-reduce-motion [data-motion] {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
