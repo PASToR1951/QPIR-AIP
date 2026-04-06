@@ -24,10 +24,12 @@ export const DataTable = ({
   pageSize = 25,
   emptyMessage = 'No data found.',
   fillHeight = false,
+  initialPage,
+  highlightRowId,
 }) => {
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialPage ?? 1);
 
   const handleSort = (key) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -101,6 +103,7 @@ export const DataTable = ({
               {pageData.map((row, i) => (
                 <div
                   key={row.id ?? i}
+                  id={highlightRowId != null && row.id === highlightRowId ? `row-${row.id}` : undefined}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   className={`bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-3 transition-colors ${onRowClick ? 'cursor-pointer active:bg-slate-50 dark:active:bg-dark-border/30' : ''} ${getRowClassName ? getRowClassName(row) : ''}`}
                 >
@@ -189,6 +192,7 @@ export const DataTable = ({
                 pageData.map((row, i) => (
                   <tr
                     key={row.id ?? i}
+                    id={highlightRowId != null && row.id === highlightRowId ? `row-${row.id}` : undefined}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                     onMouseEnter={onRowMouseEnter ? (e) => onRowMouseEnter(row, e) : undefined}
                     onMouseLeave={onRowMouseLeave ?? undefined}

@@ -1,3 +1,7 @@
+/**
+ * @deprecated Replaced by AdminPIRReview at /admin/pirs/:id (AdminPIRReview.jsx).
+ * Safe to delete after AdminPIRReview has been validated.
+ */
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';

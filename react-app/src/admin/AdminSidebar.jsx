@@ -7,7 +7,7 @@ import {
   CalendarSlash, ChartLine, Gear, SignOut, Checks,
   ClockCounterClockwise,
   CaretDown, ChartBar, Wallet, TrendUp, ListChecks, FunnelSimple, Coins,
-  DatabaseBackup,
+  Database,
 } from '@phosphor-icons/react';
 
 const NAV_GROUPS = [
@@ -38,10 +38,10 @@ const NAV_GROUPS = [
   {
     label: 'System',
     items: [
-      { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Alpha' },
-      { to: '/admin/backups',  label: 'Backups',     icon: DatabaseBackup, preload: () => import('./pages/AdminBackups.jsx') },
+      { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Beta' },
+      { to: '/admin/backups',  label: 'Backups',     icon: Database, preload: () => import('./pages/AdminBackups.jsx') },
       { to: '/admin/settings', label: 'Settings',    icon: Gear, preload: () => import('./pages/AdminSettings.jsx') },
-      { to: '/manual',         label: 'User Manual', icon: BookOpenUserIcon, badge: 'Alpha' },
+      { to: '/manual',         label: 'User Manual', icon: BookOpenUserIcon, badge: 'Beta' },
     ],
   },
 ];

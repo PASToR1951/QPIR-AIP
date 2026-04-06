@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import {
-  DatabaseBackup, CheckCircle, Warning, X, CloudArrowUp,
+  Database, CheckCircle, Warning, X, CloudArrowUp,
   ArrowClockwise, Terminal, Clock, HardDrive, CalendarBlank,
   ShieldCheck, Info,
 } from '@phosphor-icons/react';
@@ -142,7 +142,7 @@ export default function AdminBackups() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <DatabaseBackup size={22} className="text-[#E94560]" />
+            <Database size={22} className="text-[#E94560]" />
             Backup Management
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
@@ -234,7 +234,7 @@ export default function AdminBackups() {
           {triggering ? (
             <><div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Running...</>
           ) : (
-            <><DatabaseBackup size={16} /> Trigger Backup Now</>
+            <><Database size={16} /> Trigger Backup Now</>
           )}
         </button>
         {triggerMsg && (
