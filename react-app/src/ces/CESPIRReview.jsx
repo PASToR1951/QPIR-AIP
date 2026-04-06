@@ -4,7 +4,7 @@ import axios from 'axios';
 import { ArrowLeft, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 
 const API = import.meta.env.VITE_API_URL;
-
+const FACTOR_TYPES = ['Institutional', 'Technical', 'Infrastructure', 'Learning Resources', 'Environmental', 'Others'];
 
 const formatCurrency = (val) => {
   const n = parseFloat(val);
@@ -34,6 +34,9 @@ export default function CESPIRReview() {
   const [isUnderReview, setIsUnderReview] = useState(false);
   const countdownRef = useRef(null);
   const startReviewFiredRef = useRef(false);
+  const [recommendations, setRecommendations] = useState({});
+  const [savingRecs, setSavingRecs] = useState(false);
+  const [recsSaveStatus, setRecsSaveStatus] = useState(null); // 'saved' | 'error'
 
   useEffect(() => {
     axios.get(`${API}/api/admin/pirs/${id}`, { withCredentials: true })
@@ -44,6 +47,12 @@ export default function CESPIRReview() {
           setIsUnderReview(true);
           setReviewCountdown(0);
         }
+        // Initialize recommendations from loaded factors
+        const initRecs = {};
+        for (const type of FACTOR_TYPES) {
+          initRecs[type] = r.data?.factors?.[type]?.recommendations ?? '';
+        }
+        setRecommendations(initRecs);
       })
       .catch(() => setPir(null))
       .finally(() => setLoading(false));
@@ -85,6 +94,19 @@ export default function CESPIRReview() {
       setError(err?.response?.data?.error ?? 'Action failed. Please try again.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSaveRecommendations = async () => {
+    setSavingRecs(true);
+    setRecsSaveStatus(null);
+    try {
+      await axios.post(`${API}/api/admin/ces/pirs/${id}/update-recommendations`, { recommendations }, { withCredentials: true });
+      setRecsSaveStatus('saved');
+    } catch {
+      setRecsSaveStatus('error');
+    } finally {
+      setSavingRecs(false);
     }
   };
 
@@ -248,6 +270,60 @@ export default function CESPIRReview() {
           </div>
         </div>
       )}
+
+      {/* Implementation Factors & Recommendations */}
+      <div className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-dark-border p-6 mb-6 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <SectionHeading label="Implementation Factors & Recommendations" />
+          <div className="flex items-center gap-3">
+            {recsSaveStatus === 'saved' && (
+              <span className="text-xs font-bold text-teal-600 dark:text-teal-400">Saved</span>
+            )}
+            {recsSaveStatus === 'error' && (
+              <span className="text-xs font-bold text-red-500">Save failed</span>
+            )}
+            <button
+              onClick={handleSaveRecommendations}
+              disabled={savingRecs}
+              className="px-4 py-1.5 text-xs font-bold rounded-xl bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-60 transition-colors"
+            >
+              {savingRecs ? 'Saving…' : 'Save Recommendations'}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-4">
+          {FACTOR_TYPES.map(type => {
+            const f = pir.factors?.[type];
+            return (
+              <div key={type} className="border border-slate-100 dark:border-dark-border rounded-xl overflow-hidden">
+                <div className="px-4 py-2 bg-slate-50 dark:bg-dark-base border-b border-slate-100 dark:border-dark-border">
+                  <span className="text-[11px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{type}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-dark-border">
+                  <div className="p-4">
+                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Facilitating</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{f?.facilitating || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}</p>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mb-1.5">Hindering</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{f?.hindering || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}</p>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1.5">Recommendations</p>
+                    <textarea
+                      rows={3}
+                      value={recommendations[type] ?? ''}
+                      onChange={e => setRecommendations(prev => ({ ...prev, [type]: e.target.value }))}
+                      placeholder={`Recommendations for ${type.toLowerCase()}…`}
+                      className="w-full text-sm text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-lg px-3 py-2 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-700 resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Note/Return Modal */}
       {modal && (
