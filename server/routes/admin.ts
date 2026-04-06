@@ -158,6 +158,8 @@ adminRoutes.get('/pirs/:id', async (c) => {
     cesReviewer: (pir as any).ces_reviewer?.name ?? null,
     cesNotedAt: (pir as any).ces_noted_at ?? null,
     cesRemarks: (pir as any).ces_remarks ?? null,
+    presented: (pir as any).presented ?? false,
+    adminRemarks: (pir as any).remarks ?? null,
     activities: pir.activity_reviews.map((r: any) => ({
       id: r.id,
       name: r.aip_activity?.activity_name ?? '',
@@ -173,6 +175,7 @@ adminRoutes.get('/pirs/:id', async (c) => {
       physAcc: r.physical_accomplished,
       finAcc: r.financial_accomplished,
       actions: r.actions_to_address_gap ?? '',
+      adminNotes: r.admin_notes ?? '',
     })),
     factors: factorsMap,
   });
@@ -258,11 +261,38 @@ adminRoutes.post('/ces/pirs/:id/start-review', async (c) => {
         title: 'PIR Under Review',
         message: `Your PIR for ${(pir as any).aip.program.title} (${(pir as any).quarter}) is now under review.`,
         type: 'under_review',
+        entity_id: (pir as any).id,
+        entity_type: 'pir',
       },
     });
     pushNotification(notif);
   }
   await writeAuditLog(tokenUser.id, 'started_pir_review', 'PIR', pirId, {});
+  return c.json({ success: true });
+});
+
+adminRoutes.post('/ces/pirs/:id/update-recommendations', async (c) => {
+  const tokenUser = requireCES(c);
+  if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
+
+  const pirId = safeParseInt(c.req.param('id'), 0);
+  const { recommendations } = sanitizeObject(await c.req.json());
+  if (!recommendations || typeof recommendations !== 'object') {
+    return c.json({ error: 'Invalid recommendations data' }, 400);
+  }
+
+  const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
+  if (!pir) return c.json({ error: 'PIR not found' }, 404);
+
+  for (const [factorType, text] of Object.entries(recommendations)) {
+    if (typeof text !== 'string') continue;
+    await prisma.pIRFactor.updateMany({
+      where: { pir_id: pirId, factor_type: factorType },
+      data: { recommendations: text },
+    });
+  }
+
+  await writeAuditLog(tokenUser.id, 'updated_pir_recommendations', 'PIR', pirId, {});
   return c.json({ success: true });
 });
 
@@ -307,6 +337,8 @@ adminRoutes.post('/ces/pirs/:id/note', async (c) => {
         title: 'PIR Approved',
         message: `Your PIR for ${programTitle} (${(pir as any).quarter}) has been noted and approved by CES.`,
         type: 'approved',
+        entity_id: (pir as any).id,
+        entity_type: 'pir',
       },
     });
     pushNotification(notif);
@@ -355,6 +387,8 @@ adminRoutes.post('/ces/pirs/:id/return', async (c) => {
         title: 'PIR Returned by CES',
         message: `Your PIR for ${programTitle} (${(pir as any).quarter}) was returned by CES.${ces_remarks ? ` Feedback: ${ces_remarks}` : ''}`,
         type: 'returned',
+        entity_id: (pir as any).id,
+        entity_type: 'pir',
       },
     });
     pushNotification(notif);
@@ -434,6 +468,8 @@ adminRoutes.post('/cluster-head/pirs/:id/start-review', async (c) => {
         title: 'PIR Under Review',
         message: `Your PIR for ${(pir as any).aip.program.title} (${(pir as any).quarter}) is now under review.`,
         type: 'under_review',
+        entity_id: (pir as any).id,
+        entity_type: 'pir',
       },
     });
     pushNotification(notif);
@@ -485,6 +521,8 @@ adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
         title: 'PIR Approved',
         message: `Your PIR for ${programTitle} (${(pir as any).quarter}) has been noted and approved by the Cluster Head.`,
         type: 'approved',
+        entity_id: (pir as any).id,
+        entity_type: 'pir',
       },
     });
     pushNotification(notif);
@@ -534,6 +572,8 @@ adminRoutes.post('/cluster-head/pirs/:id/return', async (c) => {
         title: 'PIR Returned by Cluster Head',
         message: `Your PIR for ${programTitle} (${(pir as any).quarter}) was returned by the Cluster Head.${remarks ? ` Feedback: ${remarks}` : ''}`,
         type: 'returned',
+        entity_id: (pir as any).id,
+        entity_type: 'pir',
       },
     });
     pushNotification(notif);
@@ -701,21 +741,27 @@ adminRoutes.get("/overview", async (c) => {
 
   // Cluster data for both AIP compliance and PIR status heatmaps
   const currentQPrefix = quarterPrefixes[currentQuarter];
-  const clusters = await prisma.cluster.findMany({
-    include: {
-      schools: {
-        include: {
-          aips: {
-            where: { year, status: { not: 'Draft' } },
-            select: {
-              id: true,
-              pirs: { where: { status: { not: 'Draft' } }, select: { id: true, status: true, quarter: true } },
+  const [clusters, allPrograms] = await Promise.all([
+    prisma.cluster.findMany({
+      include: {
+        schools: {
+          include: {
+            aips: {
+              where: { year, status: { not: 'Draft' } },
+              select: {
+                id: true,
+                pirs: { where: { status: { not: 'Draft' } }, select: { id: true, status: true, quarter: true } },
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.program.findMany({
+      where: { school_level_requirement: { not: 'Division' } },
+      select: { id: true, school_level_requirement: true, restricted_schools: { select: { id: true } } },
+    }),
+  ]);
 
   const clusterCompliance = clusters.map((cl) => {
     const total = cl.schools.length;
@@ -730,33 +776,45 @@ adminRoutes.get("/overview", async (c) => {
     };
   });
 
-  // PIR submission status by cluster for the current quarter
-  // Count at the AIP (program) level for accuracy — each AIP needs its own PIR
+  // PIR submission status by cluster for the current quarter.
+  // Denominator = programs each school is EXPECTED to implement (based on school level
+  // and program requirements), not just AIPs that have already been filed.
+  const getExpectedProgramCount = (schoolId: number, schoolLevel: string): number =>
+    allPrograms.filter((p) => {
+      if (p.school_level_requirement === 'Select Schools') {
+        return p.restricted_schools.some((r) => r.id === schoolId);
+      }
+      const levelMatch =
+        p.school_level_requirement === 'Both' ||
+        p.school_level_requirement === schoolLevel ||
+        (schoolLevel === 'Both' && ['Elementary', 'Secondary'].includes(p.school_level_requirement));
+      if (!levelMatch) return false;
+      if (p.restricted_schools.length > 0) return p.restricted_schools.some((r) => r.id === schoolId);
+      return true;
+    }).length;
+
   const pirClusterStatus = clusters.map((cl) => {
     const totalSchools = cl.schools.length;
-    const allAips = cl.schools.flatMap((s) => s.aips);
-    const totalAips = allAips.length;
-    const pirsThisQ = allAips.flatMap((a) =>
-      a.pirs.filter((p) => p.quarter.startsWith(currentQPrefix))
-    );
-    const submittedAips = pirsThisQ.length;
-    const approvedAips = pirsThisQ.filter((p) => p.status === "Approved").length;
 
     // School-level breakdown for drill-down
     const schools = cl.schools.map((s) => {
-      const schoolAipCount = s.aips.length;
+      const expectedPrograms = getExpectedProgramCount(s.id, s.level);
       const schoolPirs = s.aips.flatMap((a) =>
         a.pirs.filter((p) => p.quarter.startsWith(currentQPrefix))
       );
       return {
         id: s.id,
         name: s.name,
-        totalAips: schoolAipCount,
+        totalAips: expectedPrograms,
         submitted: schoolPirs.length,
         approved: schoolPirs.filter((p) => p.status === "Approved").length,
-        pct: schoolAipCount > 0 ? Math.round((schoolPirs.length / schoolAipCount) * 100) : 0,
+        pct: expectedPrograms > 0 ? Math.round((schoolPirs.length / expectedPrograms) * 100) : 0,
       };
     }).sort((a, b) => a.pct - b.pct); // worst first so admins see who needs attention
+
+    const totalAips = schools.reduce((sum, s) => sum + s.totalAips, 0);
+    const submittedAips = schools.reduce((sum, s) => sum + s.submitted, 0);
+    const approvedAips = schools.reduce((sum, s) => sum + s.approved, 0);
 
     return {
       id: cl.id,
@@ -1080,7 +1138,7 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
       const notif = notifMessages[status];
       if (notif) {
         const created = await prisma.notification.create({
-          data: { user_id: pir.created_by_user_id, title: notif.title, message: notif.message, type: statusLabels[status] },
+          data: { user_id: pir.created_by_user_id, title: notif.title, message: notif.message, type: statusLabels[status], entity_id: pir.id, entity_type: 'pir' },
         });
         pushNotification(created);
       }
@@ -1100,7 +1158,7 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
       const aipNotif = aipNotifMessages[status];
       if (aipNotif) {
         const created = await prisma.notification.create({
-          data: { user_id: aip.created_by_user_id, title: aipNotif.title, message: aipNotif.message, type: statusLabels[status] },
+          data: { user_id: aip.created_by_user_id, title: aipNotif.title, message: aipNotif.message, type: statusLabels[status], entity_id: aip.id, entity_type: 'aip' },
         });
         pushNotification(created);
       }
@@ -1112,6 +1170,62 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
     feedback: feedback ?? null,
   });
 
+  return c.json({ success: true });
+});
+
+// ==========================================
+// AIP EDIT REQUEST — APPROVE / DENY
+// ==========================================
+
+adminRoutes.patch('/aips/:id/approve-edit', async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: 'Unauthorized' }, 401);
+  const id = safeParseInt(c.req.param('id'), 0);
+  const aip = await prisma.aIP.update({
+    where: { id },
+    data: { edit_requested: false, status: 'Returned' },
+    include: { program: true, school: true },
+  });
+  if (aip.created_by_user_id) {
+    const notif = await prisma.notification.create({
+      data: {
+        user_id: aip.created_by_user_id,
+        title: 'Edit Request Approved',
+        message: `Your request to edit the AIP for ${aip.program.title} (FY ${aip.year}) has been approved. You may now edit and resubmit.`,
+        type: 'aip_edit_approved',
+        entity_id: aip.id,
+        entity_type: 'aip',
+      },
+    });
+    pushNotification(notif);
+  }
+  await writeAuditLog(admin.id, 'approved_aip_edit_request', 'AIP', id, {});
+  return c.json({ success: true });
+});
+
+adminRoutes.patch('/aips/:id/deny-edit', async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: 'Unauthorized' }, 401);
+  const id = safeParseInt(c.req.param('id'), 0);
+  const aip = await prisma.aIP.update({
+    where: { id },
+    data: { edit_requested: false },
+    include: { program: true, school: true },
+  });
+  if (aip.created_by_user_id) {
+    const notif = await prisma.notification.create({
+      data: {
+        user_id: aip.created_by_user_id,
+        title: 'Edit Request Denied',
+        message: `Your request to edit the AIP for ${aip.program.title} (FY ${aip.year}) has been denied.`,
+        type: 'aip_edit_denied',
+        entity_id: aip.id,
+        entity_type: 'aip',
+      },
+    });
+    pushNotification(notif);
+  }
+  await writeAuditLog(admin.id, 'denied_aip_edit_request', 'AIP', id, {});
   return c.json({ success: true });
 });
 
@@ -1146,6 +1260,8 @@ adminRoutes.patch("/pirs/:id/remarks", async (c) => {
         title: "Remarks Added to Your PIR",
         message: `An admin has added remarks to your PIR for ${pir.aip.program.title} (${pir.quarter}) from ${schoolLabel}.`,
         type: "remarked",
+        entity_id: pir.id,
+        entity_type: 'pir',
       },
     });
     pushNotification(notif);
@@ -2377,6 +2493,8 @@ adminRoutes.post("/announcements", async (c) => {
             title:   "You were mentioned in an announcement",
             message: plainMessage,
             type:    "announcement",
+            entity_id: ann.id,
+            entity_type: 'announcement',
           })),
           skipDuplicates: true,
         });

@@ -1251,6 +1251,8 @@ dataRoutes.post('/aips', async (c) => {
           title: 'New AIP Received for Review',
           message: `${schoolLabel} submitted an AIP for ${program_title} (FY ${year}) awaiting your review.`,
           type: 'aip_submitted',
+          entity_id: aip.id,
+          entity_type: 'aip',
         })),
       });
       pushNotifications(adminNotifs);
@@ -1263,6 +1265,8 @@ dataRoutes.post('/aips', async (c) => {
         title: 'AIP Submitted',
         message: `Your AIP for ${program_title} (FY ${year}) has been submitted and is awaiting review.`,
         type: 'aip_submitted',
+        entity_id: aip.id,
+        entity_type: 'aip',
       },
     });
     pushNotification(submitterNotif);
@@ -1389,6 +1393,8 @@ dataRoutes.post('/aips/:id/request-edit', async (c) => {
       requesterLabel = requester?.name ?? requester?.email ?? 'Division Personnel';
     }
 
+    await prisma.aIP.update({ where: { id: aipId }, data: { edit_requested: true } });
+
     const admins = await prisma.user.findMany({ where: { role: 'Admin' }, select: { id: true } });
     if (admins.length > 0) {
       const editNotifs = await prisma.notification.createManyAndReturn({
@@ -1397,6 +1403,8 @@ dataRoutes.post('/aips/:id/request-edit', async (c) => {
           title: 'Edit Request — AIP',
           message: `${requesterLabel} is requesting permission to edit their AIP for ${aip.program.title} (FY ${aip.year}).`,
           type: 'aip_edit_requested',
+          entity_id: aipId,
+          entity_type: 'aip',
         })),
       });
       pushNotifications(editNotifs);
@@ -1624,6 +1632,8 @@ dataRoutes.post('/pirs', async (c) => {
           title: 'New PIR Submitted',
           message: `${submitterLabel} submitted a PIR for ${clean_program_title} (${clean_quarter}).`,
           type: 'pir_submitted',
+          entity_id: pir.id,
+          entity_type: 'pir',
         })),
       });
       pushNotifications(pirNotifs);
@@ -1824,6 +1834,7 @@ dataRoutes.get('/history', async (c) => {
         program: aip.program.title,
         abbreviation: aip.program.abbreviation ?? null,
         status: aip.status,
+        editRequested: (aip as any).edit_requested ?? false,
         archived: (aip as any).archived ?? false,
         created_at: aip.created_at,
         pirs: aip.pirs.map((p: any) => ({
