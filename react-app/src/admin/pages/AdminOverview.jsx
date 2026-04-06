@@ -189,7 +189,7 @@ function PirClusterPanel({ cluster: cl, navigate }) {
             <div className="text-center">
               <p className="text-lg font-black text-slate-800 dark:text-slate-100">{cl.totalAips}</p>
               <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold flex items-center justify-center gap-1">
-                Total AIPs <InfoTip text="Number of Annual Implementation Plans (programs) submitted by all schools in this cluster for the current year." />
+                Expected PIRs <InfoTip text="Total number of PIRs all schools in this cluster are required to submit this quarter, based on their assigned programs." />
               </p>
             </div>
             <div className="text-center">
@@ -213,7 +213,7 @@ function PirClusterPanel({ cluster: cl, navigate }) {
               <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 flex-1">School</p>
               <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 w-24 text-center hidden sm:block">Progress</p>
               <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 w-20 text-right flex items-center justify-end gap-1">
-                PIRs <InfoTip text="Submitted / Total programs. Shows how many program PIRs this school has filed out of its total AIPs." />
+                PIRs <InfoTip text="Submitted / Expected. Shows how many PIRs this school has filed out of the total programs it is required to implement." />
               </p>
             </div>
             {cl.schools.length === 0 && (
@@ -628,7 +628,7 @@ export default function AdminOverview() {
                       <Notification size={17} weight="bold" />
                     </div>
                     <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm">Q{s?.currentQuarter} PIR Status by Cluster</h3>
-                    <InfoTip text="Shows how many program-level PIRs each school has submitted this quarter. Each AIP (program) needs its own PIR — percentage reflects programs filed vs total programs." />
+                    <InfoTip text="Shows how many PIRs each school has submitted this quarter vs the total number of programs they are required to implement." />
                   </div>
                   <button
                     onClick={() => setClusterSort(prev => prev === 'desc' ? 'asc' : 'desc')}
@@ -688,7 +688,7 @@ export default function AdminOverview() {
                           <td className="px-3 py-2.5"><StatusBadge status={sub.status} size="xs" /></td>
                           <td className="px-3 py-2.5">
                             <button
-                              onClick={() => navigate(`/admin/submissions`)}
+                              onClick={() => navigate(`/admin/submissions?review=${sub.id}`)}
                               className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                             >
                               <Eye size={17} />

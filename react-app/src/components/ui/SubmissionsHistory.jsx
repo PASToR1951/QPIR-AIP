@@ -69,8 +69,15 @@ export default function SubmissionsHistory() {
       .then(r => {
         setHistory(r.data);
         const init = {};
-        for (const entry of r.data) init[entry.year] = entry.year === currentYear;
+        const editedIds = new Set();
+        for (const entry of r.data) {
+          init[entry.year] = entry.year === currentYear;
+          for (const aip of entry.aips) {
+            if (aip.editRequested) editedIds.add(aip.id);
+          }
+        }
         setExpanded(init);
+        setRequestedEditIds(editedIds);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -236,7 +243,6 @@ export default function SubmissionsHistory() {
                             disabled={previewLoading}
                             className="flex items-center gap-2 group min-w-0"
                           >
-                            <Eye size={15} className="shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-indigo-500 transition-colors" />
                             <span className="font-bold text-sm text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
                               {aip.abbreviation ?? aip.program}
                             </span>

@@ -1,13 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Eye, Check, ArrowBendUpLeft, DownloadSimple, XCircle, Funnel, CalendarDots, Warning, CheckCircle, FloppyDisk } from '@phosphor-icons/react';
+import { Eye, Check, ArrowBendUpLeft, DownloadSimple, XCircle, Funnel, CalendarDots, Warning, CheckCircle, FloppyDisk, LockKeyOpen, LockKey } from '@phosphor-icons/react';
 import { DataTable, withResponsiveHide } from '../components/DataTable.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
-import { PIRReviewDrawer } from '../components/PIRReviewDrawer.jsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -37,11 +36,13 @@ function relativeDate(d) {
 }
 
 export default function AdminSubmissions() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('type') || 'all'; // 'all' | 'aip' | 'pir'
   const setTab = (key) => { setSearchParams(prev => { prev.set('type', key); return prev; }); setPage(1); };
   const group = searchParams.get('group') || 'flat';
   const setGroup = (key) => { setSearchParams(prev => { prev.set('group', key); return prev; }); };
+  const reviewId = searchParams.get('review');
   const [submissions, setSubmissions] = useState([]);
   const [totals, setTotals] = useState({ aipTotal: 0, pirTotal: 0, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -64,9 +65,13 @@ export default function AdminSubmissions() {
   const [returnFeedback, setReturnFeedback] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
-  const [reviewItem, setReviewItem] = useState(null);
+  const [editActionLoading, setEditActionLoading] = useState(null); // null | 'approve' | 'deny'
   // Tracks which row's PDF is currently being generated to prevent double-clicks
   const [pdfLoadingId, setPdfLoadingId] = useState(null);
+
+  // Deep-link highlight: set when navigating from ?review=<id>
+  const [highlightRowId, setHighlightRowId] = useState(null);
+  const [targetPage, setTargetPage] = useState(1);
 
   // Term structure switcher
   const [termConfig, setTermConfig] = useState({ termType: null, periods: [] });
@@ -162,11 +167,50 @@ export default function AdminSubmissions() {
 
   useEffect(() => { fetchSubmissions(); }, [fetchSubmissions]);
 
+  // Auto-open entity when navigating from a notification or deep-link (?review=<id>)
+  useEffect(() => {
+    if (!reviewId || submissions.length === 0) return;
+    const idx = submissions.findIndex(s => s.id === Number(reviewId));
+    if (idx === -1) return;
+    const row = submissions[idx];
+    setSearchParams(prev => { prev.delete('review'); return prev; }, { replace: true });
+    if (row.type === 'PIR') {
+      navigate(`/admin/pirs/${row.id}`);
+    } else {
+      setTargetPage(Math.ceil((idx + 1) / 25));
+      setHighlightRowId(row.id);
+      openView(row);
+    }
+  // openView is stable (defined once, no deps) — intentionally excluded to avoid re-runs
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submissions, reviewId]);
+
+  // Scroll to and clear the highlighted row after animation completes
+  useEffect(() => {
+    if (!highlightRowId) return;
+    const raf = requestAnimationFrame(() => {
+      document.getElementById(`row-${highlightRowId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    const timer = setTimeout(() => setHighlightRowId(null), 2000);
+    return () => { cancelAnimationFrame(raf); clearTimeout(timer); };
+  }, [highlightRowId]);
+
   const closeView = () => {
     clearTimeout(underReviewTimerRef.current);
     underReviewTimerRef.current = null;
     setViewItem(null);
     setViewData(null);
+  };
+
+  const handleEditAction = async (action) => {
+    if (!viewItem) return;
+    setEditActionLoading(action);
+    try {
+      await axios.patch(`${API}/api/admin/aips/${viewItem.id}/${action}-edit`, {}, { withCredentials: true });
+      closeView();
+      fetchSubmissions();
+    } catch { setActionError(`Failed to ${action} edit request. Please try again.`); }
+    finally { setEditActionLoading(null); }
   };
 
   const openView = async (item) => {
@@ -339,7 +383,7 @@ export default function AdminSubmissions() {
       key: 'id', label: 'Actions', render: (_, row) => (
         <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
           <button
-            onClick={() => row.type === 'PIR' ? setReviewItem(row) : openView(row)}
+            onClick={() => row.type === 'PIR' ? navigate(`/admin/pirs/${row.id}`) : openView(row)}
             title={row.type === 'PIR' ? 'Review PIR' : 'View'}
             className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
           >
@@ -599,8 +643,10 @@ export default function AdminSubmissions() {
                 selectedIds={selectedIds}
                 onSelectChange={setSelectedIds}
                 onRowClick={(row) => { if (row.type === 'PIR') setReviewItem(row); else openView(row); }}
-                getRowClassName={(row) => row.type === 'PIR' ? 'cursor-pointer' : ''}
+                getRowClassName={(row) => [row.type === 'PIR' ? 'cursor-pointer' : '', row.id === highlightRowId ? 'row-highlight' : ''].filter(Boolean).join(' ')}
                 emptyMessage="No submissions match the current filters."
+                initialPage={targetPage}
+                highlightRowId={highlightRowId}
               />
             );
           }
@@ -619,8 +665,9 @@ export default function AdminSubmissions() {
                     selectedIds={selectedIds}
                     onSelectChange={setSelectedIds}
                     onRowClick={(row) => { if (row.type === 'PIR') setReviewItem(row); else openView(row); }}
-                    getRowClassName={(row) => row.type === 'PIR' ? 'cursor-pointer' : ''}
+                    getRowClassName={(row) => [row.type === 'PIR' ? 'cursor-pointer' : '', row.id === highlightRowId ? 'row-highlight' : ''].filter(Boolean).join(' ')}
                     emptyMessage="No submissions in this group."
+                    highlightRowId={highlightRowId}
                   />
                 </div>
               ))}
@@ -750,6 +797,26 @@ export default function AdminSubmissions() {
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+                {viewData?.edit_requested && viewItem.type === 'AIP' && (
+                  <>
+                    <button
+                      disabled={!!editActionLoading}
+                      onClick={() => handleEditAction('approve')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50"
+                    >
+                      <LockKeyOpen size={14} />
+                      {editActionLoading === 'approve' ? 'Approving…' : 'Approve Edit'}
+                    </button>
+                    <button
+                      disabled={!!editActionLoading}
+                      onClick={() => handleEditAction('deny')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                    >
+                      <LockKey size={14} />
+                      {editActionLoading === 'deny' ? 'Denying…' : 'Deny Edit'}
+                    </button>
+                  </>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={handleExportPDF} className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors">
@@ -763,12 +830,6 @@ export default function AdminSubmissions() {
           </div>
         </div>
       )}
-      <PIRReviewDrawer
-        open={!!reviewItem}
-        pir={reviewItem}
-        onClose={() => setReviewItem(null)}
-        onStatusChange={fetchSubmissions}
-      />
     </>
   );
 }
