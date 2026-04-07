@@ -1,5 +1,6 @@
 # ── Personal dev scripts & automation ────────────────────────────────────────
 start.sh
+tunnel.sh
 sync_to_notion.py
 update-docs.sh
 
@@ -30,6 +31,7 @@ AUDIT_REPORT.md
 # ── Environment variables ─────────────────────────────────────────────────────
 .env
 .env.local
+.env.tunnel
 .env.*.local
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
@@ -38,6 +40,11 @@ node_modules/
 # ── Build output ──────────────────────────────────────────────────────────────
 dist/
 build/
+
+# ── User-uploaded content (runtime data, not source) ─────────────────────────
+# Dirs are created on-demand by the server; must not be committed.
+server/public/school-logos/
+server/public/cluster-logos/
 
 # ── Logs & runtime ────────────────────────────────────────────────────────────
 *.log

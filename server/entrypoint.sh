@@ -5,8 +5,5 @@ set -e
 # Actual values are injected by Docker via environment variables.
 touch .env
 
-echo "⏳ Running Prisma migrations..."
-npx prisma migrate deploy
-
-echo "🚀 Starting Deno server..."
+echo "⏳ Preparing Prisma schema and client..."
 exec deno task start

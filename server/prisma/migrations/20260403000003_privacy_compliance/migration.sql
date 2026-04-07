@@ -3,7 +3,7 @@
 -- Fixes AuditLog admin_id to be nullable so deleting an admin preserves audit evidence.
 
 -- User: soft-delete support
-ALTER TABLE "users" ADD COLUMN "deleted_at" TIMESTAMP(3);
+ALTER TABLE "User" ADD COLUMN "deleted_at" TIMESTAMP(3);
 
 -- AIP: soft-delete support (archived_at already exists; deleted_at is distinct — for erasure)
 ALTER TABLE "AIP" ADD COLUMN "deleted_at" TIMESTAMP(3);
@@ -16,4 +16,4 @@ ALTER TABLE "PIR" ADD COLUMN "deleted_at" TIMESTAMP(3);
 ALTER TABLE "audit_logs" ALTER COLUMN "admin_id" DROP NOT NULL;
 ALTER TABLE "audit_logs" DROP CONSTRAINT IF EXISTS "audit_logs_admin_id_fkey";
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_admin_id_fkey"
-  FOREIGN KEY ("admin_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  FOREIGN KEY ("admin_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
