@@ -135,9 +135,23 @@ function RolePicker({ selected, onSelect }) {
 /* ─────────────────────────────────────────────────────────── *
  *  Step 2 — Details form
  * ─────────────────────────────────────────────────────────── */
+function getPasswordStrength(password) {
+  if (!password) return null;
+  if (password.length < 6) return 'weak';
+  if (password.length < 10) return 'moderate';
+  return 'strong';
+}
+
+const STRENGTH_CONFIG = {
+  weak:     { label: 'Weak',     bars: 1, color: 'bg-rose-500',   text: 'text-rose-500'   },
+  moderate: { label: 'Moderate', bars: 2, color: 'bg-amber-400',  text: 'text-amber-500'  },
+  strong:   { label: 'Strong',   bars: 3, color: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
+};
+
 function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
   const [showPassword, setShowPassword] = useState(false);
   const isDepedEmail = form.role === 'School' || form.role === 'Division Personnel';
+  const strength = getPasswordStrength(form.password);
 
   const emailLocal = isDepedEmail ? form.email.replace(/@deped\.gov\.ph$/, '') : form.email;
 
@@ -239,7 +253,7 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
             value={form.password}
             onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
             className={inputCls + ' pr-10'}
-            placeholder="Min. 8 characters"
+            placeholder="Min. 6 characters"
           />
           <button
             type="button"
@@ -249,6 +263,27 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
             {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
           </button>
         </div>
+
+        {strength && (() => {
+          const cfg = STRENGTH_CONFIG[strength];
+          return (
+            <div className="mt-2 space-y-1.5">
+              <div className="flex gap-1">
+                {[1, 2, 3].map(n => (
+                  <div
+                    key={n}
+                    className={`h-1 flex-1 rounded-full transition-all duration-300 ${n <= cfg.bars ? cfg.color : 'bg-slate-200 dark:bg-dark-border'}`}
+                  />
+                ))}
+              </div>
+              <p className={`text-[11px] font-bold ${cfg.text}`}>
+                {cfg.label} password
+                {strength === 'weak' && ' — must be at least 6 characters'}
+                {strength === 'moderate' && ' — longer passwords are more secure'}
+              </p>
+            </div>
+          );
+        })()}
       </div>
 
       {form.role === 'School' && (

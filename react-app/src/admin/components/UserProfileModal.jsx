@@ -9,7 +9,7 @@ function displayName(user) {
     const mi = user.middle_initial ? ` ${user.middle_initial}.` : '';
     return `${user.first_name}${mi} ${user.last_name}`;
   }
-  return user.name || user.email || '';
+  return user.name || (user.role === 'School' ? user.school?.name : null) || user.email || '';
 }
 
 function initials(name) {
@@ -69,7 +69,7 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 16 }}
         transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden z-10"
+        className="relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden z-10 max-h-[90vh]"
       >
 
         {/* Header */}
@@ -101,7 +101,7 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
         </div>
 
         {/* Body — two columns */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-dark-border flex-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-dark-border flex-1 overflow-y-auto min-h-0">
 
           {/* Left: Profile details */}
           <div className="px-4 sm:px-8 py-6 space-y-5">
@@ -120,7 +120,7 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
                 <dd>
                   {programs.length === 0
                     ? <span className="text-sm font-bold text-slate-800 dark:text-slate-200">—</span>
-                    : <div className="flex flex-wrap gap-1.5">
+                    : <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
                         {programs.map(p => (
                           <span key={p.id} className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/40">
                             {p.title}

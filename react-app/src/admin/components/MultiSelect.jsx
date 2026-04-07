@@ -1,41 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { CaretDown, X, MagnifyingGlass } from '@phosphor-icons/react';
 
 export const MultiSelect = ({ options = [], selected = [], onChange, placeholder = 'Select…', className = '' }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [rect, setRect] = useState(null);
   const containerRef = useRef(null);
-  const btnRef = useRef(null);
-  const dropdownRef = useRef(null);
 
-  // Close on outside click — must exclude the portal dropdown since it lives in document.body
   useEffect(() => {
     const handler = (e) => {
-      if (
-        containerRef.current && !containerRef.current.contains(e.target) &&
-        dropdownRef.current && !dropdownRef.current.contains(e.target)
-      ) setOpen(false);
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
-  // Keep dropdown position in sync while open
-  useEffect(() => {
-    if (!open) return;
-    const update = () => {
-      if (btnRef.current) setRect(btnRef.current.getBoundingClientRect());
-    };
-    update();
-    window.addEventListener('scroll', update, true);
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update, true);
-      window.removeEventListener('resize', update);
-    };
-  }, [open]);
 
   const filtered = options
     .filter(o => String(o.label).toLowerCase().includes(query.toLowerCase()))
@@ -48,7 +27,6 @@ export const MultiSelect = ({ options = [], selected = [], onChange, placeholder
   const selectedLabels = options.filter(o => selected.includes(o.value));
 
   const handleOpen = () => {
-    if (!open && btnRef.current) setRect(btnRef.current.getBoundingClientRect());
     setOpen(v => !v);
     setQuery('');
   };
@@ -56,7 +34,6 @@ export const MultiSelect = ({ options = [], selected = [], onChange, placeholder
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       <button
-        ref={btnRef}
         type="button"
         onClick={handleOpen}
         className="w-full min-h-[38px] flex flex-wrap items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-sm hover:border-indigo-400 transition-colors"
@@ -79,18 +56,8 @@ export const MultiSelect = ({ options = [], selected = [], onChange, placeholder
         <CaretDown size={16} className={`ml-auto text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && rect && createPortal(
-        <div
-          ref={dropdownRef}
-          style={{
-            position: 'fixed',
-            top: rect.bottom + 4,
-            left: rect.left,
-            width: rect.width,
-            zIndex: 9999,
-          }}
-          className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl shadow-xl overflow-hidden"
-        >
+      {open && (
+        <div className="mt-1 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl shadow-lg overflow-hidden">
           <div className="p-2 border-b border-slate-100 dark:border-dark-border">
             <div className="flex items-center gap-2 px-2">
               <MagnifyingGlass size={16} className="text-slate-400 shrink-0" />
@@ -126,8 +93,7 @@ export const MultiSelect = ({ options = [], selected = [], onChange, placeholder
               </button>
             ))}
           </div>
-        </div>,
-        document.body
+        </div>
       )}
     </div>
   );

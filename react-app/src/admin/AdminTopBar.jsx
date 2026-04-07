@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { List as Menu, Bell, Check, ArrowBendUpLeft, NotePencil, FileText, ClipboardText, CheckCircle } from '@phosphor-icons/react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { List as Menu, Bell, Check, ArrowBendUpLeft, NotePencil, FileText, ClipboardText, CheckCircle, HourglassMedium, PencilSimple, LockKeyOpen, LockKey, Megaphone } from '@phosphor-icons/react';
 
 const PAGE_LABELS = {
   '/admin': 'Dashboard',
@@ -26,18 +26,35 @@ function relativeTime(date) {
 }
 
 const NOTIF_ICON = {
-  aip_submitted:  <FileText size={15} className="text-blue-400 shrink-0 mt-0.5" />,
-  pir_submitted:  <ClipboardText size={15} className="text-violet-400 shrink-0 mt-0.5" />,
-  approved:       <CheckCircle size={15} className="text-emerald-400 shrink-0 mt-0.5" />,
-  returned:       <ArrowBendUpLeft size={15} className="text-amber-400 shrink-0 mt-0.5" />,
-  remarked:       <NotePencil size={15} className="text-pink-400 shrink-0 mt-0.5" />,
-  under_review:   <Bell size={15} className="text-indigo-400 shrink-0 mt-0.5" />,
+  aip_submitted:           <FileText size={15} className="text-blue-400 shrink-0 mt-0.5" />,
+  pir_submitted:           <ClipboardText size={15} className="text-violet-400 shrink-0 mt-0.5" />,
+  approved:                <CheckCircle size={15} className="text-emerald-400 shrink-0 mt-0.5" />,
+  returned:                <ArrowBendUpLeft size={15} className="text-amber-400 shrink-0 mt-0.5" />,
+  remarked:                <NotePencil size={15} className="text-pink-400 shrink-0 mt-0.5" />,
+  under_review:            <Bell size={15} className="text-indigo-400 shrink-0 mt-0.5" />,
+  for_ces_review:          <HourglassMedium size={15} className="text-violet-400 shrink-0 mt-0.5" />,
+  for_cluster_head_review: <HourglassMedium size={15} className="text-violet-400 shrink-0 mt-0.5" />,
+  aip_edit_requested:      <PencilSimple size={15} className="text-orange-400 shrink-0 mt-0.5" />,
+  aip_edit_approved:       <LockKeyOpen size={15} className="text-emerald-400 shrink-0 mt-0.5" />,
+  aip_edit_denied:         <LockKey size={15} className="text-red-400 shrink-0 mt-0.5" />,
+  announcement:            <Megaphone size={15} className="text-rose-400 shrink-0 mt-0.5" />,
+  submitted:               <CheckCircle size={15} className="text-slate-400 shrink-0 mt-0.5" />,
 };
+
+function resolveAdminRoute(n) {
+  if (n.type === 'announcement') return null;
+  if (n.entity_type === 'pir' && n.entity_id)
+    return `/admin/submissions?type=pir&review=${n.entity_id}`;
+  if (n.entity_type === 'aip' && n.entity_id)
+    return `/admin/submissions?type=aip&review=${n.entity_id}`;
+  return '/admin/submissions';
+}
 
 export const AdminTopBar = ({ onMobileMenuToggle, notifications = [], markOne, markAll }) => {
   const [open, setOpen] = useState(false);
   const dropRef = useRef(null);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
 
   const pageLabel = PAGE_LABELS[pathname] || 'Admin';
   const unread = notifications.filter(n => !n.read).length;
@@ -126,7 +143,12 @@ export const AdminTopBar = ({ onMobileMenuToggle, notifications = [], markOne, m
                 notifications.map(n => (
                   <button
                     key={n.id}
-                    onClick={() => { if (!n.read) markOne?.(n.id); }}
+                    onClick={async () => {
+                      if (!n.read) markOne?.(n.id);
+                      setOpen(false);
+                      const route = resolveAdminRoute(n);
+                      if (route) navigate(route);
+                    }}
                     className={`w-full text-left flex items-start gap-3 px-4 py-3 transition-colors ${
                       !n.read
                         ? 'bg-indigo-50/60 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/30'

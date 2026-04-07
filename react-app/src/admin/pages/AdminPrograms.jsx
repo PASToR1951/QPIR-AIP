@@ -1,13 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { PencilSimple, Trash, Plus, ArrowRight, ArrowLeft, Users, CheckCircle, X } from '@phosphor-icons/react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Buildings, BookOpen, PencilSimple, Trash, Plus, CheckCircle, X } from '@phosphor-icons/react';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 
 const API = import.meta.env.VITE_API_URL;
+const MotionButton = motion.button;
+const MotionDiv = motion.div;
 
-const LEVELS = ['Elementary', 'Secondary', 'Both', 'Select Schools', 'Division'];
+const SCHOOL_LEVELS = ['Elementary', 'Secondary', 'Both', 'Select Schools'];
 const DIVISIONS = ['SGOD', 'OSDS', 'CID'];
 const LEVEL_LABELS = {
   'Elementary': 'Elementary',
@@ -32,12 +35,44 @@ const personnelDisplayName = (p) => {
   return p.name || p.email || '';
 };
 
+const divisionProgramLookupKey = (title, division = '') =>
+  `${(title || '').trim().toLowerCase()}::${division || ''}`;
+
+const divisionProgramLookupKeys = (program) => [
+  divisionProgramLookupKey(program.title, program.division),
+  divisionProgramLookupKey(program.title),
+  ...(program.abbreviation
+    ? [
+        divisionProgramLookupKey(`${program.title} (${program.abbreviation})`, program.division),
+        divisionProgramLookupKey(`${program.title} (${program.abbreviation})`),
+      ]
+    : []),
+];
+
+function ProgramTitleBlock({ title, abbreviation, children }) {
+  return (
+    <div className="min-w-0 max-w-full space-y-1">
+      <h3
+        title={title}
+        className="font-black leading-snug text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere]"
+      >
+        {title}
+      </h3>
+      {abbreviation && (
+        <p className="text-[11px] font-black uppercase tracking-wide text-slate-400 dark:text-slate-500 break-words [overflow-wrap:anywhere]">
+          {abbreviation}
+        </p>
+      )}
+      {children}
+    </div>
+  );
+}
+
 export default function AdminPrograms() {
   const [view, setView] = useState('programs'); // 'programs' | 'division-programs'
 
   // ── School Programs state ──────────────────────────────────────────────────
   const [programs, setPrograms] = useState([]);
-  const [allPersonnel, setAllPersonnel] = useState([]);
   const [loadingPrograms, setLoadingPrograms] = useState(true);
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState('All');
@@ -46,8 +81,6 @@ export default function AdminPrograms() {
   const [editProgram, setEditProgram] = useState(null);
   const [deleteProgram, setDeleteProgram] = useState(null);
   const [addProgramOpen, setAddProgramOpen] = useState(false);
-  const [personnelProgram, setPersonnelProgram] = useState(null);
-  const [assignedIds, setAssignedIds] = useState([]);
 
   // ── Division Programs state ────────────────────────────────────────────────
   const [divPrograms, setDivPrograms] = useState([]);
@@ -73,10 +106,8 @@ export default function AdminPrograms() {
   // ── Fetchers ───────────────────────────────────────────────────────────────
   const fetchPrograms = useCallback(() => {
     setLoadingPrograms(true);
-    Promise.all([
-      axios.get(`${API}/api/admin/programs`, { withCredentials: true }),
-      axios.get(`${API}/api/admin/users?role=Division Personnel&status=active`, { withCredentials: true }),
-    ]).then(([pr, ur]) => { setPrograms(pr.data); setAllPersonnel(ur.data); })
+    axios.get(`${API}/api/admin/programs`, { withCredentials: true })
+      .then(r => setPrograms(r.data))
       .catch(e => { console.error(e); showToast('Failed to load programs. Please refresh.', 'error'); })
       .finally(() => setLoadingPrograms(false));
   }, []);
@@ -133,19 +164,6 @@ export default function AdminPrograms() {
     } finally { setActionLoading(false); }
   };
 
-  const handleSavePersonnel = async () => {
-    setActionLoading(true);
-    try {
-      setFormError('');
-      await axios.patch(`${API}/api/admin/programs/${personnelProgram.id}/personnel`, { user_ids: assignedIds }, { withCredentials: true });
-      setPersonnelProgram(null);
-      fetchPrograms();
-      showToast('Personnel updated.');
-    } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
-    } finally { setActionLoading(false); }
-  };
-
   // ── Division Programs handlers ─────────────────────────────────────────────
   const handleAddDivProgram = async () => {
     setActionLoading(true);
@@ -188,8 +206,23 @@ export default function AdminPrograms() {
   };
 
   // ── Filtered lists ─────────────────────────────────────────────────────────
-  const filteredPrograms = programs.filter(p =>
-    (levelFilter === 'All' || p.school_level_requirement === levelFilter) &&
+  const schoolPrograms = programs.filter(p => p.school_level_requirement !== 'Division');
+  const legacyDivisionProgramByKey = new Map();
+  programs
+    .filter(p => p.school_level_requirement === 'Division')
+    .forEach(p => {
+      legacyDivisionProgramByKey.set(divisionProgramLookupKey(p.title, p.division), p);
+      if (!legacyDivisionProgramByKey.has(divisionProgramLookupKey(p.title))) {
+        legacyDivisionProgramByKey.set(divisionProgramLookupKey(p.title), p);
+      }
+    });
+  const getAssignedPersonnelForDivisionProgram = (prog) =>
+    divisionProgramLookupKeys(prog)
+      .map(key => legacyDivisionProgramByKey.get(key)?.personnel)
+      .find(personnel => personnel?.length) ?? [];
+  const effectiveLevelFilter = SCHOOL_LEVELS.includes(levelFilter) ? levelFilter : 'All';
+  const filteredPrograms = schoolPrograms.filter(p =>
+    (effectiveLevelFilter === 'All' || p.school_level_requirement === effectiveLevelFilter) &&
     (p.title.toLowerCase().includes(search.toLowerCase()) ||
       (p.abbreviation && p.abbreviation.toLowerCase().includes(search.toLowerCase())))
   );
@@ -199,30 +232,93 @@ export default function AdminPrograms() {
     (p.title.toLowerCase().includes(divSearch.toLowerCase()) ||
       (p.abbreviation && p.abbreviation.toLowerCase().includes(divSearch.toLowerCase())))
   );
+  const filteredDivProgramGroups = [
+    ...(divisionFilter === 'All' ? DIVISIONS : [divisionFilter]).map(division => ({
+      division,
+      programs: filteredDivPrograms.filter(p => p.division === division),
+    })),
+    ...(divisionFilter === 'All'
+      ? [{
+          division: 'Uncategorized',
+          programs: filteredDivPrograms.filter(p => !DIVISIONS.includes(p.division)),
+        }]
+      : []),
+  ].filter(group => group.programs.length > 0);
 
-  const LEVEL_PILLS = ['All', ...LEVELS];
+  const LEVEL_PILLS = ['All', ...SCHOOL_LEVELS];
   const DIV_PILLS = ['All', ...DIVISIONS];
+  const programViewTabs = [
+    {
+      key: 'programs',
+      label: 'School Programs',
+      description: 'For school AIP filing',
+      count: schoolPrograms.length,
+      Icon: BookOpen,
+      activeClasses: 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-950/20 text-emerald-950 dark:text-emerald-50 shadow-[0_10px_24px_rgba(16,185,129,0.18)] ring-2 ring-emerald-100 dark:ring-emerald-900/40',
+      hoverClasses: 'hover:border-emerald-200 dark:hover:border-emerald-800',
+      activeIconClasses: 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25',
+      inactiveIconClasses: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-950/50',
+      activeCountClasses: 'bg-emerald-600 text-white',
+    },
+    {
+      key: 'division-programs',
+      label: 'Division Programs',
+      description: 'For division personnel assignments',
+      count: divPrograms.length,
+      Icon: Buildings,
+      activeClasses: 'border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-amber-950/20 text-amber-950 dark:text-amber-50 shadow-[0_10px_24px_rgba(245,158,11,0.18)] ring-2 ring-amber-100 dark:ring-amber-900/40',
+      hoverClasses: 'hover:border-amber-200 dark:hover:border-amber-800',
+      activeIconClasses: 'bg-amber-600 text-white shadow-sm shadow-amber-600/25',
+      inactiveIconClasses: 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 group-hover:bg-amber-100 dark:group-hover:bg-amber-950/50',
+      activeCountClasses: 'bg-amber-600 text-white',
+    },
+  ];
 
   return (
     <>
       <div className="space-y-4">
 
         {/* View Tabs */}
-        <div className="flex gap-1 p-1 bg-slate-100 dark:bg-dark-border rounded-xl w-fit">
-          {[
-            { key: 'programs', label: 'School Programs' },
-            { key: 'division-programs', label: 'Division Programs' },
-          ].map(({ key, label }) => (
-            <button key={key} onClick={() => setView(key)}
-              className={`px-4 py-1.5 text-sm font-bold rounded-lg transition-colors ${view === key ? 'bg-white dark:bg-dark-surface text-slate-900 dark:text-slate-100 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>
-              {label}
-            </button>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {programViewTabs.map(tab => {
+            const isActive = view === tab.key;
+            return (
+            <MotionButton
+              key={tab.key}
+              type="button"
+              onClick={() => setView(tab.key)}
+              aria-pressed={isActive}
+              layout
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+              className={`group flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-colors duration-200 ${isActive ? tab.activeClasses : `border-slate-200 dark:border-dark-border bg-white/70 dark:bg-dark-surface/60 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-dark-surface ${tab.hoverClasses}`}`}
+            >
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${isActive ? tab.activeIconClasses : tab.inactiveIconClasses}`}>
+                {React.createElement(tab.Icon, { size: 20, weight: isActive ? 'fill' : 'regular' })}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black">{tab.label}</span>
+                <span className="block text-xs font-bold text-slate-400 dark:text-slate-500">{tab.description}</span>
+              </span>
+              <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-black ${isActive ? tab.activeCountClasses : 'bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400'}`}>
+                {tab.count}
+              </span>
+            </MotionButton>
+            );
+          })}
         </div>
 
-        {/* ── School Programs ── */}
-        {view === 'programs' && (
-          <>
+        <AnimatePresence mode="wait" initial={false}>
+          {view === 'programs' ? (
+            <MotionDiv
+              key="school-programs"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="space-y-4"
+            >
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
@@ -241,12 +337,12 @@ export default function AdminPrograms() {
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {LEVEL_PILLS.map(l => {
-                  const count = l === 'All' ? programs.length : programs.filter(p => p.school_level_requirement === l).length;
+                  const count = l === 'All' ? schoolPrograms.length : schoolPrograms.filter(p => p.school_level_requirement === l).length;
                   return (
                     <button key={l} onClick={() => setLevelFilter(l)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${levelFilter === l ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}>
+                      className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${effectiveLevelFilter === l ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}>
                       {l === 'All' ? 'All' : (LEVEL_LABELS[l] ?? l)}
-                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${levelFilter === l ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-dark-base text-slate-500 dark:text-slate-400'}`}>{count}</span>
+                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${effectiveLevelFilter === l ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-dark-base text-slate-500 dark:text-slate-400'}`}>{count}</span>
                     </button>
                   );
                 })}
@@ -262,14 +358,13 @@ export default function AdminPrograms() {
                 {filteredPrograms.map(prog => (
                   <div key={prog.id} className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5 space-y-3">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="font-black text-slate-900 dark:text-slate-100 truncate">
-                          {prog.title}{prog.abbreviation && <span className="font-normal text-slate-400 dark:text-slate-500"> ({prog.abbreviation})</span>}
-                        </h3>
-                        <span className="block text-xs font-bold text-slate-400 dark:text-slate-500">{LEVEL_LABELS[prog.school_level_requirement] ?? prog.school_level_requirement}</span>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {prog.division && <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide rounded-lg bg-teal-50 dark:bg-teal-950/30 text-teal-600 dark:text-teal-400">{prog.division}</span>}
-                        </div>
+                      <div className="min-w-0 max-w-full flex-1">
+                        <ProgramTitleBlock title={prog.title} abbreviation={prog.abbreviation}>
+                          <span className="block text-xs font-bold text-slate-400 dark:text-slate-500">{LEVEL_LABELS[prog.school_level_requirement] ?? prog.school_level_requirement}</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {prog.division && <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide rounded-lg bg-teal-50 dark:bg-teal-950/30 text-teal-600 dark:text-teal-400">{prog.division}</span>}
+                          </div>
+                        </ProgramTitleBlock>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button onClick={() => { setEditProgram(prog); setProgramForm({ title: prog.title, abbreviation: prog.abbreviation ?? '', division: prog.division ?? '', school_level_requirement: prog.school_level_requirement }); }} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={16} /></button>
@@ -277,26 +372,8 @@ export default function AdminPrograms() {
                       </div>
                     </div>
 
-                    <div className="border-t border-slate-100 dark:border-dark-border pt-3">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Assigned Personnel</p>
-                      {prog.personnel?.length > 0 ? (
-                        <div className="space-y-1">
-                          {prog.personnel.slice(0, 3).map(p => (
-                            <p key={p.id} className="text-xs font-bold text-slate-600 dark:text-slate-400">• {personnelDisplayName(p)}</p>
-                          ))}
-                          {prog.personnel.length > 3 && <p className="text-xs text-slate-400">+{prog.personnel.length - 3} more</p>}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 dark:text-slate-600">No personnel assigned</p>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-slate-100 dark:border-dark-border pt-3">
+                    <div className="flex items-center border-t border-slate-100 dark:border-dark-border pt-3">
                       <span className="text-xs text-slate-400 dark:text-slate-500">{prog._count?.aips ?? 0} AIPs filed</span>
-                      <button onClick={() => { setPersonnelProgram(prog); setAssignedIds(prog.personnel?.map(p => p.id) ?? []); }}
-                        className="flex items-center gap-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                        <Users size={15} /> Manage Personnel
-                      </button>
                     </div>
                   </div>
                 ))}
@@ -305,12 +382,16 @@ export default function AdminPrograms() {
                 )}
               </div>
             )}
-          </>
-        )}
-
-        {/* ── Division Programs ── */}
-        {view === 'division-programs' && (
-          <>
+            </MotionDiv>
+          ) : (
+            <MotionDiv
+              key="division-programs"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18, ease: 'easeOut' }}
+              className="space-y-4"
+            >
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
@@ -341,39 +422,66 @@ export default function AdminPrograms() {
               </div>
             </div>
 
-            {loadingDivPrograms ? (
+            {loadingDivPrograms || loadingPrograms ? (
               <div className="flex items-center justify-center h-48">
                 <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredDivPrograms.map(prog => (
-                  <div key={prog.id} className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="font-black text-slate-900 dark:text-slate-100 truncate">
-                          {prog.title}{prog.abbreviation && <span className="font-normal text-slate-400 dark:text-slate-500"> ({prog.abbreviation})</span>}
-                        </h3>
-                        <span className={`inline-block mt-1.5 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide rounded-lg ${DIVISION_COLORS[prog.division] ?? 'bg-slate-100 text-slate-500'}`}>
-                          {prog.division}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button onClick={() => { setEditDivProgram(prog); setDivForm({ title: prog.title, abbreviation: prog.abbreviation ?? '', division: prog.division }); }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={16} /></button>
-                        <button onClick={() => setDeleteDivProgram(prog)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><Trash size={16} /></button>
-                      </div>
+            ) : filteredDivProgramGroups.length ? (
+              <div className="space-y-5">
+                {filteredDivProgramGroups.map(({ division, programs: groupedPrograms }) => (
+                  <section key={division} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wide rounded-lg ${DIVISION_COLORS[division] ?? 'bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400'}`}>
+                        {division}
+                      </span>
+                      <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                        {groupedPrograms.length} program{groupedPrograms.length !== 1 ? 's' : ''}
+                      </span>
                     </div>
-                  </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {groupedPrograms.map(prog => {
+                        const assignedPersonnel = getAssignedPersonnelForDivisionProgram(prog);
+
+                        return (
+                        <div key={prog.id} className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5 space-y-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 max-w-full flex-1">
+                              <ProgramTitleBlock title={prog.title} abbreviation={prog.abbreviation} />
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => { setEditDivProgram(prog); setDivForm({ title: prog.title, abbreviation: prog.abbreviation ?? '', division: prog.division }); }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={16} /></button>
+                              <button onClick={() => setDeleteDivProgram(prog)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><Trash size={16} /></button>
+                            </div>
+                          </div>
+                          <div className="border-t border-slate-100 dark:border-dark-border pt-3">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Assigned Personnel</p>
+                            {assignedPersonnel.length > 0 ? (
+                              <div className="space-y-1">
+                                {assignedPersonnel.slice(0, 3).map(p => (
+                                  <p key={p.id} className="text-xs font-bold text-slate-600 dark:text-slate-400">• {personnelDisplayName(p)}</p>
+                                ))}
+                                {assignedPersonnel.length > 3 && <p className="text-xs text-slate-400">+{assignedPersonnel.length - 3} more</p>}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-400 dark:text-slate-600">No personnel assigned</p>
+                            )}
+                          </div>
+                        </div>
+                        );
+                      })}
+                    </div>
+                  </section>
                 ))}
-                {!filteredDivPrograms.length && (
-                  <p className="col-span-3 text-center text-slate-400 dark:text-slate-600 py-16">No division programs found.</p>
-                )}
               </div>
+            ) : (
+              <p className="text-center text-slate-400 dark:text-slate-600 py-16">No division programs found.</p>
             )}
-          </>
-        )}
+            </MotionDiv>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── School Program Modals ── */}
@@ -399,7 +507,7 @@ export default function AdminPrograms() {
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-0.5">Applicability</label>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mb-1.5">determines which schools or users can see and file this program</p>
-            <SearchableSelect options={LEVELS.map(l => ({ value: l, label: LEVEL_LABELS[l] ?? l }))} value={programForm.school_level_requirement} onChange={v => setProgramForm(f => ({ ...f, school_level_requirement: v }))} />
+            <SearchableSelect options={SCHOOL_LEVELS.map(l => ({ value: l, label: LEVEL_LABELS[l] ?? l }))} value={programForm.school_level_requirement} onChange={v => setProgramForm(f => ({ ...f, school_level_requirement: v }))} />
           </div>
           {formError && <p className="text-xs text-red-500 font-bold">{formError}</p>}
         </div>
@@ -407,42 +515,6 @@ export default function AdminPrograms() {
 
       <ConfirmModal open={!!deleteProgram} title="Delete Program" message={`Delete "${deleteProgram?.title}"? Existing AIP submissions referencing this program will remain but orphaned.`}
         variant="danger" confirmLabel="Delete" onConfirm={handleDeleteProgram} onCancel={() => setDeleteProgram(null)} loading={actionLoading} />
-
-      <FormModal open={!!personnelProgram} title={`Assign Personnel — ${personnelProgram?.title}`} onSave={handleSavePersonnel} onCancel={() => { setPersonnelProgram(null); setFormError(''); }} loading={actionLoading} wide saveLabel="Save">
-        {formError && <p className="text-xs text-red-500 font-bold mb-3">{formError}</p>}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-h-[240px]">
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Available</p>
-            <div className="space-y-1 border border-slate-200 dark:border-dark-border rounded-xl p-2 max-h-60 overflow-y-auto">
-              {allPersonnel.filter(p => !assignedIds.includes(p.id)).map(p => (
-                <button key={p.id} onClick={() => setAssignedIds(ids => [...ids, p.id])}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg transition-colors">
-                  <span className="truncate">{personnelDisplayName(p)}</span>
-                  <ArrowRight size={16} weight="bold" className="text-slate-400 shrink-0" />
-                </button>
-              ))}
-              {allPersonnel.filter(p => !assignedIds.includes(p.id)).length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-4">All assigned</p>
-              )}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Assigned</p>
-            <div className="space-y-1 border border-indigo-200 dark:border-indigo-800/40 rounded-xl p-2 max-h-60 overflow-y-auto bg-indigo-50/50 dark:bg-indigo-950/10">
-              {allPersonnel.filter(p => assignedIds.includes(p.id)).map(p => (
-                <button key={p.id} onClick={() => setAssignedIds(ids => ids.filter(i => i !== p.id))}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-bold text-indigo-700 dark:text-indigo-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors">
-                  <ArrowLeft size={16} weight="bold" className="shrink-0" />
-                  <span className="truncate">{personnelDisplayName(p)}</span>
-                </button>
-              ))}
-              {assignedIds.length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-4">None assigned</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </FormModal>
 
       {/* ── Division Program Modals ── */}
       <FormModal open={addDivOpen || !!editDivProgram} title={editDivProgram ? 'Edit Division Program' : 'Add Division Program'}

@@ -5,6 +5,9 @@ import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageC
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NotificationBell } from './NotificationBell.jsx';
+import { SchoolAvatar } from './SchoolAvatar.jsx';
+
+const MotionDiv = motion.div;
 
 export const DashboardHeader = ({ user, onLogout }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -68,16 +71,27 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                 {displayRole}
                             </span>
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-black border border-pink-200 uppercase">
-                            {displayName[0] || 'U'}
-                        </div>
+                        {user?.role === 'School' && user?.cluster_number ? (
+                            <SchoolAvatar
+                                clusterNumber={user.cluster_number}
+                                schoolLogo={user?.school_logo ?? null}
+                                clusterLogo={user?.cluster_logo ?? null}
+                                name={displayName}
+                                size={40}
+                                rounded="rounded-full"
+                            />
+                        ) : (
+                            <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-black border border-pink-200 uppercase">
+                                {displayName[0] || 'U'}
+                            </div>
+                        )}
                         <ChevronDown size={18} className={`text-slate-400 dark:text-slate-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Dropdown Menu */}
                     <AnimatePresence>
                         {isDropdownOpen && (
-                            <motion.div 
+                            <MotionDiv
                                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -131,7 +145,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                         Logout
                                     </button>
                                 </div>
-                            </motion.div>
+                            </MotionDiv>
                         )}
                     </AnimatePresence>
                 </div>

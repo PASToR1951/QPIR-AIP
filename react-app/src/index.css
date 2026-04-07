@@ -415,6 +415,58 @@ html:not(.dark).a11y-high-contrast .border-slate-200 {
   animation: row-highlight-flash-dark 1.8s ease-out both;
 }
 
+/* --- School card watermark --- */
+@keyframes school-card-watermark-drift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-2deg) scale(1);
+  }
+  50% {
+    transform: translate3d(-5px, -4px, 0) rotate(1deg) scale(1.045);
+  }
+  100% {
+    transform: translate3d(-2px, -7px, 0) rotate(2deg) scale(1.08);
+  }
+}
+.school-card-watermark {
+  filter: grayscale(1) contrast(1.25);
+  transform: translate3d(0, 0, 0) rotate(-2deg) scale(1);
+  transition: opacity 300ms ease, filter 300ms ease, transform 500ms ease;
+}
+.school-card-watermark--active {
+  animation: school-card-watermark-drift 2.8s ease-in-out infinite alternate;
+  filter: grayscale(0) saturate(1.3) contrast(1.05);
+}
+
+/* --- School card marquee --- */
+@keyframes school-name-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.school-name-marquee {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  outline: none;
+  white-space: nowrap;
+}
+.school-name-marquee__track {
+  display: inline-flex;
+  min-width: max-content;
+  vertical-align: top;
+}
+.school-name-marquee__text {
+  flex: 0 0 auto;
+  padding-right: 1.5rem;
+  white-space: nowrap;
+}
+.school-name-marquee:hover .school-name-marquee__track,
+.school-name-marquee:focus-visible .school-name-marquee__track {
+  animation: school-name-marquee 8s linear infinite;
+}
+.school-name-marquee:focus-visible {
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 2px rgb(99 102 241 / 0.25);
+}
 /* --- Reduce Motion --- */
 .a11y-reduce-motion .animate-pulse,
 .a11y-reduce-motion .animate-spin,
@@ -431,10 +483,19 @@ html:not(.dark).a11y-high-contrast .border-slate-200 {
 .a11y-reduce-motion .nc-slide-up,
 .a11y-reduce-motion .nc-check-circle,
 .a11y-reduce-motion .nc-check-path,
+.a11y-reduce-motion .school-card-watermark--active,
+.a11y-reduce-motion .school-name-marquee__track,
 .a11y-reduce-motion .row-highlight,
 .a11y-reduce-motion [data-motion] {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
+}
+.a11y-reduce-motion .school-card-watermark--active {
+  animation: none !important;
+}
+.a11y-reduce-motion .school-name-marquee__track {
+  animation: none !important;
+  transform: none !important;
 }
 .a11y-reduce-motion {
   scroll-behavior: auto !important;

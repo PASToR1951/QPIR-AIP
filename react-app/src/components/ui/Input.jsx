@@ -10,9 +10,9 @@ export function cn(...inputs) {
 // Theme variants mapping
 const THEME_CLASSES = {
     indigo: {
-        labelFocus: "group-focus-within:text-indigo-600",
-        gradient: "from-indigo-200 to-purple-200",
-        input: "bg-[#fafafa] dark:bg-dark-surface focus:border-transparent focus:ring-indigo-500/20 shadow-[0px_2px_3px_-1px_rgba(0,0,0,0.05)]",
+        labelFocus: "group-focus-within:text-blue-700 dark:group-focus-within:text-blue-300",
+        gradient: null,
+        input: "bg-white dark:bg-dark-surface border-slate-300 dark:border-slate-600 focus:border-blue-600 dark:focus:border-blue-400 focus:ring-blue-500/20 shadow-sm",
     },
     emerald: {
         labelFocus: "group-focus-within:text-emerald-600",

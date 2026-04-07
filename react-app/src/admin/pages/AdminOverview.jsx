@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ResponsiveBar } from '@nivo/bar';
 import { ResponsivePie } from '@nivo/pie';
 
 const fadeUp = {
@@ -27,6 +26,7 @@ const API = import.meta.env.VITE_API_URL;
 
 const CHART_COLORS = ['#E94560', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316'];
 const BAR_COLORS = { Submitted: '#3b82f6', Approved: '#10b981', 'Under Review': '#f59e0b', Returned: '#E94560' };
+const PIR_QUARTERLY_KEYS = ['Submitted', 'Approved', 'Under Review', 'Returned'];
 
 function useIsDark() {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -145,6 +145,83 @@ function InfoTip({ text }) {
   );
 }
 
+function getQuarterTotal(quarter) {
+  return PIR_QUARTERLY_KEYS.reduce((sum, key) => sum + (quarter[key] ?? 0), 0);
+}
+
+function getQuarterAxisMax(data) {
+  const maxTotal = Math.max(0, ...data.map(getQuarterTotal));
+  return Math.max(4, Math.ceil(maxTotal / 4) * 4);
+}
+
+function QuarterlyStatusChart({ data }) {
+  const axisMax = getQuarterAxisMax(data);
+  const ticks = [axisMax, axisMax * 0.75, axisMax * 0.5, axisMax * 0.25, 0];
+  const hasData = data.some((q) => getQuarterTotal(q) > 0);
+
+  return (
+    <div className="h-[220px] pt-1">
+      <div className="flex h-[184px] gap-2">
+        <div className="w-8 flex flex-col justify-between pb-8 text-right text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums">
+          {ticks.map((tick) => (
+            <span key={tick}>{tick}</span>
+          ))}
+        </div>
+        <div className="relative flex-1">
+          <div className="absolute inset-x-0 bottom-8 top-0">
+            {ticks.map((tick) => (
+              <span
+                key={tick}
+                className="absolute left-0 right-0 border-t border-slate-200 dark:border-dark-border/70"
+                style={{ bottom: `${(tick / axisMax) * 100}%` }}
+              />
+            ))}
+          </div>
+          {!hasData && (
+            <div className="absolute inset-x-0 bottom-8 top-0 flex items-center justify-center text-xs font-bold text-slate-400 dark:text-slate-500">
+              No PIR submissions yet
+            </div>
+          )}
+          <div className="absolute inset-0 z-10 flex items-stretch justify-around gap-2 px-2 sm:px-4">
+            {data.map((quarter) => {
+              const total = getQuarterTotal(quarter);
+              const heightPct = total > 0 ? Math.max((total / axisMax) * 100, 4) : 0;
+
+              return (
+                <div key={quarter.name} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                  <div className="relative flex min-h-0 w-full flex-1 items-end justify-center">
+                    <div
+                      className="flex w-full max-w-[58px] flex-col-reverse overflow-hidden rounded-md bg-slate-100 dark:bg-dark-border/40 shadow-sm ring-1 ring-slate-200/70 dark:ring-dark-border/70"
+                      style={{ height: `${heightPct}%`, opacity: total > 0 ? 1 : 0 }}
+                    >
+                      {PIR_QUARTERLY_KEYS.map((key) => {
+                        const value = quarter[key] ?? 0;
+                        if (value <= 0 || total <= 0) return null;
+
+                        return (
+                          <span
+                            key={key}
+                            title={`${quarter.name} ${key}: ${value}`}
+                            style={{ height: `${(value / total) * 100}%`, background: BAR_COLORS[key] }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="h-7 text-center leading-tight">
+                    <p className="text-[11px] font-black text-slate-600 dark:text-slate-300">{quarter.name}</p>
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">{total}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PirClusterPanel({ cluster: cl, navigate }) {
   const [open, setOpen] = useState(false);
   return (
@@ -224,7 +301,10 @@ function PirClusterPanel({ cluster: cl, navigate }) {
                 key={sch.id}
                 className="flex items-center gap-3 px-2 py-2 -mx-0 rounded-lg hover:bg-slate-100/80 dark:hover:bg-dark-border/25 transition-colors cursor-default"
               >
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 min-w-0 flex-1 truncate">{sch.name}</p>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 min-w-0 flex-1 truncate">
+                  {sch.name}
+                  {sch.abbreviation && <span className="font-normal text-slate-400 dark:text-slate-500"> ({sch.abbreviation})</span>}
+                </p>
                 <div className={`hidden sm:block w-24 h-1.5 rounded-full ${pirBarTrack(sch.pct)} shrink-0`}>
                   <div className={`h-full rounded-full ${pirBarColor(sch.pct)}`} style={{ width: `${Math.max(sch.pct, sch.totalAips > 0 ? 3 : 0)}%` }} />
                 </div>
@@ -530,25 +610,7 @@ export default function AdminOverview() {
                 </div>
                 <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm">PIR Quarterly Progress</h3>
               </div>
-              <div style={{ height: 220 }}>
-                <ResponsiveBar
-                  data={quarterData}
-                  keys={['Submitted', 'Approved', 'Under Review', 'Returned']}
-                  indexBy="name"
-                  margin={{ top: 10, right: 16, bottom: 28, left: 36 }}
-                  padding={0.28}
-                  groupMode="grouped"
-                  colors={({ id }) => BAR_COLORS[id]}
-                  borderRadius={4}
-                  theme={nivoTheme}
-                  enableGridX={false}
-                  enableLabel={false}
-                  axisBottom={{ tickSize: 0, tickPadding: 10 }}
-                  axisLeft={{ tickSize: 0, tickPadding: 8, tickValues: 4 }}
-                  animate
-                  motionConfig="gentle"
-                />
-              </div>
+              <QuarterlyStatusChart data={quarterData} />
               <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 mt-3">
                 {Object.entries(BAR_COLORS).map(([key, color]) => (
                   <div key={key} className="flex items-center gap-1.5">

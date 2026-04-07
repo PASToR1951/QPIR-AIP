@@ -600,6 +600,7 @@ export default function AdminPIRReview() {
   const program = pir?.program ?? '—';
   const quarter = pir?.quarter ?? '—';
   const status = pir?.status ?? '—';
+  const canAct = status !== 'Approved' && status !== 'Returned';
   const factors = pir?.factors ?? {};
 
   const TABS = [
@@ -634,20 +635,24 @@ export default function AdminPIRReview() {
         </button>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => { setModal('return'); setFeedback(''); setActionError(''); }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 transition-colors"
-          >
-            <ArrowBendUpLeft size={13} />
-            Return
-          </button>
-          <button
-            onClick={() => { setModal('approve'); setFeedback(''); setActionError(''); }}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-          >
-            <Check size={13} weight="bold" />
-            Approve
-          </button>
+          {canAct && (
+            <button
+              onClick={() => { setModal('return'); setFeedback(''); setActionError(''); }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 transition-colors"
+            >
+              <ArrowBendUpLeft size={13} />
+              Return
+            </button>
+          )}
+          {canAct && (
+            <button
+              onClick={() => { setModal('approve'); setFeedback(''); setActionError(''); }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+            >
+              <Check size={13} weight="bold" />
+              Approve
+            </button>
+          )}
         </div>
       </div>
 
@@ -930,6 +935,9 @@ export default function AdminPIRReview() {
               placeholder={modal === 'approve' ? 'Add optional remarks…' : 'Explain what needs to be corrected…'}
               className="w-full text-sm rounded-xl border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-base text-slate-700 dark:text-slate-200 px-3 py-2 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 dark:focus:ring-indigo-700 resize-none"
             />
+            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+              This text will also be saved to the PIR remarks.
+            </p>
 
             {actionError && <p className="mt-2 text-xs text-red-500">{actionError}</p>}
 

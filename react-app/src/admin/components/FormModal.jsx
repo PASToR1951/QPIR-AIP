@@ -26,7 +26,7 @@ export const FormModal = ({ open, title, subtitle, icon: Icon, children, onSave,
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className={`pointer-events-auto relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-[0_24px_64px_-8px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_64px_-8px_rgba(0,0,0,0.5)] w-full ${wide ? 'max-w-4xl' : 'max-w-2xl'} flex flex-col`}
+            className={`pointer-events-auto relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-[0_24px_64px_-8px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_64px_-8px_rgba(0,0,0,0.5)] w-full ${wide ? 'max-w-4xl' : 'max-w-2xl'} flex flex-col max-h-[85vh]`}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-5 pb-5 border-b border-slate-100 dark:border-dark-border shrink-0 rounded-t-2xl bg-white dark:bg-dark-surface">
@@ -47,7 +47,7 @@ export const FormModal = ({ open, title, subtitle, icon: Icon, children, onSave,
             </div>
 
             {/* Body — scrollable for long content */}
-            <div className="px-6 py-5 overflow-visible">
+            <div className="px-6 py-5 overflow-y-auto min-h-0">
               {children}
             </div>
 

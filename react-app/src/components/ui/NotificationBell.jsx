@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone, LockKeyOpen, LockKey } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { mergeNotifications } from '../../lib/notifications.js';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -53,10 +54,10 @@ function resolveNotificationRoute(n, role) {
     return '/cluster-head';
   }
 
-  // Group B — creator fix & resubmit
+  // Group B — creator navigation (fix/resubmit + status updates)
   if (type === 'aip_edit_approved') return '/aip';
   if (type === 'aip_edit_denied') return '/';
-  if (type === 'returned' || type === 'remarked') {
+  if (['returned', 'remarked', 'approved', 'under_review', 'for_ces_review', 'for_cluster_head_review'].includes(type)) {
     if (entity_type === 'aip') return '/aip';
     if (entity_type === 'pir') return '/pir';
   }
@@ -81,7 +82,7 @@ export function NotificationBell() {
   const fetchNotifications = useCallback(() => {
     axios
       .get(`${API}/api/notifications`, { withCredentials: true })
-      .then(r => setNotifications(r.data))
+      .then(r => setNotifications(mergeNotifications([], r.data)))
       .catch(() => {});
   }, []);
 
@@ -120,7 +121,7 @@ export function NotificationBell() {
             if (line.startsWith('data: ')) {
               try {
                 const notif = JSON.parse(line.slice(6));
-                setNotifications(prev => [notif, ...prev]);
+                setNotifications(prev => mergeNotifications(prev, [notif]));
               } catch { /* malformed event — ignore */ }
             }
           }

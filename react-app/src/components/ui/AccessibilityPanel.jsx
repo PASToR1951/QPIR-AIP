@@ -114,6 +114,12 @@ const SPACING_OPTIONS = [
     { value: 'loose',   label: '2×'   },
 ];
 
+const COLOR_SCHEMES = [
+    { value: 'system', label: 'System' },
+    { value: 'light',  label: 'Light'  },
+    { value: 'dark',   label: 'Dark'   },
+];
+
 /* ── Main component ────────────────────────────────────────────────────── */
 export default function AccessibilityPanel() {
     const [isOpen, setIsOpen] = useState(false);
@@ -155,14 +161,23 @@ export default function AccessibilityPanel() {
                         <div>
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Visual</p>
                             <div className="space-y-3.5">
-                                <ToggleRow
-                                    label="Dark Mode"
-                                    description="Reduce eye strain with darker colors"
-                                    icon={<Moon className="w-5 h-5" />}
-                                    value={settings.darkMode}
-                                    onChange={v => update('darkMode', v)}
-                                    theme={themeName}
-                                />
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Moon className={`w-5 h-5 ${settings.darkMode ? t.icon : 'text-slate-400'}`} />
+                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Colour Scheme</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-1">
+                                        {COLOR_SCHEMES.map(({ value, label }) => (
+                                            <button
+                                                key={value}
+                                                onClick={() => update('colorScheme', value)}
+                                                className={`h-9 rounded-xl text-[11px] font-black transition-all ${segmentActive(settings.colorScheme === value)}`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                                 <ToggleRow
                                     label="High Contrast"
                                     description="Stronger borders and colors"

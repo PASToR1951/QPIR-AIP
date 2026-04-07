@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { getFriendlyError } from '../../lib/errorMessages.js';
-import { PencilSimple, Key, LockKey, LockKeyOpen, Trash, Plus, MagnifyingGlass, Copy, Check, XCircle, CheckCircle } from '@phosphor-icons/react';
+import { PencilSimple, Key, LockKey, LockKeyOpen, Trash, Plus, MagnifyingGlass, Copy, Check, XCircle, CheckCircle, UploadSimple } from '@phosphor-icons/react';
 import { DataTable, withResponsiveHide } from '../components/DataTable.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
@@ -9,6 +9,7 @@ import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import { MultiSelect } from '../components/MultiSelect.jsx';
 import { CreateUserWizard } from '../components/CreateUserWizard.jsx';
+import { ImportUsersModal } from '../components/ImportUsersModal.jsx';
 import { UserProfileModal } from '../components/UserProfileModal.jsx';
 
 const API = import.meta.env.VITE_API_URL;
@@ -122,6 +123,7 @@ export default function AdminUsers() {
   const [viewUser, setViewUser] = useState(null);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [deleteUser, setDeleteUser] = useState(null);
   const [toggleUser, setToggleUser] = useState(null);
@@ -229,20 +231,25 @@ export default function AdminUsers() {
     } finally { setActionLoading(false); }
   };
 
+  // Set of school IDs already claimed by a School-role user.
+  const takenSchoolIds = new Set(
+    users.filter(u => u.role === 'School' && u.school?.id).map(u => u.school.id)
+  );
+
   const userDisplayName = (u) => {
     if (!u) return '';
     if (u.role === 'Division Personnel' && u.first_name && u.last_name) {
       const mi = u.middle_initial ? ` ${u.middle_initial}.` : '';
       return `${u.first_name}${mi} ${u.last_name}`;
     }
-    return u.name || u.email || '';
+    return u.name || (u.role === 'School' ? u.school?.name : null) || u.email || '';
   };
 
   const columns = withResponsiveHide([
     { key: 'name', label: 'Name', sortable: true, render: (v, row) => {
       const display = row.role === 'Division Personnel' && row.first_name && row.last_name
         ? `${row.first_name}${row.middle_initial ? ` ${row.middle_initial}.` : ''} ${row.last_name}`
-        : (v || row.email);
+        : (v || (row.role === 'School' ? row.school?.name : null) || row.email);
       return <span className="font-bold text-slate-900 dark:text-slate-100">{display}</span>;
     }},
     { key: 'email', label: 'Email', render: v => <span className="text-sm text-slate-500 dark:text-slate-400">{v}</span> },
@@ -307,6 +314,13 @@ export default function AdminUsers() {
             />
           </div>
             <button
+              onClick={() => setImportOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border hover:border-indigo-400 rounded-xl transition-colors shrink-0"
+            >
+              <UploadSimple size={17} />
+              <span className="hidden sm:inline">Import Directory</span>
+            </button>
+            <button
             onClick={() => { setCreateOpen(true); setForm(emptyForm); setFormError(''); }}
             className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shrink-0"
           >
@@ -345,16 +359,23 @@ export default function AdminUsers() {
         open={createOpen}
         onClose={() => { setCreateOpen(false); setForm(emptyForm); setFormError(''); }}
         onSave={handleCreate}
-        schools={schools}
+        schools={schools.filter(s => !takenSchoolIds.has(s.id))}
         programs={programs}
         clusters={clusters}
         loading={actionLoading}
         error={formError}
       />
 
+      {/* Import Directory */}
+      <ImportUsersModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImportComplete={() => { showToast('Import complete.'); fetchAll(); }}
+      />
+
       {/* Edit User */}
       <FormModal open={!!editUser} title="Edit User" onSave={handleEdit} onCancel={() => setEditUser(null)} loading={actionLoading} saveLabel="Save Changes">
-        <UserForm form={form} setForm={setForm} schools={schools} programs={programs} clusters={clusters} />
+        <UserForm form={form} setForm={setForm} schools={schools.filter(s => !takenSchoolIds.has(s.id) || s.id === form.school_id)} programs={programs} clusters={clusters} />
         {formError && <p className="mt-3 text-xs font-bold text-rose-600">{formError}</p>}
       </FormModal>
 

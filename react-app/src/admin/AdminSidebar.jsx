@@ -39,7 +39,7 @@ const NAV_GROUPS = [
     label: 'System',
     items: [
       { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Beta' },
-      { to: '/admin/backups',  label: 'Backups',     icon: Database, preload: () => import('./pages/AdminBackups.jsx') },
+      { to: '/admin/backups',  label: 'Backups',     icon: Database, badge: 'Beta', preload: () => import('./pages/AdminBackups.jsx') },
       { to: '/admin/settings', label: 'Settings',    icon: Gear, preload: () => import('./pages/AdminSettings.jsx') },
       { to: '/manual',         label: 'User Manual', icon: BookOpenUserIcon, badge: 'Beta' },
     ],

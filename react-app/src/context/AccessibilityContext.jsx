@@ -2,8 +2,12 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo, u
 
 const AccessibilityContext = createContext(null);
 
+const getSystemPrefersDark = () =>
+    Boolean(typeof window !== 'undefined' &&
+        window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+
 const DEFAULTS = {
-    darkMode: false,
+    colorScheme: 'system',   // 'system' | 'light' | 'dark'
     highContrast: false,
     fontSize: 'normal',     // 'sm' | 'normal' | 'lg' | 'xl' | 'xxl'
     reduceMotion: false,
@@ -12,16 +16,50 @@ const DEFAULTS = {
     letterSpacing: 'normal', // 'normal' | 'wide'
 };
 
+const normalizeSettings = (raw = {}) => {
+    const { darkMode, colorScheme, ...rest } = raw;
+    const migratedColorScheme =
+        colorScheme ?? (darkMode === true ? 'dark' : DEFAULTS.colorScheme);
+
+    return {
+        ...DEFAULTS,
+        ...rest,
+        colorScheme: ['system', 'light', 'dark'].includes(migratedColorScheme)
+            ? migratedColorScheme
+            : DEFAULTS.colorScheme,
+    };
+};
+
 export function AccessibilityProvider({ children }) {
+    const [systemPrefersDark, setSystemPrefersDark] = useState(getSystemPrefersDark);
     const [settings, setSettings] = useState(() => {
         try {
             const saved = localStorage.getItem('a11y_settings');
-            return saved ? { ...DEFAULTS, ...JSON.parse(saved) } : DEFAULTS;
+            return saved ? normalizeSettings(JSON.parse(saved)) : DEFAULTS;
         } catch {
             return DEFAULTS;
         }
     });
-    const prevDarkRef = useRef(settings.darkMode);
+    const resolvedDarkMode = settings.colorScheme === 'system'
+        ? systemPrefersDark
+        : settings.colorScheme === 'dark';
+    const prevDarkRef = useRef(resolvedDarkMode);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || !window.matchMedia) return;
+
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        const handleChange = () => setSystemPrefersDark(media.matches);
+        handleChange();
+
+        if (media.addEventListener) {
+            media.addEventListener('change', handleChange);
+            return () => media.removeEventListener('change', handleChange);
+        }
+
+        media.addListener?.(handleChange);
+        return () => media.removeListener?.(handleChange);
+    }, []);
 
     useEffect(() => {
         try {
@@ -31,13 +69,14 @@ export function AccessibilityProvider({ children }) {
         const html = document.documentElement;
 
         // Dark mode — with smooth transition on toggle
-        if (prevDarkRef.current !== settings.darkMode) {
+        if (prevDarkRef.current !== resolvedDarkMode) {
             html.classList.add('dark-transition');
             setTimeout(() => html.classList.remove('dark-transition'), 400);
-            prevDarkRef.current = settings.darkMode;
+            prevDarkRef.current = resolvedDarkMode;
         }
-        html.classList.toggle('dark', settings.darkMode);
-        html.style.colorScheme = settings.darkMode ? 'dark' : 'light';
+        html.classList.toggle('dark', resolvedDarkMode);
+        html.style.colorScheme = resolvedDarkMode ? 'dark' : 'light';
+        html.dataset.colorScheme = settings.colorScheme;
 
         html.classList.toggle('a11y-high-contrast', settings.highContrast);
 
@@ -52,14 +91,19 @@ export function AccessibilityProvider({ children }) {
         if (settings.lineSpacing === 'loose') html.classList.add('a11y-spacing-loose');
 
         html.classList.toggle('a11y-letter-wide', settings.letterSpacing === 'wide');
-    }, [settings]);
+    }, [settings, resolvedDarkMode]);
 
     const update = useCallback((key, value) =>
         setSettings(prev => ({ ...prev, [key]: value })), []);
 
     const reset = useCallback(() => setSettings(DEFAULTS), []);
 
-    const contextValue = useMemo(() => ({ settings, update, reset }), [settings, update, reset]);
+    const contextValue = useMemo(() => ({
+        settings: { ...settings, darkMode: resolvedDarkMode },
+        resolvedDarkMode,
+        update,
+        reset,
+    }), [settings, resolvedDarkMode, update, reset]);
 
     return (
         <AccessibilityContext.Provider value={contextValue}>

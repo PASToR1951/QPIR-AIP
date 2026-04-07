@@ -9,6 +9,9 @@ import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { getFriendlyError } from '../../lib/errorMessages.js';
+import { relativeDate } from '../../lib/dateUtils.js';
+import { HIGHLIGHT_DURATION_MS, REVIEW_TIMER_MS, TOAST_DURATION_MS } from '../../constants.js';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -28,18 +31,11 @@ const MONTHS = [
   { value: 11, label: 'November' }, { value: 12, label: 'December' },
 ];
 
-// Bug fix: guard against null/undefined — new Date(null) returns epoch (Jan 1 1970),
-// new Date(undefined) returns Invalid Date. Show a dash for missing dates instead.
-function relativeDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 export default function AdminSubmissions() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get('type') || 'all'; // 'all' | 'aip' | 'pir'
-  const setTab = (key) => { setSearchParams(prev => { prev.set('type', key); return prev; }); setPage(1); };
+  const setTab = (key) => { setSearchParams(prev => { prev.set('type', key); return prev; }); setPage(1); setHighlightRowId(null); };
   const group = searchParams.get('group') || 'flat';
   const setGroup = (key) => { setSearchParams(prev => { prev.set('group', key); return prev; }); };
   const reviewId = searchParams.get('review');
@@ -63,8 +59,10 @@ export default function AdminSubmissions() {
   const [approveItem, setApproveItem] = useState(null);
   const [returnItem, setReturnItem] = useState(null);
   const [returnFeedback, setReturnFeedback] = useState('');
+  const [returnFeedbackError, setReturnFeedbackError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
+  const [toast, setToast] = useState(null);
   const [editActionLoading, setEditActionLoading] = useState(null); // null | 'approve' | 'deny'
   // Tracks which row's PDF is currently being generated to prevent double-clicks
   const [pdfLoadingId, setPdfLoadingId] = useState(null);
@@ -108,14 +106,21 @@ export default function AdminSubmissions() {
     setTermSaving(true);
     setTermError('');
     try {
+      const nextTermType = pendingTermType;
+      const nextPeriods = periodMonths.map((m, i) => ({ period: i + 1, startMonth: m.start, endMonth: m.end }));
       await axios.patch(
         `${API}/api/admin/term-config`,
-        { termType: pendingTermType, periods: periodMonths.map((m, i) => ({ period: i + 1, startMonth: m.start, endMonth: m.end })) },
+        { termType: nextTermType, periods: nextPeriods },
         { withCredentials: true }
       );
+      setTermConfig({ termType: nextTermType, periods: nextPeriods });
       setTermSaved(true);
       setPendingTermType(null);
-      setTimeout(() => { setTermSaved(false); window.location.reload(); }, 1200);
+      const currentSearch = searchParams.toString();
+      setTimeout(() => {
+        setTermSaved(false);
+        navigate({ pathname: '/admin/submissions', search: currentSearch ? `?${currentSearch}` : '' }, { replace: true });
+      }, 1200);
     } catch (e) {
       setTermError(e.response?.data?.error || 'Failed to update term structure');
     } finally {
@@ -125,22 +130,35 @@ export default function AdminSubmissions() {
 
   const underReviewTimerRef = useRef(null);
   const downloadRef = useRef(null);
+  const toastTimerRef = useRef(null);
 
   // Selected rows for bulk
   const [selectedIds, setSelectedIds] = useState([]);
 
+  const showToast = (msg, type = 'error') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ msg, type });
+    toastTimerRef.current = setTimeout(() => setToast(null), TOAST_DURATION_MS);
+  };
+
+  useEffect(() => () => clearTimeout(toastTimerRef.current), []);
+
   useEffect(() => {
-    axios.get(`${API}/api/admin/clusters`, { withCredentials: true }).then(r => setClusters(r.data)).catch(() => {});
-    axios.get(`${API}/api/admin/programs`, { withCredentials: true }).then(r => setPrograms(r.data)).catch(() => {});
+    axios.get(`${API}/api/admin/clusters`, { withCredentials: true })
+      .then(r => setClusters(r.data))
+      .catch(err => console.warn('[clusters filter]', err?.response?.status));
+    axios.get(`${API}/api/admin/programs`, { withCredentials: true })
+      .then(r => setPrograms(r.data))
+      .catch(err => console.warn('[programs filter]', err?.response?.status));
   }, []);
 
   useEffect(() => {
     if (filters.cluster) {
       axios.get(`${API}/api/admin/schools?cluster=${filters.cluster}`, { withCredentials: true })
-        .then(r => setSchools(r.data)).catch(() => {});
+        .then(r => setSchools(r.data))
+        .catch(err => console.warn('[schools filter]', err?.response?.status));
     } else {
       setSchools([]);
-      setFilters(f => ({ ...f, school: null }));
     }
   }, [filters.cluster]);
 
@@ -191,7 +209,7 @@ export default function AdminSubmissions() {
     const raf = requestAnimationFrame(() => {
       document.getElementById(`row-${highlightRowId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
-    const timer = setTimeout(() => setHighlightRowId(null), 2000);
+    const timer = setTimeout(() => setHighlightRowId(null), HIGHLIGHT_DURATION_MS);
     return () => { cancelAnimationFrame(raf); clearTimeout(timer); };
   }, [highlightRowId]);
 
@@ -209,7 +227,9 @@ export default function AdminSubmissions() {
       await axios.patch(`${API}/api/admin/aips/${viewItem.id}/${action}-edit`, {}, { withCredentials: true });
       closeView();
       fetchSubmissions();
-    } catch { setActionError(`Failed to ${action} edit request. Please try again.`); }
+    } catch (e) {
+      setActionError(getFriendlyError(e.response?.data?.error, `Failed to ${action} edit request. Please try again.`));
+    }
     finally { setEditActionLoading(null); }
   };
 
@@ -226,40 +246,73 @@ export default function AdminSubmissions() {
       if (item.type === 'PIR' && item.status === 'Submitted') {
         underReviewTimerRef.current = setTimeout(() => {
           handleStatusUpdate(item.id, item.type, 'Under Review');
-        }, 2 * 60 * 1000);
+        }, REVIEW_TIMER_MS);
       }
-    } catch { setViewData(null); }
+    } catch (err) {
+      setViewData(null);
+      showToast('Could not load submission details. Please try again.', 'error');
+      console.warn('[submission detail]', err?.response?.status);
+    }
     finally { setViewLoading(false); }
   };
 
+  const canChangeSubmissionStatus = (item) => item?.status !== 'Approved' && item?.status !== 'Returned';
+  const canDownloadSubmission = (item) => item?.status !== 'Returned';
+
   const handleStatusUpdate = async (id, type, status, feedback = '') => {
+    if (status === 'Returned' && !feedback.trim()) {
+      setReturnFeedbackError('A reason is required before returning a submission.');
+      showToast('Please enter a reason before returning the submission.', 'error');
+      return;
+    }
+
     clearTimeout(underReviewTimerRef.current);
     underReviewTimerRef.current = null;
     setActionLoading(true);
     try {
-      await axios.patch(`${API}/api/admin/submissions/${id}/status`, { type: type.toLowerCase(), status, feedback }, { withCredentials: true });
+      await axios.patch(`${API}/api/admin/submissions/${id}/status`, { type: type.toLowerCase(), status, feedback: feedback.trim() }, { withCredentials: true });
       fetchSubmissions();
       setApproveItem(null);
       setReturnItem(null);
       setReturnFeedback('');
+      setReturnFeedbackError('');
       if (viewData) {
         setViewData(prev => prev ? { ...prev, status } : prev);
       }
-    } catch (e) { console.error(e); setActionError('Failed to update status. Please try again.'); }
+    } catch (e) { console.error(e); setActionError(getFriendlyError(e.response?.data?.error, 'Failed to update status. Please try again.')); }
     finally { setActionLoading(false); }
+  };
+
+  const handleViewStatusChange = (status) => {
+    if (status === 'Returned') {
+      const currentStatus = viewData?.status ?? viewItem.status;
+
+      if (!canChangeSubmissionStatus({ status: currentStatus })) {
+        showToast(`${currentStatus} submissions cannot be returned.`, 'error');
+        return;
+      }
+
+      setReturnItem({ ...viewItem, status: currentStatus });
+      setReturnFeedback('');
+      setReturnFeedbackError('');
+      closeView();
+      return;
+    }
+
+    handleStatusUpdate(viewItem.id, viewItem.type, status);
   };
 
   const handleBulkApprove = async () => {
     if (!selectedIds.length) return;
     setActionLoading(true);
     try {
-      const toApprove = submissions.filter(s => selectedIds.includes(s.id) && s.status !== 'Approved');
+      const toApprove = submissions.filter(s => selectedIds.includes(s.id) && canChangeSubmissionStatus(s));
       for (const item of toApprove) {
         await axios.patch(`${API}/api/admin/submissions/${item.id}/status`, { type: item.type.toLowerCase(), status: 'Approved', feedback: '' }, { withCredentials: true });
       }
       setSelectedIds([]);
       fetchSubmissions();
-    } catch (e) { console.error(e); setActionError('Failed to approve selected submissions. Please try again.'); }
+    } catch (e) { console.error(e); setActionError(getFriendlyError(e.response?.data?.error, 'Failed to approve selected submissions. Please try again.')); }
     finally { setActionLoading(false); }
   };
 
@@ -389,27 +442,31 @@ export default function AdminSubmissions() {
           >
             <Eye size={17} />
           </button>
-          {row.status !== 'Approved' && (
+          {canChangeSubmissionStatus(row) && (
             <button onClick={() => setApproveItem(row)} title="Approve" className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"><Check size={17} /></button>
           )}
-          <button onClick={() => { setReturnItem(row); setReturnFeedback(''); }} title="Return" className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"><ArrowBendUpLeft size={17} /></button>
+          {canChangeSubmissionStatus(row) && (
+            <button onClick={() => { setReturnItem(row); setReturnFeedback(''); setReturnFeedbackError(''); }} title="Return" className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors"><ArrowBendUpLeft size={17} /></button>
+          )}
           {/* Bug fix: pass row directly so handleExportPDF isn't affected by stale viewItem state.
               pdfLoadingId guards against multiple simultaneous export clicks. */}
-          <button
-            disabled={pdfLoadingId === row.id}
-            onClick={async () => {
-              setPdfLoadingId(row.id);
-              try {
-                await openView(row);
-                await new Promise(r => setTimeout(r, 500));
-                await handleExportPDF(row);
-              } finally {
-                setPdfLoadingId(null);
-              }
-            }}
-            title="Download PDF"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-          ><DownloadSimple size={17} /></button>
+          {canDownloadSubmission(row) && (
+            <button
+              disabled={pdfLoadingId === row.id}
+              onClick={async () => {
+                setPdfLoadingId(row.id);
+                try {
+                  await openView(row);
+                  await new Promise(r => setTimeout(r, 500));
+                  await handleExportPDF(row);
+                } finally {
+                  setPdfLoadingId(null);
+                }
+              }}
+              title="Download PDF"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            ><DownloadSimple size={17} /></button>
+          )}
         </div>
       )
     },
@@ -493,7 +550,7 @@ export default function AdminSubmissions() {
                 clearable
               />
               <SearchableSelect
-                options={schools.map(s => ({ value: s.id, label: s.name }))}
+                options={schools.map(s => ({ value: s.id, label: s.abbreviation ? `${s.name} (${s.abbreviation})` : s.name }))}
                 value={filters.school}
                 onChange={v => setFilters(f => ({ ...f, school: v }))}
                 placeholder="School"
@@ -620,7 +677,9 @@ export default function AdminSubmissions() {
         {selectedIds.length > 0 && (
           <div className="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 rounded-2xl px-4 py-3">
             <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400">{selectedIds.length} selected</span>
-            <button onClick={handleBulkApprove} disabled={actionLoading} className="text-xs font-bold text-emerald-600 hover:underline disabled:opacity-50">{actionLoading ? 'Approving...' : 'Approve Selected'}</button>
+            {submissions.some(s => selectedIds.includes(s.id) && canChangeSubmissionStatus(s)) && (
+              <button onClick={handleBulkApprove} disabled={actionLoading} className="text-xs font-bold text-emerald-600 hover:underline disabled:opacity-50">{actionLoading ? 'Approving...' : 'Approve Selected'}</button>
+            )}
             <button onClick={handleExportCSV} className="text-xs font-bold text-indigo-600 hover:underline">Export CSV</button>
             <button onClick={handleExportXLSX} className="text-xs font-bold text-indigo-600 hover:underline">Export XLSX</button>
             <button onClick={() => setSelectedIds([])} className="ml-auto text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-200">Clear</button>
@@ -642,7 +701,7 @@ export default function AdminSubmissions() {
                 selectable
                 selectedIds={selectedIds}
                 onSelectChange={setSelectedIds}
-                onRowClick={(row) => { if (row.type === 'PIR') setReviewItem(row); else openView(row); }}
+                onRowClick={(row) => { if (row.type === 'PIR') navigate(`/admin/pirs/${row.id}`); else openView(row); }}
                 getRowClassName={(row) => [row.type === 'PIR' ? 'cursor-pointer' : '', row.id === highlightRowId ? 'row-highlight' : ''].filter(Boolean).join(' ')}
                 emptyMessage="No submissions match the current filters."
                 initialPage={targetPage}
@@ -664,7 +723,7 @@ export default function AdminSubmissions() {
                     selectable
                     selectedIds={selectedIds}
                     onSelectChange={setSelectedIds}
-                    onRowClick={(row) => { if (row.type === 'PIR') setReviewItem(row); else openView(row); }}
+                    onRowClick={(row) => { if (row.type === 'PIR') navigate(`/admin/pirs/${row.id}`); else openView(row); }}
                     getRowClassName={(row) => [row.type === 'PIR' ? 'cursor-pointer' : '', row.id === highlightRowId ? 'row-highlight' : ''].filter(Boolean).join(' ')}
                     emptyMessage="No submissions in this group."
                     highlightRowId={highlightRowId}
@@ -690,52 +749,74 @@ export default function AdminSubmissions() {
 
       {/* Return Modal */}
       <FormModal
-        open={!!returnItem}
+        open={!!returnItem && canChangeSubmissionStatus(returnItem)}
         title="Return for Revision"
         onSave={() => handleStatusUpdate(returnItem.id, returnItem.type, 'Returned', returnFeedback)}
-        onCancel={() => setReturnItem(null)}
+        onCancel={() => { setReturnItem(null); setReturnFeedback(''); setReturnFeedbackError(''); }}
         loading={actionLoading}
         saveLabel="Return"
       >
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
           Returning <strong>{returnItem?.type}</strong> from <strong>{returnItem?.school}</strong> for <strong>{returnItem?.program}</strong>.
         </p>
-        <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Feedback / Reason</label>
+        <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Feedback / Reason <span className="text-rose-500">(required)</span></label>
         <textarea
           value={returnFeedback}
-          onChange={e => setReturnFeedback(e.target.value)}
+          onChange={e => { setReturnFeedback(e.target.value); if (returnFeedbackError) setReturnFeedbackError(''); }}
           rows={4}
           placeholder="Explain what needs to be revised…"
-          className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl resize-none text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400"
+          aria-invalid={!!returnFeedbackError}
+          aria-describedby="return-feedback-help"
+          className={`w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border rounded-xl resize-none text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none ${
+            returnFeedbackError
+              ? 'border-rose-300 dark:border-rose-800 focus:border-rose-400'
+              : 'border-slate-200 dark:border-dark-border focus:border-indigo-400'
+          }`}
         />
+        <p id="return-feedback-help" className={`mt-1.5 text-xs font-medium ${returnFeedbackError ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'}`}>
+          {returnFeedbackError || 'A short reason is required so the submitter knows what to revise.'}
+        </p>
       </FormModal>
+
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border text-sm font-bold ${
+          toast.type === 'success'
+            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+            : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400'
+        }`}>
+          {toast.type === 'success'
+            ? <CheckCircle size={18} weight="fill" className="text-emerald-500" />
+            : <Warning size={18} weight="fill" className="text-rose-500" />
+          }
+          {toast.msg}
+        </div>
+      )}
 
       {/* View Detail Modal */}
       {viewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeView} />
-          <div className="relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-[9999] bg-slate-50 dark:bg-dark-base">
+          <div className="h-[100dvh] w-screen bg-white dark:bg-dark-surface flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-dark-border shrink-0">
-              <div className="flex items-center gap-3">
-                <h3 className="font-black text-slate-900 dark:text-slate-100">{viewItem.school}</h3>
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8 border-b border-slate-200 dark:border-dark-border shrink-0 bg-white dark:bg-dark-surface">
+              <div className="min-w-0 flex flex-wrap items-center gap-2 sm:gap-3">
+                <h3 className="min-w-0 flex-1 font-black text-slate-900 dark:text-slate-100 truncate">{viewItem.school}</h3>
                 <StatusBadge status={viewItem.type} />
-                <StatusBadge status={viewItem.status} />
+                <StatusBadge status={viewData?.status ?? viewItem.status} />
               </div>
-              <button onClick={closeView} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+              <button onClick={closeView} className="self-end sm:self-auto p-2 -m-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 <XCircle size={22} weight="fill" />
               </button>
             </div>
 
             {/* Body */}
-            <div id="submission-detail-body" className="flex-1 overflow-y-auto px-6 py-4">
+            <div id="submission-detail-body" className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
               {viewLoading ? (
-                <div className="flex items-center justify-center h-48">
+                <div className="flex min-h-[60vh] items-center justify-center">
                   <div className="w-6 h-6 rounded-full border-2 border-slate-300 border-t-indigo-500 animate-spin" />
                 </div>
               ) : viewData ? (
-                <div className="space-y-4 text-sm">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="mx-auto max-w-7xl space-y-5 text-sm">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <div>
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Program</p>
                       <p className="font-bold text-slate-800 dark:text-slate-200">{viewData.program?.title ?? viewData.aip?.program?.title ?? '—'}</p>
@@ -766,11 +847,11 @@ export default function AdminSubmissions() {
                   {viewData.activities?.length > 0 && (
                     <div>
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Activities ({viewData.activities.length})</p>
-                      <div className="space-y-2">
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
                         {viewData.activities.map((a, i) => (
-                          <div key={i} className="bg-slate-50 dark:bg-dark-base rounded-xl px-4 py-3">
-                            <p className="font-bold text-slate-800 dark:text-slate-200">{a.activity_name}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{a.phase} · {a.budget_source} · ₱{Number(a.budget_amount).toLocaleString()}</p>
+                          <div key={i} className="bg-slate-50 dark:bg-dark-base rounded-xl px-4 py-3 border border-slate-100 dark:border-dark-border">
+                            <p className="font-bold text-slate-800 dark:text-slate-200 break-words">{a.activity_name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 break-words">{a.phase} · {a.budget_source} · ₱{Number(a.budget_amount).toLocaleString()}</p>
                           </div>
                         ))}
                       </div>
@@ -783,12 +864,12 @@ export default function AdminSubmissions() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-200 dark:border-dark-border shrink-0">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8 border-t border-slate-200 dark:border-dark-border shrink-0 bg-white dark:bg-dark-surface">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <select
                   value={viewData?.status ?? viewItem.status}
-                  onChange={e => handleStatusUpdate(viewItem.id, viewItem.type, e.target.value)}
-                  className="text-sm font-bold bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl px-3 py-1.5 text-slate-700 dark:text-slate-300"
+                  onChange={e => handleViewStatusChange(e.target.value)}
+                  className="w-full sm:w-auto text-sm font-bold bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl px-3 py-2 text-slate-700 dark:text-slate-300"
                 >
                   {(viewItem.type === 'AIP'
                     ? ['Approved', 'Returned']
@@ -818,11 +899,13 @@ export default function AdminSubmissions() {
                   </>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={handleExportPDF} className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors">
-                  <DownloadSimple size={17} /> PDF
-                </button>
-                <button onClick={closeView} className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors">
+              <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+                {canDownloadSubmission({ status: viewData?.status ?? viewItem.status }) && (
+                  <button onClick={handleExportPDF} className="flex flex-1 items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors sm:flex-none">
+                    <DownloadSimple size={17} /> PDF
+                  </button>
+                )}
+                <button onClick={closeView} className="flex-1 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors sm:flex-none">
                   Close
                 </button>
               </div>

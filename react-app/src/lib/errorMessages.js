@@ -125,6 +125,16 @@ const EXACT_MAP = {
     'First name and last name are required for Division Personnel accounts.',
   'email, password, role are required':
     'Email, password, and role are all required to create a new user.',
+  'Minimum 8 characters required':
+    'Password must be at least 8 characters long.',
+  'Must contain an uppercase letter':
+    'Password must contain at least one uppercase letter.',
+  'Must contain a lowercase letter':
+    'Password must contain at least one lowercase letter.',
+  'Must contain a number':
+    'Password must contain at least one number.',
+  'Must contain a special character':
+    'Password must contain at least one special character (!@#$%^&*).',
 
   // ── Deadline / schedule validation ───────────────────────────────────────────
   'Invalid year (must be 2020\u20132100)':

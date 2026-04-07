@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarSlash, CalendarBlank, ArrowCounterClockwise, FloppyDisk,
   ClockCountdown, CaretDown, Hourglass, Warning, Info, LockSimple,
@@ -22,45 +22,53 @@ function Tip({ text }) {
   );
 }
 
-const QUARTER_LABELS = ['Q1 · Jan – Mar', 'Q2 · Apr – Jun', 'Q3 · Jul – Sep', 'Q4 · Oct – Dec'];
+const QUARTERS_PER_YEAR = 4;
+const MONTHS_PER_QUARTER = 12 / QUARTERS_PER_YEAR;
+const MONTH_LABEL = new Intl.DateTimeFormat('en-PH', { month: 'short' });
 
-const QUARTER_RANGES = [
-  { start: [2026, 1, 1],  end: [2026, 3, 31]  },
-  { start: [2026, 4, 1],  end: [2026, 6, 30]  },
-  { start: [2026, 7, 1],  end: [2026, 9, 30]  },
-  { start: [2026, 10, 1], end: [2026, 12, 31] },
-];
+function quarterBounds(year, i) {
+  const startMonth = i * MONTHS_PER_QUARTER;
+  const endMonth = startMonth + MONTHS_PER_QUARTER - 1;
+  return {
+    start: new Date(year, startMonth, 1),
+    end: new Date(year, endMonth + 1, 0),
+  };
+}
 
-const QUARTER_STARTS = [
-  [2026, 1, 1], [2026, 4, 1], [2026, 7, 1], [2026, 10, 1],
-];
+function quarterLabel(year, i) {
+  const { start, end } = quarterBounds(year, i);
+  return `Q${i + 1} · ${MONTH_LABEL.format(start)} – ${MONTH_LABEL.format(end)}`;
+}
 
-function quarterProgress(i) {
-  const r = QUARTER_RANGES[i];
-  const start = new Date(r.start[0], r.start[1] - 1, r.start[2]).getTime();
-  const end   = new Date(r.end[0],   r.end[1] - 1,   r.end[2]).getTime();
+function quarterProgress(year, i) {
+  const bounds = quarterBounds(year, i);
+  const start = bounds.start.getTime();
+  const end   = bounds.end.getTime();
   const now   = Date.now();
   if (now <= start) return 0;
   if (now >= end)   return 100;
   return Math.round(((now - start) / (end - start)) * 100);
 }
 
-function urgencyStyle(daysLeft) {
+function urgencyStyle(daysLeft, closed) {
+  if (closed)          return 'border-white/60 dark:border-white/10 bg-white/40 dark:bg-slate-900/40 shadow-slate-900/5';
   if (daysLeft < 0)    return 'border-rose-400/50 dark:border-rose-500/30 bg-rose-50/40 dark:bg-rose-950/20 shadow-rose-500/10';
   if (daysLeft <= 7)   return 'border-amber-400/50 dark:border-amber-500/30 bg-amber-50/40 dark:bg-amber-950/20 shadow-amber-500/10';
   if (daysLeft <= 14)  return 'border-amber-200/50 dark:border-amber-800/30 bg-amber-50/20 dark:bg-amber-950/10 shadow-amber-500/5';
   return 'border-white/60 dark:border-white/10 bg-white/40 dark:bg-slate-900/40 shadow-slate-900/5';
 }
 
-function urgencyGradient(days) {
-  if (days < 0)  return 'from-rose-500/10 via-rose-500/5 to-transparent dark:from-rose-500/15 dark:via-rose-500/5 dark:to-transparent';
-  if (days <= 7) return 'from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-500/15 dark:via-amber-500/5 dark:to-transparent';
+function urgencyGradient(days, closed) {
+  if (closed)        return 'from-indigo-500/5 via-violet-500/5 to-transparent dark:from-indigo-500/10 dark:via-violet-500/5 dark:to-transparent';
+  if (days < 0)      return 'from-rose-500/10 via-rose-500/5 to-transparent dark:from-rose-500/15 dark:via-rose-500/5 dark:to-transparent';
+  if (days <= 7)     return 'from-amber-500/10 via-amber-500/5 to-transparent dark:from-amber-500/15 dark:via-amber-500/5 dark:to-transparent';
   return 'from-indigo-500/5 via-violet-500/5 to-transparent dark:from-indigo-500/10 dark:via-violet-500/5 dark:to-transparent';
 }
 
-function urgencyCountdownColor(days) {
-  if (days < 0)  return 'bg-clip-text text-transparent bg-gradient-to-br from-rose-500 to-rose-700 dark:from-rose-400 dark:to-rose-500';
-  if (days <= 7) return 'bg-clip-text text-transparent bg-gradient-to-br from-amber-500 to-orange-600 dark:from-amber-400 dark:to-orange-500';
+function urgencyCountdownColor(days, closed) {
+  if (closed)        return 'text-slate-400 dark:text-slate-500';
+  if (days < 0)      return 'bg-clip-text text-transparent bg-gradient-to-br from-rose-500 to-rose-700 dark:from-rose-400 dark:to-rose-500';
+  if (days <= 7)     return 'bg-clip-text text-transparent bg-gradient-to-br from-amber-500 to-orange-600 dark:from-amber-400 dark:to-orange-500';
   return 'bg-clip-text text-transparent bg-gradient-to-br from-indigo-500 to-violet-600 dark:from-indigo-400 dark:to-violet-400';
 }
 
@@ -83,7 +91,7 @@ function localDateStr(dateObj) {
 }
 
 /** Compute current window status for a quarter */
-function windowStatus(localDate, localOpenDate, localGraceDays, i) {
+function windowStatus(localDate, localOpenDate, localGraceDays, i, year) {
   const deadlineStr = localDate;
   if (!deadlineStr) return 'locked';
 
@@ -95,8 +103,7 @@ function windowStatus(localDate, localOpenDate, localGraceDays, i) {
     const [oy, om, od] = localOpenDate.split('-').map(Number);
     openDate = new Date(oy, om - 1, od);
   } else {
-    const qs = QUARTER_STARTS[i];
-    openDate = new Date(qs[0], qs[1] - 1, qs[2]);
+    openDate = quarterBounds(year, i).start;
   }
 
   const graceDays = parseInt(localGraceDays) || 0;
@@ -129,7 +136,7 @@ const cardVariants = {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminDeadlines() {
-  const [year]          = useState(2026);
+  const [year]          = useState(() => new Date().getFullYear());
   const [deadlines, setDeadlines] = useState([]);
   const [history,   setHistory]   = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -212,8 +219,14 @@ export default function AdminDeadlines() {
     return { type: 'ok', msg: `✓ Extends deadline by ${diffDays} days` };
   };
 
-  // Summary stats
-  const overdueCount = deadlines.filter(d => daysLeft(d.date) < 0).length;
+  // Summary stats — only count quarters that are past deadline but NOT fully closed
+  // (closed = submission window is over, no action needed; grace = past due but still accepting)
+  const overdueCount = deadlines.filter((d, i) => {
+    if (daysLeft(d.date) >= 0) return false;
+    const ld = localDates[d.quarter] ?? { date: '', openDate: '', graceDays: 0 };
+    const status = windowStatus(ld.date, ld.openDate, ld.graceDays, i, year);
+    return status !== 'closed';
+  }).length;
   const customCount  = deadlines.filter(d => d.isCustom).length;
   const nextDeadline = deadlines
     .filter(d => daysLeft(d.date) >= 0)
@@ -254,10 +267,10 @@ export default function AdminDeadlines() {
                   </div>
                   <div>
                     <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 tracking-tight leading-none mb-1.5">Deadlines</h1>
-                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400">FY 2026 · Fiscal Year Submission Windows</p>
+                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400">FY {year} · Fiscal Year Submission Windows</p>
                   </div>
                 </div>
-                <span className="px-5 py-2 text-xs font-black rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/20 tracking-widest uppercase shadow-inner">FY 2026</span>
+                <span className="px-5 py-2 text-xs font-black rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-500/20 tracking-widest uppercase shadow-inner">FY {year}</span>
               </div>
 
               {/* Summary stat row */}
@@ -300,7 +313,7 @@ export default function AdminDeadlines() {
             </div>
 
             {/* Quarter Cards */}
-            <motion.div
+            <Motion.div
               variants={containerVariants}
               initial="hidden"
               animate="visible"
@@ -309,27 +322,28 @@ export default function AdminDeadlines() {
               {deadlines.map((d, i) => {
                 const days    = daysLeft(d.date);
                 const impact  = impactPreview(d.quarter);
-                const progress = quarterProgress(i);
+                const progress = quarterProgress(year, i);
                 const ld      = localDates[d.quarter] ?? { date: '', openDate: '', graceDays: 0 };
-                const winStatus = windowStatus(ld.date, ld.openDate, ld.graceDays, i);
+                const winStatus = windowStatus(ld.date, ld.openDate, ld.graceDays, i, year);
+                const isClosed = winStatus === 'closed';
                 const badge   = WINDOW_BADGE[winStatus];
                 const BadgeIcon = badge.icon;
 
                 return (
-                  <motion.div
+                  <Motion.div
                     key={d.quarter}
                     variants={cardVariants}
-                    className={`relative rounded-3xl border backdrop-blur-2xl shadow-xl transition-shadow duration-200 hover:shadow-2xl ${urgencyStyle(days)}`}
+                    className={`relative rounded-3xl border backdrop-blur-2xl shadow-xl transition-shadow duration-200 hover:shadow-2xl ${urgencyStyle(days, isClosed)}`}
                   >
                     {/* Gradient tint overlay */}
-                    <div className={`absolute inset-0 bg-gradient-to-b ${urgencyGradient(days)} rounded-3xl pointer-events-none`} />
+                    <div className={`absolute inset-0 bg-gradient-to-b ${urgencyGradient(days, isClosed)} rounded-3xl pointer-events-none`} />
 
                     <div className="relative p-6 space-y-5">
                       {/* Title row */}
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">
-                            {QUARTER_LABELS[i]}
+                            {quarterLabel(year, i)}
                           </p>
                           {d.isCustom && (
                             <span className="inline-block mt-1 text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg">
@@ -360,9 +374,9 @@ export default function AdminDeadlines() {
                           </span>
                         </div>
                         <div className="w-full h-1.5 bg-slate-200 dark:bg-dark-border rounded-full overflow-hidden">
-                          <motion.div
+                          <Motion.div
                             className={`h-full rounded-full ${
-                              progress >= 100 ? 'bg-rose-400 dark:bg-rose-500' : 'bg-indigo-500 dark:bg-indigo-400'
+                              progress >= 100 && !isClosed ? 'bg-rose-400 dark:bg-rose-500' : 'bg-indigo-500 dark:bg-indigo-400'
                             }`}
                             initial={{ width: 0 }}
                             animate={{ width: `${progress}%` }}
@@ -373,8 +387,8 @@ export default function AdminDeadlines() {
 
                       {/* Countdown */}
                       <div>
-                        <p className={`text-4xl font-black leading-none tracking-tight pb-1 ${urgencyCountdownColor(days)}`}>
-                          {days < 0 ? `${Math.abs(days)}d overdue` : (days === 0 ? 'Due Today' : `${days}d left`)}
+                        <p className={`text-4xl font-black leading-none tracking-tight pb-1 ${urgencyCountdownColor(days, isClosed)}`}>
+                          {isClosed ? 'Closed' : (days < 0 ? `${Math.abs(days)}d overdue` : (days === 0 ? 'Due Today' : `${days}d left`))}
                         </p>
                         <p className="text-[12px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-1">
                           {(() => { const [y,m,day] = d.date.slice(0,10).split('-').map(Number); return new Date(y, m-1, day).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }); })()}
@@ -382,7 +396,7 @@ export default function AdminDeadlines() {
                       </div>
 
                       {/* ── Date Inputs ── */}
-                      <div className="space-y-3">
+                      <div className={`space-y-3 ${isClosed ? 'opacity-40 pointer-events-none select-none' : ''}`}>
                         {/* Deadline date */}
                         <div>
                           <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
@@ -391,8 +405,9 @@ export default function AdminDeadlines() {
                           <input
                             type="date"
                             value={ld.date}
+                            disabled={isClosed}
                             onChange={e => setLocalDates(prev => ({ ...prev, [d.quarter]: { ...prev[d.quarter], date: e.target.value } }))}
-                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-inner"
+                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-inner disabled:cursor-not-allowed"
                           />
                         </div>
 
@@ -405,8 +420,9 @@ export default function AdminDeadlines() {
                           <input
                             type="date"
                             value={ld.openDate}
+                            disabled={isClosed}
                             onChange={e => setLocalDates(prev => ({ ...prev, [d.quarter]: { ...prev[d.quarter], openDate: e.target.value } }))}
-                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-inner"
+                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-inner disabled:cursor-not-allowed"
                           />
                         </div>
 
@@ -421,14 +437,15 @@ export default function AdminDeadlines() {
                             min="0"
                             max="30"
                             value={ld.graceDays}
+                            disabled={isClosed}
                             onChange={e => setLocalDates(prev => ({ ...prev, [d.quarter]: { ...prev[d.quarter], graceDays: e.target.value } }))}
-                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-inner"
+                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all shadow-inner disabled:cursor-not-allowed"
                           />
                         </div>
                       </div>
 
                       {/* Impact preview */}
-                      {impact && (
+                      {impact && !isClosed && (
                         <p className={`text-[11px] font-bold leading-snug px-3 py-2 rounded-xl bg-white/50 dark:bg-white/5 backdrop-blur-md border border-white/60 dark:border-white/10 ${impact.type === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                           {impact.msg}
                         </p>
@@ -438,28 +455,28 @@ export default function AdminDeadlines() {
                       <div className="flex items-center gap-3 pt-2">
                         <button
                           onClick={() => handleSave(d.quarter)}
-                          disabled={!anyChanged(d.quarter) || saving === d.quarter}
+                          disabled={isClosed || !anyChanged(d.quarter) || saving === d.quarter}
                           className="relative flex items-center gap-2 px-6 py-2.5 text-xs font-black rounded-2xl transition-all text-white bg-gradient-to-r from-indigo-500 to-violet-600 hover:shadow-lg hover:shadow-indigo-500/30 disabled:from-slate-200 disabled:to-slate-200 dark:disabled:from-slate-800 dark:disabled:to-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed group"
                         >
-                          {anyChanged(d.quarter) && <div className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />}
+                          {anyChanged(d.quarter) && !isClosed && <div className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />}
                           <FloppyDisk size={16} weight="bold" />
                           {saving === d.quarter ? 'Saving…' : 'Save'}
                         </button>
                         {d.isCustom && (
                           <button
                             onClick={() => handleReset(d)}
-                            disabled={saving === d.quarter}
-                            className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                            disabled={isClosed || saving === d.quarter}
+                            className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
                           >
                             <ArrowCounterClockwise size={16} weight="bold" /> Reset
                           </button>
                         )}
                       </div>
                     </div>
-                  </motion.div>
+                  </Motion.div>
                 );
               })}
-            </motion.div>
+            </Motion.div>
 
             {/* Collapsible History */}
             {history.length > 0 && (
@@ -483,7 +500,7 @@ export default function AdminDeadlines() {
 
                 <AnimatePresence initial={false}>
                   {historyOpen && (
-                    <motion.div
+                    <Motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
@@ -520,7 +537,7 @@ export default function AdminDeadlines() {
                           </tbody>
                         </table>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   )}
                 </AnimatePresence>
               </div>

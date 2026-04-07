@@ -3,6 +3,9 @@ import { useNavigate, Outlet } from 'react-router-dom';
 import axios from 'axios';
 import { AdminSidebar } from './AdminSidebar.jsx';
 import { AdminTopBar } from './AdminTopBar.jsx';
+import { mergeNotifications } from '../lib/notifications.js';
+import { auth } from '../lib/auth.js';
+import { SSE_INITIAL_RETRY_MS, SSE_MAX_RETRY_MS } from '../constants.js';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -13,24 +16,37 @@ export const AdminLayout = () => {
   const [deadline, setDeadline] = useState(null);
   const [notifications, setNotifications] = useState([]);
 
+  const redirectToLogin = useCallback(() => {
+    auth.clearSession();
+    navigate('/login', { replace: true });
+  }, [navigate]);
+
   useEffect(() => {
     axios.get(`${API}/api/admin/layout-info`, { withCredentials: true })
       .then(r => setDeadline({ daysLeft: r.data.daysLeft, currentQuarter: r.data.currentQuarter }))
-      .catch(() => {});
-  }, []);
+      .catch((err) => {
+        if (err?.response?.status === 401) {
+          redirectToLogin();
+          return;
+        }
+        console.warn('[layout-info]', err?.response?.status);
+      });
+  }, [redirectToLogin]);
 
   const fetchNotifications = useCallback(() => {
     axios.get(`${API}/api/notifications`, { withCredentials: true })
-      .then(r => setNotifications(r.data))
-      .catch(() => {});
-  }, []);
+      .then(r => setNotifications(mergeNotifications([], r.data)))
+      .catch(err => {
+        if (err?.response?.status === 401) redirectToLogin();
+      });
+  }, [redirectToLogin]);
 
   useEffect(() => {
     fetchNotifications();
 
     let abortController = null;
     let retryTimer = null;
-    let retryDelay = 2000;
+    let retryDelay = SSE_INITIAL_RETRY_MS;
     let dead = false;
 
     async function connect() {
@@ -46,13 +62,18 @@ export const AdminLayout = () => {
           },
         });
 
+        if (res.status === 401) {
+          dead = true;
+          redirectToLogin();
+          return;
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
 
-        retryDelay = 2000; // reset backoff on successful connect
+        retryDelay = SSE_INITIAL_RETRY_MS; // reset backoff on successful connect
 
         while (!dead) {
           const { done, value } = await reader.read();
@@ -66,7 +87,7 @@ export const AdminLayout = () => {
             if (line.startsWith('data: ')) {
               try {
                 const notif = JSON.parse(line.slice(6));
-                setNotifications(prev => [notif, ...prev]);
+                setNotifications(prev => mergeNotifications(prev, [notif]));
               } catch { /* malformed event — ignore */ }
             }
           }
@@ -74,7 +95,7 @@ export const AdminLayout = () => {
       } catch (err) {
         if (!dead && err.name !== 'AbortError') {
           retryTimer = setTimeout(() => {
-            retryDelay = Math.min(retryDelay * 2, 30_000);
+            retryDelay = Math.min(retryDelay * 2, SSE_MAX_RETRY_MS);
             connect();
           }, retryDelay);
         }
@@ -91,7 +112,7 @@ export const AdminLayout = () => {
       abortController?.abort();
       window.removeEventListener('focus', fetchNotifications);
     };
-  }, [fetchNotifications]);
+  }, [fetchNotifications, redirectToLogin]);
 
   const markOne = async (id) => {
     try {
@@ -107,9 +128,7 @@ export const AdminLayout = () => {
     } catch { /* silent */ }
   };
 
-  const user = (() => {
-    try { return JSON.parse(sessionStorage.getItem('user') || 'null'); } catch { return null; }
-  })();
+  const user = auth.getUser();
 
   const handleLogout = () => {
     navigate('/login', { replace: true });
