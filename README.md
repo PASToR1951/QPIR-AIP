@@ -2,7 +2,7 @@
 
 Web-based system for managing **Annual Implementation Plans (AIP)** and **Program Implementation Reviews (PIR)** for the DepEd Division of Guihulngan City.
 
-> **Version:** 1.0.11-alpha
+> **Version:** 1.0.0-beta — Beta Build
 
 ---
 
@@ -321,11 +321,12 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 
 ## Status
 
-Active alpha development — approaching beta.
+Active beta build.
 
-- Core workflows (AIP, PIR, dashboard) are complete and stable.
-- Admin panel is complete — users, schools, programs, deadlines, submissions, reports, backups, settings.
+- Core workflows (AIP, PIR, dashboard) are complete and ready for beta validation.
+- Admin panel is feature-complete — users, schools, clusters, programs, deadlines, submissions, reports, backups, settings, announcements, and logs.
 - PIR review pipeline (CES → Cluster → Admin) is complete.
-- OAuth SSO, notifications, announcements, audit logs, and privacy compliance are implemented.
+- OAuth SSO, HttpOnly cookie sessions, real-time notifications, announcements, audit logs, and privacy compliance are implemented.
+- School/cluster logo uploads, bundled cluster-logo fallbacks, CSV user import, and report/export workflows are included in the Beta Build.
 - API client centralization through `react-app/src/lib/api.js` is in progress; several frontend callers still use direct `axios` calls while the migration is being completed.
 - See internal `ROADMAP.md` and `TODO.md` for full milestone tracking.
