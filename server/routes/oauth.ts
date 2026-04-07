@@ -16,6 +16,7 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../db/client.ts";
 import { JWT_SECRET } from "../lib/config.ts";
 import { logger } from "../lib/logger.ts";
+import { tokenCookieOptions } from "../lib/sessionCookie.ts";
 import {
   generateCodeVerifier,
   generateCodeChallenge,
@@ -208,6 +209,7 @@ oauthRoutes.get('/microsoft', async (c) => {
       state,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
+      prompt: 'select_account',
     });
     return c.redirect(
       `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params}`,
@@ -274,13 +276,7 @@ oauthRoutes.get('/microsoft/callback', async (c) => {
 
     if (!result.ok) return c.redirect(`${fe}/login?error=${result.error}`);
 
-    setCookie(c, 'token', result.token, {
-      path: '/',
-      secure: Deno.env.get('NODE_ENV') !== 'development',
-      httpOnly: true,
-      maxAge: 86400,
-      sameSite: 'Lax',
-    });
+    setCookie(c, 'token', result.token, tokenCookieOptions(c));
     return c.redirect(`${fe}/oauth/callback`);
   } catch (err) {
     logger.error('Microsoft OAuth callback error', err);
@@ -307,6 +303,7 @@ oauthRoutes.get('/google', async (c) => {
       state,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
+      prompt: 'select_account',
       hd: 'deped.gov.ph', // Hint: restrict Google account picker to this domain
       access_type: 'online',
     });
@@ -369,13 +366,7 @@ oauthRoutes.get('/google/callback', async (c) => {
 
     if (!result.ok) return c.redirect(`${fe}/login?error=${result.error}`);
 
-    setCookie(c, 'token', result.token, {
-      path: '/',
-      secure: Deno.env.get('NODE_ENV') !== 'development',
-      httpOnly: true,
-      maxAge: 86400,
-      sameSite: 'Lax',
-    });
+    setCookie(c, 'token', result.token, tokenCookieOptions(c));
     return c.redirect(`${fe}/oauth/callback`);
   } catch (err) {
     logger.error('Google OAuth callback error', err);

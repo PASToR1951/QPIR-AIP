@@ -124,17 +124,20 @@ export default function Login() {
     const finalEmail = email.includes('@') ? email : `${email}@deped.gov.ph`;
 
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         email: finalEmail,
         password,
       }, { withCredentials: true });
 
-      const { expiresAt, user } = response.data;
-      auth.setSession(user, expiresAt);
+      const user = await auth.refreshSession();
       navigate(user.role === 'Admin' ? '/admin' : '/');
     } catch (err) {
       shakeCard();
-      setError(err.response?.data?.error || 'Failed to login. Check your credentials.');
+      setError(
+        err.message === 'SESSION_REFRESH_FAILED'
+          ? 'Sign-in reached the server, but this browser did not accept the session cookie. Please refresh and sign in again.'
+          : err.response?.data?.error || 'Failed to login. Check your credentials.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -253,11 +256,24 @@ export default function Login() {
           )}
 
           {/* ── Tab content — both always mounted, height driven by GSAP ── */}
-          <div ref={contentRef} className="relative overflow-hidden">
+          <div ref={contentRef} className="relative overflow-hidden -mx-1">
 
             {/* SSO panel */}
-            <div ref={ssoTabRef} className="space-y-3 absolute inset-x-0 top-0">
+            <div ref={ssoTabRef} className="space-y-3 absolute inset-x-0 top-0 p-1">
               {privacyNotice}
+              <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3 text-left shadow-sm dark:border-blue-900/50 dark:bg-blue-950/30">
+                <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300">
+                  <AlertCircle size={15} weight="fill" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-300">
+                    DepEd email only
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold leading-snug text-blue-800 dark:text-blue-200">
+                    Use an account ending in @deped.gov.ph. When asked to choose an account, select your DepEd email.
+                  </p>
+                </div>
+              </div>
               <a
                 href={consentChecked ? `${import.meta.env.VITE_API_URL}/api/auth/oauth/microsoft` : undefined}
                 aria-disabled={!consentChecked}
@@ -269,7 +285,7 @@ export default function Login() {
                   <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
                   <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
                 </svg>
-                Continue with Microsoft 365
+                Continue with DepEd Microsoft 365
               </a>
               <a
                 href={consentChecked ? `${import.meta.env.VITE_API_URL}/api/auth/oauth/google` : undefined}
@@ -282,12 +298,12 @@ export default function Login() {
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                 </svg>
-                Continue with Google (DepEd)
+                Continue with DepEd Google
               </a>
             </div>
 
             {/* Email panel */}
-            <form ref={emailTabRef} className="space-y-4 absolute inset-x-0 top-0" onSubmit={handleLogin}>
+            <form ref={emailTabRef} className="space-y-4 absolute inset-x-0 top-0 p-1" onSubmit={handleLogin}>
               <div className="space-y-3">
                 <Input
                   theme="indigo"

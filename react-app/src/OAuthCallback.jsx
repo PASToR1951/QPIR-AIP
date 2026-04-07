@@ -35,14 +35,9 @@ export default function OAuthCallback() {
       return;
     }
 
-    // Cookie is already set by the server — fetch user metadata via /me
-    fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, { credentials: 'include' })
-      .then((res) => {
-        if (!res.ok) throw new Error(`/me returned ${res.status}`);
-        return res.json();
-      })
-      .then(({ expiresAt, ...user }) => {
-        auth.setSession(user, expiresAt);
+    // Cookie is already set by the server, so confirm it before entering the app.
+    auth.refreshSession()
+      .then((user) => {
         navigate(roleToDashboard(user.role), { replace: true });
       })
       .catch(() => {

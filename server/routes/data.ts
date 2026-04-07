@@ -2052,6 +2052,15 @@ dataRoutes.get("/notifications/stream", async (c) => {
   const tokenUser = getUserFromToken(c);
   if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
 
+  // streamSSE builds its Response before Hono's cors() middleware can inject
+  // CORS headers, so we must set them explicitly here.
+  const requestOrigin = c.req.header("Origin");
+  const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "http://localhost:5173";
+  if (requestOrigin === allowedOrigin) {
+    c.header("Access-Control-Allow-Origin", allowedOrigin);
+    c.header("Access-Control-Allow-Credentials", "true");
+  }
+
   return streamSSE(c, async (stream) => {
     const unsubscribe = subscribe(tokenUser.id, (notif) => {
       stream.writeSSE({ event: "notification", data: JSON.stringify(notif) }).catch(() => {});

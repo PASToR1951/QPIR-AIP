@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { NotePencil, Table, LockKey as Lock, Warning as AlertTriangle, CaretCircleRight } from '@phosphor-icons/react';
+import { auth } from './lib/auth';
+import { getFriendlyError } from './lib/errorMessages.js';
 import { DashboardHeader } from './components/ui/DashboardHeader';
 import { AnnouncementBanner } from './components/ui/AnnouncementBanner';
 import Footer from './components/ui/Footer';
@@ -22,11 +24,17 @@ export default function Dashboard() {
   const [aipStatus, setAipStatus] = useState('none');
   const [dashboardData, setDashboardData] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState('');
 
   useEffect(() => {
     const fetchDashboard = async () => {
-      if (!user?.id) return;
+      if (!user?.id) {
+        setDashboardLoading(false);
+        setDashboardError('Your session was not ready. Please sign in again.');
+        return;
+      }
       setDashboardLoading(true);
+      setDashboardError('');
       try {
         // Fetch aggregated dashboard stats
         const dashRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard`, {
@@ -50,12 +58,21 @@ export default function Dashboard() {
         }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
+        if (error.response?.status === 401) {
+          void auth.clearSession();
+          navigate('/login?message=' + encodeURIComponent('Your session has expired. Please sign in again.'), { replace: true });
+          return;
+        }
+        setDashboardError(getFriendlyError(
+          error.response?.data?.error,
+          'Dashboard data could not be loaded. Please refresh and try again.'
+        ));
       } finally {
         setDashboardLoading(false);
       }
     };
     fetchDashboard();
-  }, [user?.id]);
+  }, [navigate, user?.id]);
 
   const hasAIP = dashboardData ? dashboardData.aipCompletion.completed > 0 : false;
 
@@ -136,7 +153,13 @@ export default function Dashboard() {
         </div>
 
         {/* Stats + Quarter Timeline */}
-        <DashboardStats data={dashboardData} loading={dashboardLoading} />
+        {dashboardError ? (
+          <div className="mb-6 rounded-2xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 px-5 py-4 text-sm font-semibold text-rose-700 dark:text-rose-300">
+            {dashboardError}
+          </div>
+        ) : (
+          <DashboardStats data={dashboardData} loading={dashboardLoading} />
+        )}
 
         {/* Modules Section */}
         <div className="flex items-center justify-between mb-8 px-2 mt-4">

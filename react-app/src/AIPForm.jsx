@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 
+import { auth } from './lib/auth';
 import { getFriendlyError } from './lib/errorMessages.js';
 import { Input } from './components/ui/Input';
 import { Select } from './components/ui/Select';
@@ -208,6 +209,19 @@ export default function App() {
                     const pdata = programsRes.value.data;
                     setProgramList(pdata.map(p => p.title).sort());
                     setProgramAbbreviations(Object.fromEntries(pdata.filter(p => p.abbreviation).map(p => [p.title, p.abbreviation])));
+                } else {
+                    const status = programsRes.reason?.response?.status;
+                    if (status === 401) {
+                        void auth.clearSession();
+                        navigate('/login?message=' + encodeURIComponent('Your session has expired. Please sign in again.'), { replace: true });
+                        return;
+                    }
+                    setLoadError(getFriendlyError(
+                        programsRes.reason?.response?.data?.error,
+                        status === 403
+                            ? 'You do not have permission to load programs for this account.'
+                            : 'Programs could not be loaded. Please refresh and try again.'
+                    ));
                 }
                 if (completedRes.status === 'fulfilled') {
                     const data = completedRes.value.data;
@@ -223,7 +237,7 @@ export default function App() {
             }
         };
         init();
-    }, []);
+    }, [navigate, user?.id, user?.school_id]);
 
     // Called when the user picks program + mode in the splash
     const handleStart = async (mode, selectedProgram, opts = {}) => {

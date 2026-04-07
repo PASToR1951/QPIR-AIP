@@ -6,6 +6,7 @@ import { prisma } from "../db/client.ts";
 import { JWT_SECRET } from "../lib/config.ts";
 import { logger } from "../lib/logger.ts";
 import { getUserFromToken } from "../lib/auth.ts";
+import { clearTokenCookieOptions, tokenCookieOptions } from "../lib/sessionCookie.ts";
 
 const authRoutes = new Hono();
 
@@ -53,7 +54,7 @@ authRoutes.post('/login', async (c) => {
   try {
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { school: true }
+      include: { school: { include: { cluster: true } }, cluster: true },
     });
     if (!user || !user.is_active || !user.password) {
       // Also reject OAuth-only accounts (no password set) — they must use SSO
@@ -87,13 +88,7 @@ authRoutes.post('/login', async (c) => {
     );
 
     // Set HttpOnly cookie
-    setCookie(c, 'token', token, {
-      path: '/',
-      secure: process.env.NODE_ENV !== 'development', // Uses Secure flag in production/https
-      httpOnly: true,
-      maxAge: 86400,
-      sameSite: 'Lax',
-    });
+    setCookie(c, 'token', token, tokenCookieOptions(c));
 
     return c.json({
       message: 'Login successful',
@@ -104,6 +99,10 @@ authRoutes.post('/login', async (c) => {
         role: user.role,
         school_id: user.school_id,
         school_name: user.school?.name,
+        cluster_id: user.cluster_id ?? user.school?.cluster_id ?? null,
+        cluster_number: user.cluster?.cluster_number ?? user.school?.cluster?.cluster_number ?? null,
+        cluster_logo: user.cluster?.logo ?? user.school?.cluster?.logo ?? null,
+        school_logo: user.school?.logo ?? null,
         name: user.name,
         first_name: user.first_name,
         middle_initial: user.middle_initial,
@@ -117,7 +116,7 @@ authRoutes.post('/login', async (c) => {
 });
 
 authRoutes.post('/logout', (c) => {
-  deleteCookie(c, 'token', { path: '/' });
+  deleteCookie(c, 'token', clearTokenCookieOptions(c));
   return c.json({ message: 'Logged out' });
 });
 
@@ -131,7 +130,7 @@ authRoutes.get('/me', async (c) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: tokenUser.id },
-      include: { school: true },
+      include: { school: { include: { cluster: true } }, cluster: true },
     });
     if (!user || !user.is_active) return c.json({ error: 'Unauthorized' }, 401);
 
@@ -154,7 +153,10 @@ authRoutes.get('/me', async (c) => {
       last_name: user.last_name,
       school_id: user.school_id,
       school_name: user.school?.name ?? null,
-      cluster_id: user.cluster_id ?? null,
+      cluster_id: user.cluster_id ?? user.school?.cluster_id ?? null,
+      cluster_number: user.cluster?.cluster_number ?? user.school?.cluster?.cluster_number ?? null,
+      cluster_logo: user.cluster?.logo ?? user.school?.cluster?.logo ?? null,
+      school_logo: user.school?.logo ?? null,
       expiresAt,
     });
   } catch (error) {
