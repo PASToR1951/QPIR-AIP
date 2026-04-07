@@ -21,6 +21,7 @@ model Cluster {
   id             Int      @id @default(autoincrement())
   cluster_number Int      @unique
   name           String
+  logo           String?  // Uploaded cluster logo path. Null = use bundled cluster logo.
 
   // Relations
   schools           School[]
@@ -33,8 +34,9 @@ model School {
   id           Int     @id @default(autoincrement())
   name         String
   abbreviation String? // Short name / acronym, e.g. "SNES"
-  level        String  // "Elementary", "Secondary", "Both"
+  level        String  // "Elementary", "Secondary"
   cluster_id   Int
+  logo         String? // Uploaded school logo path. Null = use cluster logo.
   
   // Relations
   cluster    Cluster  @relation(fields: [cluster_id], references: [id], onDelete: Cascade)

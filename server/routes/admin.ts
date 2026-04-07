@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import bcrypt from "bcrypt";
 import * as XLSX from "xlsx";
-import { getCESRoleForDivisionPIR, CES_ROLES } from "../lib/routing.ts";
+import { CES_ROLES, getCESRoleForDivisionPIR } from "../lib/routing.ts";
 import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
 import { logger } from "../lib/logger.ts";
 import { pushNotification, pushNotifications } from "../lib/notifStream.ts";
@@ -13,6 +13,65 @@ const adminRoutes = new Hono();
 
 import type { Context } from "hono";
 
+const QUARTERS_PER_YEAR = 4;
+const MONTHS_PER_QUARTER = 12 / QUARTERS_PER_YEAR;
+const SCHOOL_LOGO_DIR = "./public/school-logos";
+const CLUSTER_LOGO_DIR = "./public/cluster-logos";
+const LOGO_MIME_EXTENSIONS: Record<string, string> = {
+  "image/webp": "webp",
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+};
+const LOGO_EXTENSIONS = ["webp", "png", "jpg", "jpeg", "gif"];
+const SCHOOL_LEVELS = new Set(["Elementary", "Secondary"]);
+
+function parsePositiveInt(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function getQuarterNumbers(): number[] {
+  return Array.from({ length: QUARTERS_PER_YEAR }, (_, i) => i + 1);
+}
+
+function isValidQuarter(quarter: unknown): quarter is number {
+  return Number.isInteger(quarter) &&
+    (quarter as number) >= 1 &&
+    (quarter as number) <= QUARTERS_PER_YEAR;
+}
+
+function buildDefaultDeadline(year: number, quarter: number): Date {
+  const endMonth = quarter * MONTHS_PER_QUARTER;
+  return new Date(year, endMonth, 0, 23, 59, 59, 999);
+}
+
+function endOfDeadlineDay(date: Date | string): Date {
+  const deadlineDate = new Date(date);
+  deadlineDate.setHours(23, 59, 59, 999);
+  return deadlineDate;
+}
+
+async function removeExistingLogoFiles(dir: string, entityId: number) {
+  await Promise.all(
+    LOGO_EXTENSIONS.map(async (extension) => {
+      try {
+        await Deno.remove(`${dir}/${entityId}.${extension}`);
+      } catch {
+        // Missing files are fine; this is cleanup before replacing or removing a logo.
+      }
+    }),
+  );
+}
+
+async function removeExistingSchoolLogos(schoolId: number) {
+  await removeExistingLogoFiles(SCHOOL_LOGO_DIR, schoolId);
+}
+
+async function removeExistingClusterLogos(clusterId: number) {
+  await removeExistingLogoFiles(CLUSTER_LOGO_DIR, clusterId);
+}
+
 function requireAdmin(c: Context | string | undefined): TokenPayload | null {
   const user = getUserFromToken(c);
   if (!user || user.role !== "Admin") return null;
@@ -21,11 +80,15 @@ function requireAdmin(c: Context | string | undefined): TokenPayload | null {
 
 function requireCES(c: Context | string | undefined): TokenPayload | null {
   const user = getUserFromToken(c);
-  if (!user || !(CES_ROLES as readonly string[]).includes(user.role)) return null;
+  if (!user || !(CES_ROLES as readonly string[]).includes(user.role)) {
+    return null;
+  }
   return user;
 }
 
-function requireClusterHead(c: Context | string | undefined): TokenPayload | null {
+function requireClusterHead(
+  c: Context | string | undefined,
+): TokenPayload | null {
   const user = getUserFromToken(c);
   if (!user || user.role !== "Cluster Coordinator") return null;
   return user;
@@ -37,22 +100,33 @@ async function writeAuditLog(
   entityType: string,
   entityId: number,
   // deno-lint-ignore no-explicit-any
-  details: Record<string, unknown>
+  details: Record<string, unknown>,
 ) {
   await prisma.auditLog.create({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    data: { admin_id: adminId, action, entity_type: entityType, entity_id: entityId, details: details as any },
+    data: {
+      admin_id: adminId,
+      action,
+      entity_type: entityType,
+      entity_id: entityId,
+      details: details as any,
+    },
   });
 }
 
-function buildSubmittedBy(u: {
-  role?: string | null;
-  first_name?: string | null;
-  middle_initial?: string | null;
-  last_name?: string | null;
-  name?: string | null;
-  email?: string | null;
-} | null | undefined): string {
+function buildSubmittedBy(
+  u:
+    | {
+      role?: string | null;
+      first_name?: string | null;
+      middle_initial?: string | null;
+      last_name?: string | null;
+      name?: string | null;
+      email?: string | null;
+    }
+    | null
+    | undefined,
+): string {
   if (!u) return "—";
   if (u.role === "Division Personnel" && u.first_name && u.last_name) {
     const mi = u.middle_initial ? ` ${u.middle_initial}.` : "";
@@ -79,25 +153,33 @@ function toXLSX(rows: Record<string, unknown>[], sheetName = "Sheet1"): Buffer {
 
 // Wrap every admin handler with auth check
 // GET /admin/pirs — list submitted PIRs (Admin + CES + Cluster Coordinator)
-adminRoutes.get('/pirs', async (c) => {
+adminRoutes.get("/pirs", async (c) => {
   const tokenUser = getUserFromToken(c);
-  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
-  const readableRoles = ['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'];
+  if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
+  const readableRoles = [
+    "Admin",
+    "CES-SGOD",
+    "CES-ASDS",
+    "CES-CID",
+    "Cluster Coordinator",
+  ];
   if (!readableRoles.includes(tokenUser.role)) {
-    return c.json({ error: 'Forbidden' }, 403);
+    return c.json({ error: "Forbidden" }, 403);
   }
 
-  const quarter = c.req.query('quarter');
+  const quarter = c.req.query("quarter");
   const pirs = await prisma.pIR.findMany({
     where: {
-      status: { not: 'Draft' },
+      status: { not: "Draft" },
       ...(quarter ? { quarter } : {}),
     },
     include: {
       aip: { include: { program: true, school: true } },
-      created_by: { select: { name: true, first_name: true, last_name: true, email: true } },
+      created_by: {
+        select: { name: true, first_name: true, last_name: true, email: true },
+      },
     },
-    orderBy: { created_at: 'desc' },
+    orderBy: { created_at: "desc" },
   });
 
   return c.json(pirs.map((p: any) => ({
@@ -105,25 +187,34 @@ adminRoutes.get('/pirs', async (c) => {
     quarter: p.quarter,
     status: p.status,
     program: p.aip.program.title,
-    school: p.aip.school?.name ?? 'Division',
+    school: p.aip.school?.name ?? "Division",
     owner: p.program_owner,
     submittedAt: p.created_at,
     submittedBy: p.created_by
-      ? (p.created_by.name ?? [p.created_by.first_name, p.created_by.last_name].filter(Boolean).join(' '))
+      ? (p.created_by.name ??
+        [p.created_by.first_name, p.created_by.last_name].filter(Boolean).join(
+          " ",
+        ))
       : null,
   })));
 });
 
 // GET /admin/pirs/:id — single PIR with full data (Admin + Reviewer + CES + Cluster Coordinator)
-adminRoutes.get('/pirs/:id', async (c) => {
+adminRoutes.get("/pirs/:id", async (c) => {
   const tokenUser = getUserFromToken(c);
-  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
-  const readableRoles = ['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator'];
+  if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
+  const readableRoles = [
+    "Admin",
+    "CES-SGOD",
+    "CES-ASDS",
+    "CES-CID",
+    "Cluster Coordinator",
+  ];
   if (!readableRoles.includes(tokenUser.role)) {
-    return c.json({ error: 'Forbidden' }, 403);
+    return c.json({ error: "Forbidden" }, 403);
   }
 
-  const pirId = safeParseInt(c.req.param('id'), 0);
+  const pirId = safeParseInt(c.req.param("id"), 0);
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
     include: {
@@ -133,14 +224,14 @@ adminRoutes.get('/pirs/:id', async (c) => {
       ces_reviewer: { select: { name: true, role: true } },
     },
   });
-  if (!pir) return c.json({ error: 'PIR not found' }, 404);
+  if (!pir) return c.json({ error: "PIR not found" }, 404);
 
   const factorsMap: Record<string, any> = {};
   for (const f of pir.factors) {
     factorsMap[f.factor_type] = {
       facilitating: f.facilitating_factors,
       hindering: f.hindering_factors,
-      recommendations: (f as any).recommendations ?? '',
+      recommendations: (f as any).recommendations ?? "",
     };
   }
 
@@ -149,7 +240,7 @@ adminRoutes.get('/pirs/:id', async (c) => {
     quarter: pir.quarter,
     status: pir.status,
     program: (pir as any).aip.program.title,
-    school: (pir as any).aip.school?.name ?? 'Division',
+    school: (pir as any).aip.school?.name ?? "Division",
     owner: pir.program_owner,
     budgetFromDivision: (pir as any).budget_from_division,
     budgetFromCoPSF: (pir as any).budget_from_co_psf,
@@ -162,20 +253,20 @@ adminRoutes.get('/pirs/:id', async (c) => {
     adminRemarks: (pir as any).remarks ?? null,
     activities: pir.activity_reviews.map((r: any) => ({
       id: r.id,
-      name: r.aip_activity?.activity_name ?? '',
-      implementation_period: r.aip_activity?.implementation_period ?? '',
+      name: r.aip_activity?.activity_name ?? "",
+      implementation_period: r.aip_activity?.implementation_period ?? "",
       complied: r.complied,
-      actualTasksConducted: r.actual_tasks_conducted ?? '',
-      contributoryIndicators: r.contributory_performance_indicators ?? '',
-      movsExpectedOutputs: r.movs_expected_outputs ?? '',
-      adjustments: r.adjustments ?? '',
+      actualTasksConducted: r.actual_tasks_conducted ?? "",
+      contributoryIndicators: r.contributory_performance_indicators ?? "",
+      movsExpectedOutputs: r.movs_expected_outputs ?? "",
+      adjustments: r.adjustments ?? "",
       isUnplanned: r.is_unplanned ?? false,
       physTarget: r.physical_target,
       finTarget: r.financial_target,
       physAcc: r.physical_accomplished,
       finAcc: r.financial_accomplished,
-      actions: r.actions_to_address_gap ?? '',
-      adminNotes: r.admin_notes ?? '',
+      actions: r.actions_to_address_gap ?? "",
+      adminNotes: r.admin_notes ?? "",
     })),
     factors: factorsMap,
   });
@@ -185,36 +276,43 @@ adminRoutes.get('/pirs/:id', async (c) => {
 // CES REVIEW ROUTES (before admin middleware)
 // ==========================================
 
-adminRoutes.get('/ces/pirs', async (c) => {
+adminRoutes.get("/ces/pirs", async (c) => {
   const tokenUser = requireCES(c);
-  if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
+  if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-  const quarter = c.req.query('quarter');
+  const quarter = c.req.query("quarter");
 
   // CES-CID sees: division PIRs with CID division + Cluster Coordinator's own PIRs (no school_id)
   const cesFilter: Record<string, any> = {
-    'CES-SGOD': { aip: { school_id: null, program: { division: 'SGOD' } } },
-    'CES-ASDS': { aip: { school_id: null, program: { division: 'OSDS' } } },
-    'CES-CID':  { aip: { school_id: null }, OR: [
-      { aip: { program: { division: 'CID' } } },
-      { aip: { created_by: { role: 'Cluster Coordinator' } } },
-    ]},
+    "CES-SGOD": { aip: { school_id: null, program: { division: "SGOD" } } },
+    "CES-ASDS": { aip: { school_id: null, program: { division: "OSDS" } } },
+    "CES-CID": {
+      aip: { school_id: null },
+      OR: [
+        { aip: { program: { division: "CID" } } },
+        { aip: { created_by: { role: "Cluster Coordinator" } } },
+      ],
+    },
   };
 
   const roleFilter = cesFilter[tokenUser.role] ?? {};
 
   const pirs = await prisma.pIR.findMany({
     where: {
-      status: { in: ['For CES Review', 'Under Review'] },
+      status: { in: ["For CES Review", "Under Review"] },
       ...roleFilter,
       ...(quarter ? { quarter } : {}),
     },
     include: {
       aip: { include: { program: true, school: true } },
-      created_by: { select: { name: true, first_name: true, last_name: true, email: true } },
-      active_reviewer: { select: { name: true, first_name: true, last_name: true, email: true } },
+      created_by: {
+        select: { name: true, first_name: true, last_name: true, email: true },
+      },
+      active_reviewer: {
+        select: { name: true, first_name: true, last_name: true, email: true },
+      },
     },
-    orderBy: { created_at: 'desc' },
+    orderBy: { created_at: "desc" },
   });
 
   return c.json(pirs.map((p: any) => ({
@@ -222,78 +320,84 @@ adminRoutes.get('/ces/pirs', async (c) => {
     quarter: p.quarter,
     status: p.status,
     program: p.aip.program.title,
-    school: p.aip.school?.name ?? 'Division',
+    school: p.aip.school?.name ?? "Division",
     owner: p.program_owner,
     functionalDivision: p.functional_division,
     submittedAt: p.created_at,
     submittedBy: buildSubmittedBy(p.created_by),
-    activeReviewerName: p.active_reviewer ? buildSubmittedBy(p.active_reviewer) : null,
+    activeReviewerName: p.active_reviewer
+      ? buildSubmittedBy(p.active_reviewer)
+      : null,
     activeReviewStartedAt: p.active_review_started_at ?? null,
   })));
 });
 
-adminRoutes.post('/ces/pirs/:id/start-review', async (c) => {
+adminRoutes.post("/ces/pirs/:id/start-review", async (c) => {
   const tokenUser = requireCES(c);
-  if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
+  if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-  const pirId = safeParseInt(c.req.param('id'), 0);
+  const pirId = safeParseInt(c.req.param("id"), 0);
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
     include: { aip: { include: { program: true } } },
   });
-  if (!pir) return c.json({ error: 'PIR not found' }, 404);
-  if (!['For CES Review', 'Under Review'].includes((pir as any).status)) {
-    return c.json({ error: 'PIR is not in a reviewable state' }, 409);
+  if (!pir) return c.json({ error: "PIR not found" }, 404);
+  if (!["For CES Review", "Under Review"].includes((pir as any).status)) {
+    return c.json({ error: "PIR is not in a reviewable state" }, 409);
   }
   const updated = await prisma.pIR.updateMany({
     where: { id: pirId, active_reviewer_id: null },
     data: {
-      status: 'Under Review',
+      status: "Under Review",
       active_reviewer_id: tokenUser.id,
       active_review_started_at: new Date(),
     },
   });
-  if (updated.count === 0) return c.json({ error: 'PIR is already under review' }, 409);
+  if (updated.count === 0) {
+    return c.json({ error: "PIR is already under review" }, 409);
+  }
   if ((pir as any).created_by_user_id) {
     const notif = await prisma.notification.create({
       data: {
         user_id: (pir as any).created_by_user_id,
-        title: 'PIR Under Review',
-        message: `Your PIR for ${(pir as any).aip.program.title} (${(pir as any).quarter}) is now under review.`,
-        type: 'under_review',
+        title: "PIR Under Review",
+        message: `Your PIR for ${(pir as any).aip.program.title} (${
+          (pir as any).quarter
+        }) is now under review.`,
+        type: "under_review",
         entity_id: (pir as any).id,
-        entity_type: 'pir',
+        entity_type: "pir",
       },
     });
     pushNotification(notif);
   }
-  await writeAuditLog(tokenUser.id, 'started_pir_review', 'PIR', pirId, {});
+  await writeAuditLog(tokenUser.id, "started_pir_review", "PIR", pirId, {});
   return c.json({ success: true });
 });
 
-adminRoutes.post('/ces/pirs/:id/note', async (c) => {
+adminRoutes.post("/ces/pirs/:id/note", async (c) => {
   const tokenUser = requireCES(c);
-  if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
+  if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-  const pirId = safeParseInt(c.req.param('id'), 0);
+  const pirId = safeParseInt(c.req.param("id"), 0);
   const { ces_remarks } = sanitizeObject(await c.req.json());
   if (ces_remarks && ces_remarks.length > 5000) {
-    return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
+    return c.json({ error: "Remarks cannot exceed 5000 characters" }, 400);
   }
 
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
     include: { aip: { include: { program: true, school: true } } },
   });
-  if (!pir) return c.json({ error: 'PIR not found' }, 404);
-  if (!['For CES Review', 'Under Review'].includes((pir as any).status)) {
-    return c.json({ error: 'PIR is not pending CES review' }, 409);
+  if (!pir) return c.json({ error: "PIR not found" }, 404);
+  if (!["For CES Review", "Under Review"].includes((pir as any).status)) {
+    return c.json({ error: "PIR is not pending CES review" }, 409);
   }
 
   const updated = await prisma.pIR.update({
     where: { id: pirId },
     data: {
-      status: 'Approved',
+      status: "Approved",
       active_reviewer_id: null,
       active_review_started_at: null,
       ces_reviewer_id: tokenUser.id,
@@ -309,43 +413,47 @@ adminRoutes.post('/ces/pirs/:id/note', async (c) => {
     const notif = await prisma.notification.create({
       data: {
         user_id: (pir as any).created_by_user_id,
-        title: 'PIR Approved',
-        message: `Your PIR for ${programTitle} (${(pir as any).quarter}) has been noted and approved by CES.`,
-        type: 'approved',
+        title: "PIR Approved",
+        message: `Your PIR for ${programTitle} (${
+          (pir as any).quarter
+        }) has been noted and approved by CES.`,
+        type: "approved",
         entity_id: (pir as any).id,
-        entity_type: 'pir',
+        entity_type: "pir",
       },
     });
     pushNotification(notif);
   }
 
-  await writeAuditLog(tokenUser.id, 'ces_noted_pir', 'PIR', pirId, { ces_remarks: ces_remarks ?? null });
+  await writeAuditLog(tokenUser.id, "ces_noted_pir", "PIR", pirId, {
+    ces_remarks: ces_remarks ?? null,
+  });
   return c.json({ success: true, pir: updated });
 });
 
-adminRoutes.post('/ces/pirs/:id/return', async (c) => {
+adminRoutes.post("/ces/pirs/:id/return", async (c) => {
   const tokenUser = requireCES(c);
-  if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
+  if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-  const pirId = safeParseInt(c.req.param('id'), 0);
+  const pirId = safeParseInt(c.req.param("id"), 0);
   const { ces_remarks } = sanitizeObject(await c.req.json());
   if (ces_remarks && ces_remarks.length > 5000) {
-    return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
+    return c.json({ error: "Remarks cannot exceed 5000 characters" }, 400);
   }
 
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
     include: { aip: { include: { program: true, school: true } } },
   });
-  if (!pir) return c.json({ error: 'PIR not found' }, 404);
-  if (!['For CES Review', 'Under Review'].includes((pir as any).status)) {
-    return c.json({ error: 'PIR is not pending CES review' }, 409);
+  if (!pir) return c.json({ error: "PIR not found" }, 404);
+  if (!["For CES Review", "Under Review"].includes((pir as any).status)) {
+    return c.json({ error: "PIR is not pending CES review" }, 409);
   }
 
   await prisma.pIR.update({
     where: { id: pirId },
     data: {
-      status: 'Returned',
+      status: "Returned",
       active_reviewer_id: null,
       active_review_started_at: null,
       ces_reviewer_id: tokenUser.id,
@@ -359,17 +467,23 @@ adminRoutes.post('/ces/pirs/:id/return', async (c) => {
     const notif = await prisma.notification.create({
       data: {
         user_id: (pir as any).created_by_user_id,
-        title: 'PIR Returned by CES',
-        message: `Your PIR for ${programTitle} (${(pir as any).quarter}) was returned by CES.${ces_remarks ? ` Feedback: ${ces_remarks}` : ''}`,
-        type: 'returned',
+        title: "PIR Returned by CES",
+        message: `Your PIR for ${programTitle} (${
+          (pir as any).quarter
+        }) was returned by CES.${
+          ces_remarks ? ` Feedback: ${ces_remarks}` : ""
+        }`,
+        type: "returned",
         entity_id: (pir as any).id,
-        entity_type: 'pir',
+        entity_type: "pir",
       },
     });
     pushNotification(notif);
   }
 
-  await writeAuditLog(tokenUser.id, 'ces_returned_pir', 'PIR', pirId, { ces_remarks: ces_remarks ?? null });
+  await writeAuditLog(tokenUser.id, "ces_returned_pir", "PIR", pirId, {
+    ces_remarks: ces_remarks ?? null,
+  });
   return c.json({ success: true });
 });
 
@@ -377,23 +491,29 @@ adminRoutes.post('/ces/pirs/:id/return', async (c) => {
 // CLUSTER HEAD REVIEW ROUTES (before admin middleware)
 // ==========================================
 
-adminRoutes.get('/cluster-head/pirs', async (c) => {
+adminRoutes.get("/cluster-head/pirs", async (c) => {
   const tokenUser = requireClusterHead(c);
-  if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
+  if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-  const quarter = c.req.query('quarter');
+  const quarter = c.req.query("quarter");
   const pirs = await prisma.pIR.findMany({
     where: {
-      status: { in: ['For Cluster Head Review', 'Under Review'] },
+      status: { in: ["For Cluster Head Review", "Under Review"] },
       aip: { school: { cluster_id: tokenUser.cluster_id ?? -1 } },
       ...(quarter ? { quarter } : {}),
     },
     include: {
-      aip: { include: { program: true, school: { include: { cluster: true } } } },
-      created_by: { select: { name: true, first_name: true, last_name: true, email: true } },
-      active_reviewer: { select: { name: true, first_name: true, last_name: true, email: true } },
+      aip: {
+        include: { program: true, school: { include: { cluster: true } } },
+      },
+      created_by: {
+        select: { name: true, first_name: true, last_name: true, email: true },
+      },
+      active_reviewer: {
+        select: { name: true, first_name: true, last_name: true, email: true },
+      },
     },
-    orderBy: { created_at: 'desc' },
+    orderBy: { created_at: "desc" },
   });
 
   return c.json(pirs.map((p: any) => ({
@@ -401,85 +521,101 @@ adminRoutes.get('/cluster-head/pirs', async (c) => {
     quarter: p.quarter,
     status: p.status,
     program: p.aip.program.title,
-    school: p.aip.school?.name ?? '—',
-    cluster: p.aip.school?.cluster ? `Cluster ${p.aip.school.cluster.cluster_number}` : '—',
+    school: p.aip.school?.name ?? "—",
+    cluster: p.aip.school?.cluster
+      ? `Cluster ${p.aip.school.cluster.cluster_number}`
+      : "—",
     owner: p.program_owner,
     submittedAt: p.created_at,
     submittedBy: buildSubmittedBy(p.created_by),
-    activeReviewerName: p.active_reviewer ? buildSubmittedBy(p.active_reviewer) : null,
+    activeReviewerName: p.active_reviewer
+      ? buildSubmittedBy(p.active_reviewer)
+      : null,
     activeReviewStartedAt: p.active_review_started_at ?? null,
   })));
 });
 
-adminRoutes.post('/cluster-head/pirs/:id/start-review', async (c) => {
+adminRoutes.post("/cluster-head/pirs/:id/start-review", async (c) => {
   const tokenUser = requireClusterHead(c);
-  if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
+  if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-  const pirId = safeParseInt(c.req.param('id'), 0);
+  const pirId = safeParseInt(c.req.param("id"), 0);
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
     include: { aip: { include: { program: true, school: true } } },
   });
-  if (!pir) return c.json({ error: 'PIR not found' }, 404);
-  if (!['For Cluster Head Review', 'Under Review'].includes((pir as any).status)) {
-    return c.json({ error: 'PIR is not in a reviewable state' }, 409);
+  if (!pir) return c.json({ error: "PIR not found" }, 404);
+  if (
+    !["For Cluster Head Review", "Under Review"].includes((pir as any).status)
+  ) {
+    return c.json({ error: "PIR is not in a reviewable state" }, 409);
   }
   if ((pir as any).aip.school?.cluster_id !== tokenUser.cluster_id) {
-    return c.json({ error: 'Forbidden' }, 403);
+    return c.json({ error: "Forbidden" }, 403);
   }
   const updated = await prisma.pIR.updateMany({
     where: { id: pirId, active_reviewer_id: null },
     data: {
-      status: 'Under Review',
+      status: "Under Review",
       active_reviewer_id: tokenUser.id,
       active_review_started_at: new Date(),
     },
   });
-  if (updated.count === 0) return c.json({ error: 'PIR is already under review' }, 409);
+  if (updated.count === 0) {
+    return c.json({ error: "PIR is already under review" }, 409);
+  }
   if ((pir as any).created_by_user_id) {
     const notif = await prisma.notification.create({
       data: {
         user_id: (pir as any).created_by_user_id,
-        title: 'PIR Under Review',
-        message: `Your PIR for ${(pir as any).aip.program.title} (${(pir as any).quarter}) is now under review.`,
-        type: 'under_review',
+        title: "PIR Under Review",
+        message: `Your PIR for ${(pir as any).aip.program.title} (${
+          (pir as any).quarter
+        }) is now under review.`,
+        type: "under_review",
         entity_id: (pir as any).id,
-        entity_type: 'pir',
+        entity_type: "pir",
       },
     });
     pushNotification(notif);
   }
-  await writeAuditLog(tokenUser.id, 'started_pir_review', 'PIR', pirId, {});
+  await writeAuditLog(tokenUser.id, "started_pir_review", "PIR", pirId, {});
   return c.json({ success: true });
 });
 
-adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
+adminRoutes.post("/cluster-head/pirs/:id/note", async (c) => {
   const tokenUser = requireClusterHead(c);
-  if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
+  if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-  const pirId = safeParseInt(c.req.param('id'), 0);
+  const pirId = safeParseInt(c.req.param("id"), 0);
   const { remarks } = sanitizeObject(await c.req.json());
   if (remarks && remarks.length > 5000) {
-    return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
+    return c.json({ error: "Remarks cannot exceed 5000 characters" }, 400);
   }
 
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
-    include: { aip: { include: { program: true, school: { include: { cluster: true } } } } },
+    include: {
+      aip: {
+        include: { program: true, school: { include: { cluster: true } } },
+      },
+    },
   });
-  if (!pir) return c.json({ error: 'PIR not found' }, 404);
-  if (!['For Cluster Head Review', 'Under Review'].includes((pir as any).status)) {
-    return c.json({ error: 'PIR is not pending Cluster Head review' }, 409);
+  if (!pir) return c.json({ error: "PIR not found" }, 404);
+  if (
+    !["For Cluster Head Review", "Under Review"].includes((pir as any).status)
+  ) {
+    return c.json({ error: "PIR is not pending Cluster Head review" }, 409);
   }
   // Confirm this PIR belongs to the coordinator's cluster
   if ((pir as any).aip.school?.cluster_id !== tokenUser.cluster_id) {
-    return c.json({ error: 'Forbidden' }, 403);
+    return c.json({ error: "Forbidden" }, 403);
   }
 
   await prisma.pIR.update({
     where: { id: pirId },
     data: {
-      status: 'Approved',
+      status: "Approved",
       active_reviewer_id: null,
       active_review_started_at: null,
       ces_reviewer_id: tokenUser.id,
@@ -493,46 +629,54 @@ adminRoutes.post('/cluster-head/pirs/:id/note', async (c) => {
     const notif = await prisma.notification.create({
       data: {
         user_id: (pir as any).created_by_user_id,
-        title: 'PIR Approved',
-        message: `Your PIR for ${programTitle} (${(pir as any).quarter}) has been noted and approved by the Cluster Head.`,
-        type: 'approved',
+        title: "PIR Approved",
+        message: `Your PIR for ${programTitle} (${
+          (pir as any).quarter
+        }) has been noted and approved by the Cluster Head.`,
+        type: "approved",
         entity_id: (pir as any).id,
-        entity_type: 'pir',
+        entity_type: "pir",
       },
     });
     pushNotification(notif);
   }
 
-  await writeAuditLog(tokenUser.id, 'cluster_head_noted_pir', 'PIR', pirId, { remarks: remarks ?? null });
+  await writeAuditLog(tokenUser.id, "cluster_head_noted_pir", "PIR", pirId, {
+    remarks: remarks ?? null,
+  });
   return c.json({ success: true });
 });
 
-adminRoutes.post('/cluster-head/pirs/:id/return', async (c) => {
+adminRoutes.post("/cluster-head/pirs/:id/return", async (c) => {
   const tokenUser = requireClusterHead(c);
-  if (!tokenUser) return c.json({ error: 'Forbidden' }, 403);
+  if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-  const pirId = safeParseInt(c.req.param('id'), 0);
+  const pirId = safeParseInt(c.req.param("id"), 0);
   const { remarks } = sanitizeObject(await c.req.json());
   if (remarks && remarks.length > 5000) {
-    return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
+    return c.json({ error: "Remarks cannot exceed 5000 characters" }, 400);
   }
 
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
-    include: { aip: { include: { program: true, school: { include: { cluster: true } } } } },
+    include: {
+      aip: {
+        include: { program: true, school: { include: { cluster: true } } },
+      },
+    },
   });
-  if (!pir) return c.json({ error: 'PIR not found' }, 404);
-  if ((pir as any).status !== 'For Cluster Head Review') {
-    return c.json({ error: 'PIR is not pending Cluster Head review' }, 409);
+  if (!pir) return c.json({ error: "PIR not found" }, 404);
+  if ((pir as any).status !== "For Cluster Head Review") {
+    return c.json({ error: "PIR is not pending Cluster Head review" }, 409);
   }
   if ((pir as any).aip.school?.cluster_id !== tokenUser.cluster_id) {
-    return c.json({ error: 'Forbidden' }, 403);
+    return c.json({ error: "Forbidden" }, 403);
   }
 
   await prisma.pIR.update({
     where: { id: pirId },
     data: {
-      status: 'Returned',
+      status: "Returned",
       ces_reviewer_id: tokenUser.id,
       ces_noted_at: new Date(),
       ces_remarks: remarks ?? null,
@@ -544,17 +688,23 @@ adminRoutes.post('/cluster-head/pirs/:id/return', async (c) => {
     const notif = await prisma.notification.create({
       data: {
         user_id: (pir as any).created_by_user_id,
-        title: 'PIR Returned by Cluster Head',
-        message: `Your PIR for ${programTitle} (${(pir as any).quarter}) was returned by the Cluster Head.${remarks ? ` Feedback: ${remarks}` : ''}`,
-        type: 'returned',
+        title: "PIR Returned by Cluster Head",
+        message: `Your PIR for ${programTitle} (${
+          (pir as any).quarter
+        }) was returned by the Cluster Head.${
+          remarks ? ` Feedback: ${remarks}` : ""
+        }`,
+        type: "returned",
         entity_id: (pir as any).id,
-        entity_type: 'pir',
+        entity_type: "pir",
       },
     });
     pushNotification(notif);
   }
 
-  await writeAuditLog(tokenUser.id, 'cluster_head_returned_pir', 'PIR', pirId, { remarks: remarks ?? null });
+  await writeAuditLog(tokenUser.id, "cluster_head_returned_pir", "PIR", pirId, {
+    remarks: remarks ?? null,
+  });
   return c.json({ success: true });
 });
 
@@ -570,29 +720,50 @@ adminRoutes.use("*", async (c, next) => {
 // ==========================================
 
 adminRoutes.get("/overview", async (c) => {
-  const year = safeParseInt(c.req.query("year"), new Date().getFullYear(), 2020, 2100);
+  const year = safeParseInt(
+    c.req.query("year"),
+    new Date().getFullYear(),
+    2020,
+    2100,
+  );
 
   // Current quarter (needed early for PIR queries)
   const month = new Date().getMonth() + 1;
   const currentQuarter = Math.ceil(month / 3);
 
-  const quarterPrefixes: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
+  const quarterPrefixes: Record<number, string> = {
+    1: "1st",
+    2: "2nd",
+    3: "3rd",
+    4: "4th",
+  };
 
-  const [totalSchools, totalUsers, totalPrograms, totalProgramOwners, aipCount, pirCount, pirsByQuarter, schoolsWithAIP] = await Promise.all([
+  const [
+    totalSchools,
+    totalUsers,
+    totalPrograms,
+    totalProgramOwners,
+    aipCount,
+    pirCount,
+    pirsByQuarter,
+    schoolsWithAIP,
+  ] = await Promise.all([
     prisma.school.count(),
     prisma.user.count({ where: { is_active: true } }),
     prisma.program.count(),
-    prisma.user.count({ where: { is_active: true, role: "Division Personnel" } }),
-    prisma.aIP.count({ where: { year, status: { not: 'Draft' } } }),
-    prisma.pIR.count({ where: { status: { not: 'Draft' } } }),
+    prisma.user.count({
+      where: { is_active: true, role: "Division Personnel" },
+    }),
+    prisma.aIP.count({ where: { year, status: { not: "Draft" } } }),
+    prisma.pIR.count({ where: { status: { not: "Draft" } } }),
     // PIR quarterly breakdown for the current year
     prisma.pIR.findMany({
-      where: { aip: { year }, status: { not: 'Draft' } },
+      where: { aip: { year }, status: { not: "Draft" } },
       select: { quarter: true, status: true },
     }),
     // AIP compliance: schools with at least one non-draft AIP this year
     prisma.aIP.findMany({
-      where: { year, school_id: { not: null }, status: { not: 'Draft' } },
+      where: { year, school_id: { not: null }, status: { not: "Draft" } },
       select: { school_id: true },
       distinct: ["school_id"],
     }),
@@ -601,30 +772,46 @@ adminRoutes.get("/overview", async (c) => {
   const aipCompliantCount = schoolsWithAIP.length;
 
   // Build PIR quarterly summary
-  const pirQuarterly = [1, 2, 3, 4].map((q) => {
+  const pirQuarterly = getQuarterNumbers().map((q) => {
     const prefix = quarterPrefixes[q];
     const qPirs = pirsByQuarter.filter((p) => p.quarter.startsWith(prefix));
     return {
       quarter: `Q${q}`,
-      submitted:    qPirs.filter((p) => p.status === "Submitted").length,
+      submitted: qPirs.filter((p) => p.status === "Submitted").length,
       forCESReview: qPirs.filter((p) => p.status === "For CES Review").length,
-      forClusterHeadReview: qPirs.filter((p) => p.status === "For Cluster Head Review").length,
-      approved:     qPirs.filter((p) => p.status === "Approved").length,
-      underReview:  qPirs.filter((p) => p.status === "Under Review").length,
-      returned:     qPirs.filter((p) => p.status === "Returned").length,
+      forClusterHeadReview: qPirs.filter((p) =>
+        p.status === "For Cluster Head Review"
+      ).length,
+      approved: qPirs.filter((p) => p.status === "Approved").length,
+      underReview: qPirs.filter((p) =>
+        ["Under Review", "For CES Review", "For Cluster Head Review"].includes(
+          p.status,
+        )
+      ).length,
+      returned: qPirs.filter((p) =>
+        p.status === "Returned"
+      ).length,
     };
   });
 
   // Current-quarter PIR counts for stat cards
-  const currentQPirs = pirsByQuarter.filter((p) => p.quarter.startsWith(quarterPrefixes[currentQuarter]));
+  const currentQPirs = pirsByQuarter.filter((p) =>
+    p.quarter.startsWith(quarterPrefixes[currentQuarter])
+  );
   const pirSubmittedThisQ = currentQPirs.length;
-  const pirApprovedThisQ = currentQPirs.filter((p) => p.status === "Approved").length;
-  const pirReturnedThisQ = currentQPirs.filter((p) => p.status === "Returned").length;
+  const pirApprovedThisQ = currentQPirs.filter((p) =>
+    p.status === "Approved"
+  ).length;
+  const pirReturnedThisQ =
+    currentQPirs.filter((p) => p.status === "Returned").length;
 
   // PIR approval rate for the year
   const pirTotalThisYear = pirsByQuarter.length;
-  const pirApprovedThisYear = pirsByQuarter.filter((p) => p.status === "Approved").length;
-  const pirApprovalRate = pirTotalThisYear > 0 ? Math.round((pirApprovedThisYear / pirTotalThisYear) * 100) : 0;
+  const pirApprovedThisYear =
+    pirsByQuarter.filter((p) => p.status === "Approved").length;
+  const pirApprovalRate = pirTotalThisYear > 0
+    ? Math.round((pirApprovedThisYear / pirTotalThisYear) * 100)
+    : 0;
 
   // PIR accomplishment stats — physical & financial utilization rates
   const pirActivityReviews = await prisma.pIRActivityReview.findMany({
@@ -639,50 +826,61 @@ adminRoutes.get("/overview", async (c) => {
 
   let avgPhysicalRate = 0;
   let avgFinancialRate = 0;
-  const reviewsWithPhysicalTarget = pirActivityReviews.filter((r) => Number(r.physical_target) > 0);
-  const reviewsWithFinancialTarget = pirActivityReviews.filter((r) => Number(r.financial_target) > 0);
+  const reviewsWithPhysicalTarget = pirActivityReviews.filter((r) =>
+    Number(r.physical_target) > 0
+  );
+  const reviewsWithFinancialTarget = pirActivityReviews.filter((r) =>
+    Number(r.financial_target) > 0
+  );
   if (reviewsWithPhysicalTarget.length > 0) {
     const totalPhysicalRate = reviewsWithPhysicalTarget.reduce(
-      (sum, r) => sum + (Number(r.physical_accomplished) / Number(r.physical_target)) * 100, 0
+      (sum, r) =>
+        sum +
+        (Number(r.physical_accomplished) / Number(r.physical_target)) * 100,
+      0,
     );
-    avgPhysicalRate = Math.round(totalPhysicalRate / reviewsWithPhysicalTarget.length);
+    avgPhysicalRate = Math.round(
+      totalPhysicalRate / reviewsWithPhysicalTarget.length,
+    );
   }
   if (reviewsWithFinancialTarget.length > 0) {
     const totalFinancialRate = reviewsWithFinancialTarget.reduce(
-      (sum, r) => sum + (Number(r.financial_accomplished) / Number(r.financial_target)) * 100, 0
+      (sum, r) =>
+        sum +
+        (Number(r.financial_accomplished) / Number(r.financial_target)) * 100,
+      0,
     );
-    avgFinancialRate = Math.round(totalFinancialRate / reviewsWithFinancialTarget.length);
+    avgFinancialRate = Math.round(
+      totalFinancialRate / reviewsWithFinancialTarget.length,
+    );
   }
 
   // Deadline for current quarter
   const deadline = await prisma.deadline.findUnique({
     where: { year_quarter: { year, quarter: currentQuarter } },
   });
-  const defaultDeadlines: Record<number, Date> = {
-    1: new Date(year, 2,  31, 23, 59, 59, 999),
-    2: new Date(year, 5,  30, 23, 59, 59, 999),
-    3: new Date(year, 8,  30, 23, 59, 59, 999),
-    4: new Date(year, 11, 31, 23, 59, 59, 999),
-  };
   const deadlineDate = deadline
-    ? new Date(new Date(deadline.date).setHours(23, 59, 59, 999))
-    : defaultDeadlines[currentQuarter];
+    ? endOfDeadlineDay(deadline.date)
+    : buildDefaultDeadline(year, currentQuarter);
   const daysLeft = Math.ceil(
-    (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
   );
 
   // Recent submissions (up to 20)
   const recentAIPs = await prisma.aIP.findMany({
-    where: { status: { not: 'Draft' } },
+    where: { status: { not: "Draft" } },
     take: 10,
     orderBy: { created_at: "desc" },
     include: { school: true, program: true, created_by: true },
   });
   const recentPIRs = await prisma.pIR.findMany({
-    where: { status: { not: 'Draft' } },
+    where: { status: { not: "Draft" } },
     take: 15,
     orderBy: { created_at: "desc" },
-    include: { aip: { include: { school: true, program: true } }, created_by: true },
+    include: {
+      aip: { include: { school: true, program: true } },
+      created_by: true,
+    },
   });
 
   const recentSubmissions = [
@@ -722,10 +920,13 @@ adminRoutes.get("/overview", async (c) => {
         schools: {
           include: {
             aips: {
-              where: { year, status: { not: 'Draft' } },
+              where: { year, status: { not: "Draft" } },
               select: {
                 id: true,
-                pirs: { where: { status: { not: 'Draft' } }, select: { id: true, status: true, quarter: true } },
+                pirs: {
+                  where: { status: { not: "Draft" } },
+                  select: { id: true, status: true, quarter: true },
+                },
               },
             },
           },
@@ -733,8 +934,12 @@ adminRoutes.get("/overview", async (c) => {
       },
     }),
     prisma.program.findMany({
-      where: { school_level_requirement: { not: 'Division' } },
-      select: { id: true, school_level_requirement: true, restricted_schools: { select: { id: true } } },
+      where: { school_level_requirement: { not: "Division" } },
+      select: {
+        id: true,
+        school_level_requirement: true,
+        restricted_schools: { select: { id: true } },
+      },
     }),
   ]);
 
@@ -754,17 +959,22 @@ adminRoutes.get("/overview", async (c) => {
   // PIR submission status by cluster for the current quarter.
   // Denominator = programs each school is EXPECTED to implement (based on school level
   // and program requirements), not just AIPs that have already been filed.
-  const getExpectedProgramCount = (schoolId: number, schoolLevel: string): number =>
+  const getExpectedProgramCount = (
+    schoolId: number,
+    schoolLevel: string,
+  ): number =>
     allPrograms.filter((p) => {
-      if (p.school_level_requirement === 'Select Schools') {
+      if (p.school_level_requirement === "Select Schools") {
         return p.restricted_schools.some((r) => r.id === schoolId);
       }
-      const levelMatch =
-        p.school_level_requirement === 'Both' ||
+      const levelMatch = p.school_level_requirement === "Both" ||
         p.school_level_requirement === schoolLevel ||
-        (schoolLevel === 'Both' && ['Elementary', 'Secondary'].includes(p.school_level_requirement));
+        (schoolLevel === "Both" &&
+          ["Elementary", "Secondary"].includes(p.school_level_requirement));
       if (!levelMatch) return false;
-      if (p.restricted_schools.length > 0) return p.restricted_schools.some((r) => r.id === schoolId);
+      if (p.restricted_schools.length > 0) {
+        return p.restricted_schools.some((r) => r.id === schoolId);
+      }
       return true;
     }).length;
 
@@ -780,10 +990,13 @@ adminRoutes.get("/overview", async (c) => {
       return {
         id: s.id,
         name: s.name,
+        abbreviation: s.abbreviation ?? null,
         totalAips: expectedPrograms,
         submitted: schoolPirs.length,
         approved: schoolPirs.filter((p) => p.status === "Approved").length,
-        pct: expectedPrograms > 0 ? Math.round((schoolPirs.length / expectedPrograms) * 100) : 0,
+        pct: expectedPrograms > 0
+          ? Math.round((schoolPirs.length / expectedPrograms) * 100)
+          : 0,
       };
     }).sort((a, b) => a.pct - b.pct); // worst first so admins see who needs attention
 
@@ -811,7 +1024,9 @@ adminRoutes.get("/overview", async (c) => {
       totalPrograms,
       totalProgramOwners,
       aipCompliantCount,
-      aipCompliancePct: totalSchools > 0 ? Math.round((aipCompliantCount / totalSchools) * 100) : 0,
+      aipCompliancePct: totalSchools > 0
+        ? Math.round((aipCompliantCount / totalSchools) * 100)
+        : 0,
       pirCount,
       pirSubmittedThisQ,
       pirApprovedThisQ,
@@ -840,132 +1055,192 @@ adminRoutes.get("/overview", async (c) => {
 
 adminRoutes.get("/submissions", async (c) => {
   try {
-  const q = (key: string) => c.req.query(key);
-  const type = q("type"); // "aip" | "pir" | undefined
-  const clusterId = q("cluster") ? safeParseInt(q("cluster"), 0) : undefined;
-  const schoolId = q("school") ? safeParseInt(q("school"), 0) : undefined;
-  const programId = q("program") ? safeParseInt(q("program"), 0) : undefined;
-  const quarter = q("quarter");
-  const year = q("year") ? safeParseInt(q("year"), 0) : undefined;
-  const status = q("status");
-  const page = safeParseInt(q("page"), 1);
-  const limit = Math.min(100, safeParseInt(q("limit"), 25));
-  const skip = (page - 1) * limit;
+    const q = (key: string) => c.req.query(key);
+    const type = q("type"); // "aip" | "pir" | undefined
+    const clusterId = q("cluster") ? safeParseInt(q("cluster"), 0) : undefined;
+    const schoolId = q("school") ? safeParseInt(q("school"), 0) : undefined;
+    const programId = q("program") ? safeParseInt(q("program"), 0) : undefined;
+    const quarter = q("quarter");
+    const year = q("year") ? safeParseInt(q("year"), 0) : undefined;
+    const status = q("status");
+    const page = safeParseInt(q("page"), 1);
+    const limit = Math.min(100, safeParseInt(q("limit"), 25));
+    const skip = (page - 1) * limit;
 
-  const schoolFilter = schoolId
-    ? { id: schoolId }
-    : clusterId
-    ? { cluster_id: clusterId }
-    : undefined;
+    const schoolFilter = schoolId
+      ? { id: schoolId }
+      : clusterId
+      ? { cluster_id: clusterId }
+      : undefined;
 
-  // Always build both filter objects (needed for counts regardless of active tab)
-  const aipWhere = {
-    status: { not: 'Draft' as const },
-    ...(year && { year }),
-    ...(programId && { program_id: programId }),
-    ...(status && { status }),
-    ...(schoolFilter && { school: schoolFilter }),
-  };
-  const pirWhere = {
-    status: { not: 'Draft' as const },
-    ...(quarter && { quarter: { contains: `${quarter}` } }),
-    ...(status && { status }),
-    aip: {
+    // Always build both filter objects (needed for counts regardless of active tab)
+    const aipWhere = {
+      status: { not: "Draft" as const },
       ...(year && { year }),
       ...(programId && { program_id: programId }),
+      ...(status && { status }),
       ...(schoolFilter && { school: schoolFilter }),
-    },
-  };
-
-  // Always count both so tab badges stay correct regardless of which tab is active
-  const [aipTotal, pirTotal] = await Promise.all([
-    prisma.aIP.count({ where: aipWhere }),
-    prisma.pIR.count({ where: pirWhere }),
-  ]);
-
-  // Fetch full records only for the active tab
-  let aips: unknown[] = [];
-  if (!type || type === "aip" || type === "all") {
-    aips = await prisma.aIP.findMany({
-      where: aipWhere,
-      skip: type === "aip" ? skip : 0,
-      take: type === "aip" ? limit : 100,
-      orderBy: { created_at: "desc" },
-      include: { school: { include: { cluster: true } }, program: true, created_by: true },
-    });
-  }
-
-  let pirs: unknown[] = [];
-  if (!type || type === "pir" || type === "all") {
-    pirs = await prisma.pIR.findMany({
-      where: pirWhere,
-      skip: type === "pir" ? skip : 0,
-      take: type === "pir" ? limit : 100,
-      orderBy: { created_at: "desc" },
-      include: {
-        aip: { include: { school: { include: { cluster: true } }, program: true } },
-        created_by: true,
-      },
-    });
-  }
-
-  const normalizedAIPs = (aips as Record<string, unknown>[]).map((a: Record<string, unknown>) => {
-    const aip = a as {
-      id: number; status: string; year: number; created_at: Date;
-      school?: { id: number; name: string; cluster?: { id: number; cluster_number: number; name: string } } | null;
-      program: { id: number; title: string };
-      created_by?: { role?: string | null; name?: string | null; first_name?: string | null; middle_initial?: string | null; last_name?: string | null; email?: string } | null;
     };
-    return {
-      id: aip.id, type: "AIP", status: aip.status, year: aip.year,
-      quarter: null, schoolId: aip.school?.id ?? null,
-      school: aip.school?.name ?? "Division",
-      cluster: aip.school?.cluster ? `Cluster ${aip.school.cluster.cluster_number}` : "—",
-      clusterId: aip.school?.cluster?.id ?? null,
-      program: aip.program.title, programId: aip.program.id,
-      dateSubmitted: aip.created_at,
-      submittedBy: buildSubmittedBy(aip.created_by),
-    };
-  });
-
-  const normalizedPIRs = (pirs as Record<string, unknown>[]).map((p: Record<string, unknown>) => {
-    const pir = p as {
-      id: number; status: string; quarter: string; created_at: Date;
-      remarks?: string | null;
+    const pirWhere = {
+      status: { not: "Draft" as const },
+      ...(quarter && { quarter: { contains: `${quarter}` } }),
+      ...(status && { status }),
       aip: {
-        year: number;
-        school?: { id: number; name: string; cluster?: { id: number; cluster_number: number; name: string } } | null;
-        program: { id: number; title: string };
-      };
-      created_by?: { role?: string | null; name?: string | null; first_name?: string | null; middle_initial?: string | null; last_name?: string | null; email?: string } | null;
+        ...(year && { year }),
+        ...(programId && { program_id: programId }),
+        ...(schoolFilter && { school: schoolFilter }),
+      },
     };
-    return {
-      id: pir.id, type: "PIR", status: pir.status, year: pir.aip.year,
-      quarter: pir.quarter, schoolId: pir.aip.school?.id ?? null,
-      school: pir.aip.school?.name ?? "Division",
-      cluster: pir.aip.school?.cluster ? `Cluster ${pir.aip.school.cluster.cluster_number}` : "—",
-      clusterId: pir.aip.school?.cluster?.id ?? null,
-      program: pir.aip.program.title, programId: pir.aip.program.id,
-      dateSubmitted: pir.created_at,
-      submittedBy: buildSubmittedBy(pir.created_by),
-      has_remarks: !!(pir.remarks && pir.remarks.trim()),
-    };
-  });
 
-  const combined = [...normalizedAIPs, ...normalizedPIRs].sort(
-    (a, b) => new Date(b.dateSubmitted).getTime() - new Date(a.dateSubmitted).getTime()
-  );
+    // Always count both so tab badges stay correct regardless of which tab is active
+    const [aipTotal, pirTotal] = await Promise.all([
+      prisma.aIP.count({ where: aipWhere }),
+      prisma.pIR.count({ where: pirWhere }),
+    ]);
 
-  const total = type === "aip" ? aipTotal : type === "pir" ? pirTotal : aipTotal + pirTotal;
+    // Fetch full records only for the active tab
+    let aips: unknown[] = [];
+    if (!type || type === "aip" || type === "all") {
+      aips = await prisma.aIP.findMany({
+        where: aipWhere,
+        skip: type === "aip" ? skip : 0,
+        take: type === "aip" ? limit : 100,
+        orderBy: { created_at: "desc" },
+        include: {
+          school: { include: { cluster: true } },
+          program: true,
+          created_by: true,
+        },
+      });
+    }
 
-  return c.json({
-    data: type === "all" || (!type) ? combined.slice(skip, skip + limit) : combined,
-    total,
-    aipTotal,
-    pirTotal,
-    page,
-    totalPages: Math.ceil(total / limit),
-  });
+    let pirs: unknown[] = [];
+    if (!type || type === "pir" || type === "all") {
+      pirs = await prisma.pIR.findMany({
+        where: pirWhere,
+        skip: type === "pir" ? skip : 0,
+        take: type === "pir" ? limit : 100,
+        orderBy: { created_at: "desc" },
+        include: {
+          aip: {
+            include: { school: { include: { cluster: true } }, program: true },
+          },
+          created_by: true,
+        },
+      });
+    }
+
+    const normalizedAIPs = (aips as Record<string, unknown>[]).map(
+      (a: Record<string, unknown>) => {
+        const aip = a as {
+          id: number;
+          status: string;
+          year: number;
+          created_at: Date;
+          school?: {
+            id: number;
+            name: string;
+            cluster?: { id: number; cluster_number: number; name: string };
+          } | null;
+          program: { id: number; title: string };
+          created_by?: {
+            role?: string | null;
+            name?: string | null;
+            first_name?: string | null;
+            middle_initial?: string | null;
+            last_name?: string | null;
+            email?: string;
+          } | null;
+        };
+        return {
+          id: aip.id,
+          type: "AIP",
+          status: aip.status,
+          year: aip.year,
+          quarter: null,
+          schoolId: aip.school?.id ?? null,
+          school: aip.school?.name ?? "Division",
+          cluster: aip.school?.cluster
+            ? `Cluster ${aip.school.cluster.cluster_number}`
+            : "—",
+          clusterId: aip.school?.cluster?.id ?? null,
+          program: aip.program.title,
+          programId: aip.program.id,
+          dateSubmitted: aip.created_at,
+          submittedBy: buildSubmittedBy(aip.created_by),
+        };
+      },
+    );
+
+    const normalizedPIRs = (pirs as Record<string, unknown>[]).map(
+      (p: Record<string, unknown>) => {
+        const pir = p as {
+          id: number;
+          status: string;
+          quarter: string;
+          created_at: Date;
+          remarks?: string | null;
+          aip: {
+            year: number;
+            school?: {
+              id: number;
+              name: string;
+              cluster?: { id: number; cluster_number: number; name: string };
+            } | null;
+            program: { id: number; title: string };
+          };
+          created_by?: {
+            role?: string | null;
+            name?: string | null;
+            first_name?: string | null;
+            middle_initial?: string | null;
+            last_name?: string | null;
+            email?: string;
+          } | null;
+        };
+        return {
+          id: pir.id,
+          type: "PIR",
+          status: pir.status,
+          year: pir.aip.year,
+          quarter: pir.quarter,
+          schoolId: pir.aip.school?.id ?? null,
+          school: pir.aip.school?.name ?? "Division",
+          cluster: pir.aip.school?.cluster
+            ? `Cluster ${pir.aip.school.cluster.cluster_number}`
+            : "—",
+          clusterId: pir.aip.school?.cluster?.id ?? null,
+          program: pir.aip.program.title,
+          programId: pir.aip.program.id,
+          dateSubmitted: pir.created_at,
+          submittedBy: buildSubmittedBy(pir.created_by),
+          has_remarks: !!(pir.remarks && pir.remarks.trim()),
+        };
+      },
+    );
+
+    const combined = [...normalizedAIPs, ...normalizedPIRs].sort(
+      (a, b) =>
+        new Date(b.dateSubmitted).getTime() -
+        new Date(a.dateSubmitted).getTime(),
+    );
+
+    const total = type === "aip"
+      ? aipTotal
+      : type === "pir"
+      ? pirTotal
+      : aipTotal + pirTotal;
+
+    return c.json({
+      data: type === "all" || (!type)
+        ? combined.slice(skip, skip + limit)
+        : combined,
+      total,
+      aipTotal,
+      pirTotal,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (e: unknown) {
     logger.error("GET /submissions error", e);
     return c.json({ error: "Internal server error" }, 500);
@@ -978,30 +1253,51 @@ adminRoutes.get("/submissions/export", async (c) => {
 
   const format = c.req.query("format") || "csv";
   const type = c.req.query("type");
-  const year = c.req.query("year") ? safeParseInt(c.req.query("year"), 0) : undefined;
+  const year = c.req.query("year")
+    ? safeParseInt(c.req.query("year"), 0)
+    : undefined;
   const status = c.req.query("status");
 
   const aips = (!type || type === "aip" || type === "all")
     ? await prisma.aIP.findMany({
-        where: { status: { not: 'Draft' }, ...(year && { year }), ...(status && { status }) },
-        include: { school: { include: { cluster: true } }, program: true, created_by: true },
-        orderBy: { created_at: "desc" },
-      })
+      where: {
+        status: { not: "Draft" },
+        ...(year && { year }),
+        ...(status && { status }),
+      },
+      include: {
+        school: { include: { cluster: true } },
+        program: true,
+        created_by: true,
+      },
+      orderBy: { created_at: "desc" },
+    })
     : [];
 
   const pirs = (!type || type === "pir" || type === "all")
     ? await prisma.pIR.findMany({
-        where: { status: { not: 'Draft' }, ...(status && { status }), aip: { ...(year && { year }) } },
-        include: { aip: { include: { school: { include: { cluster: true } }, program: true } }, created_by: true },
-        orderBy: { created_at: "desc" },
-      })
+      where: {
+        status: { not: "Draft" },
+        ...(status && { status }),
+        aip: { ...(year && { year }) },
+      },
+      include: {
+        aip: {
+          include: { school: { include: { cluster: true } }, program: true },
+        },
+        created_by: true,
+      },
+      orderBy: { created_at: "desc" },
+    })
     : [];
 
   const rows = [
     ...aips.map((a) => ({
       Type: "AIP",
       School: a.school?.name ?? "Division",
-      Cluster: a.school?.cluster ? `Cluster ${a.school.cluster.cluster_number}` : "—",
+      Cluster: a.school?.cluster
+        ? `Cluster ${a.school.cluster.cluster_number}`
+        : "—",
       Program: a.program.title,
       Year: a.year,
       Quarter: "—",
@@ -1012,7 +1308,9 @@ adminRoutes.get("/submissions/export", async (c) => {
     ...pirs.map((p) => ({
       Type: "PIR",
       School: p.aip.school?.name ?? "Division",
-      Cluster: p.aip.school?.cluster ? `Cluster ${p.aip.school.cluster.cluster_number}` : "—",
+      Cluster: p.aip.school?.cluster
+        ? `Cluster ${p.aip.school.cluster.cluster_number}`
+        : "—",
       Program: p.aip.program.title,
       Year: p.aip.year,
       Quarter: p.quarter,
@@ -1023,7 +1321,11 @@ adminRoutes.get("/submissions/export", async (c) => {
   ];
 
   await writeAuditLog(exporter.id, "exported_submissions", "Export", 0, {
-    format, type: type ?? "all", year: year ?? "all", status: status ?? "all", row_count: rows.length,
+    format,
+    type: type ?? "all",
+    year: year ?? "all",
+    status: status ?? "all",
+    row_count: rows.length,
   });
 
   if (format === "csv") {
@@ -1038,16 +1340,22 @@ adminRoutes.get("/submissions/export", async (c) => {
   if (format === "xlsx") {
     return new Response(toXLSX(rows, "Submissions"), {
       headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="submissions-export.xlsx"`,
       },
     });
   }
 
-  return c.json({ error: "Unsupported export format. Use 'csv' or 'xlsx'." }, 400);
+  return c.json(
+    { error: "Unsupported export format. Use 'csv' or 'xlsx'." },
+    400,
+  );
 });
 
 adminRoutes.get("/submissions/:id", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = safeParseInt(c.req.param("id"), 0);
   const type = c.req.query("type") || "aip";
 
@@ -1055,7 +1363,13 @@ adminRoutes.get("/submissions/:id", async (c) => {
     const pir = await prisma.pIR.findUnique({
       where: { id },
       include: {
-        aip: { include: { school: { include: { cluster: true } }, program: true, activities: true } },
+        aip: {
+          include: {
+            school: { include: { cluster: true } },
+            program: true,
+            activities: true,
+          },
+        },
         activity_reviews: { include: { aip_activity: true } },
         factors: true,
         created_by: true,
@@ -1063,17 +1377,21 @@ adminRoutes.get("/submissions/:id", async (c) => {
     });
     if (!pir) return c.json({ error: "Not found" }, 404);
 
-    const admin = requireAdmin(c);
-    if (admin) {
-      await writeAuditLog(admin.id, 'read_pir', 'PIR', pir.id, { quarter: pir.quarter });
-    }
+    await writeAuditLog(admin.id, "read_pir", "PIR", pir.id, {
+      quarter: pir.quarter,
+    });
 
     return c.json(pir);
   }
 
   const aip = await prisma.aIP.findUnique({
     where: { id },
-    include: { school: true, program: true, activities: true, created_by: true },
+    include: {
+      school: true,
+      program: true,
+      activities: true,
+      created_by: true,
+    },
   });
   if (!aip) return c.json({ error: "Not found" }, 404);
   return c.json(aip);
@@ -1084,36 +1402,111 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = safeParseInt(c.req.param("id"), 0);
   const { type, status, feedback } = sanitizeObject(await c.req.json());
+  const normalizedFeedback = typeof feedback === "string"
+    ? feedback.trim()
+    : "";
 
-  if (!["Submitted", "Under Review", "For CES Review", "For Cluster Head Review", "Approved", "Returned"].includes(status)) {
+  if (
+    ![
+      "Submitted",
+      "Under Review",
+      "For CES Review",
+      "For Cluster Head Review",
+      "Approved",
+      "Returned",
+    ].includes(status)
+  ) {
     return c.json({ error: "Invalid status" }, 400);
+  }
+  if (normalizedFeedback.length > 5000) {
+    return c.json({ error: "Feedback cannot exceed 5000 characters" }, 400);
+  }
+  if (type === "pir" && status === "Returned" && !normalizedFeedback) {
+    return c.json({ error: "Feedback is required when returning a PIR" }, 400);
   }
 
   const statusLabels: Record<string, string> = {
-    "Approved":        "approved",
-    "Returned":        "returned",
-    "Under Review":    "under_review",
-    "For CES Review":  "for_ces_review",
+    "Approved": "approved",
+    "Returned": "returned",
+    "Under Review": "under_review",
+    "For CES Review": "for_ces_review",
     "For Cluster Head Review": "for_cluster_head_review",
-    "Submitted":       "submitted",
+    "Submitted": "submitted",
   };
 
   if (type === "pir") {
-    const pir = await prisma.pIR.update({ where: { id }, data: { status }, include: { aip: { include: { program: true, school: true } } } });
+    const existingPir = await prisma.pIR.findUnique({
+      where: { id },
+      select: { remarks: true },
+    });
+    if (!existingPir) return c.json({ error: "Not found" }, 404);
+
+    // Status feedback appends to preserve review history across status changes.
+    const existingRemarks = existingPir.remarks?.trim() ?? "";
+    const mergedRemarks = !normalizedFeedback
+      ? undefined
+      : !existingRemarks || existingRemarks === normalizedFeedback ||
+          existingRemarks.includes(normalizedFeedback)
+      ? (existingRemarks || normalizedFeedback)
+      : `${existingRemarks}\n\n${normalizedFeedback}`;
+
+    const pir = await prisma.pIR.update({
+      where: { id },
+      data: {
+        status,
+        ...(mergedRemarks !== undefined ? { remarks: mergedRemarks } : {}),
+      },
+      include: { aip: { include: { program: true, school: true } } },
+    });
     if (pir.created_by_user_id) {
       const schoolLabel = pir.aip.school?.name ?? "your school";
-      const notifMessages: Record<string, { title: string; message: string }> = {
-        "Approved":       { title: "PIR Approved",            message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) from ${schoolLabel} has been approved.` },
-        "Returned":       { title: "PIR Returned",            message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) has been returned for correction.${feedback ? ` Feedback: ${feedback}` : ""}` },
-        "Under Review":   { title: "PIR Under Review",        message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) is now under review.` },
-        "For CES Review": { title: "PIR Pending CES Review",  message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) has been sent for CES review.` },
-        "For Cluster Head Review": { title: "PIR Pending Cluster Head Review", message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) has been sent for Cluster Head review.` },
-        "Submitted":      { title: "PIR Status Updated",      message: `Your PIR for ${pir.aip.program.title} (${pir.quarter}) status has been updated to Submitted.` },
-      };
+      const feedbackSuffix = normalizedFeedback
+        ? ` Feedback: ${normalizedFeedback}`
+        : "";
+      const notifMessages: Record<string, { title: string; message: string }> =
+        {
+          "Approved": {
+            title: "PIR Approved",
+            message:
+              `Your PIR for ${pir.aip.program.title} (${pir.quarter}) from ${schoolLabel} has been approved.${feedbackSuffix}`,
+          },
+          "Returned": {
+            title: "PIR Returned",
+            message:
+              `Your PIR for ${pir.aip.program.title} (${pir.quarter}) has been returned for correction.${feedbackSuffix}`,
+          },
+          "Under Review": {
+            title: "PIR Under Review",
+            message:
+              `Your PIR for ${pir.aip.program.title} (${pir.quarter}) is now under review.`,
+          },
+          "For CES Review": {
+            title: "PIR Pending CES Review",
+            message:
+              `Your PIR for ${pir.aip.program.title} (${pir.quarter}) has been sent for CES review.`,
+          },
+          "For Cluster Head Review": {
+            title: "PIR Pending Cluster Head Review",
+            message:
+              `Your PIR for ${pir.aip.program.title} (${pir.quarter}) has been sent for Cluster Head review.`,
+          },
+          "Submitted": {
+            title: "PIR Status Updated",
+            message:
+              `Your PIR for ${pir.aip.program.title} (${pir.quarter}) status has been updated to Submitted.`,
+          },
+        };
       const notif = notifMessages[status];
       if (notif) {
         const created = await prisma.notification.create({
-          data: { user_id: pir.created_by_user_id, title: notif.title, message: notif.message, type: statusLabels[status], entity_id: pir.id, entity_type: 'pir' },
+          data: {
+            user_id: pir.created_by_user_id,
+            title: notif.title,
+            message: notif.message,
+            type: statusLabels[status],
+            entity_id: pir.id,
+            entity_type: "pir",
+          },
         });
         pushNotification(created);
       }
@@ -1126,24 +1519,50 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
     });
     if (aip.created_by_user_id) {
       const schoolLabel = aip.school?.name ?? "your school";
-      const aipNotifMessages: Record<string, { title: string; message: string }> = {
-        "Approved": { title: "AIP Approved", message: `Your AIP for ${aip.program.title} (FY ${aip.year}) from ${schoolLabel} has been approved.` },
-        "Returned": { title: "AIP Returned", message: `Your AIP for ${aip.program.title} (FY ${aip.year}) has been returned for correction.${feedback ? ` Feedback: ${feedback}` : ""}` },
+      const aipNotifMessages: Record<
+        string,
+        { title: string; message: string }
+      > = {
+        "Approved": {
+          title: "AIP Approved",
+          message:
+            `Your AIP for ${aip.program.title} (FY ${aip.year}) from ${schoolLabel} has been approved.`,
+        },
+        "Returned": {
+          title: "AIP Returned",
+          message:
+            `Your AIP for ${aip.program.title} (FY ${aip.year}) has been returned for correction.${
+              feedback ? ` Feedback: ${feedback}` : ""
+            }`,
+        },
       };
       const aipNotif = aipNotifMessages[status];
       if (aipNotif) {
         const created = await prisma.notification.create({
-          data: { user_id: aip.created_by_user_id, title: aipNotif.title, message: aipNotif.message, type: statusLabels[status], entity_id: aip.id, entity_type: 'aip' },
+          data: {
+            user_id: aip.created_by_user_id,
+            title: aipNotif.title,
+            message: aipNotif.message,
+            type: statusLabels[status],
+            entity_id: aip.id,
+            entity_type: "aip",
+          },
         });
         pushNotification(created);
       }
     }
   }
 
-  await writeAuditLog(admin.id, `updated_${type}_status`, type === "pir" ? "PIR" : "AIP", id, {
-    status,
-    feedback: feedback ?? null,
-  });
+  await writeAuditLog(
+    admin.id,
+    `updated_${type}_status`,
+    type === "pir" ? "PIR" : "AIP",
+    id,
+    {
+      status,
+      feedback: normalizedFeedback || null,
+    },
+  );
 
   return c.json({ success: true });
 });
@@ -1152,36 +1571,37 @@ adminRoutes.patch("/submissions/:id/status", async (c) => {
 // AIP EDIT REQUEST — APPROVE / DENY
 // ==========================================
 
-adminRoutes.patch('/aips/:id/approve-edit', async (c) => {
+adminRoutes.patch("/aips/:id/approve-edit", async (c) => {
   const admin = requireAdmin(c);
-  if (!admin) return c.json({ error: 'Unauthorized' }, 401);
-  const id = safeParseInt(c.req.param('id'), 0);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+  const id = safeParseInt(c.req.param("id"), 0);
   const aip = await prisma.aIP.update({
     where: { id },
-    data: { edit_requested: false, status: 'Returned' },
+    data: { edit_requested: false, status: "Returned" },
     include: { program: true, school: true },
   });
   if (aip.created_by_user_id) {
     const notif = await prisma.notification.create({
       data: {
         user_id: aip.created_by_user_id,
-        title: 'Edit Request Approved',
-        message: `Your request to edit the AIP for ${aip.program.title} (FY ${aip.year}) has been approved. You may now edit and resubmit.`,
-        type: 'aip_edit_approved',
+        title: "Edit Request Approved",
+        message:
+          `Your request to edit the AIP for ${aip.program.title} (FY ${aip.year}) has been approved. You may now edit and resubmit.`,
+        type: "aip_edit_approved",
         entity_id: aip.id,
-        entity_type: 'aip',
+        entity_type: "aip",
       },
     });
     pushNotification(notif);
   }
-  await writeAuditLog(admin.id, 'approved_aip_edit_request', 'AIP', id, {});
+  await writeAuditLog(admin.id, "approved_aip_edit_request", "AIP", id, {});
   return c.json({ success: true });
 });
 
-adminRoutes.patch('/aips/:id/deny-edit', async (c) => {
+adminRoutes.patch("/aips/:id/deny-edit", async (c) => {
   const admin = requireAdmin(c);
-  if (!admin) return c.json({ error: 'Unauthorized' }, 401);
-  const id = safeParseInt(c.req.param('id'), 0);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+  const id = safeParseInt(c.req.param("id"), 0);
   const aip = await prisma.aIP.update({
     where: { id },
     data: { edit_requested: false },
@@ -1191,16 +1611,17 @@ adminRoutes.patch('/aips/:id/deny-edit', async (c) => {
     const notif = await prisma.notification.create({
       data: {
         user_id: aip.created_by_user_id,
-        title: 'Edit Request Denied',
-        message: `Your request to edit the AIP for ${aip.program.title} (FY ${aip.year}) has been denied.`,
-        type: 'aip_edit_denied',
+        title: "Edit Request Denied",
+        message:
+          `Your request to edit the AIP for ${aip.program.title} (FY ${aip.year}) has been denied.`,
+        type: "aip_edit_denied",
         entity_id: aip.id,
-        entity_type: 'aip',
+        entity_type: "aip",
       },
     });
     pushNotification(notif);
   }
-  await writeAuditLog(admin.id, 'denied_aip_edit_request', 'AIP', id, {});
+  await writeAuditLog(admin.id, "denied_aip_edit_request", "AIP", id, {});
   return c.json({ success: true });
 });
 
@@ -1218,9 +1639,10 @@ adminRoutes.patch("/pirs/:id/remarks", async (c) => {
     return c.json({ error: "remarks must be a string" }, 400);
   }
   if (remarks.length > 5000) {
-    return c.json({ error: 'Remarks cannot exceed 5000 characters' }, 400);
+    return c.json({ error: "Remarks cannot exceed 5000 characters" }, 400);
   }
 
+  // Direct remarks edits overwrite the current admin annotation.
   const pir = await prisma.pIR.update({
     where: { id },
     data: { remarks },
@@ -1233,10 +1655,11 @@ adminRoutes.patch("/pirs/:id/remarks", async (c) => {
       data: {
         user_id: pir.created_by_user_id,
         title: "Remarks Added to Your PIR",
-        message: `An admin has added remarks to your PIR for ${pir.aip.program.title} (${pir.quarter}) from ${schoolLabel}.`,
+        message:
+          `An admin has added remarks to your PIR for ${pir.aip.program.title} (${pir.quarter}) from ${schoolLabel}.`,
         type: "remarked",
         entity_id: pir.id,
-        entity_type: 'pir',
+        entity_type: "pir",
       },
     });
     pushNotification(notif);
@@ -1260,7 +1683,9 @@ adminRoutes.patch("/pirs/:id/presented", async (c) => {
     data: { presented: !pir.presented },
   });
 
-  await writeAuditLog(admin.id, "toggle_presented", "PIR", id, { presented: updated.presented });
+  await writeAuditLog(admin.id, "toggle_presented", "PIR", id, {
+    presented: updated.presented,
+  });
 
   return c.json({ success: true, presented: updated.presented });
 });
@@ -1275,7 +1700,7 @@ adminRoutes.patch("/pirs/:id/activity-notes", async (c) => {
     return c.json({ error: "activity_review_id and notes are required" }, 400);
   }
   if (notes.length > 5000) {
-    return c.json({ error: 'Notes cannot exceed 5000 characters' }, 400);
+    return c.json({ error: "Notes cannot exceed 5000 characters" }, 400);
   }
 
   await prisma.pIRActivityReview.update({
@@ -1309,10 +1734,10 @@ adminRoutes.get("/users", async (c) => {
         ...(status === "disabled" && { is_active: false }),
         ...(search && {
           OR: [
-            { name:       { contains: search, mode: "insensitive" } },
+            { name: { contains: search, mode: "insensitive" } },
             { first_name: { contains: search, mode: "insensitive" } },
-            { last_name:  { contains: search, mode: "insensitive" } },
-            { email:      { contains: search, mode: "insensitive" } },
+            { last_name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
           ],
         }),
       },
@@ -1321,7 +1746,12 @@ adminRoutes.get("/users", async (c) => {
     }),
     prisma.program.findMany({
       where: { school_level_requirement: { not: "Division" } },
-      select: { id: true, title: true, school_level_requirement: true, restricted_schools: { select: { id: true } } },
+      select: {
+        id: true,
+        title: true,
+        school_level_requirement: true,
+        restricted_schools: { select: { id: true } },
+      },
       orderBy: { title: "asc" },
     }),
   ]);
@@ -1333,25 +1763,29 @@ adminRoutes.get("/users", async (c) => {
         const sl = u.school.level; // "Elementary" | "Secondary" | "Both"
         const schoolId = u.school.id;
         programs = allPrograms
-          .filter(p => {
+          .filter((p) => {
             const restricted = p.restricted_schools;
             // "Select Schools" — only if this school is explicitly listed
             if (p.school_level_requirement === "Select Schools") {
-              return restricted.some(s => s.id === schoolId);
+              return restricted.some((s) => s.id === schoolId);
             }
             // Level match
-            const levelMatch =
-              p.school_level_requirement === "Both" ||
+            const levelMatch = p.school_level_requirement === "Both" ||
               p.school_level_requirement === sl ||
-              (sl === "Both" && ["Elementary", "Secondary"].includes(p.school_level_requirement));
+              (sl === "Both" &&
+                ["Elementary", "Secondary"].includes(
+                  p.school_level_requirement,
+                ));
             if (!levelMatch) return false;
             // If program has restrictions, only include this school if it's listed
-            if (restricted.length > 0) return restricted.some(s => s.id === schoolId);
+            if (restricted.length > 0) {
+              return restricted.some((s) => s.id === schoolId);
+            }
             return true;
           })
-          .map(p => ({ id: p.id, title: p.title }));
+          .map((p) => ({ id: p.id, title: p.title }));
       } else {
-        programs = u.programs.map(p => ({ id: p.id, title: p.title }));
+        programs = u.programs.map((p) => ({ id: p.id, title: p.title }));
       }
       return {
         id: u.id,
@@ -1366,32 +1800,47 @@ adminRoutes.get("/users", async (c) => {
         programs,
         created_at: u.created_at,
       };
-    })
+    }),
   );
 });
 
 adminRoutes.post("/users", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { name, first_name, middle_initial, last_name, email, password, role, school_id, cluster_id, program_ids } = sanitizeObject(await c.req.json());
+  const {
+    name,
+    first_name,
+    middle_initial,
+    last_name,
+    email,
+    password,
+    role,
+    school_id,
+    cluster_id,
+    program_ids,
+  } = sanitizeObject(await c.req.json());
 
-  const systemRoles = ["Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Cluster Coordinator"];
+  const systemRoles = [
+    "Admin",
+    "CES-SGOD",
+    "CES-ASDS",
+    "CES-CID",
+    "Cluster Coordinator",
+  ];
   if (systemRoles.includes(role) && !name) {
     return c.json({ error: "name is required for this role" }, 400);
   }
   if (role === "Division Personnel" && (!first_name || !last_name)) {
-    return c.json({ error: "first_name and last_name are required for Division Personnel" }, 400);
+    return c.json({
+      error: "first_name and last_name are required for Division Personnel",
+    }, 400);
   }
   if (!email || !password || !role) {
     return c.json({ error: "email, password, role are required" }, 400);
   }
 
   function validatePassword(p: string): string | null {
-    if (p.length < 8)          return 'Minimum 8 characters required';
-    if (!/[A-Z]/.test(p))      return 'Must contain an uppercase letter';
-    if (!/[a-z]/.test(p))      return 'Must contain a lowercase letter';
-    if (!/[0-9]/.test(p))      return 'Must contain a number';
-    if (!/[!@#$%^&*]/.test(p)) return 'Must contain a special character';
+    if (p.length < 6) return "Minimum 6 characters required";
     return null;
   }
   const pwError = validatePassword(password);
@@ -1401,14 +1850,33 @@ adminRoutes.post("/users", async (c) => {
   if (cesRoles.includes(role)) {
     const existing = await prisma.user.findFirst({ where: { role } });
     if (existing) {
-      return c.json({ error: `A ${role} account already exists. Only one account per CES role is allowed.` }, 409);
+      return c.json({
+        error:
+          `A ${role} account already exists. Only one account per CES role is allowed.`,
+      }, 409);
     }
   }
 
   if (role === "Cluster Coordinator") {
-    const count = await prisma.user.count({ where: { role: "Cluster Coordinator" } });
+    const count = await prisma.user.count({
+      where: { role: "Cluster Coordinator" },
+    });
     if (count >= 10) {
-      return c.json({ error: "Maximum of 10 Cluster Coordinator accounts allowed." }, 409);
+      return c.json({
+        error: "Maximum of 10 Cluster Coordinator accounts allowed.",
+      }, 409);
+    }
+  }
+
+  if (role === "School" && school_id) {
+    const existing = await prisma.user.findFirst({
+      where: { role: "School", school_id },
+    });
+    if (existing) {
+      return c.json({
+        error:
+          "This school already has a user account. Only one account per school is allowed.",
+      }, 409);
     }
   }
 
@@ -1419,10 +1887,10 @@ adminRoutes.post("/users", async (c) => {
     const user = await prisma.$transaction(async (tx) => {
       const u = await tx.user.create({
         data: {
-          ...(name            !== undefined && { name }),
-          ...(first_name      !== undefined && { first_name }),
-          ...(middle_initial  !== undefined && { middle_initial }),
-          ...(last_name       !== undefined && { last_name }),
+          ...(name !== undefined && { name }),
+          ...(first_name !== undefined && { first_name }),
+          ...(middle_initial !== undefined && { middle_initial }),
+          ...(last_name !== undefined && { last_name }),
           email,
           password: hashed,
           role,
@@ -1435,7 +1903,17 @@ adminRoutes.post("/users", async (c) => {
       });
       // Audit log stores only non-PII identifiers — names and email are omitted (RA 10173 §19).
       await tx.auditLog.create({
-        data: { admin_id: admin.id, action: "created_user", entity_type: "User", entity_id: u.id, details: { role, school_id: school_id ?? null, cluster_id: cluster_id ?? null } },
+        data: {
+          admin_id: admin.id,
+          action: "created_user",
+          entity_type: "User",
+          entity_id: u.id,
+          details: {
+            role,
+            school_id: school_id ?? null,
+            cluster_id: cluster_id ?? null,
+          },
+        },
       });
       return u;
     });
@@ -1448,28 +1926,202 @@ adminRoutes.post("/users", async (c) => {
   }
 });
 
+// ── Bulk Email Directory Import ───────────────────────────────────────────────
+// Creates OAuth-only accounts (no password) for a pre-loaded list of known users.
+// On first OAuth login, finishOAuthLogin (oauth.ts:142) matches by email and
+// backfills oauth_provider/oauth_subject — no "Pending" state needed.
+adminRoutes.post("/users/import", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const body = sanitizeObject(await c.req.json());
+  const rows: unknown[] = Array.isArray(body.users) ? body.users : [];
+
+  if (rows.length === 0) return c.json({ error: "No users provided" }, 400);
+  if (rows.length > 500) return c.json({ error: "Maximum 500 rows per import" }, 400);
+
+  const VALID_ROLES = new Set([
+    "Admin", "CES-SGOD", "CES-ASDS", "CES-CID",
+    "Cluster Coordinator", "Division Personnel", "School",
+  ]);
+  const SYSTEM_ROLES = new Set(["Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Cluster Coordinator"]);
+
+  interface ImportRow {
+    email: string;
+    role: string;
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+    middle_initial?: string;
+    school_id_int?: number;
+    cluster_id_int?: number;
+    program_ids?: number[];
+  }
+
+  const errors: { email: string; reason: string }[] = [];
+  const validRows: ImportRow[] = [];
+
+  // Pass 1: format validation — no DB calls
+  for (const raw of rows) {
+    const r = raw as Record<string, unknown>;
+    const email = (typeof r.email === "string" ? r.email : "").trim().toLowerCase();
+
+    if (!email || !email.endsWith("@deped.gov.ph")) {
+      errors.push({ email: email || "(empty)", reason: "Invalid or missing email (must be @deped.gov.ph)" });
+      continue;
+    }
+    if (!VALID_ROLES.has(r.role as string)) {
+      errors.push({ email, reason: `Unknown role: "${r.role}"` });
+      continue;
+    }
+    const role = r.role as string;
+    if (SYSTEM_ROLES.has(role) && !(r.name as string)?.trim()) {
+      errors.push({ email, reason: `"name" is required for role "${role}"` });
+      continue;
+    }
+    if (role === "Division Personnel" && (!(r.first_name as string)?.trim() || !(r.last_name as string)?.trim())) {
+      errors.push({ email, reason: "first_name and last_name are required for Division Personnel" });
+      continue;
+    }
+    const school_id_int = parsePositiveInt(r.school_id) ?? undefined;
+    if (role === "School" && !school_id_int) {
+      errors.push({ email, reason: "Valid school_id is required for School role" });
+      continue;
+    }
+    const cluster_id_int = parsePositiveInt(r.cluster_id) ?? undefined;
+
+    const rawProgramIds = r.program_ids;
+    const program_ids: number[] = Array.isArray(rawProgramIds)
+      ? (rawProgramIds as unknown[]).map(Number).filter(n => Number.isInteger(n) && n > 0)
+      : [];
+
+    validRows.push({
+      email,
+      role,
+      name: (r.name as string)?.trim() || undefined,
+      first_name: (r.first_name as string)?.trim() || undefined,
+      last_name: (r.last_name as string)?.trim() || undefined,
+      middle_initial: (r.middle_initial as string)?.trim() || undefined,
+      school_id_int,
+      cluster_id_int,
+      program_ids,
+    });
+  }
+
+  // Pass 2: batch-detect existing emails (one query)
+  const validEmails = validRows.map(r => r.email);
+  const existingUsers = await prisma.user.findMany({
+    where: { email: { in: validEmails } },
+    select: { email: true },
+  });
+  const existingEmailSet = new Set(existingUsers.map(u => u.email));
+
+  // Pass 3: create new users individually (not a single transaction — partial success is fine)
+  let imported = 0;
+  let skipped = 0;
+  const rolesImported: Record<string, number> = {};
+
+  for (const row of validRows) {
+    if (existingEmailSet.has(row.email)) {
+      skipped++;
+      continue;
+    }
+    try {
+      await prisma.user.create({
+        data: {
+          email: row.email,
+          password: null,      // OAuth-only — no password set
+          is_active: true,
+          role: row.role,
+          ...(row.name && { name: row.name }),
+          ...(row.first_name && { first_name: row.first_name }),
+          ...(row.last_name && { last_name: row.last_name }),
+          ...(row.middle_initial && { middle_initial: row.middle_initial }),
+          ...(row.school_id_int && { school_id: row.school_id_int }),
+          ...(row.cluster_id_int && { cluster_id: row.cluster_id_int }),
+          ...(row.program_ids?.length && {
+            programs: { connect: row.program_ids.map(id => ({ id })) },
+          }),
+        },
+      });
+      imported++;
+      rolesImported[row.role] = (rolesImported[row.role] ?? 0) + 1;
+    } catch (e: unknown) {
+      const code = (e as { code?: string })?.code;
+      if (code === "P2002") {
+        // Race condition — another request created the same email between our check and insert
+        skipped++;
+      } else {
+        errors.push({ email: row.email, reason: "Database error" });
+        logger.error("Error importing user", { email: row.email, error: e });
+      }
+    }
+  }
+
+  // Single audit log entry for the entire import (no PII — only counts per RA 10173 §19)
+  try {
+    await writeAuditLog(admin.id, "bulk_imported_users", "User", 0, {
+      imported,
+      skipped,
+      error_count: errors.length,
+      roles_imported: rolesImported,
+    });
+  } catch (e) {
+    logger.error("Failed to write audit log for bulk import", e);
+  }
+
+  return c.json({ imported, skipped, errors });
+});
+
 adminRoutes.patch("/users/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = safeParseInt(c.req.param("id"), 0);
   const body = sanitizeObject(await c.req.json());
-  const { name, first_name, middle_initial, last_name, role, school_id, cluster_id, program_ids, is_active } = body;
+  const {
+    name,
+    first_name,
+    middle_initial,
+    last_name,
+    role,
+    school_id,
+    cluster_id,
+    program_ids,
+    is_active,
+  } = body;
 
   const cesRoles = ["CES-SGOD", "CES-ASDS", "CES-CID"];
   if (role !== undefined && cesRoles.includes(role)) {
-    const existing = await prisma.user.findFirst({ where: { role, NOT: { id } } });
+    const existing = await prisma.user.findFirst({
+      where: { role, NOT: { id } },
+    });
     if (existing) {
-      return c.json({ error: `A ${role} account already exists. Only one account per CES role is allowed.` }, 409);
+      return c.json({
+        error:
+          `A ${role} account already exists. Only one account per CES role is allowed.`,
+      }, 409);
+    }
+  }
+
+  if (role === "School" && school_id != null) {
+    const existing = await prisma.user.findFirst({
+      where: { role: "School", school_id, NOT: { id } },
+    });
+    if (existing) {
+      return c.json({
+        error:
+          "This school already has a user account. Only one account per school is allowed.",
+      }, 409);
     }
   }
 
   const updateData: Record<string, unknown> = {};
-  if (name            !== undefined) updateData.name            = name;
-  if (first_name      !== undefined) updateData.first_name      = first_name;
-  if (middle_initial  !== undefined) updateData.middle_initial  = middle_initial;
-  if (last_name       !== undefined) updateData.last_name       = last_name;
-  if (role            !== undefined) updateData.role            = role;
-  if (is_active       !== undefined) updateData.is_active       = is_active;
+  if (name !== undefined) updateData.name = name;
+  if (first_name !== undefined) updateData.first_name = first_name;
+  if (middle_initial !== undefined) updateData.middle_initial = middle_initial;
+  if (last_name !== undefined) updateData.last_name = last_name;
+  if (role !== undefined) updateData.role = role;
+  if (is_active !== undefined) updateData.is_active = is_active;
 
   // Handle school_id and cluster_id based on role
   if (role === "School" && school_id !== undefined) {
@@ -1478,7 +2130,16 @@ adminRoutes.patch("/users/:id", async (c) => {
   } else if (role === "Cluster Coordinator") {
     updateData.school_id = null;
     if (cluster_id !== undefined) updateData.cluster_id = cluster_id;
-  } else if (["Division Personnel", "Admin", "CES-SGOD", "CES-ASDS", "CES-CID"].includes(role)) {
+  } else if (
+    [
+      "Division Personnel",
+      "Admin",
+      "CES-SGOD",
+      "CES-ASDS",
+      "CES-CID",
+      "Pending",
+    ].includes(role)
+  ) {
     updateData.school_id = null;
     updateData.cluster_id = null;
   }
@@ -1495,7 +2156,12 @@ adminRoutes.patch("/users/:id", async (c) => {
     });
 
     await writeAuditLog(admin.id, "updated_user", "User", id, body);
-    return c.json({ id: user.id, email: user.email, role: user.role, is_active: user.is_active });
+    return c.json({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      is_active: user.is_active,
+    });
   } catch (err: unknown) {
     logger.error("Error updating user", err);
     return c.json({ error: "Failed to update user." }, 500);
@@ -1507,14 +2173,18 @@ adminRoutes.delete("/users/:id", async (c) => {
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = safeParseInt(c.req.param("id"), 0);
 
-  if (id === admin.id) return c.json({ error: "Cannot delete your own account" }, 400);
+  if (id === admin.id) {
+    return c.json({ error: "Cannot delete your own account" }, 400);
+  }
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return c.json({ error: "Not found" }, 404);
 
   await prisma.user.delete({ where: { id } });
   // Audit log stores only non-PII identifiers — email is omitted (RA 10173 §19).
-  await writeAuditLog(admin.id, "deleted_user", "User", id, { role: user.role });
+  await writeAuditLog(admin.id, "deleted_user", "User", id, {
+    role: user.role,
+  });
   return c.json({ success: true });
 });
 
@@ -1524,7 +2194,7 @@ adminRoutes.post("/users/:id/reset-password", async (c) => {
   const id = safeParseInt(c.req.param("id"), 0);
 
   const tempPassword = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-    .map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 10);
+    .map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 10);
 
   const salt = await bcrypt.genSalt(10);
   const hashed = await bcrypt.hash(tempPassword, salt);
@@ -1534,7 +2204,12 @@ adminRoutes.post("/users/:id/reset-password", async (c) => {
 
   // Return the temporary password ONLY in the API response body (over HTTPS to the admin).
   // Never log credentials to stdout — they would be captured by container logs.
-  return c.json({ success: true, temporaryPassword: tempPassword, message: "Password reset successful. Share this temporary password securely with the user." });
+  return c.json({
+    success: true,
+    temporaryPassword: tempPassword,
+    message:
+      "Password reset successful. Share this temporary password securely with the user.",
+  });
 });
 
 // ==========================================
@@ -1546,9 +2221,18 @@ adminRoutes.get("/clusters", async (c) => {
   const clusters = await prisma.cluster.findMany({
     include: {
       schools: {
+        orderBy: { name: "asc" },
         include: {
           aips: { select: { id: true, year: true, status: true } },
-          users: { select: { id: true, email: true, name: true, first_name: true, last_name: true } },
+          users: {
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              first_name: true,
+              last_name: true,
+            },
+          },
           restricted_programs: { select: { id: true, title: true } },
         },
       },
@@ -1562,13 +2246,22 @@ adminRoutes.post("/clusters", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { cluster_number, name } = sanitizeObject(await c.req.json());
-  if (!cluster_number) return c.json({ error: "Cluster number is required" }, 400);
+  if (!cluster_number) {
+    return c.json({ error: "Cluster number is required" }, 400);
+  }
   try {
-    const cluster = await prisma.cluster.create({ data: { cluster_number: Number(cluster_number), name } });
-    await writeAuditLog(admin.id, "created_cluster", "Cluster", cluster.id, { cluster_number, name });
+    const cluster = await prisma.cluster.create({
+      data: { cluster_number: Number(cluster_number), name },
+    });
+    await writeAuditLog(admin.id, "created_cluster", "Cluster", cluster.id, {
+      cluster_number,
+      name,
+    });
     return c.json(cluster);
   } catch (e: any) {
-    if (e?.code === "P2002") return c.json({ error: `Cluster ${cluster_number} already exists` }, 409);
+    if (e?.code === "P2002") {
+      return c.json({ error: `Cluster ${cluster_number} already exists` }, 409);
+    }
     throw e;
   }
 });
@@ -1578,13 +2271,23 @@ adminRoutes.patch("/clusters/:id", async (c) => {
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = safeParseInt(c.req.param("id"), 0);
   const { cluster_number, name } = sanitizeObject(await c.req.json());
-  if (!cluster_number) return c.json({ error: "Cluster number is required" }, 400);
+  if (!cluster_number) {
+    return c.json({ error: "Cluster number is required" }, 400);
+  }
   try {
-    const cluster = await prisma.cluster.update({ where: { id }, data: { cluster_number: Number(cluster_number), name } });
-    await writeAuditLog(admin.id, "updated_cluster", "Cluster", id, { cluster_number, name });
+    const cluster = await prisma.cluster.update({
+      where: { id },
+      data: { cluster_number: Number(cluster_number), name },
+    });
+    await writeAuditLog(admin.id, "updated_cluster", "Cluster", id, {
+      cluster_number,
+      name,
+    });
     return c.json(cluster);
   } catch (e: any) {
-    if (e?.code === "P2002") return c.json({ error: `Cluster ${cluster_number} already exists` }, 409);
+    if (e?.code === "P2002") {
+      return c.json({ error: `Cluster ${cluster_number} already exists` }, 409);
+    }
     throw e;
   }
 });
@@ -1595,21 +2298,102 @@ adminRoutes.delete("/clusters/:id", async (c) => {
   const id = safeParseInt(c.req.param("id"), 0);
   const schoolCount = await prisma.school.count({ where: { cluster_id: id } });
   if (schoolCount > 0) {
-    return c.json({ error: "Cannot delete a cluster that has schools assigned to it" }, 400);
+    return c.json({
+      error: "Cannot delete a cluster that has schools assigned to it",
+    }, 400);
   }
   await prisma.cluster.delete({ where: { id } });
+  await removeExistingClusterLogos(id);
   await writeAuditLog(admin.id, "deleted_cluster", "Cluster", id, {});
   return c.json({ success: true });
 });
 
+adminRoutes.post("/clusters/:id/logo", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (!id) return c.json({ error: "Invalid cluster ID" }, 400);
+
+  const cluster = await prisma.cluster.findUnique({ where: { id } });
+  if (!cluster) return c.json({ error: "Cluster not found" }, 404);
+
+  let formData: FormData;
+  try {
+    formData = await c.req.formData();
+  } catch {
+    return c.json({ error: "Expected multipart/form-data" }, 400);
+  }
+
+  const file = formData.get("logo");
+  if (!(file instanceof File)) {
+    return c.json({ error: "Missing logo file" }, 400);
+  }
+
+  const extension = LOGO_MIME_EXTENSIONS[file.type];
+  if (!extension) {
+    return c.json({
+      error: "Logo must be a WebP, PNG, JPEG, or GIF image",
+    }, 400);
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    return c.json({ error: "Logo must be 2 MB or smaller" }, 400);
+  }
+
+  await Deno.mkdir(CLUSTER_LOGO_DIR, { recursive: true });
+  await removeExistingClusterLogos(id);
+
+  const logoPath = `/cluster-logos/${id}.${extension}?v=${Date.now()}`;
+  const buffer = await file.arrayBuffer();
+  await Deno.writeFile(
+    `${CLUSTER_LOGO_DIR}/${id}.${extension}`,
+    new Uint8Array(buffer),
+  );
+
+  await prisma.cluster.update({ where: { id }, data: { logo: logoPath } });
+  await writeAuditLog(admin.id, "uploaded_cluster_logo", "Cluster", id, {
+    logo: logoPath,
+  });
+
+  return c.json({ logo: logoPath });
+});
+
+adminRoutes.delete("/clusters/:id/logo", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (!id) return c.json({ error: "Invalid cluster ID" }, 400);
+
+  const cluster = await prisma.cluster.findUnique({ where: { id } });
+  if (!cluster) return c.json({ error: "Cluster not found" }, 404);
+
+  await prisma.cluster.update({ where: { id }, data: { logo: null } });
+  await removeExistingClusterLogos(id);
+  await writeAuditLog(admin.id, "removed_cluster_logo", "Cluster", id, {});
+
+  return c.json({ logo: null });
+});
+
 adminRoutes.get("/schools", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const clusterId = c.req.query("cluster") ? safeParseInt(c.req.query("cluster"), 0) : undefined;
+  const clusterId = c.req.query("cluster")
+    ? safeParseInt(c.req.query("cluster"), 0)
+    : undefined;
   const schools = await prisma.school.findMany({
     where: clusterId ? { cluster_id: clusterId } : undefined,
     include: {
       cluster: true,
-      users: { select: { id: true, email: true, name: true, first_name: true, last_name: true } },
+      users: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          first_name: true,
+          last_name: true,
+        },
+      },
       restricted_programs: { select: { id: true, title: true } },
       aips: { select: { id: true, year: true, status: true } },
     },
@@ -1621,9 +2405,35 @@ adminRoutes.get("/schools", async (c) => {
 adminRoutes.post("/schools", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { name, abbreviation, level, cluster_id } = sanitizeObject(await c.req.json());
-  const school = await prisma.school.create({ data: { name, abbreviation: abbreviation || null, level, cluster_id } });
-  await writeAuditLog(admin.id, "created_school", "School", school.id, { name, abbreviation, level, cluster_id });
+  const { name, abbreviation, level, cluster_id } = sanitizeObject(
+    await c.req.json(),
+  );
+  if (!SCHOOL_LEVELS.has(level)) {
+    return c.json({
+      error: "School level must be Elementary or Secondary",
+    }, 400);
+  }
+  const clusterId = parsePositiveInt(cluster_id);
+  if (!clusterId) return c.json({ error: "Cluster is required" }, 400);
+  const clusterExists = await prisma.cluster.findUnique({
+    where: { id: clusterId },
+    select: { id: true },
+  });
+  if (!clusterExists) return c.json({ error: "Cluster not found" }, 404);
+  const school = await prisma.school.create({
+    data: {
+      name,
+      abbreviation: abbreviation || null,
+      level,
+      cluster: { connect: { id: clusterId } },
+    },
+  });
+  await writeAuditLog(admin.id, "created_school", "School", school.id, {
+    name,
+    abbreviation,
+    level,
+    cluster_id: clusterId,
+  });
   return c.json(school);
 });
 
@@ -1633,13 +2443,30 @@ adminRoutes.patch("/schools/:id", async (c) => {
   const id = safeParseInt(c.req.param("id"), 0);
   const body = sanitizeObject(await c.req.json());
   const { name, abbreviation, level, cluster_id } = body;
+  if ("level" in body && !SCHOOL_LEVELS.has(level)) {
+    return c.json({
+      error: "School level must be Elementary or Secondary",
+    }, 400);
+  }
+  let clusterId: number | undefined;
+  if ("cluster_id" in body) {
+    const parsedClusterId = parsePositiveInt(cluster_id);
+    if (!parsedClusterId) return c.json({ error: "Cluster is required" }, 400);
+    const clusterExists = await prisma.cluster.findUnique({
+      where: { id: parsedClusterId },
+      select: { id: true },
+    });
+    if (!clusterExists) return c.json({ error: "Cluster not found" }, 404);
+    clusterId = parsedClusterId;
+  }
   const school = await prisma.school.update({
     where: { id },
     data: {
       ...(name && { name }),
-      ...('abbreviation' in body && { abbreviation: abbreviation || null }),
+      ...("abbreviation" in body && { abbreviation: abbreviation || null }),
       ...(level && { level }),
-      ...(cluster_id && { cluster_id }),
+      ...(clusterId !== undefined &&
+        { cluster: { connect: { id: clusterId } } }),
     },
   });
   await writeAuditLog(admin.id, "updated_school", "School", id, body);
@@ -1668,8 +2495,78 @@ adminRoutes.patch("/schools/:id/restrictions", async (c) => {
       },
     },
   });
-  await writeAuditLog(admin.id, "updated_school_restrictions", "School", id, { restricted_program_ids });
+  await writeAuditLog(admin.id, "updated_school_restrictions", "School", id, {
+    restricted_program_ids,
+  });
   return c.json({ success: true });
+});
+
+adminRoutes.post("/schools/:id/logo", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (!id) return c.json({ error: "Invalid school ID" }, 400);
+
+  const school = await prisma.school.findUnique({ where: { id } });
+  if (!school) return c.json({ error: "School not found" }, 404);
+
+  let formData: FormData;
+  try {
+    formData = await c.req.formData();
+  } catch {
+    return c.json({ error: "Expected multipart/form-data" }, 400);
+  }
+
+  const file = formData.get("logo");
+  if (!(file instanceof File)) {
+    return c.json({ error: "Missing logo file" }, 400);
+  }
+
+  const extension = LOGO_MIME_EXTENSIONS[file.type];
+  if (!extension) {
+    return c.json({
+      error: "Logo must be a WebP, PNG, JPEG, or GIF image",
+    }, 400);
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    return c.json({ error: "Logo must be 2 MB or smaller" }, 400);
+  }
+
+  await Deno.mkdir(SCHOOL_LOGO_DIR, { recursive: true });
+  await removeExistingSchoolLogos(id);
+
+  const logoPath = `/school-logos/${id}.${extension}?v=${Date.now()}`;
+  const buffer = await file.arrayBuffer();
+  await Deno.writeFile(
+    `${SCHOOL_LOGO_DIR}/${id}.${extension}`,
+    new Uint8Array(buffer),
+  );
+
+  await prisma.school.update({ where: { id }, data: { logo: logoPath } });
+  await writeAuditLog(admin.id, "uploaded_school_logo", "School", id, {
+    logo: logoPath,
+  });
+
+  return c.json({ logo: logoPath });
+});
+
+adminRoutes.delete("/schools/:id/logo", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (!id) return c.json({ error: "Invalid school ID" }, 400);
+
+  const school = await prisma.school.findUnique({ where: { id } });
+  if (!school) return c.json({ error: "School not found" }, 404);
+
+  await prisma.school.update({ where: { id }, data: { logo: null } });
+  await removeExistingSchoolLogos(id);
+  await writeAuditLog(admin.id, "removed_school_logo", "School", id, {});
+
+  return c.json({ logo: null });
 });
 
 // ==========================================
@@ -1680,7 +2577,16 @@ adminRoutes.get("/programs", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const programs = await prisma.program.findMany({
     include: {
-      personnel: { select: { id: true, name: true, email: true, first_name: true, last_name: true, middle_initial: true } },
+      personnel: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          first_name: true,
+          last_name: true,
+          middle_initial: true,
+        },
+      },
       restricted_schools: { select: { id: true, name: true } },
       _count: { select: { aips: true } },
     },
@@ -1692,13 +2598,28 @@ adminRoutes.get("/programs", async (c) => {
 adminRoutes.post("/programs", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { title, abbreviation, division, school_level_requirement } = sanitizeObject(await c.req.json());
+  const { title, abbreviation, division, school_level_requirement } =
+    sanitizeObject(await c.req.json());
   try {
-    const program = await prisma.program.create({ data: { title, abbreviation: abbreviation || null, division: division || null, school_level_requirement } });
-    await writeAuditLog(admin.id, "created_program", "Program", program.id, { title });
+    const program = await prisma.program.create({
+      data: {
+        title,
+        abbreviation: abbreviation || null,
+        division: division || null,
+        school_level_requirement,
+      },
+    });
+    await writeAuditLog(admin.id, "created_program", "Program", program.id, {
+      title,
+    });
     return c.json(program);
   } catch (e: any) {
-    if (e?.code === "P2002") return c.json({ error: "A program with that title already exists for that applicability level." }, 409);
+    if (e?.code === "P2002") {
+      return c.json({
+        error:
+          "A program with that title already exists for that applicability level.",
+      }, 409);
+    }
     throw e;
   }
 });
@@ -1707,16 +2628,32 @@ adminRoutes.patch("/programs/:id", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = safeParseInt(c.req.param("id"), 0);
-  const { title, abbreviation, division, school_level_requirement } = sanitizeObject(await c.req.json());
+  const { title, abbreviation, division, school_level_requirement } =
+    sanitizeObject(await c.req.json());
   try {
     const program = await prisma.program.update({
       where: { id },
-      data: { title, abbreviation: abbreviation || null, division: division || null, school_level_requirement },
+      data: {
+        title,
+        abbreviation: abbreviation || null,
+        division: division || null,
+        school_level_requirement,
+      },
     });
-    await writeAuditLog(admin.id, "updated_program", "Program", id, { title, abbreviation, division, school_level_requirement });
+    await writeAuditLog(admin.id, "updated_program", "Program", id, {
+      title,
+      abbreviation,
+      division,
+      school_level_requirement,
+    });
     return c.json(program);
   } catch (e: any) {
-    if (e?.code === "P2002") return c.json({ error: "A program with that title already exists for that applicability level." }, 409);
+    if (e?.code === "P2002") {
+      return c.json({
+        error:
+          "A program with that title already exists for that applicability level.",
+      }, 409);
+    }
     throw e;
   }
 });
@@ -1739,7 +2676,9 @@ adminRoutes.patch("/programs/:id/personnel", async (c) => {
     where: { id },
     data: { personnel: { set: user_ids.map((uid: number) => ({ id: uid })) } },
   });
-  await writeAuditLog(admin.id, "updated_program_personnel", "Program", id, { user_ids });
+  await writeAuditLog(admin.id, "updated_program_personnel", "Program", id, {
+    user_ids,
+  });
   return c.json({ success: true });
 });
 
@@ -1763,10 +2702,20 @@ adminRoutes.post("/division-programs", async (c) => {
     const program = await prisma.divisionProgram.create({
       data: { title, abbreviation: abbreviation || null, division },
     });
-    await writeAuditLog(admin.id, "created_division_program", "DivisionProgram", program.id, { title, division });
+    await writeAuditLog(
+      admin.id,
+      "created_division_program",
+      "DivisionProgram",
+      program.id,
+      { title, division },
+    );
     return c.json(program);
   } catch (e: any) {
-    if (e?.code === "P2002") return c.json({ error: "A program with that title already exists in that division." }, 409);
+    if (e?.code === "P2002") {
+      return c.json({
+        error: "A program with that title already exists in that division.",
+      }, 409);
+    }
     throw e;
   }
 });
@@ -1781,10 +2730,20 @@ adminRoutes.patch("/division-programs/:id", async (c) => {
       where: { id },
       data: { title, abbreviation: abbreviation || null, division },
     });
-    await writeAuditLog(admin.id, "updated_division_program", "DivisionProgram", id, { title, division });
+    await writeAuditLog(
+      admin.id,
+      "updated_division_program",
+      "DivisionProgram",
+      id,
+      { title, division },
+    );
     return c.json(program);
   } catch (e: any) {
-    if (e?.code === "P2002") return c.json({ error: "A program with that title already exists in that division." }, 409);
+    if (e?.code === "P2002") {
+      return c.json({
+        error: "A program with that title already exists in that division.",
+      }, 409);
+    }
     throw e;
   }
 });
@@ -1794,7 +2753,13 @@ adminRoutes.delete("/division-programs/:id", async (c) => {
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = safeParseInt(c.req.param("id"), 0);
   await prisma.divisionProgram.delete({ where: { id } });
-  await writeAuditLog(admin.id, "deleted_division_program", "DivisionProgram", id, {});
+  await writeAuditLog(
+    admin.id,
+    "deleted_division_program",
+    "DivisionProgram",
+    id,
+    {},
+  );
   return c.json({ success: true });
 });
 
@@ -1804,17 +2769,19 @@ adminRoutes.delete("/division-programs/:id", async (c) => {
 
 adminRoutes.get("/deadlines", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
-  const year = safeParseInt(c.req.query("year"), new Date().getFullYear(), 2020, 2100);
+  const year = safeParseInt(
+    c.req.query("year"),
+    new Date().getFullYear(),
+    2020,
+    2100,
+  );
   const deadlines = await prisma.deadline.findMany({ where: { year } });
-  const defaults: Record<number, string> = {
-    1: `${year}-03-31`, 2: `${year}-06-30`, 3: `${year}-09-30`, 4: `${year}-12-31`,
-  };
-  const result = [1, 2, 3, 4].map((q) => {
+  const result = getQuarterNumbers().map((q) => {
     const custom = deadlines.find((d) => d.quarter === q);
     return {
       quarter: q,
       year,
-      date: custom ? custom.date : new Date(defaults[q]),
+      date: custom ? custom.date : buildDefaultDeadline(year, q),
       open_date: custom?.open_date ?? null,
       grace_period_days: custom?.grace_period_days ?? 0,
       isCustom: !!custom,
@@ -1827,7 +2794,8 @@ adminRoutes.get("/deadlines", async (c) => {
 adminRoutes.post("/deadlines", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { year, quarter, date, open_date, grace_period_days } = await c.req.json();
+  const { year, quarter, date, open_date, grace_period_days } = await c.req
+    .json();
 
   // Validate year
   const parsedYear = safeParseInt(year, 0, 2020, 2100);
@@ -1836,7 +2804,7 @@ adminRoutes.post("/deadlines", async (c) => {
   }
 
   // Validate quarter
-  if (![1, 2, 3, 4].includes(quarter)) {
+  if (!isValidQuarter(quarter)) {
     return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
   }
 
@@ -1864,7 +2832,9 @@ adminRoutes.post("/deadlines", async (c) => {
     return c.json({ error: "Grace period must be between 0 and 30 days" }, 400);
   }
 
-  const existing = await prisma.deadline.findUnique({ where: { year_quarter: { year: parsedYear, quarter } } });
+  const existing = await prisma.deadline.findUnique({
+    where: { year_quarter: { year: parsedYear, quarter } },
+  });
   const deadline = await prisma.deadline.upsert({
     where: { year_quarter: { year: parsedYear, quarter } },
     update: {
@@ -1881,7 +2851,10 @@ adminRoutes.post("/deadlines", async (c) => {
     },
   });
   await writeAuditLog(admin.id, "changed_deadline", "Deadline", deadline.id, {
-    year: parsedYear, quarter, newDate: date, previousDate: existing?.date ?? null,
+    year: parsedYear,
+    quarter,
+    newDate: date,
+    previousDate: existing?.date ?? null,
   });
   return c.json(deadline);
 });
@@ -1919,9 +2892,12 @@ adminRoutes.use("/reports/*", async (c, next) => {
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const now = Date.now();
   let timestamps = reportRequests.get(admin.id) || [];
-  timestamps = timestamps.filter(t => now - t < REPORT_WINDOW_MS);
+  timestamps = timestamps.filter((t) => now - t < REPORT_WINDOW_MS);
   if (timestamps.length >= MAX_REPORT_REQUESTS) {
-    return c.json({ error: "Rate limit exceeded for reports. Please wait." }, 429);
+    return c.json(
+      { error: "Rate limit exceeded for reports. Please wait." },
+      429,
+    );
   }
   timestamps.push(now);
   reportRequests.set(admin.id, timestamps);
@@ -1942,10 +2918,14 @@ adminRoutes.get("/reports/years", async (c) => {
 adminRoutes.get("/reports/compliance", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) {
+    return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  }
   const clusterRaw = c.req.query("cluster");
   const clusterId = clusterRaw ? safeParseInt(clusterRaw, 0) : undefined;
-  if (clusterId !== undefined && (isNaN(clusterId) || clusterId < 1)) return c.json({ error: "Invalid cluster" }, 400);
+  if (clusterId !== undefined && (isNaN(clusterId) || clusterId < 1)) {
+    return c.json({ error: "Invalid cluster" }, 400);
+  }
 
   const schools = await prisma.school.findMany({
     where: clusterId ? { cluster_id: clusterId } : undefined,
@@ -1961,11 +2941,14 @@ adminRoutes.get("/reports/compliance", async (c) => {
   });
 
   const matrix = schools.map((s) => {
-    const row: Record<string, unknown> = { schoolId: s.id, school: s.name, level: s.level };
+    const row: Record<string, unknown> = {
+      schoolId: s.id,
+      school: s.name,
+      level: s.level,
+    };
     for (const prog of programs) {
       const submitted = s.aips.some((a) => a.program_id === prog.id);
-      const eligible =
-        prog.school_level_requirement === "Both" ||
+      const eligible = prog.school_level_requirement === "Both" ||
         prog.school_level_requirement === s.level ||
         (prog.school_level_requirement === "Select Schools" &&
           !s.restricted_programs?.some((r) => r.id === prog.id));
@@ -1980,22 +2963,35 @@ adminRoutes.get("/reports/compliance", async (c) => {
 adminRoutes.get("/reports/quarterly", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) {
+    return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  }
   const clusterRaw = c.req.query("cluster");
   const clusterId = clusterRaw ? safeParseInt(clusterRaw, 0) : undefined;
-  if (clusterId !== undefined && (isNaN(clusterId) || clusterId < 1)) return c.json({ error: "Invalid cluster" }, 400);
+  if (clusterId !== undefined && (isNaN(clusterId) || clusterId < 1)) {
+    return c.json({ error: "Invalid cluster" }, 400);
+  }
 
   const pirs = await prisma.pIR.findMany({
-    where: { aip: { year, ...(clusterId && { school: { cluster_id: clusterId } }) } },
+    where: {
+      aip: { year, ...(clusterId && { school: { cluster_id: clusterId } }) },
+    },
     include: { aip: { include: { school: true, program: true } } },
   });
 
-  const quarterLabels = ["1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter"];
+  const quarterLabels = [
+    "1st Quarter",
+    "2nd Quarter",
+    "3rd Quarter",
+    "4th Quarter",
+  ];
   const summary = quarterLabels.map((ql, i) => {
     const quarterPIRs = pirs.filter((p) => p.quarter.startsWith(`${i + 1}`));
     return {
       quarter: `Q${i + 1}`,
-      submitted: quarterPIRs.filter((p) => ["Submitted", "Approved"].includes(p.status)).length,
+      submitted: quarterPIRs.filter((p) =>
+        ["Submitted", "Approved"].includes(p.status)
+      ).length,
       pending: quarterPIRs.filter((p) => p.status === "Submitted").length,
       approved: quarterPIRs.filter((p) => p.status === "Approved").length,
       returned: quarterPIRs.filter((p) => p.status === "Returned").length,
@@ -2008,21 +3004,39 @@ adminRoutes.get("/reports/quarterly", async (c) => {
 adminRoutes.get("/reports/budget", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) {
+    return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  }
 
   const activities = await prisma.aIPActivity.findMany({
     where: { aip: { year } },
     include: { aip: { include: { program: true, school: true } } },
   });
 
-  const byProgram: Record<string, { program: string; total: number; sources: Record<string, number>; activityCount: number }> = {};
+  const byProgram: Record<
+    string,
+    {
+      program: string;
+      total: number;
+      sources: Record<string, number>;
+      activityCount: number;
+    }
+  > = {};
   for (const act of activities) {
     const key = act.aip.program.title;
-    if (!byProgram[key]) byProgram[key] = { program: key, total: 0, sources: {}, activityCount: 0 };
+    if (!byProgram[key]) {
+      byProgram[key] = {
+        program: key,
+        total: 0,
+        sources: {},
+        activityCount: 0,
+      };
+    }
     const amt = Number(act.budget_amount);
     byProgram[key].total += amt;
     byProgram[key].activityCount += 1;
-    byProgram[key].sources[act.budget_source] = (byProgram[key].sources[act.budget_source] ?? 0) + amt;
+    byProgram[key].sources[act.budget_source] =
+      (byProgram[key].sources[act.budget_source] ?? 0) + amt;
   }
 
   return c.json({ data: Object.values(byProgram), year });
@@ -2031,7 +3045,9 @@ adminRoutes.get("/reports/budget", async (c) => {
 adminRoutes.get("/reports/workload", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) {
+    return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  }
   const personnel = await prisma.user.findMany({
     where: { role: "Division Personnel", is_active: true },
     include: {
@@ -2049,14 +3065,16 @@ adminRoutes.get("/reports/workload", async (c) => {
       programCount: p.programs.length,
       aipCount: p.aips.length,
       pirCount: p.pirs.length,
-    }))
+    })),
   );
 });
 
 adminRoutes.get("/reports/accomplishment", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) {
+    return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  }
 
   const reviews = await prisma.pIRActivityReview.findMany({
     where: { pir: { aip: { year } } },
@@ -2069,20 +3087,41 @@ adminRoutes.get("/reports/accomplishment", async (c) => {
     },
   });
 
-  const bySchool: Record<string, { school: string; cluster: string; physSum: number; physCount: number; finSum: number; finCount: number }> = {};
+  const bySchool: Record<
+    string,
+    {
+      school: string;
+      cluster: string;
+      physSum: number;
+      physCount: number;
+      finSum: number;
+      finCount: number;
+    }
+  > = {};
 
   for (const r of reviews) {
     const school = r.pir.aip.school?.name ?? "Division";
     const cluster = r.pir.aip.school?.cluster?.name ?? "Division";
-    if (!bySchool[school]) bySchool[school] = { school, cluster, physSum: 0, physCount: 0, finSum: 0, finCount: 0 };
+    if (!bySchool[school]) {
+      bySchool[school] = {
+        school,
+        cluster,
+        physSum: 0,
+        physCount: 0,
+        finSum: 0,
+        finCount: 0,
+      };
+    }
     const physTarget = Number(r.physical_target);
     const finTarget = Number(r.financial_target);
     if (physTarget > 0) {
-      bySchool[school].physSum += (Number(r.physical_accomplished) / physTarget) * 100;
+      bySchool[school].physSum +=
+        (Number(r.physical_accomplished) / physTarget) * 100;
       bySchool[school].physCount += 1;
     }
     if (finTarget > 0) {
-      bySchool[school].finSum += (Number(r.financial_accomplished) / finTarget) * 100;
+      bySchool[school].finSum +=
+        (Number(r.financial_accomplished) / finTarget) * 100;
       bySchool[school].finCount += 1;
     }
   }
@@ -2100,18 +3139,29 @@ adminRoutes.get("/reports/accomplishment", async (c) => {
 adminRoutes.get("/reports/factors", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) {
+    return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  }
 
   const factors = await prisma.pIRFactor.findMany({
     where: { pir: { aip: { year } } },
   });
 
-  const TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
+  const TYPES = [
+    "Institutional",
+    "Technical",
+    "Infrastructure",
+    "Learning Resources",
+    "Environmental",
+    "Others",
+  ];
   const data = TYPES.map((t) => {
     const matching = factors.filter((f) => f.factor_type.trim() === t);
     return {
       type: t,
-      facilitating: matching.filter((f) => f.facilitating_factors?.trim()).length,
+      facilitating: matching.filter((f) =>
+        f.facilitating_factors?.trim()
+      ).length,
       hindering: matching.filter((f) => f.hindering_factors?.trim()).length,
     };
   });
@@ -2122,14 +3172,22 @@ adminRoutes.get("/reports/factors", async (c) => {
 adminRoutes.get("/reports/aip-funnel", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) {
+    return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  }
 
   const aips = await prisma.aIP.findMany({
     where: { year },
     select: { status: true },
   });
 
-  const STATUSES = ["Draft", "Submitted", "Under Review", "Approved", "Returned"];
+  const STATUSES = [
+    "Draft",
+    "Submitted",
+    "Under Review",
+    "Approved",
+    "Returned",
+  ];
   const data = STATUSES.map((s) => ({
     status: s,
     count: aips.filter((a) => a.status === s).length,
@@ -2141,16 +3199,29 @@ adminRoutes.get("/reports/aip-funnel", async (c) => {
 adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) {
+    return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  }
   const quarter = safeParseInt(c.req.query("quarter"), 1);
-  if (![1, 2, 3, 4].includes(quarter)) return c.json({ error: "Invalid quarter (must be 1\u20134)" }, 400);
+  if (!isValidQuarter(quarter)) {
+    return c.json({ error: "Invalid quarter (must be 1\u20134)" }, 400);
+  }
   const clusterRaw = c.req.query("cluster");
   const clusterId = clusterRaw ? safeParseInt(clusterRaw, 0) : undefined;
-  if (!clusterId || isNaN(clusterId) || clusterId < 1) return c.json({ error: "cluster parameter is required" }, 400);
+  if (!clusterId || isNaN(clusterId) || clusterId < 1) {
+    return c.json({ error: "cluster parameter is required" }, 400);
+  }
 
-  const quarterPrefixes: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
+  const quarterPrefixes: Record<number, string> = {
+    1: "1st",
+    2: "2nd",
+    3: "3rd",
+    4: "4th",
+  };
   const qPrefix = quarterPrefixes[quarter];
-  if (!qPrefix) return c.json({ error: "Invalid quarter (must be 1\u20134)" }, 400);
+  if (!qPrefix) {
+    return c.json({ error: "Invalid quarter (must be 1\u20134)" }, 400);
+  }
 
   const programs = await prisma.program.findMany({
     where: { school_level_requirement: { not: "Division" } },
@@ -2174,25 +3245,38 @@ adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
   });
 
   // Build lookup: aipMap[schoolId][programId] = { pirId, presented }
-  const aipMap: Record<number, Record<number, { pirId: number; presented: boolean }>> = {};
+  const aipMap: Record<
+    number,
+    Record<number, { pirId: number; presented: boolean }>
+  > = {};
   for (const aip of aips) {
     if (!aip.school_id) continue;
     if (!aipMap[aip.school_id]) aipMap[aip.school_id] = {};
     const pir = aip.pirs[0];
     if (pir) {
-      aipMap[aip.school_id][aip.program_id] = { pirId: pir.id, presented: pir.presented };
+      aipMap[aip.school_id][aip.program_id] = {
+        pirId: pir.id,
+        presented: pir.presented,
+      };
     }
   }
 
   // Build matrix and totals
-  const matrix: Record<string, { eligible: boolean; pirExists: boolean; pirId: number | null; presented: boolean }> = {};
+  const matrix: Record<
+    string,
+    {
+      eligible: boolean;
+      pirExists: boolean;
+      pirId: number | null;
+      presented: boolean;
+    }
+  > = {};
   const totals: Record<number, { pirTool: number; presented: number }> = {};
 
   for (const school of schools) {
     totals[school.id] = { pirTool: 0, presented: 0 };
     for (const prog of programs) {
-      const eligible =
-        prog.school_level_requirement === "Both" ||
+      const eligible = prog.school_level_requirement === "Both" ||
         prog.school_level_requirement === school.level ||
         (prog.school_level_requirement === "Select Schools" &&
           !school.restricted_programs?.some((r) => r.id === prog.id));
@@ -2214,8 +3298,17 @@ adminRoutes.get("/reports/cluster-pir-summary", async (c) => {
   }
 
   return c.json({
-    programs: programs.map((p) => ({ id: p.id, title: p.title, abbreviation: p.abbreviation, division: (p as any).division ?? null })),
-    schools: schools.map((s) => ({ id: s.id, name: s.name, abbreviation: s.abbreviation })),
+    programs: programs.map((p) => ({
+      id: p.id,
+      title: p.title,
+      abbreviation: p.abbreviation,
+      division: (p as any).division ?? null,
+    })),
+    schools: schools.map((s) => ({
+      id: s.id,
+      name: s.name,
+      abbreviation: s.abbreviation,
+    })),
     matrix,
     totals,
     year,
@@ -2229,7 +3322,9 @@ adminRoutes.get("/reports/:type/export", async (c) => {
   const type = c.req.param("type");
   const format = c.req.query("format") || "csv";
   const year = safeParseInt(c.req.query("year"), new Date().getFullYear());
-  if (isNaN(year) || year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  if (isNaN(year) || year < 2020 || year > 2100) {
+    return c.json({ error: "Invalid year (must be 2020\u20132100)" }, 400);
+  }
 
   let rows: Record<string, unknown>[] = [];
 
@@ -2265,7 +3360,9 @@ adminRoutes.get("/reports/:type/export", async (c) => {
     });
     rows = aips.map((a) => ({
       School: a.school?.name ?? "Division",
-      Cluster: a.school?.cluster ? `Cluster ${a.school.cluster.cluster_number}` : "—",
+      Cluster: a.school?.cluster
+        ? `Cluster ${a.school.cluster.cluster_number}`
+        : "—",
       Program: a.program.title,
       Year: a.year,
       Status: a.status,
@@ -2273,11 +3370,17 @@ adminRoutes.get("/reports/:type/export", async (c) => {
   } else if (type === "quarterly") {
     const pirs = await prisma.pIR.findMany({
       where: { aip: { year } },
-      include: { aip: { include: { school: { include: { cluster: true } }, program: true } } },
+      include: {
+        aip: {
+          include: { school: { include: { cluster: true } }, program: true },
+        },
+      },
     });
     rows = pirs.map((p) => ({
       School: p.aip.school?.name ?? "Division",
-      Cluster: p.aip.school?.cluster ? `Cluster ${p.aip.school.cluster.cluster_number}` : "—",
+      Cluster: p.aip.school?.cluster
+        ? `Cluster ${p.aip.school.cluster.cluster_number}`
+        : "—",
       Program: p.aip.program.title,
       Quarter: p.quarter,
       Year: p.aip.year,
@@ -2286,32 +3389,87 @@ adminRoutes.get("/reports/:type/export", async (c) => {
   } else if (type === "accomplishment") {
     const reviews = await prisma.pIRActivityReview.findMany({
       where: { pir: { aip: { year } } },
-      include: { pir: { include: { aip: { include: { school: { include: { cluster: true } } } } } } },
+      include: {
+        pir: {
+          include: {
+            aip: { include: { school: { include: { cluster: true } } } },
+          },
+        },
+      },
     });
-    const bySchool: Record<string, { school: string; cluster: string; physSum: number; physCount: number; finSum: number; finCount: number }> = {};
+    const bySchool: Record<
+      string,
+      {
+        school: string;
+        cluster: string;
+        physSum: number;
+        physCount: number;
+        finSum: number;
+        finCount: number;
+      }
+    > = {};
     for (const r of reviews) {
       const school = r.pir.aip.school?.name ?? "Division";
       const cluster = r.pir.aip.school?.cluster?.name ?? "Division";
-      if (!bySchool[school]) bySchool[school] = { school, cluster, physSum: 0, physCount: 0, finSum: 0, finCount: 0 };
+      if (!bySchool[school]) {
+        bySchool[school] = {
+          school,
+          cluster,
+          physSum: 0,
+          physCount: 0,
+          finSum: 0,
+          finCount: 0,
+        };
+      }
       const physTarget = Number(r.physical_target);
       const finTarget = Number(r.financial_target);
-      if (physTarget > 0) { bySchool[school].physSum += (Number(r.physical_accomplished) / physTarget) * 100; bySchool[school].physCount += 1; }
-      if (finTarget > 0) { bySchool[school].finSum += (Number(r.financial_accomplished) / finTarget) * 100; bySchool[school].finCount += 1; }
+      if (physTarget > 0) {
+        bySchool[school].physSum +=
+          (Number(r.physical_accomplished) / physTarget) * 100;
+        bySchool[school].physCount += 1;
+      }
+      if (finTarget > 0) {
+        bySchool[school].finSum +=
+          (Number(r.financial_accomplished) / finTarget) * 100;
+        bySchool[school].finCount += 1;
+      }
     }
     rows = Object.values(bySchool).map((s) => ({
       School: s.school,
       Cluster: s.cluster,
-      "Physical Rate (%)": s.physCount > 0 ? Math.round(s.physSum / s.physCount) : 0,
-      "Financial Rate (%)": s.finCount > 0 ? Math.round(s.finSum / s.finCount) : 0,
+      "Physical Rate (%)": s.physCount > 0
+        ? Math.round(s.physSum / s.physCount)
+        : 0,
+      "Financial Rate (%)": s.finCount > 0
+        ? Math.round(s.finSum / s.finCount)
+        : 0,
     }));
   } else if (type === "factors") {
-    const factors = await prisma.pIRFactor.findMany({ where: { pir: { aip: { year } } } });
-    const TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
+    const factors = await prisma.pIRFactor.findMany({
+      where: { pir: { aip: { year } } },
+    });
+    const TYPES = [
+      "Institutional",
+      "Technical",
+      "Infrastructure",
+      "Learning Resources",
+      "Environmental",
+      "Others",
+    ];
     rows = TYPES.map((t) => {
       const matching = factors.filter((f) => f.factor_type.trim() === t);
-      const facilitating = matching.filter((f) => f.facilitating_factors?.trim()).length;
-      const hindering = matching.filter((f) => f.hindering_factors?.trim()).length;
-      return { "Factor Type": t, Facilitating: facilitating, Hindering: hindering, Total: facilitating + hindering };
+      const facilitating = matching.filter((f) =>
+        f.facilitating_factors?.trim()
+      ).length;
+      const hindering = matching.filter((f) =>
+        f.hindering_factors?.trim()
+      ).length;
+      return {
+        "Factor Type": t,
+        Facilitating: facilitating,
+        Hindering: hindering,
+        Total: facilitating + hindering,
+      };
     });
   } else if (type === "sources") {
     const activities = await prisma.aIPActivity.findMany({
@@ -2327,28 +3485,49 @@ adminRoutes.get("/reports/:type/export", async (c) => {
       .sort((a, b) => b[1] - a[1])
       .map(([source, total]) => ({ Source: source, "Total Amount": total }));
   } else if (type === "funnel") {
-    const aips = await prisma.aIP.findMany({ where: { year }, select: { status: true } });
-    const STATUSES = ["Draft", "Submitted", "Under Review", "Approved", "Returned"];
+    const aips = await prisma.aIP.findMany({
+      where: { year },
+      select: { status: true },
+    });
+    const STATUSES = [
+      "Draft",
+      "Submitted",
+      "Under Review",
+      "Approved",
+      "Returned",
+    ];
     const total = aips.length;
     rows = STATUSES.map((s) => {
       const count = aips.filter((a) => a.status === s).length;
-      return { Status: s, Count: count, "% of Total": total > 0 ? ((count / total) * 100).toFixed(1) + "%" : "0.0%" };
+      return {
+        Status: s,
+        Count: count,
+        "% of Total": total > 0
+          ? ((count / total) * 100).toFixed(1) + "%"
+          : "0.0%",
+      };
     }).filter((r) => Number(r.Count) > 0);
   }
 
   await writeAuditLog(reportExporter.id, "exported_report", "Export", 0, {
-    report_type: type, year, format, row_count: rows.length,
+    report_type: type,
+    year,
+    format,
+    row_count: rows.length,
   });
 
   if (!rows.length) {
-    return c.json({ error: `No data found for report type '${type}' in year ${year}.` }, 404);
+    return c.json({
+      error: `No data found for report type '${type}' in year ${year}.`,
+    }, 404);
   }
 
   if (format === "csv") {
     return new Response(toCSV(rows), {
       headers: {
         "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="${type}-report-${year}.csv"`,
+        "Content-Disposition":
+          `attachment; filename="${type}-report-${year}.csv"`,
       },
     });
   }
@@ -2356,8 +3535,10 @@ adminRoutes.get("/reports/:type/export", async (c) => {
   if (format === "xlsx") {
     return new Response(toXLSX(rows, type), {
       headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${type}-report-${year}.xlsx"`,
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition":
+          `attachment; filename="${type}-report-${year}.xlsx"`,
       },
     });
   }
@@ -2374,8 +3555,16 @@ adminRoutes.get("/announcements", async (c) => {
   const announcement = await prisma.announcement.findFirst({
     orderBy: { updated_at: "desc" },
     include: {
-      mentioned_schools: { include: { school: { select: { id: true, name: true } } } },
-      mentioned_users:   { include: { user:   { select: { id: true, first_name: true, last_name: true, name: true } } } },
+      mentioned_schools: {
+        include: { school: { select: { id: true, name: true } } },
+      },
+      mentioned_users: {
+        include: {
+          user: {
+            select: { id: true, first_name: true, last_name: true, name: true },
+          },
+        },
+      },
     },
   });
   return c.json(announcement ?? null);
@@ -2384,19 +3573,25 @@ adminRoutes.get("/announcements", async (c) => {
 adminRoutes.post("/announcements", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { message, type, is_active, dismissible, expires_at } = sanitizeObject(await c.req.json());
+  const { message, type, is_active, dismissible, expires_at } = sanitizeObject(
+    await c.req.json(),
+  );
 
   const expiresAtDate = expires_at ? new Date(expires_at) : null;
 
   // ── Resolve @[Name] mentions → school/user IDs (reads before transaction) ──
-  const mentionTokens: string[] = [...message.matchAll(/@\[([^\]]+)\]/g)].map((m: RegExpMatchArray) => m[1] as string);
+  const mentionTokens: string[] = [...message.matchAll(/@\[([^\]]+)\]/g)].map((
+    m: RegExpMatchArray,
+  ) => m[1] as string);
 
   const mentionedSchoolIds: number[] = [];
-  const mentionedUserIds:   number[] = [];
+  const mentionedUserIds: number[] = [];
 
   if (mentionTokens.length > 0) {
     const [allSchools, allDivPersonnel] = await Promise.all([
-      prisma.school.findMany({ select: { id: true, name: true, abbreviation: true } }),
+      prisma.school.findMany({
+        select: { id: true, name: true, abbreviation: true },
+      }),
       prisma.user.findMany({
         where: { role: "Division Personnel", is_active: true },
         select: { id: true, name: true, first_name: true, last_name: true },
@@ -2405,12 +3600,16 @@ adminRoutes.post("/announcements", async (c) => {
 
     for (const token of mentionTokens) {
       const lc = token.toLowerCase();
-      const school = allSchools.find(s =>
-        s.name.toLowerCase() === lc || (s.abbreviation ?? "").toLowerCase() === lc
+      const school = allSchools.find((s) =>
+        s.name.toLowerCase() === lc ||
+        (s.abbreviation ?? "").toLowerCase() === lc
       );
-      if (school) { mentionedSchoolIds.push(school.id); continue; }
+      if (school) {
+        mentionedSchoolIds.push(school.id);
+        continue;
+      }
 
-      const user = allDivPersonnel.find(u => {
+      const user = allDivPersonnel.find((u) => {
         const full = [u.first_name, u.last_name].filter(Boolean).join(" ");
         return full.toLowerCase() === lc || (u.name ?? "").toLowerCase() === lc;
       });
@@ -2420,28 +3619,53 @@ adminRoutes.post("/announcements", async (c) => {
 
   const announcement = await prisma.$transaction(async (tx) => {
     // Upsert: only ever keep one announcement (update most recent or create new)
-    const existing = await tx.announcement.findFirst({ orderBy: { created_at: "desc" } });
+    const existing = await tx.announcement.findFirst({
+      orderBy: { created_at: "desc" },
+    });
     const ann = existing
       ? await tx.announcement.update({
-          where: { id: existing.id },
-          data: { message, type: type ?? "info", is_active: is_active ?? true, dismissible: dismissible ?? true, expires_at: expiresAtDate },
-        })
+        where: { id: existing.id },
+        data: {
+          message,
+          type: type ?? "info",
+          is_active: is_active ?? true,
+          dismissible: dismissible ?? true,
+          expires_at: expiresAtDate,
+        },
+      })
       : await tx.announcement.create({
-          data: { message, type: type ?? "info", is_active: is_active ?? true, dismissible: dismissible ?? true, expires_at: expiresAtDate, created_by: admin.id },
-        });
+        data: {
+          message,
+          type: type ?? "info",
+          is_active: is_active ?? true,
+          dismissible: dismissible ?? true,
+          expires_at: expiresAtDate,
+          created_by: admin.id,
+        },
+      });
 
     // Replace old mention records
-    await tx.announcementMentionSchool.deleteMany({ where: { announcement_id: ann.id } });
-    await tx.announcementMentionUser.deleteMany({ where: { announcement_id: ann.id } });
+    await tx.announcementMentionSchool.deleteMany({
+      where: { announcement_id: ann.id },
+    });
+    await tx.announcementMentionUser.deleteMany({
+      where: { announcement_id: ann.id },
+    });
 
     if (mentionedSchoolIds.length > 0) {
       await tx.announcementMentionSchool.createMany({
-        data: mentionedSchoolIds.map(sid => ({ announcement_id: ann.id, school_id: sid })),
+        data: mentionedSchoolIds.map((sid) => ({
+          announcement_id: ann.id,
+          school_id: sid,
+        })),
       });
     }
     if (mentionedUserIds.length > 0) {
       await tx.announcementMentionUser.createMany({
-        data: mentionedUserIds.map(uid => ({ announcement_id: ann.id, user_id: uid })),
+        data: mentionedUserIds.map((uid) => ({
+          announcement_id: ann.id,
+          user_id: uid,
+        })),
       });
     }
 
@@ -2449,27 +3673,32 @@ adminRoutes.post("/announcements", async (c) => {
     if (mentionedSchoolIds.length > 0 || mentionedUserIds.length > 0) {
       const schoolUsers = mentionedSchoolIds.length > 0
         ? await tx.user.findMany({
-            where: { school_id: { in: mentionedSchoolIds }, is_active: true },
-            select: { id: true },
-          })
+          where: { school_id: { in: mentionedSchoolIds }, is_active: true },
+          select: { id: true },
+        })
         : [];
 
-      const notifyIds = [...new Set([
-        ...schoolUsers.map(u => u.id),
-        ...mentionedUserIds,
-      ])];
+      const notifyIds = [
+        ...new Set([
+          ...schoolUsers.map((u) => u.id),
+          ...mentionedUserIds,
+        ]),
+      ];
 
-      const plainMessage = message.replace(/@\[([^\]]+)\]/g, (_: string, n: string) => `@${n}`);
+      const plainMessage = message.replace(
+        /@\[([^\]]+)\]/g,
+        (_: string, n: string) => `@${n}`,
+      );
 
       if (notifyIds.length > 0) {
         const annNotifs = await tx.notification.createManyAndReturn({
-          data: notifyIds.map(uid => ({
+          data: notifyIds.map((uid) => ({
             user_id: uid,
-            title:   "You were mentioned in an announcement",
+            title: "You were mentioned in an announcement",
             message: plainMessage,
-            type:    "announcement",
+            type: "announcement",
             entity_id: ann.id,
-            entity_type: 'announcement',
+            entity_type: "announcement",
           })),
           skipDuplicates: true,
         });
@@ -2479,7 +3708,13 @@ adminRoutes.post("/announcements", async (c) => {
     }
 
     await tx.auditLog.create({
-      data: { admin_id: admin.id, action: "updated_announcement", entity_type: "Announcement", entity_id: ann.id, details: { message, type, is_active, dismissible } },
+      data: {
+        admin_id: admin.id,
+        action: "updated_announcement",
+        entity_type: "Announcement",
+        entity_id: ann.id,
+        details: { message, type, is_active, dismissible },
+      },
     });
 
     return ann;
@@ -2495,15 +3730,27 @@ adminRoutes.post("/announcements", async (c) => {
 adminRoutes.delete("/announcements", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const existing = await prisma.announcement.findFirst({ orderBy: { created_at: "desc" } });
+  const existing = await prisma.announcement.findFirst({
+    orderBy: { created_at: "desc" },
+  });
   if (!existing) return c.json({ ok: true });
   await prisma.$transaction([
-    prisma.announcementMentionSchool.deleteMany({ where: { announcement_id: existing.id } }),
-    prisma.announcementMentionUser.deleteMany({ where: { announcement_id: existing.id } }),
+    prisma.announcementMentionSchool.deleteMany({
+      where: { announcement_id: existing.id },
+    }),
+    prisma.announcementMentionUser.deleteMany({
+      where: { announcement_id: existing.id },
+    }),
     prisma.announcement.delete({ where: { id: existing.id } }),
   ]);
   await prisma.auditLog.create({
-    data: { admin_id: admin.id, action: "deleted_announcement", entity_type: "Announcement", entity_id: existing.id, details: {} },
+    data: {
+      admin_id: admin.id,
+      action: "deleted_announcement",
+      entity_type: "Announcement",
+      entity_id: existing.id,
+      details: {},
+    },
   });
   return c.json({ ok: true });
 });
@@ -2526,7 +3773,12 @@ adminRoutes.get("/audit-log", async (c) => {
     }),
     prisma.auditLog.count(),
   ]);
-  return c.json({ data: logs, total, page, totalPages: Math.ceil(total / limit) });
+  return c.json({
+    data: logs,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  });
 });
 
 // ==========================================
@@ -2543,17 +3795,11 @@ adminRoutes.get("/layout-info", async (c) => {
   const deadline = await prisma.deadline.findUnique({
     where: { year_quarter: { year, quarter: currentQuarter } },
   });
-  const defaultDeadlines: Record<number, Date> = {
-    1: new Date(year, 2,  31, 23, 59, 59, 999),
-    2: new Date(year, 5,  30, 23, 59, 59, 999),
-    3: new Date(year, 8,  30, 23, 59, 59, 999),
-    4: new Date(year, 11, 31, 23, 59, 59, 999),
-  };
   const deadlineDate = deadline
-    ? new Date(new Date(deadline.date).setHours(23, 59, 59, 999))
-    : defaultDeadlines[currentQuarter];
+    ? endOfDeadlineDay(deadline.date)
+    : buildDefaultDeadline(year, currentQuarter);
   const daysLeft = Math.ceil(
-    (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
   );
 
   return c.json({ daysLeft, currentQuarter, deadlineDate });
@@ -2582,20 +3828,34 @@ adminRoutes.get("/settings/division-config", async (c) => {
 adminRoutes.post("/settings/division-config", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { supervisor_name, supervisor_title } = sanitizeObject(await c.req.json());
+  const { supervisor_name, supervisor_title } = sanitizeObject(
+    await c.req.json(),
+  );
   const existing = await prisma.divisionConfig.findFirst();
   let config;
   if (existing) {
     config = await prisma.divisionConfig.update({
       where: { id: existing.id },
-      data: { supervisor_name: supervisor_name ?? "", supervisor_title: supervisor_title ?? "" },
+      data: {
+        supervisor_name: supervisor_name ?? "",
+        supervisor_title: supervisor_title ?? "",
+      },
     });
   } else {
     config = await prisma.divisionConfig.create({
-      data: { supervisor_name: supervisor_name ?? "", supervisor_title: supervisor_title ?? "" },
+      data: {
+        supervisor_name: supervisor_name ?? "",
+        supervisor_title: supervisor_title ?? "",
+      },
     });
   }
-  await writeAuditLog(admin.id, "updated_division_config", "DivisionConfig", config.id, { supervisor_name, supervisor_title });
+  await writeAuditLog(
+    admin.id,
+    "updated_division_config",
+    "DivisionConfig",
+    config.id,
+    { supervisor_name, supervisor_title },
+  );
   return c.json(config);
 });
 
@@ -2617,7 +3877,9 @@ adminRoutes.get("/audit-logs", async (c) => {
   const where = {
     ...(action && { action: { contains: action } }),
     ...(entity_type && { entity_type }),
-    ...(from || to ? { created_at: { ...(from && { gte: from }), ...(to && { lte: to }) } } : {}),
+    ...(from || to
+      ? { created_at: { ...(from && { gte: from }), ...(to && { lte: to }) } }
+      : {}),
   };
 
   const [logs, total] = await Promise.all([
@@ -2652,7 +3914,10 @@ adminRoutes.post("/users/:id/anonymize", async (c) => {
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const id = safeParseInt(c.req.param("id"), 0);
 
-  const user = await prisma.user.findUnique({ where: { id }, select: { id: true, role: true } });
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, role: true },
+  });
   if (!user) return c.json({ error: "Not found" }, 404);
 
   await prisma.user.update({
@@ -2669,8 +3934,13 @@ adminRoutes.post("/users/:id/anonymize", async (c) => {
     },
   });
 
-  await writeAuditLog(admin.id, "anonymized_user", "User", id, { role: user.role });
-  return c.json({ success: true, message: "User PII has been anonymized (RA 10173 §23)." });
+  await writeAuditLog(admin.id, "anonymized_user", "User", id, {
+    role: user.role,
+  });
+  return c.json({
+    success: true,
+    message: "User PII has been anonymized (RA 10173 §23).",
+  });
 });
 
 export default adminRoutes;
