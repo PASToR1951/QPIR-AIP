@@ -13,8 +13,8 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 **User roles:**
 - **School** — tied 1-to-1 with a school; submits and manages their school's AIP and PIRs
 - **Division Personnel** — manages programs they are assigned to; maintains independent AIP/PIR records
-- **CES-SGOD / CES-ASDS / CES-CID** — reviews and notes PIRs within their functional division
-- **Cluster Coordinator** — reviews PIRs for all schools within their assigned cluster
+- **CES-SGOD / CES-ASDS / CES-CID** — reviews division-level PIRs within their functional division
+- **Cluster Coordinator** — reviews school PIRs for all schools within their assigned cluster
 - **Admin** — full system access; manages users, schools, programs, deadlines, and submissions
 - **Pending** — newly created accounts awaiting role assignment by an Admin
 
@@ -28,7 +28,7 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 | Styling | Tailwind CSS 4, Framer Motion |
 | Backend | Deno 2, Hono 4 |
 | Database | PostgreSQL, Prisma ORM 7 |
-| Auth | JWT (HS256), OAuth 2.0 SSO (Microsoft, Google) |
+| Auth | JWT (HS256) in HttpOnly cookies, OAuth 2.0 SSO (Microsoft, Google) |
 
 ---
 
@@ -301,11 +301,11 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `PATCH` | `/api/admin/pirs/:id/activity-notes` | Save per-activity review notes |
 | `GET` | `/api/admin/ces/pirs` | CES review queue |
 | `POST` | `/api/admin/ces/pirs/:id/start-review` | Mark a PIR as actively reviewed by CES |
-| `POST` | `/api/admin/ces/pirs/:id/note` | CES note/forward action |
+| `POST` | `/api/admin/ces/pirs/:id/note` | CES approve/note action |
 | `POST` | `/api/admin/ces/pirs/:id/return` | CES return action |
 | `GET` | `/api/admin/cluster-head/pirs` | Cluster Coordinator review queue |
 | `POST` | `/api/admin/cluster-head/pirs/:id/start-review` | Mark a PIR as actively reviewed by Cluster Coordinator |
-| `POST` | `/api/admin/cluster-head/pirs/:id/note` | Cluster Coordinator note/forward action |
+| `POST` | `/api/admin/cluster-head/pirs/:id/note` | Cluster Coordinator approve/note action |
 | `POST` | `/api/admin/cluster-head/pirs/:id/return` | Cluster Coordinator return action |
 | `GET` | `/api/admin/reports/years` | Years available for reports |
 | `GET` | `/api/admin/reports/{compliance,quarterly,budget,workload,accomplishment,factors,aip-funnel,cluster-pir-summary}` | Report datasets |
@@ -325,7 +325,7 @@ Active beta build.
 
 - Core workflows (AIP, PIR, dashboard) are complete and ready for beta validation.
 - Admin panel is feature-complete — users, schools, clusters, programs, deadlines, submissions, reports, backups, settings, announcements, and logs.
-- PIR review pipeline (CES → Cluster → Admin) is complete.
+- PIR review queues are complete: school PIRs route to Cluster Coordinators; division-level and Cluster Coordinator-owned PIRs route to CES; Admin retains oversight and override tools.
 - OAuth SSO, HttpOnly cookie sessions, real-time notifications, announcements, audit logs, and privacy compliance are implemented.
 - School/cluster logo uploads, bundled cluster-logo fallbacks, CSV user import, and report/export workflows are included in the Beta Build.
 - API client centralization through `react-app/src/lib/api.js` is in progress; several frontend callers still use direct `axios` calls while the migration is being completed.

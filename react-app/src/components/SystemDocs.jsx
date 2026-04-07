@@ -8,7 +8,6 @@ import GithubSlugger from 'github-slugger';
 import { ArrowLeft, BookOpen, Tag, List, X, List as Menu } from '@phosphor-icons/react';
 import { CURRENT_VERSION } from '../version';
 import docsContent from '../../../docs/SYSTEM_DOCUMENTATION_THESIS.md?raw';
-import ERDDiagram from './ui/ERDDiagram';
 import Footer from './ui/Footer';
 
 // Pre-parse the headings from the Markdown file to display in the Table of Contents
@@ -111,25 +110,25 @@ export default function SystemDocs() {
     <div className="min-h-screen bg-slate-100 dark:bg-dark-base font-sans flex flex-col">
       {/* Top Nav */}
       <div className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border sticky top-0 z-50 shadow-sm print:hidden">
-        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link to="/" className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <Link to="/" className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-dark-border hover:text-slate-700 dark:hover:text-slate-200 transition-all shrink-0">
               <ArrowLeft size={19} weight="bold" />
             </Link>
-            <div>
-              <h1 className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">System Documentation</h1>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none truncate">System Documentation</h1>
               <p className="text-xs text-slate-400 dark:text-slate-500 font-medium hidden sm:block mt-0.5">Technical Thesis & Architecture</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Link to="/changelog" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-dark-base text-slate-600 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-dark-border hover:bg-slate-100 dark:hover:bg-dark-border transition-colors">
               <Tag size={14} /> Version Control
             </Link>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-200">
+            <span className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black border border-indigo-200">
               <BookOpen size={14} /> v{CURRENT_VERSION}
             </span>
             <button
-              className="lg:hidden w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-all"
+              className="lg:hidden w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center hover:bg-indigo-100 transition-all"
               onClick={() => setIsMobileTocOpen(!isMobileTocOpen)}
             >
               {isMobileTocOpen ? <X size={20} /> : <Menu size={20} />}
@@ -142,7 +141,7 @@ export default function SystemDocs() {
       {isMobileTocOpen && (
         <div className="lg:hidden fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-sm" onClick={() => setIsMobileTocOpen(false)}>
           <div
-            className="absolute right-0 top-[65px] bottom-0 w-72 bg-white dark:bg-dark-surface border-l border-slate-200 dark:border-dark-border shadow-2xl overflow-y-auto animate-in slide-in-from-right-full duration-300"
+            className="absolute right-3 top-[61px] bottom-3 w-80 max-w-[calc(100vw-1.5rem)] rounded-lg bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border shadow-2xl overflow-y-auto animate-in slide-in-from-right-full duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-4 py-3.5 border-b border-slate-100 dark:border-dark-border flex items-center gap-2 sticky top-0 bg-white dark:bg-dark-surface z-10">
@@ -156,8 +155,8 @@ export default function SystemDocs() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 py-8 md:py-10 flex-1">
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 py-5 md:py-10 flex-1">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
 
           {/* ToC Sidebar */}
           <aside className="hidden lg:flex flex-col w-60 shrink-0 sticky top-[74px] self-start max-h-[calc(100vh-94px)]">
@@ -174,55 +173,50 @@ export default function SystemDocs() {
           </aside>
 
           {/* Main Content */}
-          <div className="flex-1 w-full min-w-0 bg-white dark:bg-dark-surface rounded-3xl border border-slate-200 dark:border-dark-border shadow-sm overflow-hidden">
+          <div className="flex-1 w-full min-w-0 bg-white dark:bg-dark-surface rounded-lg sm:rounded-2xl md:rounded-3xl border border-slate-200 dark:border-dark-border shadow-sm overflow-hidden">
             {/* Hero Header */}
-            <div className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border relative flex items-center justify-center px-8 md:px-12 py-8 min-h-[120px]">
-              {/* Logos — top left */}
-              <div className="absolute left-8 md:left-12 top-1/2 -translate-y-1/2 flex items-center gap-3 md:gap-4">
-                <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-12 md:h-14 w-auto drop-shadow-sm" />
-                <img src="/DepEd%20NIR%20Logo.webp" alt="DepEd NIR Logo" className="h-12 md:h-14 w-auto drop-shadow-sm" />
-                <img src="/Division_Logo.webp" alt="SDO Guihulngan City" className="h-12 md:h-14 w-auto drop-shadow-sm" />
-              </div>
-
-              {/* AIP-PIR logo — centre */}
-              <div className="flex flex-col items-center gap-3">
-                <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-16 md:h-20 w-auto" />
-                <div className="text-center">
-                  <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none">AIP-PIR Portal</h1>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium text-xs mt-1 tracking-wide">System Architecture & Technical Thesis</p>
+            <div className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border px-4 sm:px-6 md:px-12 py-6 md:py-8">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 md:gap-4">
+                  <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-9 sm:h-10 md:h-14 w-auto drop-shadow-sm" />
+                  <img src="/DepEd%20NIR%20Logo.webp" alt="DepEd NIR Logo" className="h-9 sm:h-10 md:h-14 w-auto drop-shadow-sm" />
+                  <img src="/Division_Logo.webp" alt="SDO Guihulngan City" className="h-9 sm:h-10 md:h-14 w-auto drop-shadow-sm" />
                 </div>
+
+                <div className="flex flex-col items-center gap-3 text-center md:flex-1">
+                  <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-14 sm:h-16 md:h-20 w-auto" />
+                  <div>
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight">AIP-PIR Portal</h1>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm mt-1 tracking-wide">System Architecture & Technical Thesis</p>
+                  </div>
+                </div>
+
+                <div className="hidden md:block w-[168px]" aria-hidden="true" />
               </div>
             </div>
 
             {/* Document Content */}
-            <div className="px-8 py-10 md:px-14 md:py-14">
+            <div className="px-4 py-6 sm:px-6 md:px-14 md:py-14">
               <article className="
-                prose prose-slate max-w-none
+                prose prose-sm sm:prose-base prose-slate max-w-none
                 prose-headings:font-black prose-headings:text-slate-900 dark:prose-headings:text-slate-100 prose-headings:scroll-mt-28 prose-headings:tracking-tight
-                prose-h1:text-4xl prose-h1:mt-0
-                prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-200 dark:prose-h2:border-dark-border prose-h2:pb-3 prose-h2:mt-16
-                prose-h3:text-xl prose-h3:mt-10 prose-h3:text-slate-800 dark:prose-h3:text-slate-200
+                prose-h1:text-2xl sm:prose-h1:text-3xl md:prose-h1:text-4xl prose-h1:mt-0
+                prose-h2:text-xl sm:prose-h2:text-2xl prose-h2:border-b prose-h2:border-slate-200 dark:prose-h2:border-dark-border prose-h2:pb-3 prose-h2:mt-10 md:prose-h2:mt-16
+                prose-h3:text-lg sm:prose-h3:text-xl prose-h3:mt-8 md:prose-h3:mt-10 prose-h3:text-slate-800 dark:prose-h3:text-slate-200
                 prose-p:text-slate-600 dark:prose-p:text-slate-300 prose-p:leading-relaxed
                 prose-li:text-slate-600 dark:prose-li:text-slate-300
                 prose-a:text-indigo-600 prose-a:font-medium prose-a:no-underline hover:prose-a:underline
-                prose-blockquote:border-l-4 prose-blockquote:border-indigo-400 prose-blockquote:bg-indigo-50/60 dark:prose-blockquote:bg-indigo-950/20 prose-blockquote:rounded-r-xl prose-blockquote:py-1 prose-blockquote:not-italic prose-blockquote:text-slate-700 dark:prose-blockquote:text-slate-300
+                prose-blockquote:border-l-4 prose-blockquote:border-indigo-400 prose-blockquote:bg-indigo-50/60 dark:prose-blockquote:bg-indigo-950/20 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:not-italic prose-blockquote:text-slate-700 dark:prose-blockquote:text-slate-300
                 prose-code:text-indigo-600 prose-code:bg-indigo-50 dark:prose-code:bg-indigo-950/30 dark:prose-code:text-indigo-400 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[0.85em] prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
-                prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 prose-pre:rounded-2xl prose-pre:shadow-lg
-                prose-img:rounded-2xl prose-img:border prose-img:border-slate-200 dark:prose-img:border-dark-border prose-img:shadow-sm
+                prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 prose-pre:rounded-lg prose-pre:shadow-lg prose-pre:max-w-full prose-pre:overflow-x-auto
+                prose-img:rounded-lg prose-img:border prose-img:border-slate-200 dark:prose-img:border-dark-border prose-img:shadow-sm
                 prose-strong:text-slate-800 dark:prose-strong:text-slate-100
-                prose-table:text-sm prose-th:bg-slate-50 dark:prose-th:bg-dark-border prose-th:text-slate-700 dark:prose-th:text-slate-200 prose-td:text-slate-600 dark:prose-td:text-slate-300
+                prose-table:block prose-table:max-w-full prose-table:overflow-x-auto prose-table:text-xs sm:prose-table:text-sm prose-th:bg-slate-50 dark:prose-th:bg-dark-border prose-th:text-slate-700 dark:prose-th:text-slate-200 prose-td:text-slate-600 dark:prose-td:text-slate-300
                 break-words
               ">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeRaw, rehypeSlug]}
-                  components={{
-                    code({ node, className, children, ...props }) {
-                      const isERD = className === 'language-mermaid' && String(children).trim().startsWith('erDiagram');
-                      if (isERD) return <ERDDiagram />;
-                      return <code className={className} {...props}>{children}</code>;
-                    }
-                  }}
                 >
                   {docsContent}
                 </ReactMarkdown>
