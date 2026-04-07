@@ -2,17 +2,21 @@
 
 Web-based system for managing **Annual Implementation Plans (AIP)** and **Program Implementation Reviews (PIR)** for the DepEd Division of Guihulngan City.
 
-> **Version:** 1.0.5-beta — Performance & Timeline Update. 
+> **Version:** 1.0.11-alpha
 
 ---
 
 ## Overview
 
-Schools submit an AIP at the start of each fiscal year, outlining their program activities, targets, and budget. At the end of each quarter, they submit a PIR to track how well those activities were implemented. The system enforces a gated workflow — PIR submission is locked until the AIP is completed.
+Schools submit an AIP at the start of each fiscal year, outlining their program activities, targets, and budget. At the end of each quarter, they submit a PIR to track how well those activities were implemented. The system enforces a gated workflow — PIR submission is locked until the AIP is approved.
 
 **User roles:**
-- **School User** — tied 1-to-1 with a school; manage their school's AIP and PIRs
-- **Division Personnel** — manage programs they are directly assigned to; maintain their own independent AIP/PIR records
+- **School** — tied 1-to-1 with a school; submits and manages their school's AIP and PIRs
+- **Division Personnel** — manages programs they are assigned to; maintains independent AIP/PIR records
+- **CES-SGOD / CES-ASDS / CES-CID** — reviews and notes PIRs within their functional division
+- **Cluster Coordinator** — reviews PIRs for all schools within their assigned cluster
+- **Admin** — full system access; manages users, schools, programs, deadlines, and submissions
+- **Pending** — newly created accounts awaiting role assignment by an Admin
 
 ---
 
@@ -24,32 +28,49 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 | Styling | Tailwind CSS 4, Framer Motion |
 | Backend | Deno 2, Hono 4 |
 | Database | PostgreSQL, Prisma ORM 7 |
-| Auth | JWT (HS256) |
+| Auth | JWT (HS256), OAuth 2.0 SSO (Microsoft, Google) |
 
 ---
 
 ## Project Structure
 
 ```
-AIP-PIR/
-├── react-app/          # React frontend (Vite)
+QPIR-AIP/
+├── react-app/                  # React frontend (Vite)
 │   ├── src/
-│   │   ├── components/ # Reusable UI and document components
-│   │   ├── context/    # React context (accessibility, etc.)
-│   │   ├── AIPForm.jsx # Multi-step AIP wizard
-│   │   ├── PIRForm.jsx # Multi-step PIR wizard
-│   │   ├── App.jsx     # Dashboard, routes, and route guards
-│   │   └── version.js  # Version + changelog registry (ignored)
-│   └── public/         # Institutional logos and fonts
+│   │   ├── admin/              # Admin panel pages and components
+│   │   │   ├── pages/          # Overview, Users, Schools, Programs, Deadlines,
+│   │   │   │                   # Submissions, Reports, Settings, Backups, PIR Review
+│   │   │   └── components/     # DataTable, FormModal, CreateUserWizard, etc.
+│   │   ├── ces/                # CES reviewer dashboard and PIR review flow
+│   │   ├── cluster-head/       # Cluster Coordinator dashboard
+│   │   ├── components/
+│   │   │   ├── forms/pir/      # PIR form section components
+│   │   │   └── ui/             # Shared UI: DashboardHeader, NotificationBell, etc.
+│   │   ├── context/            # Accessibility context (contrast, motion, font)
+│   │   ├── lib/                # Shared utilities (api, auth, errorMessages, etc.)
+│   │   ├── AIPForm.jsx         # Multi-step AIP submission wizard
+│   │   ├── PIRForm.jsx         # Multi-step PIR submission wizard
+│   │   ├── Dashboard.jsx       # Main user dashboard
+│   │   ├── App.jsx             # Root app with error boundary
+│   │   ├── AnimatedContent.jsx # Lazy-loaded routes and route guards
+│   │   └── version.js          # Version + changelog registry (gitignored)
+│   └── public/                 # Institutional logos, fonts, and default cluster logos
 │
-└── server/             # Deno backend
+└── server/                     # Deno backend
     ├── routes/
-    │   ├── auth.ts     # Login, token verification
-    │   └── data.ts     # AIP, PIR, dashboard, and deadline CRUD
+    │   ├── auth.ts             # Login, logout, and current session profile
+    │   ├── oauth.ts            # Microsoft and Google OAuth 2.0 + PKCE
+    │   ├── data.ts             # AIP, PIR, dashboard, notifications, drafts
+    │   ├── admin.ts            # Admin CRUD for users, schools, programs, etc.
+    │   └── backup.ts           # Database backup management
+    ├── lib/                    # Server utilities (auth, logger, config)
+    ├── db/                     # Prisma client instance
+    ├── scripts/                # Seed, audit, and maintenance scripts
     ├── prisma/
     │   ├── schema.prisma
     │   └── migrations/
-    └── server.ts       # Entry point
+    └── server.ts               # Entry point, CORS, rate limiting, static file serving
 ```
 
 ---
@@ -58,51 +79,78 @@ AIP-PIR/
 
 - [Node.js](https://nodejs.org/) 20+ (for the React frontend)
 - [Deno](https://deno.land/) 2.x (for the backend)
-- [PostgreSQL](https://www.postgresql.org/) 15+
+- [PostgreSQL](https://www.postgresql.org/) 15+ (local development) or Docker Compose
 
 ---
 
 ## Setup
 
-### 1. Clone and install frontend dependencies
+### 1. Clone and install dependencies
 
 ```bash
 git clone <repo-url>
-cd AIP-PIR/react-app
+cd QPIR-AIP
+
+cd react-app
 npm install
+
+cd ../server
+npm install
+
+cd ..
 ```
 
-### 2. Configure environment variables
+The backend runs on Deno, but Prisma's CLI/client are installed through `server/package.json` because the Deno tasks call `npx prisma`.
+
+### 2. Configure local environment variables
 
 **Backend** — create `server/.env`:
+
 ```env
 DATABASE_URL="postgresql://postgres:password@localhost:5432/pir_system?schema=public"
 JWT_SECRET="your-strong-random-secret"
 PORT=3001
+ALLOWED_ORIGIN=http://localhost:5173
+NODE_ENV=development
+
+# OAuth SSO - required only when enabling Microsoft or Google sign-in
+OAUTH_REDIRECT_BASE_URL=http://localhost:3001
+OAUTH_STATE_SECRET="your-strong-oauth-state-secret"
+MICROSOFT_CLIENT_ID=
+MICROSOFT_CLIENT_SECRET=
+MICROSOFT_TENANT_ID=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 ```
 
 **Frontend** — create `react-app/.env`:
+
 ```env
 VITE_API_URL=http://localhost:3001
 ```
 
+For Docker, copy the checked-in template instead:
+
+```bash
+cp .env.docker .env
+```
+
+Then fill the root `.env` values for PostgreSQL, JWT, backups, OAuth, and `VITE_API_URL`.
+
 ### 3. Initialize the database
+
+Create the `pir_system` PostgreSQL database first if it does not exist, then run:
 
 ```bash
 cd server
-npx prisma migrate deploy    # Apply migrations
-deno task seed               # Seed initial data (schools, clusters, programs)
+deno task prisma:deploy    # Apply all migrations
+deno task prisma:generate  # Generate Prisma client
+deno task seed             # Seed schools, clusters, and programs
 ```
 
 ---
 
 ## Running
-
-### Quick start (all services)
-
-```bash
-bash ./start.sh
-```
 
 ### Manual (recommended for development)
 
@@ -120,42 +168,164 @@ cd react-app && npm run dev
 | Backend | http://localhost:3001 |
 | Health check | http://localhost:3001/api/health |
 
+`deno task dev` starts the watched backend without applying migrations. Run `deno task prisma:prepare` when migrations or the schema change; `deno task start` runs that step automatically before booting.
+
+### Local helper scripts
+
+Some local checkouts include ignored convenience scripts for personal development:
+
+| Script | Purpose |
+|--------|---------|
+| `bash ./start.sh` | Starts local PostgreSQL, the Deno backend, and the Vite frontend on Linux |
+| `bash ./tunnel.sh` | Starts Cloudflare tunnels and writes temporary tunnel env overrides |
+
+These scripts are listed in `.gitignore`, so fresh clones should use the manual or Docker commands unless you add your own copies.
+
+### Docker Compose
+
+After filling the root `.env` from `.env.docker`, start the core application services:
+
+```bash
+docker compose up -d --build db backend frontend
+```
+
+Optional services:
+
+```bash
+docker compose up -d --build backup
+```
+
+The compose file also defines a `devtools` service that expects a local `./claude-devtools` directory. Start named services unless that optional directory exists.
+
+If you serve the frontend from a non-Vite origin such as `http://localhost` on port 80, make sure the backend receives a matching `ALLOWED_ORIGIN` value, for example by adding it under `backend.environment`. Do the same for the `OAUTH_*`, `MICROSOFT_*`, and `GOOGLE_*` values when enabling SSO in Docker.
+
 ---
 
 ## Key Features
 
-- **Performance Optimized** — React 19 memoization and stable callbacks for a smooth, lag-free form experience; migrated to pure CSS animations for lightweight transitions.
-- **Structured Timeline Logic** — Precise month-range pickers in the AIP Action Plan enable intelligent PIR filtering and dashboard metrics.
-- **Gated Workflow** — PIR is locked until the AIP for that school/program/year is submitted.
-- **Timeline-Aware PIR Filtering** — PIR forms automatically filter AIP activities to only show those scheduled for the selected quarter.
-- **Interactive Dashboard** — Real-time progress tracking with a visual 4-node `QuarterTimeline` stepper and urgency-aware deadline tiers.
-- **Print-ready Documents** — Generates official formatted AIP and PIR documents with NIR and Division institutional branding.
-- **Accessibility Engine** — High contrast, reduced motion, and dyslexia-friendly font options (OpenDyslexic).
+- **Gated Workflow** — PIR submission is locked until the school's AIP for that program and year is approved.
+- **Full Admin Panel** — manage users, schools, clusters, programs, deadlines, announcements, and system settings from a single interface.
+- **PIR Review Pipeline** — structured multi-stage review: CES notation → Cluster Head review → Admin approval/return, with per-activity evaluation notes.
+- **OAuth SSO** — Microsoft (Entra ID) and Google sign-in with PKCE; local password login also supported.
+- **Notifications** — in-app notification bell with deep-linking to the relevant PIR or AIP on click.
+- **Announcements** — admin-authored system-wide or targeted announcements with @mention support for schools and personnel.
+- **Audit Log** — every admin action is recorded with entity reference; preserved on account deletion (RA 10173 §20).
+- **Privacy Compliance** — right-to-erasure via PII anonymization (RA 10173 §23); soft-delete timestamps on users, AIPs, and PIRs.
+- **Database Backups** — admin-triggered backups with status tracking via the Backups panel.
+- **Logo Upload** — per-school and per-cluster logo upload; falls back to bundled default cluster logos automatically.
+- **Import Users** — bulk user creation via CSV import in the Users admin panel.
+- **Timeline-Aware PIR** — AIP activities are filtered by scheduled month range so only activities due in the selected quarter appear in the PIR form.
+- **Interactive Dashboard** — real-time progress with a `QuarterTimeline` stepper, urgency-aware deadline tiers, and submission history.
+- **Print-ready Documents** — generates formatted AIP and PIR documents with institutional branding.
+- **Accessibility Engine** — high contrast, reduced motion, and dyslexia-friendly font (OpenDyslexic) options.
+- **Performance** — React 19 memoization, stable callbacks, CSS animations, and code-split lazy routes.
 
 ---
 
 ## API Endpoints
 
+Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT cookie set by password login or OAuth.
+
+### Public and auth
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/auth/login` | Authenticate user, returns JWT |
-| `GET` | `/api/dashboard` | Aggregated dashboard stats, current quarter, and deadlines |
-| `GET` | `/api/programs` | List programs (filtered by role and school level) |
-| `GET` | `/api/aips` | List submitted AIPs for current user |
-| `POST` | `/api/aips` | Create a new AIP (persists structured month periods) |
-| `GET` | `/api/aips/activities` | Fetch timeline-filtered AIP activities for PIR population |
-| `GET` | `/api/pirs` | List submitted PIRs for current user |
-| `POST` | `/api/pirs` | Create a new PIR review |
-| `GET` | `/api/deadlines` | List submission deadlines for a given fiscal year |
-| `GET` | `/api/drafts/:type/:userId` | Fetch saved in-progress draft |
+| `GET` | `/` | API status text |
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/config` | Public division config used in generated documents |
+| `GET` | `/api/announcement` | Current broadcast or targeted announcement |
+| `POST` | `/api/auth/login` | Password login; sets JWT cookie |
+| `POST` | `/api/auth/logout` | Clears session cookie |
+| `GET` | `/api/auth/me` | Current user profile and session expiry metadata |
+| `GET` | `/api/auth/oauth/microsoft` | Initiate Microsoft OAuth flow |
+| `GET` | `/api/auth/oauth/microsoft/callback` | Microsoft OAuth callback |
+| `GET` | `/api/auth/oauth/google` | Initiate Google OAuth flow |
+| `GET` | `/api/auth/oauth/google/callback` | Google OAuth callback |
+
+### User data and submissions
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/dashboard` | Dashboard stats, current quarter, and deadlines |
+| `GET` | `/api/programs` | Programs list (filtered by role and school level) |
+| `GET` | `/api/programs/with-aips` | Programs that already have an AIP for the current user/year |
+| `GET` | `/api/programs/with-pirs` | Programs that already have a PIR for the selected quarter |
+| `GET` | `/api/schools` | Schools visible to the authenticated user |
+| `GET` | `/api/schools/:id/aip-status` | School AIP completion status |
+| `GET` | `/api/schools/:id/coordinators` | School coordinators for AIP auto-fill |
+| `GET` | `/api/schools/:id/persons-terms` | Persons involved and terms for AIP auto-fill |
+| `GET` | `/api/users/:id/aip-status` | Division personnel AIP completion status |
+| `GET/POST/DELETE` | `/api/aips/draft` | Fetch, save, or clear the current AIP draft |
+| `GET/POST/DELETE` | `/api/pirs/draft` | Fetch, save, or clear the current PIR draft |
+| `GET/POST` | `/api/aips` | List or submit AIPs for the current user |
+| `PUT` | `/api/aips/:id` | Update an editable AIP |
+| `DELETE` | `/api/aips` | Delete the current user's selected AIP |
+| `GET` | `/api/aips/activities` | Timeline-filtered AIP activities for PIR population |
+| `POST` | `/api/aips/:id/request-edit` | Request admin unlock of an approved AIP |
+| `GET/POST` | `/api/pirs` | List or submit PIRs for the current user |
+| `PUT/DELETE` | `/api/pirs/:id` | Update or delete a PIR |
+| `GET` | `/api/history` | Grouped AIP/PIR submission history |
+| `GET` | `/api/notifications` | Notifications for current user |
+| `GET` | `/api/notifications/stream` | Server-sent events stream for notifications |
+| `PATCH` | `/api/notifications/:id/read` | Mark notification as read |
+| `PATCH` | `/api/notifications/read-all` | Mark all notifications as read |
+| `GET` | `/api/me/export` | Export the authenticated user's personal data |
+
+### Admin, reports, and reviews
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/admin/overview` | System-wide statistics |
+| `GET` | `/api/admin/layout-info` | Lightweight admin shell stats |
+| `GET/POST/PATCH/DELETE` | `/api/admin/users` | User management |
+| `POST` | `/api/admin/users/import` | Bulk user import (CSV) |
+| `POST` | `/api/admin/users/:id/reset-password` | Generate a temporary password |
+| `POST` | `/api/admin/users/:id/anonymize` | PII erasure (RA 10173 §23) |
+| `GET/POST/PATCH/DELETE` | `/api/admin/clusters` | Cluster management |
+| `POST/DELETE` | `/api/admin/clusters/:id/logo` | Cluster logo upload/removal |
+| `GET/POST/PATCH/DELETE` | `/api/admin/schools` | School management |
+| `PATCH` | `/api/admin/schools/:id/restrictions` | Assign restricted programs for a school |
+| `POST/DELETE` | `/api/admin/schools/:id/logo` | School logo upload/removal |
+| `GET/POST/PATCH/DELETE` | `/api/admin/programs` | Program management |
+| `PATCH` | `/api/admin/programs/:id/personnel` | Assign personnel to a program |
+| `GET/POST/PATCH/DELETE` | `/api/admin/division-programs` | Division-level program management |
+| `GET/POST/DELETE` | `/api/admin/deadlines` | Deadline management |
+| `GET` | `/api/admin/deadlines/history` | Deadline audit/history view |
+| `GET` | `/api/admin/submissions` | AIP/PIR submission review list |
+| `GET` | `/api/admin/submissions/export` | Export submissions |
+| `GET` | `/api/admin/submissions/:id` | Submission detail |
+| `PATCH` | `/api/admin/submissions/:id/status` | Approve/return a submission |
+| `PATCH` | `/api/admin/aips/:id/approve-edit` | Approve an AIP edit request |
+| `PATCH` | `/api/admin/aips/:id/deny-edit` | Deny an AIP edit request |
+| `GET` | `/api/admin/pirs` | Admin PIR list |
+| `GET` | `/api/admin/pirs/:id` | PIR detail |
+| `PATCH` | `/api/admin/pirs/:id/remarks` | Save admin PIR remarks |
+| `PATCH` | `/api/admin/pirs/:id/presented` | Toggle PIR presented status |
+| `PATCH` | `/api/admin/pirs/:id/activity-notes` | Save per-activity review notes |
+| `GET` | `/api/admin/ces/pirs` | CES review queue |
+| `POST` | `/api/admin/ces/pirs/:id/start-review` | Mark a PIR as actively reviewed by CES |
+| `POST` | `/api/admin/ces/pirs/:id/note` | CES note/forward action |
+| `POST` | `/api/admin/ces/pirs/:id/return` | CES return action |
+| `GET` | `/api/admin/cluster-head/pirs` | Cluster Coordinator review queue |
+| `POST` | `/api/admin/cluster-head/pirs/:id/start-review` | Mark a PIR as actively reviewed by Cluster Coordinator |
+| `POST` | `/api/admin/cluster-head/pirs/:id/note` | Cluster Coordinator note/forward action |
+| `POST` | `/api/admin/cluster-head/pirs/:id/return` | Cluster Coordinator return action |
+| `GET` | `/api/admin/reports/years` | Years available for reports |
+| `GET` | `/api/admin/reports/{compliance,quarterly,budget,workload,accomplishment,factors,aip-funnel,cluster-pir-summary}` | Report datasets |
+| `GET` | `/api/admin/reports/:type/export` | CSV/XLSX report export |
+| `GET/POST/DELETE` | `/api/admin/announcements` | Announcement management |
+| `GET` | `/api/admin/settings/system-info` | Runtime system info for settings |
+| `GET/POST` | `/api/admin/settings/division-config` | Division config (supervisor name/title) |
+| `GET` | `/api/admin/audit-logs` | Audit log viewer |
+| `GET` | `/api/admin/backup/status` | Backup health and file listing |
+| `POST` | `/api/admin/backup/trigger` | Trigger a background hourly backup |
 
 ---
 
 ## Status
 
-Active beta development.
+Active alpha development — approaching beta.
 
-- Performance and timeline features (v1.0.5) are complete.
-- Admin Function development (v1.0.6) is the next milestone.
-- Security hardening (v1.0.7) follows the Admin Function.
+- Core workflows (AIP, PIR, dashboard) are complete and stable.
+- Admin panel is complete — users, schools, programs, deadlines, submissions, reports, backups, settings.
+- PIR review pipeline (CES → Cluster → Admin) is complete.
+- OAuth SSO, notifications, announcements, audit logs, and privacy compliance are implemented.
+- API client centralization through `react-app/src/lib/api.js` is in progress; several frontend callers still use direct `axios` calls while the migration is being completed.
 - See internal `ROADMAP.md` and `TODO.md` for full milestone tracking.
