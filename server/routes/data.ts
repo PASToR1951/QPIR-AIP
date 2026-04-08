@@ -1079,7 +1079,7 @@ dataRoutes.get('/pirs', async (c) => {
       status: pir.status,
       quarter: pir.quarter,
       program: aip.program.title,
-      school: aip.school?.name ?? '',
+      school: aip.school?.name ?? 'Division',
       owner: pir.program_owner,
       budgetFromDivision: (pir as any).budget_from_division,
       budgetFromCoPSF: (pir as any).budget_from_co_psf,

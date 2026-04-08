@@ -10,9 +10,9 @@ const API = import.meta.env.VITE_API_URL;
 
 const VALID_ROLES = new Set([
   'School', 'Division Personnel', 'Admin',
-  'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator',
+  'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Observer',
 ]);
-const SYSTEM_ROLES = new Set(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator']);
+const SYSTEM_ROLES = new Set(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Observer']);
 
 /* ── CSV parser ─────────────────────────────────────────────── */
 function parseCSV(text) {
@@ -74,10 +74,11 @@ const EXAMPLE_CSV = `email,role,name,first_name,last_name,middle_initial,school_
 juan.delacruz@deped.gov.ph,Division Personnel,,Juan,Dela Cruz,D,,,2;5
 juan.delacruz001@deped.gov.ph,Division Personnel,,Juan,Dela Cruz,A,,,3
 maria.santos@deped.gov.ph,Cluster Coordinator,Maria Santos,,,,,7,
-ces.head@deped.gov.ph,CES-SGOD,Rowena Flores,,,,,,`;
+ces.head@deped.gov.ph,CES-SGOD,Rowena Flores,,,,,,
+observer@deped.gov.ph,Observer,Monitoring Observer,,,,,,`;
 
 /* ── Step 1: Paste ───────────────────────────────────────────── */
-function PasteStep({ csvText, setCsvText, parseError, onPreview }) {
+function PasteStep({ csvText, setCsvText, parseError }) {
   const [guideOpen, setGuideOpen] = useState(false);
 
   return (
@@ -109,8 +110,8 @@ function PasteStep({ csvText, setCsvText, parseError, onPreview }) {
               <tbody className="text-slate-700 dark:text-slate-300 divide-y divide-slate-100 dark:divide-dark-border">
                 {[
                   ['email', 'All roles', 'Must end @deped.gov.ph'],
-                  ['role', 'All roles', 'School | Division Personnel | Admin | CES-SGOD | CES-ASDS | CES-CID | Cluster Coordinator'],
-                  ['name', 'Admin, CES-*, Cluster Coordinator', 'Full display name'],
+                  ['role', 'All roles', 'School | Division Personnel | Admin | CES-SGOD | CES-ASDS | CES-CID | Cluster Coordinator | Observer'],
+                  ['name', 'Admin, CES-*, Cluster Coordinator, Observer', 'Full display name'],
                   ['first_name', 'Division Personnel', 'Given name'],
                   ['last_name', 'Division Personnel', 'Surname'],
                   ['middle_initial', 'Division Personnel', 'Optional (e.g. "D")'],
@@ -359,14 +360,15 @@ export function ImportUsersModal({ open, onClose, onImportComplete }) {
   const validCount = parsed.filter(r => r._valid).length;
 
   const stepLabel = step === 1 ? 'Paste CSV' : step === 2 ? 'Preview' : 'Results';
+  const panelSizeClass = step === 2 ? 'w-[min(96vw,80rem)]' : 'w-[min(96vw,64rem)]';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
 
-      {/* Panel — wider on step 2 */}
-      <div className={`relative z-10 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-[0_32px_80px_-16px_rgba(0,0,0,0.22)] dark:shadow-[0_32px_80px_-16px_rgba(0,0,0,0.6)] w-full flex flex-col max-h-[90vh] transition-all duration-200 ${step === 2 ? 'max-w-4xl' : 'max-w-lg'}`}>
+      {/* Panel */}
+      <div className={`relative z-10 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-[0_32px_80px_-16px_rgba(0,0,0,0.22)] dark:shadow-[0_32px_80px_-16px_rgba(0,0,0,0.6)] flex flex-col max-w-[calc(100vw-2rem)] max-h-[90vh] min-w-[min(32rem,calc(100vw-2rem))] min-h-[min(24rem,80vh)] resize overflow-hidden ${panelSizeClass}`}>
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 dark:border-dark-border shrink-0">
@@ -404,13 +406,12 @@ export function ImportUsersModal({ open, onClose, onImportComplete }) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
           {step === 1 && (
             <PasteStep
               csvText={csvText}
               setCsvText={setCsvText}
               parseError={parseError}
-              onPreview={handlePreview}
             />
           )}
           {step === 2 && <PreviewStep parsed={parsed} />}
@@ -471,6 +472,7 @@ export function ImportUsersModal({ open, onClose, onImportComplete }) {
             )}
           </div>
         </div>
+        <span className="pointer-events-none absolute bottom-2 right-2 h-3 w-3 border-b-2 border-r-2 border-slate-300/80 dark:border-slate-600/80" aria-hidden="true" />
       </div>
     </div>
   );

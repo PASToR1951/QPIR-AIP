@@ -44,17 +44,19 @@ const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID'];
 
 // Preload only the chunks the logged-in user's role will actually navigate to.
 function preloadForRole(role) {
-  if (role === 'Admin') {
+  if (auth.isAdminPanelRole(role)) {
     import('./admin/pages/AdminOverview.jsx');
     import('./admin/pages/AdminSubmissions.jsx');
-    import('./admin/pages/AdminUsers.jsx');
-    import('./admin/pages/AdminSchools.jsx');
-    import('./admin/pages/AdminPrograms.jsx');
-    import('./admin/pages/AdminDeadlines.jsx');
-    import('./admin/pages/AdminReports.jsx');
-    import('./admin/pages/AdminSettings.jsx');
-    import('./admin/pages/AdminBackups.jsx');
     import('./admin/pages/AdminPIRReview.jsx');
+    if (role === 'Admin') {
+      import('./admin/pages/AdminUsers.jsx');
+      import('./admin/pages/AdminSchools.jsx');
+      import('./admin/pages/AdminPrograms.jsx');
+      import('./admin/pages/AdminDeadlines.jsx');
+      import('./admin/pages/AdminReports.jsx');
+      import('./admin/pages/AdminSettings.jsx');
+      import('./admin/pages/AdminBackups.jsx');
+    }
   } else if (CES_ROLES.includes(role)) {
     import('./ces/CESLayout.jsx');
   } else if (role === 'Cluster Coordinator') {
@@ -78,7 +80,7 @@ const ProtectedRoute = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
-    if (user?.role === 'Admin') return <Navigate to="/admin" replace />;
+    if (auth.isAdminPanelRole(user?.role)) return <Navigate to="/admin" replace />;
     if (CES_ROLES.includes(user?.role)) return <Navigate to="/ces" replace />;
     if (user?.role === 'Cluster Coordinator') return <Navigate to="/cluster-head" replace />;
   } catch {
@@ -97,6 +99,17 @@ const DivisionPersonnelRouteGuard = ({ children }) => {
 };
 
 const AdminRouteGuard = ({ children }) => {
+  if (isTokenObsolete()) return <Navigate to="/login" replace />;
+  try {
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (!auth.isAdminPanelRole(user?.role)) return <Navigate to="/403" replace />;
+  } catch {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+const AdminOnlyGuard = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
@@ -212,13 +225,13 @@ export default function AnimatedContent() {
             <Route path="/admin" element={<AdminRouteGuard><AdminLayout /></AdminRouteGuard>}>
               <Route index element={<AdminOverview />} />
               <Route path="submissions" element={<AdminSubmissions />} />
-              <Route path="users" element={<AdminUsers />} />
-              <Route path="schools" element={<AdminSchools />} />
-              <Route path="programs" element={<AdminPrograms />} />
-              <Route path="deadlines" element={<AdminDeadlines />} />
-              <Route path="reports" element={<AdminReports />} />
-              <Route path="settings" element={<AdminSettings />} />
-              <Route path="backups" element={<AdminBackups />} />
+              <Route path="users" element={<AdminOnlyGuard><AdminUsers /></AdminOnlyGuard>} />
+              <Route path="schools" element={<AdminOnlyGuard><AdminSchools /></AdminOnlyGuard>} />
+              <Route path="programs" element={<AdminOnlyGuard><AdminPrograms /></AdminOnlyGuard>} />
+              <Route path="deadlines" element={<AdminOnlyGuard><AdminDeadlines /></AdminOnlyGuard>} />
+              <Route path="reports" element={<AdminOnlyGuard><AdminReports /></AdminOnlyGuard>} />
+              <Route path="settings" element={<AdminOnlyGuard><AdminSettings /></AdminOnlyGuard>} />
+              <Route path="backups" element={<AdminOnlyGuard><AdminBackups /></AdminOnlyGuard>} />
               <Route path="pirs/:id" element={<AdminPIRReview />} />
             </Route>
           </Routes>

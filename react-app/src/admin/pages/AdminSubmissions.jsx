@@ -2,16 +2,19 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Eye, Check, ArrowBendUpLeft, DownloadSimple, XCircle, Funnel, CalendarDots, Warning, CheckCircle, FloppyDisk, LockKeyOpen, LockKey } from '@phosphor-icons/react';
-import { DataTable, withResponsiveHide } from '../components/DataTable.jsx';
+import { DataTable } from '../components/DataTable.jsx';
+import { withResponsiveHide } from '../components/dataTableColumns.js';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
+import { SchoolAvatar } from '../../components/ui/SchoolAvatar.jsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getFriendlyError } from '../../lib/errorMessages.js';
 import { relativeDate } from '../../lib/dateUtils.js';
 import { HIGHLIGHT_DURATION_MS, REVIEW_TIMER_MS, TOAST_DURATION_MS } from '../../constants.js';
+import { auth } from '../../lib/auth.js';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -39,6 +42,7 @@ export default function AdminSubmissions() {
   const group = searchParams.get('group') || 'flat';
   const setGroup = (key) => { setSearchParams(prev => { prev.set('group', key); return prev; }); };
   const reviewId = searchParams.get('review');
+  const isObserver = auth.isObserver();
   const [submissions, setSubmissions] = useState([]);
   const [totals, setTotals] = useState({ aipTotal: 0, pirTotal: 0, total: 0 });
   const [loading, setLoading] = useState(true);
@@ -64,6 +68,10 @@ export default function AdminSubmissions() {
   const [actionError, setActionError] = useState(null);
   const [toast, setToast] = useState(null);
   const [editActionLoading, setEditActionLoading] = useState(null); // null | 'approve' | 'deny'
+  const [observerNotes, setObserverNotes] = useState('');
+  const [observerNotesSaving, setObserverNotesSaving] = useState(false);
+  const [observerNotesSaved, setObserverNotesSaved] = useState(false);
+  const [observerNotesError, setObserverNotesError] = useState('');
   // Tracks which row's PDF is currently being generated to prevent double-clicks
   const [pdfLoadingId, setPdfLoadingId] = useState(null);
 
@@ -98,6 +106,7 @@ export default function AdminSubmissions() {
   };
 
   const handleTermSave = async () => {
+    if (isObserver) return;
     if (!pendingTermType || pendingTermType === termConfig.termType) return;
     if (periodMonths.some(m => !m.start || !m.end)) {
       setTermError('Assign start and end months for every period.');
@@ -218,10 +227,14 @@ export default function AdminSubmissions() {
     underReviewTimerRef.current = null;
     setViewItem(null);
     setViewData(null);
+    setObserverNotes('');
+    setObserverNotesSaving(false);
+    setObserverNotesSaved(false);
+    setObserverNotesError('');
   };
 
   const handleEditAction = async (action) => {
-    if (!viewItem) return;
+    if (!viewItem || isObserver) return;
     setEditActionLoading(action);
     try {
       await axios.patch(`${API}/api/admin/aips/${viewItem.id}/${action}-edit`, {}, { withCredentials: true });
@@ -239,11 +252,15 @@ export default function AdminSubmissions() {
 
     setViewItem(item);
     setViewLoading(true);
+    setObserverNotes('');
+    setObserverNotesSaved(false);
+    setObserverNotesError('');
     try {
       const r = await axios.get(`${API}/api/admin/submissions/${item.id}?type=${item.type.toLowerCase()}`, { withCredentials: true });
       setViewData(r.data);
+      setObserverNotes(r.data.observer_notes ?? r.data.observerNotes ?? '');
 
-      if (item.type === 'PIR' && item.status === 'Submitted') {
+      if (!isObserver && item.type === 'PIR' && item.status === 'Submitted') {
         underReviewTimerRef.current = setTimeout(() => {
           handleStatusUpdate(item.id, item.type, 'Under Review');
         }, REVIEW_TIMER_MS);
@@ -256,10 +273,11 @@ export default function AdminSubmissions() {
     finally { setViewLoading(false); }
   };
 
-  const canChangeSubmissionStatus = (item) => item?.status !== 'Approved' && item?.status !== 'Returned';
+  const canChangeSubmissionStatus = (item) => !isObserver && item?.status !== 'Approved' && item?.status !== 'Returned';
   const canDownloadSubmission = (item) => item?.status !== 'Returned';
 
   const handleStatusUpdate = async (id, type, status, feedback = '') => {
+    if (isObserver) return;
     if (status === 'Returned' && !feedback.trim()) {
       setReturnFeedbackError('A reason is required before returning a submission.');
       showToast('Please enter a reason before returning the submission.', 'error');
@@ -284,6 +302,7 @@ export default function AdminSubmissions() {
   };
 
   const handleViewStatusChange = (status) => {
+    if (isObserver) return;
     if (status === 'Returned') {
       const currentStatus = viewData?.status ?? viewItem.status;
 
@@ -303,6 +322,7 @@ export default function AdminSubmissions() {
   };
 
   const handleBulkApprove = async () => {
+    if (isObserver) return;
     if (!selectedIds.length) return;
     setActionLoading(true);
     try {
@@ -374,6 +394,29 @@ export default function AdminSubmissions() {
     pdf.save(`${item.type}-${item.id}.pdf`);
   };
 
+  const handleObserverNotesSave = async () => {
+    if (!isObserver || !viewItem) return;
+    setObserverNotesSaving(true);
+    setObserverNotesSaved(false);
+    setObserverNotesError('');
+    try {
+      const r = await axios.patch(
+        `${API}/api/admin/submissions/${viewItem.id}/observer-notes`,
+        { type: viewItem.type.toLowerCase(), notes: observerNotes },
+        { withCredentials: true }
+      );
+      const savedNotes = r.data.observer_notes ?? observerNotes;
+      setObserverNotes(savedNotes);
+      setViewData(prev => prev ? { ...prev, observer_notes: savedNotes } : prev);
+      setObserverNotesSaved(true);
+      setTimeout(() => setObserverNotesSaved(false), 2500);
+    } catch (e) {
+      setObserverNotesError(getFriendlyError(e.response?.data?.error, 'Failed to save observer notes.'));
+    } finally {
+      setObserverNotesSaving(false);
+    }
+  };
+
   const clearFilters = () => setFilters({ cluster: null, school: null, program: null, quarter: null, year: null, status: null });
 
   const TABS = [
@@ -422,8 +465,28 @@ export default function AdminSubmissions() {
   const currentYear = new Date().getFullYear();
   const YEAR_OPTIONS = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => ({ value: y, label: String(y) }));
 
+  const renderSchoolCell = (value, row) => {
+    if (!row.schoolId) {
+      return <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px] block">{value}</span>;
+    }
+
+    return (
+      <div className="flex items-center gap-2 min-w-0 max-w-[180px]">
+        <SchoolAvatar
+          clusterNumber={row.clusterNumber}
+          schoolLogo={row.schoolLogo ?? null}
+          clusterLogo={row.clusterLogo ?? null}
+          name={value}
+          size={28}
+          className="shrink-0"
+        />
+        <span className="font-bold text-slate-900 dark:text-slate-100 truncate min-w-0">{value}</span>
+      </div>
+    );
+  };
+
   const columns = withResponsiveHide([
-    { key: 'school', label: 'School', sortable: true, render: v => <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px] block">{v}</span> },
+    { key: 'school', label: 'School', sortable: true, render: renderSchoolCell },
     { key: 'cluster', label: 'Cluster', sortable: true, render: v => <span className="text-xs font-bold bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded-lg">{v}</span> },
     { key: 'program', label: 'Program', sortable: true, cardFullWidth: true, render: v => <span className="truncate max-w-[180px] block text-slate-600 dark:text-slate-400">{v}</span> },
     { key: 'type', label: 'Type', render: (v) => <StatusBadge status={v} size="xs" /> },
@@ -587,17 +650,17 @@ export default function AdminSubmissions() {
             </div>
             <button onClick={clearFilters} className="mt-3 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">Clear filters</button>
 
-            {/* Term Structure */}
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-dark-border space-y-3">
-              <div className="flex items-center gap-2">
-                <CalendarDots size={14} className="text-violet-500 dark:text-violet-400" />
-                <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Term Structure</span>
-              </div>
+            {!isObserver && (
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-dark-border space-y-3">
+                <div className="flex items-center gap-2">
+                  <CalendarDots size={14} className="text-violet-500 dark:text-violet-400" />
+                  <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Term Structure</span>
+                </div>
 
-              <div className="flex items-start gap-2.5 px-3 py-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl text-[11px] text-amber-800 dark:text-amber-300">
-                <Warning size={13} weight="fill" className="shrink-0 mt-px" />
-                <span>Existing PIR records keep their original period labels. Only new submissions are affected.</span>
-              </div>
+                <div className="flex items-start gap-2.5 px-3 py-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl text-[11px] text-amber-800 dark:text-amber-300">
+                  <Warning size={13} weight="fill" className="shrink-0 mt-px" />
+                  <span>Existing PIR records keep their original period labels. Only new submissions are affected.</span>
+                </div>
 
               {/* Type selector */}
               <div className="flex flex-wrap gap-2">
@@ -654,27 +717,28 @@ export default function AdminSubmissions() {
               )}
 
               {/* Apply row */}
-              <div className="flex items-center justify-between pt-1">
-                <div>{termError && <span className="text-[11px] text-rose-500 font-bold">{termError}</span>}</div>
-                <button
-                  onClick={handleTermSave}
-                  disabled={termSaving || !pendingTermType || pendingTermType === termConfig.termType}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                    termSaved ? 'bg-emerald-500 text-white' : 'bg-violet-600 hover:bg-violet-700 text-white'
-                  }`}
-                >
-                  {termSaved
-                    ? <><CheckCircle size={12} weight="fill" /> Applied</>
-                    : <><FloppyDisk size={12} weight="bold" /> {termSaving ? 'Saving…' : 'Apply'}</>
-                  }
-                </button>
+                <div className="flex items-center justify-between pt-1">
+                  <div>{termError && <span className="text-[11px] text-rose-500 font-bold">{termError}</span>}</div>
+                  <button
+                    onClick={handleTermSave}
+                    disabled={termSaving || !pendingTermType || pendingTermType === termConfig.termType}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                      termSaved ? 'bg-emerald-500 text-white' : 'bg-violet-600 hover:bg-violet-700 text-white'
+                    }`}
+                  >
+                    {termSaved
+                      ? <><CheckCircle size={12} weight="fill" /> Applied</>
+                      : <><FloppyDisk size={12} weight="bold" /> {termSaving ? 'Saving…' : 'Apply'}</>
+                    }
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
         {/* Bulk Actions */}
-        {selectedIds.length > 0 && (
+        {!isObserver && selectedIds.length > 0 && (
           <div className="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 rounded-2xl px-4 py-3">
             <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400">{selectedIds.length} selected</span>
             {submissions.some(s => selectedIds.includes(s.id) && canChangeSubmissionStatus(s)) && (
@@ -698,7 +762,7 @@ export default function AdminSubmissions() {
               <DataTable
                 columns={columns}
                 data={submissions}
-                selectable
+                selectable={!isObserver}
                 selectedIds={selectedIds}
                 onSelectChange={setSelectedIds}
                 onRowClick={(row) => { if (row.type === 'PIR') navigate(`/admin/pirs/${row.id}`); else openView(row); }}
@@ -706,6 +770,9 @@ export default function AdminSubmissions() {
                 emptyMessage="No submissions match the current filters."
                 initialPage={targetPage}
                 highlightRowId={highlightRowId}
+                endMessage="All matching submissions shown"
+                endCountLabel="submission"
+                showEndCount
               />
             );
           }
@@ -720,13 +787,16 @@ export default function AdminSubmissions() {
                   <DataTable
                     columns={columns}
                     data={rows}
-                    selectable
+                    selectable={!isObserver}
                     selectedIds={selectedIds}
                     onSelectChange={setSelectedIds}
                     onRowClick={(row) => { if (row.type === 'PIR') navigate(`/admin/pirs/${row.id}`); else openView(row); }}
                     getRowClassName={(row) => [row.type === 'PIR' ? 'cursor-pointer' : '', row.id === highlightRowId ? 'row-highlight' : ''].filter(Boolean).join(' ')}
                     emptyMessage="No submissions in this group."
                     highlightRowId={highlightRowId}
+                    endMessage={`End of ${groupKey} submissions`}
+                    endCountLabel="submission"
+                    showEndCount
                   />
                 </div>
               ))}
@@ -857,6 +927,35 @@ export default function AdminSubmissions() {
                       </div>
                     </div>
                   )}
+                  {(isObserver || observerNotes) && (
+                    <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
+                      <label className="block text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">
+                        Observer Notes
+                      </label>
+                      <textarea
+                        value={observerNotes}
+                        onChange={e => { setObserverNotes(e.target.value); setObserverNotesSaved(false); setObserverNotesError(''); }}
+                        rows={4}
+                        readOnly={!isObserver}
+                        placeholder={isObserver ? 'Add observer-only notes for monitoring…' : 'No observer notes yet.'}
+                        className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl resize-none text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-400 transition-colors read-only:cursor-default"
+                      />
+                      {observerNotesError && <p className="mt-1.5 text-xs text-red-500">{observerNotesError}</p>}
+                      {observerNotesSaved && <p className="mt-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">Observer notes saved.</p>}
+                      {isObserver && (
+                        <div className="flex justify-end mt-3">
+                          <button
+                            onClick={handleObserverNotesSave}
+                            disabled={observerNotesSaving}
+                            className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                          >
+                            <FloppyDisk size={16} />
+                            {observerNotesSaving ? 'Saving…' : 'Save Notes'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-slate-400 text-center py-12">Could not load submission details.</p>
@@ -866,42 +965,46 @@ export default function AdminSubmissions() {
             {/* Footer */}
             <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8 border-t border-slate-200 dark:border-dark-border shrink-0 bg-white dark:bg-dark-surface">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <select
-                  value={viewData?.status ?? viewItem.status}
-                  onChange={e => handleViewStatusChange(e.target.value)}
-                  className="w-full sm:w-auto text-sm font-bold bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl px-3 py-2 text-slate-700 dark:text-slate-300"
-                >
-                  {(viewItem.type === 'AIP'
-                    ? ['Approved', 'Returned']
-                    : ['Submitted', 'Under Review', 'For CES Review', 'For Cluster Head Review', 'Approved', 'Returned']
-                  ).map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-                {viewData?.edit_requested && viewItem.type === 'AIP' && (
+                {!isObserver && (
                   <>
-                    <button
-                      disabled={!!editActionLoading}
-                      onClick={() => handleEditAction('approve')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50"
+                    <select
+                      value={viewData?.status ?? viewItem.status}
+                      onChange={e => handleViewStatusChange(e.target.value)}
+                      className="w-full sm:w-auto text-sm font-bold bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl px-3 py-2 text-slate-700 dark:text-slate-300"
                     >
-                      <LockKeyOpen size={14} />
-                      {editActionLoading === 'approve' ? 'Approving…' : 'Approve Edit'}
-                    </button>
-                    <button
-                      disabled={!!editActionLoading}
-                      onClick={() => handleEditAction('deny')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
-                    >
-                      <LockKey size={14} />
-                      {editActionLoading === 'deny' ? 'Denying…' : 'Deny Edit'}
-                    </button>
+                      {(viewItem.type === 'AIP'
+                        ? ['Approved', 'Returned']
+                        : ['Submitted', 'Under Review', 'For CES Review', 'For Cluster Head Review', 'Approved', 'Returned']
+                      ).map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    {viewData?.edit_requested && viewItem.type === 'AIP' && (
+                      <>
+                        <button
+                          disabled={!!editActionLoading}
+                          onClick={() => handleEditAction('approve')}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-50"
+                        >
+                          <LockKeyOpen size={14} />
+                          {editActionLoading === 'approve' ? 'Approving…' : 'Approve Edit'}
+                        </button>
+                        <button
+                          disabled={!!editActionLoading}
+                          onClick={() => handleEditAction('deny')}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                        >
+                          <LockKey size={14} />
+                          {editActionLoading === 'deny' ? 'Denying…' : 'Deny Edit'}
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
               </div>
               <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
                 {canDownloadSubmission({ status: viewData?.status ?? viewItem.status }) && (
-                  <button onClick={handleExportPDF} className="flex flex-1 items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors sm:flex-none">
+                  <button onClick={() => handleExportPDF(viewItem)} className="flex flex-1 items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors sm:flex-none">
                     <DownloadSimple size={17} /> PDF
                   </button>
                 )}

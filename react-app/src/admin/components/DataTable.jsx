@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowUp, ArrowDown, CaretLeft, CaretRight } from '@phosphor-icons/react';
-
-export function withResponsiveHide(columns, hideBelow = {}) {
-  const keyToBreakpoint = {};
-  for (const [bp, keys] of Object.entries(hideBelow)) {
-    for (const k of keys) keyToBreakpoint[k] = bp;
-  }
-  return columns.map(col =>
-    keyToBreakpoint[col.key] ? { ...col, hideBelow: keyToBreakpoint[col.key] } : col
-  );
-}
+import { EndOfListCue } from '../../components/ui/EndOfListCue';
+import { shouldShowEndOfListCue } from '../../components/ui/endOfListCue';
 
 export const DataTable = ({
   columns,
@@ -26,6 +18,10 @@ export const DataTable = ({
   fillHeight = false,
   initialPage,
   highlightRowId,
+  endMessage = 'End of list',
+  endCueThreshold,
+  endCountLabel,
+  showEndCount = false,
 }) => {
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
@@ -48,6 +44,7 @@ export const DataTable = ({
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const pageData = sorted.slice((page - 1) * pageSize, page * pageSize);
+  const showEndCue = pageData.length > 0 && page === totalPages && shouldShowEndOfListCue(sorted.length, endCueThreshold);
 
   const allSelected = pageData.length > 0 && pageData.every(r => selectedIds.includes(r.id));
   const toggleAll = () => {
@@ -63,7 +60,18 @@ export const DataTable = ({
   const actionsCol = columns.find(c => c.label === 'Actions');
   const bodyColumns = columns.filter(c => c !== primaryCol && c !== actionsCol);
 
-  const Pagination = () => sorted.length > pageSize ? (
+  const renderEndCue = () => showEndCue ? (
+    <EndOfListCue
+      count={sorted.length}
+      threshold={endCueThreshold}
+      message={endMessage}
+      countLabel={endCountLabel}
+      showCount={showEndCount}
+      className="mt-4"
+    />
+  ) : null;
+
+  const renderPagination = () => sorted.length > pageSize ? (
     <div className="flex flex-wrap items-center justify-between gap-2 mt-4 text-sm">
       <span className="text-slate-500 dark:text-slate-400">
         Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, sorted.length)} of {sorted.length}
@@ -154,7 +162,8 @@ export const DataTable = ({
             </div>
           )}
         </div>
-        <Pagination />
+        {renderEndCue()}
+        {renderPagination()}
       </div>
 
       {/* ── Table view (desktop, md+) ────────────────────────────── */}
@@ -215,7 +224,8 @@ export const DataTable = ({
             </tbody>
           </table>
         </div>
-        <Pagination />
+        {renderEndCue()}
+        {renderPagination()}
       </div>
     </>
   );

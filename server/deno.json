@@ -9,12 +9,18 @@
     "tunnel": "deno run --watch --env-file=.env.tunnel --allow-net --allow-env --allow-read --allow-write --allow-sys server.ts",
     "seed": "deno run -A --env scripts/seed.ts"
   },
+  "compilerOptions": {
+    "types": ["./types/npm-shims.d.ts"]
+  },
   "imports": {
     "@prisma/config": "npm:@prisma/config@^7.4.2",
+    "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.4.2",
     "hono": "npm:hono@^4.0.0",
     "@prisma/client": "npm:@prisma/client@^7.4.2",
     "bcrypt": "npm:bcryptjs@^2.4.3",
-    "jsonwebtoken": "npm:jsonwebtoken@^9.0.3"
+    "jsonwebtoken": "npm:jsonwebtoken@^9.0.3",
+    "pg": "npm:pg@^8.20.0",
+    "xlsx": "npm:xlsx@^0.18.5"
   },
   "allowScripts": {
     "allow": [],

@@ -69,11 +69,11 @@ model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
   password  String?   // Hashed password — null for OAuth-only users
-  role            String    // "School" | "Division Personnel" | "Admin" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Cluster Coordinator" | "Pending"
+  role            String    // "School" | "Division Personnel" | "Admin" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Cluster Coordinator" | "Pending" | "Observer"
 
   // OAuth SSO fields — populated on first OAuth login
-  oauth_provider  String?   // "microsoft" | "google" | null
-  oauth_subject   String?   // Immutable IdP user ID (oid for MS, sub for Google)
+  oauth_provider  String?   // "google" | null
+  oauth_subject   String?   // Immutable IdP user ID (sub for Google)
   name            String?
   first_name      String?
   middle_initial  String?
@@ -144,6 +144,7 @@ model AIP {
   approved_by_title   String   @default("")
   status              String   @default("Approved") // "Draft" | "Approved" | "Returned"
   edit_requested      Boolean  @default(false)       // true while user is waiting for admin to unlock
+  observer_notes      String?
   archived            Boolean  @default(false)
   archived_at         DateTime?
   deleted_at          DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
@@ -194,6 +195,7 @@ model PIR {
   status                      String   @default("For CES Review") // "Draft" | "For CES Review" | "For Cluster Head Review" | "Under Review" | "Approved" | "Returned"
   deleted_at                  DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
   remarks                     String?  // Admin remarks/annotations on this PIR
+  observer_notes              String?
   presented                   Boolean  @default(false) // Admin-toggled: whether school presented this PIR
   // CES review tracking
   ces_reviewer_id             Int?

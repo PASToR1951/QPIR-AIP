@@ -6,6 +6,7 @@ import { AIPDocument } from '../docs/AIPDocument';
 import { PIRDocument } from '../docs/PIRDocument';
 import { StatusBadge } from '../../admin/components/StatusBadge';
 import { useTextMeasure } from '../../lib/useTextMeasure';
+import { EndOfListCue } from './EndOfListCue';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -38,6 +39,7 @@ export default function SubmissionsHistory() {
     font: '14px Inter',
     lineHeight: 20,
   });
+  const submissionHistoryCount = history.reduce((sum, entry) => sum + entry.aips.length, 0);
 
   const rowHeights = useMemo(() => {
     if (!history.length) return {};
@@ -81,7 +83,7 @@ export default function SubmissionsHistory() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [currentYear]);
 
   const toggleYear = (year) => setExpanded(prev => ({ ...prev, [year]: !prev[year] }));
 
@@ -308,6 +310,13 @@ export default function SubmissionsHistory() {
               </div>
             );
           })}
+          <EndOfListCue
+            count={submissionHistoryCount}
+            message="End of submissions history"
+            countLabel="program"
+            showCount
+            className="pt-2"
+          />
         </div>
       )}
 

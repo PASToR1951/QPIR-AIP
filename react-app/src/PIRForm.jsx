@@ -157,8 +157,8 @@ export default function App() {
     // Form State
     const [program, setProgram] = useState("");
     // School Users: school is always their own school (pre-filled, not selectable)
-    // Division Personnel: no school association
-    const [school, setSchool] = useState(user?.school_name || "");
+    // Division Personnel: school is always "Division"
+    const [school, setSchool] = useState(isDivisionPersonnel ? "Division" : (user?.school_name || ""));
     const [owner, setOwner] = useState("");
     const [ownerLocked, setOwnerLocked] = useState(false);
 
@@ -319,7 +319,7 @@ export default function App() {
                 const d = res.data;
                 setPirId(d.id ?? null);
                 setPirStatus(d.status ?? null);
-                setSchool(d.school || "");
+                setSchool(d.school || (isDivisionPersonnel ? "Division" : ""));
                 setOwner(d.owner || "");
                 setBudgetFromDivision(String(d.budgetFromDivision || ""));
                 setBudgetFromCoPSF(String(d.budgetFromCoPSF || ""));
@@ -341,7 +341,7 @@ export default function App() {
             try {
                 const draft = loadedDraftData;
                 if (isDivisionPersonnel) {
-                    setSchool(draft.school || "");
+                    setSchool(draft.school || "Division");
                     setFunctionalDivision(draft.functionalDivision || "");
                 }
                 setOwner(draft.owner || "");

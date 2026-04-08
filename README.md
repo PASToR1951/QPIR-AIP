@@ -28,7 +28,7 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 | Styling | Tailwind CSS 4, Framer Motion |
 | Backend | Deno 2, Hono 4 |
 | Database | PostgreSQL, Prisma ORM 7 |
-| Auth | JWT (HS256) in HttpOnly cookies, OAuth 2.0 SSO (Microsoft, Google) |
+| Auth | JWT (HS256) in HttpOnly cookies, Google OAuth 2.0 SSO |
 
 ---
 
@@ -60,7 +60,7 @@ QPIR-AIP/
 └── server/                     # Deno backend
     ├── routes/
     │   ├── auth.ts             # Login, logout, and current session profile
-    │   ├── oauth.ts            # Microsoft and Google OAuth 2.0 + PKCE
+    │   ├── oauth.ts            # Google OAuth 2.0 + PKCE
     │   ├── data.ts             # AIP, PIR, dashboard, notifications, drafts
     │   ├── admin.ts            # Admin CRUD for users, schools, programs, etc.
     │   └── backup.ts           # Database backup management
@@ -113,12 +113,9 @@ PORT=3001
 ALLOWED_ORIGIN=http://localhost:5173
 NODE_ENV=development
 
-# OAuth SSO - required only when enabling Microsoft or Google sign-in
+# OAuth SSO - required only when enabling Google sign-in
 OAUTH_REDIRECT_BASE_URL=http://localhost:3001
 OAUTH_STATE_SECRET="your-strong-oauth-state-secret"
-MICROSOFT_CLIENT_ID=
-MICROSOFT_CLIENT_SECRET=
-MICROSOFT_TENANT_ID=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 ```
@@ -197,7 +194,7 @@ docker compose up -d --build backup
 
 The compose file also defines a `devtools` service that expects a local `./claude-devtools` directory. Start named services unless that optional directory exists.
 
-If you serve the frontend from a non-Vite origin such as `http://localhost` on port 80, make sure the backend receives a matching `ALLOWED_ORIGIN` value, for example by adding it under `backend.environment`. Do the same for the `OAUTH_*`, `MICROSOFT_*`, and `GOOGLE_*` values when enabling SSO in Docker.
+If you serve the frontend from a non-Vite origin such as `http://localhost` on port 80, make sure the backend receives a matching `ALLOWED_ORIGIN` value, for example by adding it under `backend.environment`. Do the same for the `OAUTH_*` and `GOOGLE_*` values when enabling SSO in Docker.
 
 ---
 
@@ -206,7 +203,7 @@ If you serve the frontend from a non-Vite origin such as `http://localhost` on p
 - **Gated Workflow** — PIR submission is locked until the school's AIP for that program and year is approved.
 - **Full Admin Panel** — manage users, schools, clusters, programs, deadlines, announcements, and system settings from a single interface.
 - **PIR Review Pipeline** — structured multi-stage review: CES notation → Cluster Head review → Admin approval/return, with per-activity evaluation notes.
-- **OAuth SSO** — Microsoft (Entra ID) and Google sign-in with PKCE; local password login also supported.
+- **OAuth SSO** — Google sign-in with PKCE; local password login also supported.
 - **Notifications** — in-app notification bell with deep-linking to the relevant PIR or AIP on click.
 - **Announcements** — admin-authored system-wide or targeted announcements with @mention support for schools and personnel.
 - **Audit Log** — every admin action is recorded with entity reference; preserved on account deletion (RA 10173 §20).
@@ -236,8 +233,6 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `POST` | `/api/auth/login` | Password login; sets JWT cookie |
 | `POST` | `/api/auth/logout` | Clears session cookie |
 | `GET` | `/api/auth/me` | Current user profile and session expiry metadata |
-| `GET` | `/api/auth/oauth/microsoft` | Initiate Microsoft OAuth flow |
-| `GET` | `/api/auth/oauth/microsoft/callback` | Microsoft OAuth callback |
 | `GET` | `/api/auth/oauth/google` | Initiate Google OAuth flow |
 | `GET` | `/api/auth/oauth/google/callback` | Google OAuth callback |
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { NotePencil, Table, LockKey as Lock, Warning as AlertTriangle, CaretCircleRight } from '@phosphor-icons/react';
@@ -9,9 +9,42 @@ import { AnnouncementBanner } from './components/ui/AnnouncementBanner';
 import Footer from './components/ui/Footer';
 import DashboardStats, { getActionPrompt } from './components/ui/DashboardStats';
 import SubmissionsHistory from './components/ui/SubmissionsHistory';
+import { useAccessibility } from './context/AccessibilityContext';
+
+function useAnimatedNumber(targetValue, duration = 700) {
+  const targetNumber = Number(targetValue) || 0;
+  const [displayValue, setDisplayValue] = useState(targetNumber);
+  const previousValueRef = useRef(targetNumber);
+
+  useEffect(() => {
+    const fromValue = previousValueRef.current;
+    previousValueRef.current = targetNumber;
+
+    if (fromValue === targetNumber) return;
+
+    let frameId = 0;
+    const startedAt = performance.now();
+
+    const tick = (now) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(Math.round(fromValue + (targetNumber - fromValue) * eased));
+
+      if (progress < 1) {
+        frameId = requestAnimationFrame(tick);
+      }
+    };
+
+    frameId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frameId);
+  }, [targetNumber, duration]);
+
+  return displayValue;
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { settings } = useAccessibility();
   const userStr = sessionStorage.getItem('user');
   let user = null;
   try {
@@ -75,6 +108,21 @@ export default function Dashboard() {
   }, [navigate, user?.id]);
 
   const hasAIP = dashboardData ? dashboardData.aipCompletion.completed > 0 : false;
+  const targetAipCompleted = dashboardData?.aipCompletion.completed ?? 0;
+  const targetAipTotal = dashboardData?.aipCompletion.total ?? 0;
+  const animatedAipCompleted = useAnimatedNumber(targetAipCompleted);
+  const animatedAipTotal = useAnimatedNumber(targetAipTotal);
+  const displayedAipCompleted = settings.reduceMotion ? targetAipCompleted : animatedAipCompleted;
+  const displayedAipTotal = settings.reduceMotion ? targetAipTotal : animatedAipTotal;
+  const aipCounterMotionClasses = settings.reduceMotion
+    ? ''
+    : 'group-hover:border-pink-500 dark:group-hover:border-pink-500 transition-colors duration-300';
+  const aipCounterFillMotionClasses = settings.reduceMotion
+    ? ''
+    : 'group-hover:translate-x-0 transition-transform duration-500 ease-out';
+  const aipCounterTextMotionClasses = settings.reduceMotion
+    ? ''
+    : 'group-hover:text-white transition-colors duration-300';
 
   const actionPrompt = dashboardData ? getActionPrompt(dashboardData, aipStatus) : '';
 
@@ -182,8 +230,14 @@ export default function Dashboard() {
                   <NotePencil size={36} className="relative z-10 group-hover:text-white transition-colors duration-300" />
                 </div>
                 {dashboardData && dashboardData.aipCompletion.total > 0 && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-pink-500 text-white shadow-sm">
-                    {dashboardData.aipCompletion.completed}/{dashboardData.aipCompletion.total} Programs
+                  <div
+                    className={`relative overflow-hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm tabular-nums mt-8 sm:mt-0 bg-pink-50 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400 border-pink-200 dark:border-pink-700/60 ${aipCounterMotionClasses}`}
+                    aria-label={`${dashboardData.aipCompletion.completed} of ${dashboardData.aipCompletion.total} programs`}
+                  >
+                    <span className={`absolute inset-0 -translate-x-full bg-pink-500/75 backdrop-blur-sm rounded-full ${aipCounterFillMotionClasses}`} />
+                    <span className={`relative z-10 ${aipCounterTextMotionClasses}`}>
+                      {displayedAipCompleted}/{displayedAipTotal} Programs
+                    </span>
                   </div>
                 )}
               </div>

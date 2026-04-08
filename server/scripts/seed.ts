@@ -50,13 +50,21 @@ async function main() {
     console.log(`Loading ${programsFile}...`);
     const programs = await parseCSV(programsFile);
     for (const program of programs) {
+      const title = program.title as string;
+      const schoolLevelRequirement = program.school_level_requirement as string;
+
       await prisma.program.upsert({
-        where: { title: program.title as string },
-        update: { school_level_requirement: program.school_level_requirement as string },
+        where: {
+          title_school_level_requirement: {
+            title,
+            school_level_requirement: schoolLevelRequirement,
+          },
+        },
+        update: { school_level_requirement: schoolLevelRequirement },
         create: {
           id: parseInt(program.id as string),
-          title: program.title as string,
-          school_level_requirement: program.school_level_requirement as string,
+          title,
+          school_level_requirement: schoolLevelRequirement,
         },
       });
     }

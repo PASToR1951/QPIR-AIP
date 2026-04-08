@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
+import { EndOfListCue } from '../components/ui/EndOfListCue';
+import { shouldShowEndOfListCue } from '../components/ui/endOfListCue';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -38,16 +40,16 @@ export default function ClusterHeadDashboard() {
   const countdownRef = useRef(null);
   const startReviewFiredRef = useRef(null); // tracks which pirId timer was fired for
 
-  const fetchPIRs = () => {
+  const fetchPIRs = useCallback(() => {
     setLoading(true);
     const params = quarter ? `?quarter=${encodeURIComponent(quarter)}` : '';
     axios.get(`${API}/api/admin/cluster-head/pirs${params}`, { withCredentials: true })
       .then(r => setPirs(r.data))
       .catch(() => setPirs([]))
       .finally(() => setLoading(false));
-  };
+  }, [quarter]);
 
-  useEffect(() => { fetchPIRs(); }, [quarter]);
+  useEffect(() => { fetchPIRs(); }, [fetchPIRs]);
 
   const filtered = pirs.filter(p => {
     if (!search) return true;
@@ -59,6 +61,7 @@ export default function ClusterHeadDashboard() {
       p.owner?.toLowerCase().includes(q)
     );
   });
+  const showReviewEndCue = shouldShowEndOfListCue(filtered.length);
 
   const stopTimer = () => {
     clearInterval(countdownRef.current);
@@ -227,9 +230,21 @@ export default function ClusterHeadDashboard() {
         )}
       </div>
 
-      <p className="text-xs text-slate-400 dark:text-slate-500 mt-3 text-right">
-        {filtered.length} PIR{filtered.length !== 1 ? 's' : ''} pending review
-      </p>
+      {filtered.length > 0 && (
+        <div className="mt-3">
+          <EndOfListCue
+            count={filtered.length}
+            message={search || !quarter ? 'All matching school PIRs shown' : 'End of school review queue'}
+            countLabel="PIR"
+            showCount
+          />
+          {!showReviewEndCue && (
+            <p className="text-xs text-slate-400 dark:text-slate-500 text-right">
+              {filtered.length} PIR{filtered.length !== 1 ? 's' : ''} pending review
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Action Modal */}
       {modal && (

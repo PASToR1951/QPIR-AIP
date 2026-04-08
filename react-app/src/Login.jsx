@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, MapPinIcon as MapPin, EnvelopeIcon as Mail, FacebookLogoIcon as Facebook, PhoneIcon as Phone } from '@phosphor-icons/react';
@@ -50,14 +50,55 @@ export default function Login() {
   const ssoTabRef   = useRef(null);
   const emailTabRef = useRef(null);
   const contentRef  = useRef(null);
+  const activeTabRef = useRef(activeTab);
 
-  // Set initial content height and hide email panel before first paint
+  const getTabPanel = useCallback((tab) => (
+    tab === 'email' ? emailTabRef.current : ssoTabRef.current
+  ), []);
+
+  const syncContentHeight = useCallback((tab = activeTabRef.current, transition) => {
+    const panel = getTabPanel(tab);
+    if (!contentRef.current || !panel) return;
+
+    if (transition !== undefined) {
+      contentRef.current.style.transition = transition;
+    }
+    contentRef.current.style.height = `${panel.scrollHeight}px`;
+  }, [getTabPanel]);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  // Keep the animated tab wrapper matched to whichever panel is visible.
   useLayoutEffect(() => {
     if (!contentRef.current || !ssoTabRef.current || !emailTabRef.current) return;
-    contentRef.current.style.height = ssoTabRef.current.scrollHeight + 'px';
-    emailTabRef.current.style.opacity = '0';
-    emailTabRef.current.style.pointerEvents = 'none';
-  }, []);
+    const ssoPanel = ssoTabRef.current;
+    const emailPanel = emailTabRef.current;
+    const initialTab = activeTabRef.current;
+
+    syncContentHeight(initialTab, 'none');
+
+    ssoPanel.style.opacity = initialTab === 'sso' ? '1' : '0';
+    ssoPanel.style.pointerEvents = initialTab === 'sso' ? 'auto' : 'none';
+    emailPanel.style.opacity = initialTab === 'email' ? '1' : '0';
+    emailPanel.style.pointerEvents = initialTab === 'email' ? 'auto' : 'none';
+
+    const handleResize = () => syncContentHeight(activeTabRef.current);
+    let resizeObserver;
+
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(handleResize);
+      resizeObserver.observe(ssoPanel);
+      resizeObserver.observe(emailPanel);
+    }
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [syncContentHeight]);
 
   const switchTab = (newTab) => {
     if (newTab === activeTab) return;
@@ -68,7 +109,9 @@ export default function Login() {
 
     const outgoing = activeTab === 'sso' ? ssoTabRef.current : emailTabRef.current;
     const incoming = newTab   === 'sso' ? ssoTabRef.current : emailTabRef.current;
+    if (!outgoing || !incoming || !contentRef.current) return;
 
+    activeTabRef.current = newTab;
     setActiveTab(newTab);
     setError('');
 
@@ -79,8 +122,7 @@ export default function Login() {
       incoming.style.transition = 'none';
       incoming.style.opacity = '1';
       incoming.style.pointerEvents = 'auto';
-      contentRef.current.style.transition = 'none';
-      contentRef.current.style.height = incoming.scrollHeight + 'px';
+      syncContentHeight(newTab, 'none');
       return;
     }
 
@@ -90,8 +132,7 @@ export default function Login() {
     outgoing.style.pointerEvents = 'none';
 
     // Bounce-expand/retract content height — cubic-bezier mimics back.out(2)
-    contentRef.current.style.transition = 'height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
-    contentRef.current.style.height = incoming.scrollHeight + 'px';
+    syncContentHeight(newTab, 'height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)');
 
     // Slide + fade incoming panel in after outgoing fades
     setTimeout(() => {
@@ -130,7 +171,7 @@ export default function Login() {
       }, { withCredentials: true });
 
       const user = await auth.refreshSession();
-      navigate(user.role === 'Admin' ? '/admin' : '/');
+      navigate(auth.isAdminPanelRole(user.role) ? '/admin' : '/');
     } catch (err) {
       shakeCard();
       setError(
@@ -255,38 +296,12 @@ export default function Login() {
             </div>
           )}
 
-          {/* ── Tab content — both always mounted, height driven by GSAP ── */}
+          {/* ── Tab content — both always mounted, height follows active panel ── */}
           <div ref={contentRef} className="relative overflow-hidden -mx-1">
 
             {/* SSO panel */}
             <div ref={ssoTabRef} className="space-y-3 absolute inset-x-0 top-0 p-1">
               {privacyNotice}
-              <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3 text-left shadow-sm dark:border-blue-900/50 dark:bg-blue-950/30">
-                <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300">
-                  <AlertCircle size={15} weight="fill" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-300">
-                    DepEd email only
-                  </p>
-                  <p className="mt-0.5 text-xs font-semibold leading-snug text-blue-800 dark:text-blue-200">
-                    Use an account ending in @deped.gov.ph. When asked to choose an account, select your DepEd email.
-                  </p>
-                </div>
-              </div>
-              <a
-                href={consentChecked ? `${import.meta.env.VITE_API_URL}/api/auth/oauth/microsoft` : undefined}
-                aria-disabled={!consentChecked}
-                className={`w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-[#0F3460] bg-white dark:bg-[#1A1A2E] text-slate-700 dark:text-gray-200 text-sm font-semibold transition-all shadow-sm ${consentChecked ? 'hover:bg-slate-50 dark:hover:bg-[#0F3460]/60' : 'opacity-50 pointer-events-none'}`}
-              >
-                <svg width="18" height="18" viewBox="0 0 21 21" fill="none" aria-hidden="true">
-                  <rect x="1" y="1" width="9" height="9" fill="#F25022" />
-                  <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
-                  <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
-                  <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
-                </svg>
-                Continue with DepEd Microsoft 365
-              </a>
               <a
                 href={consentChecked ? `${import.meta.env.VITE_API_URL}/api/auth/oauth/google` : undefined}
                 aria-disabled={!consentChecked}

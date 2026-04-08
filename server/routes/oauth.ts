@@ -1,12 +1,10 @@
 // server/routes/oauth.ts
-// OAuth 2.0 SSO routes for Microsoft Entra ID and Google Workspace.
-// Domain-locked to @deped.gov.ph via three independent enforcement layers.
+// OAuth 2.0 SSO routes for Google Workspace.
+// Domain-locked to @deped.gov.ph via hosted-domain and email checks.
 //
 // Mounted at /api/auth/oauth in server.ts (BEFORE the /api/auth router to avoid shadowing).
 //
 // Endpoints:
-//   GET /microsoft              — Initiate Microsoft OAuth flow
-//   GET /microsoft/callback     — Microsoft authorization code callback
 //   GET /google                 — Initiate Google OAuth flow
 //   GET /google/callback        — Google authorization code callback
 
@@ -47,7 +45,7 @@ function frontendUrl(): string {
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 /** Build a signed state string and persist the PKCE verifier in OAuthState. */
-async function createOAuthState(provider: 'microsoft' | 'google'): Promise<{
+async function createOAuthState(provider: 'google'): Promise<{
   state: string;
   codeVerifier: string;
   codeChallenge: string;
@@ -75,7 +73,7 @@ async function createOAuthState(provider: 'microsoft' | 'google'): Promise<{
   return { state, codeVerifier, codeChallenge };
 }
 
-type OAuthProvider = 'microsoft' | 'google';
+type OAuthProvider = 'google';
 
 /** Validate state signature and consume the OAuthState row (single-use). */
 async function consumeOAuthState(
@@ -189,101 +187,6 @@ async function finishOAuthLogin(
   return { ok: true, token };
 }
 
-// ── Microsoft Entra ID ────────────────────────────────────────────────────────
-
-oauthRoutes.get('/microsoft', async (c) => {
-  const clientId = getEnv('MICROSOFT_CLIENT_ID');
-  const tenantId = getEnv('MICROSOFT_TENANT_ID');
-  if (!clientId || !tenantId) {
-    logger.error('Microsoft OAuth is not configured (missing MICROSOFT_CLIENT_ID or MICROSOFT_TENANT_ID)');
-    return c.redirect(`${frontendUrl()}/login?error=oauth_misconfigured`);
-  }
-
-  try {
-    const { state, codeChallenge } = await createOAuthState('microsoft');
-    const params = new URLSearchParams({
-      client_id: clientId,
-      response_type: 'code',
-      redirect_uri: `${redirectBase()}/api/auth/oauth/microsoft/callback`,
-      scope: 'openid profile email',
-      state,
-      code_challenge: codeChallenge,
-      code_challenge_method: 'S256',
-      prompt: 'select_account',
-    });
-    return c.redirect(
-      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params}`,
-    );
-  } catch (err) {
-    logger.error('Microsoft OAuth initiation failed', err);
-    return c.redirect(`${frontendUrl()}/login?error=oauth_error`);
-  }
-});
-
-oauthRoutes.get('/microsoft/callback', async (c) => {
-  const { code, state, error } = c.req.query();
-  const fe = frontendUrl();
-
-  if (error) return c.redirect(`${fe}/login?error=oauth_denied`);
-
-  const stateResult = await consumeOAuthState(state, 'microsoft');
-  if (!stateResult.ok) return c.redirect(`${fe}/login?error=${stateResult.error}`);
-
-  const clientId = getEnv('MICROSOFT_CLIENT_ID');
-  const clientSecret = getEnv('MICROSOFT_CLIENT_SECRET');
-  const tenantId = getEnv('MICROSOFT_TENANT_ID');
-
-  try {
-    // Exchange authorization code for tokens
-    const tokenRes = await fetch(
-      `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-          redirect_uri: `${redirectBase()}/api/auth/oauth/microsoft/callback`,
-          grant_type: 'authorization_code',
-          code_verifier: stateResult.codeVerifier,
-        }).toString(),
-      },
-    );
-    const tokenData = await tokenRes.json() as Record<string, string>;
-
-    if (!tokenData.id_token) {
-      logger.error('Microsoft token exchange: no id_token in response', { error: tokenData.error });
-      return c.redirect(`${fe}/login?error=token_exchange_failed`);
-    }
-
-    // Decode ID token payload (trusted — came from MS token endpoint over TLS with our credentials)
-    const idPayload = JSON.parse(
-      new TextDecoder().decode(base64urlDecode(tokenData.id_token.split('.')[1])),
-    ) as Record<string, string>;
-
-    // Domain enforcement: single-tenant check + email domain check
-    if (idPayload.tid !== tenantId) {
-      return c.redirect(`${fe}/login?error=domain_not_allowed`);
-    }
-    const email = (idPayload.preferred_username || idPayload.email || '').toLowerCase();
-    if (!email.endsWith('@deped.gov.ph')) {
-      return c.redirect(`${fe}/login?error=domain_not_allowed`);
-    }
-
-    const oauthSubject = idPayload.oid; // oid = immutable object ID across tenants
-    const result = await finishOAuthLogin('microsoft', oauthSubject, email);
-
-    if (!result.ok) return c.redirect(`${fe}/login?error=${result.error}`);
-
-    setCookie(c, 'token', result.token, tokenCookieOptions(c));
-    return c.redirect(`${fe}/oauth/callback`);
-  } catch (err) {
-    logger.error('Microsoft OAuth callback error', err);
-    return c.redirect(`${fe}/login?error=oauth_error`);
-  }
-});
-
 // ── Google Workspace ──────────────────────────────────────────────────────────
 
 oauthRoutes.get('/google', async (c) => {
@@ -325,6 +228,10 @@ oauthRoutes.get('/google/callback', async (c) => {
 
   const clientId = getEnv('GOOGLE_CLIENT_ID');
   const clientSecret = getEnv('GOOGLE_CLIENT_SECRET');
+  if (!clientId || !clientSecret) {
+    logger.error('Google OAuth callback is not configured (missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET)');
+    return c.redirect(`${fe}/login?error=oauth_misconfigured`);
+  }
 
   try {
     // Exchange authorization code for tokens

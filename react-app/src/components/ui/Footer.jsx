@@ -67,12 +67,12 @@ const Footer = () => {
                   <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">(035) 410-4069 • (035) 410-4066<br />0956-964-7346</span>
                 </div>
 
-                <div className="flex items-center gap-3 pt-4">
-                  <a href="mailto:guihulngan.city@deped.gov.ph" className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-all shadow-sm">
+                <div className="flex w-full flex-wrap items-center justify-center gap-3 pt-4 md:justify-start">
+                  <a href="mailto:guihulngan.city@deped.gov.ph" className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-all shadow-sm">
                     <Mail size={18} />
                     <span>Email</span>
                   </a>
-                  <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-all shadow-sm">
+                  <a href="https://www.facebook.com/DepedGuihulnganCity" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-all shadow-sm">
                     <Facebook size={18} />
                     <span>Facebook</span>
                   </a>

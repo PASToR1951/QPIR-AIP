@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import bcrypt from "bcrypt";
 import * as XLSX from "xlsx";
-import { CES_ROLES, getCESRoleForDivisionPIR } from "../lib/routing.ts";
+import { CES_ROLES } from "../lib/routing.ts";
 import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
 import { logger } from "../lib/logger.ts";
 import { pushNotification, pushNotifications } from "../lib/notifStream.ts";
@@ -25,6 +25,7 @@ const LOGO_MIME_EXTENSIONS: Record<string, string> = {
 };
 const LOGO_EXTENSIONS = ["webp", "png", "jpg", "jpeg", "gif"];
 const SCHOOL_LEVELS = new Set(["Elementary", "Secondary"]);
+const OBSERVER_ROLE = "Observer";
 
 function parsePositiveInt(value: unknown): number | null {
   const parsed = Number(value);
@@ -78,6 +79,16 @@ function requireAdmin(c: Context | string | undefined): TokenPayload | null {
   return user;
 }
 
+function requireAdminOrObserver(
+  c: Context | string | undefined,
+): TokenPayload | null {
+  const user = getUserFromToken(c);
+  if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE)) {
+    return null;
+  }
+  return user;
+}
+
 function requireCES(c: Context | string | undefined): TokenPayload | null {
   const user = getUserFromToken(c);
   if (!user || !(CES_ROLES as readonly string[]).includes(user.role)) {
@@ -92,6 +103,34 @@ function requireClusterHead(
   const user = getUserFromToken(c);
   if (!user || user.role !== "Cluster Coordinator") return null;
   return user;
+}
+
+function getAdminRoutePath(c: Context): string {
+  const fullPath = new URL(c.req.url).pathname;
+  return fullPath.replace(/^\/api\/admin(?=\/|$)/, "") || "/";
+}
+
+function isObserverAllowedAdminRoute(c: Context, user: TokenPayload): boolean {
+  if (user.role !== OBSERVER_ROLE) return false;
+
+  const path = getAdminRoutePath(c);
+  if (c.req.method === "GET") {
+    return [
+      "/overview",
+      "/layout-info",
+      "/submissions",
+      "/submissions/export",
+      "/clusters",
+      "/schools",
+      "/programs",
+    ].includes(path) || /^\/submissions\/\d+$/.test(path);
+  }
+
+  if (c.req.method === "PATCH") {
+    return /^\/submissions\/\d+\/observer-notes$/.test(path);
+  }
+
+  return false;
 }
 
 async function writeAuditLog(
@@ -144,11 +183,21 @@ function toCSV(rows: Record<string, unknown>[]): string {
   return "\uFEFF" + [headers.join(","), ...lines].join("\r\n");
 }
 
-function toXLSX(rows: Record<string, unknown>[], sheetName = "Sheet1"): Buffer {
+function toXLSX(
+  rows: Record<string, unknown>[],
+  sheetName = "Sheet1",
+): ArrayBuffer {
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  return XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  const output = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as
+    | Uint8Array
+    | ArrayBuffer;
+  if (output instanceof ArrayBuffer) return output;
+
+  const body = new ArrayBuffer(output.byteLength);
+  new Uint8Array(body).set(output);
+  return body;
 }
 
 // Wrap every admin handler with auth check
@@ -162,6 +211,7 @@ adminRoutes.get("/pirs", async (c) => {
     "CES-ASDS",
     "CES-CID",
     "Cluster Coordinator",
+    OBSERVER_ROLE,
   ];
   if (!readableRoles.includes(tokenUser.role)) {
     return c.json({ error: "Forbidden" }, 403);
@@ -209,6 +259,7 @@ adminRoutes.get("/pirs/:id", async (c) => {
     "CES-ASDS",
     "CES-CID",
     "Cluster Coordinator",
+    OBSERVER_ROLE,
   ];
   if (!readableRoles.includes(tokenUser.role)) {
     return c.json({ error: "Forbidden" }, 403);
@@ -218,7 +269,7 @@ adminRoutes.get("/pirs/:id", async (c) => {
   const pir = await prisma.pIR.findUnique({
     where: { id: pirId },
     include: {
-      aip: { include: { program: true, school: true } },
+      aip: { include: { program: true, school: { include: { cluster: true } } } },
       activity_reviews: { include: { aip_activity: true } },
       factors: true,
       ces_reviewer: { select: { name: true, role: true } },
@@ -241,6 +292,9 @@ adminRoutes.get("/pirs/:id", async (c) => {
     status: pir.status,
     program: (pir as any).aip.program.title,
     school: (pir as any).aip.school?.name ?? "Division",
+    schoolLogo: (pir as any).aip.school?.logo ?? null,
+    clusterNumber: (pir as any).aip.school?.cluster?.cluster_number ?? null,
+    clusterLogo: (pir as any).aip.school?.cluster?.logo ?? null,
     owner: pir.program_owner,
     budgetFromDivision: (pir as any).budget_from_division,
     budgetFromCoPSF: (pir as any).budget_from_co_psf,
@@ -251,6 +305,7 @@ adminRoutes.get("/pirs/:id", async (c) => {
     cesRemarks: (pir as any).ces_remarks ?? null,
     presented: (pir as any).presented ?? false,
     adminRemarks: (pir as any).remarks ?? null,
+    observerNotes: (pir as any).observer_notes ?? "",
     activities: pir.activity_reviews.map((r: any) => ({
       id: r.id,
       name: r.aip_activity?.activity_name ?? "",
@@ -709,7 +764,11 @@ adminRoutes.post("/cluster-head/pirs/:id/return", async (c) => {
 });
 
 adminRoutes.use("*", async (c, next) => {
-  if (!requireAdmin(c)) {
+  const user = getUserFromToken(c);
+  if (!user) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  if (user.role !== "Admin" && !isObserverAllowedAdminRoute(c, user)) {
     return c.json({ error: "Forbidden" }, 403);
   }
   await next();
@@ -950,6 +1009,7 @@ adminRoutes.get("/overview", async (c) => {
       id: cl.id,
       name: cl.name,
       cluster_number: cl.cluster_number,
+      logo: cl.logo ?? null,
       total,
       compliant,
       pct: total > 0 ? Math.round((compliant / total) * 100) : 0,
@@ -991,6 +1051,7 @@ adminRoutes.get("/overview", async (c) => {
         id: s.id,
         name: s.name,
         abbreviation: s.abbreviation ?? null,
+        logo: s.logo ?? null,
         totalAips: expectedPrograms,
         submitted: schoolPirs.length,
         approved: schoolPirs.filter((p) => p.status === "Approved").length,
@@ -1008,6 +1069,7 @@ adminRoutes.get("/overview", async (c) => {
       id: cl.id,
       name: cl.name,
       cluster_number: cl.cluster_number,
+      logo: cl.logo ?? null,
       totalSchools,
       totalAips,
       submittedAips,
@@ -1140,7 +1202,13 @@ adminRoutes.get("/submissions", async (c) => {
           school?: {
             id: number;
             name: string;
-            cluster?: { id: number; cluster_number: number; name: string };
+            logo?: string | null;
+            cluster?: {
+              id: number;
+              cluster_number: number;
+              name: string;
+              logo?: string | null;
+            };
           } | null;
           program: { id: number; title: string };
           created_by?: {
@@ -1160,10 +1228,13 @@ adminRoutes.get("/submissions", async (c) => {
           quarter: null,
           schoolId: aip.school?.id ?? null,
           school: aip.school?.name ?? "Division",
+          schoolLogo: aip.school?.logo ?? null,
           cluster: aip.school?.cluster
             ? `Cluster ${aip.school.cluster.cluster_number}`
             : "—",
           clusterId: aip.school?.cluster?.id ?? null,
+          clusterNumber: aip.school?.cluster?.cluster_number ?? null,
+          clusterLogo: aip.school?.cluster?.logo ?? null,
           program: aip.program.title,
           programId: aip.program.id,
           dateSubmitted: aip.created_at,
@@ -1185,7 +1256,13 @@ adminRoutes.get("/submissions", async (c) => {
             school?: {
               id: number;
               name: string;
-              cluster?: { id: number; cluster_number: number; name: string };
+              logo?: string | null;
+              cluster?: {
+                id: number;
+                cluster_number: number;
+                name: string;
+                logo?: string | null;
+              };
             } | null;
             program: { id: number; title: string };
           };
@@ -1206,10 +1283,13 @@ adminRoutes.get("/submissions", async (c) => {
           quarter: pir.quarter,
           schoolId: pir.aip.school?.id ?? null,
           school: pir.aip.school?.name ?? "Division",
+          schoolLogo: pir.aip.school?.logo ?? null,
           cluster: pir.aip.school?.cluster
             ? `Cluster ${pir.aip.school.cluster.cluster_number}`
             : "—",
           clusterId: pir.aip.school?.cluster?.id ?? null,
+          clusterNumber: pir.aip.school?.cluster?.cluster_number ?? null,
+          clusterLogo: pir.aip.school?.cluster?.logo ?? null,
           program: pir.aip.program.title,
           programId: pir.aip.program.id,
           dateSubmitted: pir.created_at,
@@ -1354,8 +1434,8 @@ adminRoutes.get("/submissions/export", async (c) => {
 });
 
 adminRoutes.get("/submissions/:id", async (c) => {
-  const admin = requireAdmin(c);
-  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+  const actor = requireAdminOrObserver(c);
+  if (!actor) return c.json({ error: "Unauthorized" }, 401);
   const id = safeParseInt(c.req.param("id"), 0);
   const type = c.req.query("type") || "aip";
 
@@ -1377,8 +1457,9 @@ adminRoutes.get("/submissions/:id", async (c) => {
     });
     if (!pir) return c.json({ error: "Not found" }, 404);
 
-    await writeAuditLog(admin.id, "read_pir", "PIR", pir.id, {
+    await writeAuditLog(actor.id, "read_pir", "PIR", pir.id, {
       quarter: pir.quarter,
+      actor_role: actor.role,
     });
 
     return c.json(pir);
@@ -1395,6 +1476,67 @@ adminRoutes.get("/submissions/:id", async (c) => {
   });
   if (!aip) return c.json({ error: "Not found" }, 404);
   return c.json(aip);
+});
+
+adminRoutes.patch("/submissions/:id/observer-notes", async (c) => {
+  const actor = requireAdminOrObserver(c);
+  if (!actor) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = safeParseInt(c.req.param("id"), 0);
+  const body = sanitizeObject(await c.req.json());
+  const type = typeof body.type === "string"
+    ? body.type.toLowerCase()
+    : c.req.query("type")?.toLowerCase();
+  const notes = typeof body.notes === "string" ? body.notes : "";
+
+  if (type !== "aip" && type !== "pir") {
+    return c.json({ error: "type must be aip or pir" }, 400);
+  }
+  if (notes.length > 5000) {
+    return c.json({ error: "Observer notes cannot exceed 5000 characters" }, 400);
+  }
+
+  if (type === "pir") {
+    const existing = await prisma.pIR.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) return c.json({ error: "Not found" }, 404);
+
+    const pir = await prisma.pIR.update({
+      where: { id },
+      data: { observer_notes: notes } as any,
+    });
+    await writeAuditLog(actor.id, "updated_observer_notes", "PIR", id, {
+      actor_role: actor.role,
+      notes_length: notes.length,
+    });
+
+    return c.json({
+      success: true,
+      observer_notes: (pir as any).observer_notes ?? notes,
+    });
+  }
+
+  const existing = await prisma.aIP.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!existing) return c.json({ error: "Not found" }, 404);
+
+  const aip = await prisma.aIP.update({
+    where: { id },
+    data: { observer_notes: notes } as any,
+  });
+  await writeAuditLog(actor.id, "updated_observer_notes", "AIP", id, {
+    actor_role: actor.role,
+    notes_length: notes.length,
+  });
+
+  return c.json({
+    success: true,
+    observer_notes: (aip as any).observer_notes ?? notes,
+  });
 });
 
 adminRoutes.patch("/submissions/:id/status", async (c) => {
@@ -1826,6 +1968,7 @@ adminRoutes.post("/users", async (c) => {
     "CES-ASDS",
     "CES-CID",
     "Cluster Coordinator",
+    OBSERVER_ROLE,
   ];
   if (systemRoles.includes(role) && !name) {
     return c.json({ error: "name is required for this role" }, 400);
@@ -1942,9 +2085,9 @@ adminRoutes.post("/users/import", async (c) => {
 
   const VALID_ROLES = new Set([
     "Admin", "CES-SGOD", "CES-ASDS", "CES-CID",
-    "Cluster Coordinator", "Division Personnel", "School",
+    "Cluster Coordinator", "Division Personnel", "School", OBSERVER_ROLE,
   ]);
-  const SYSTEM_ROLES = new Set(["Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Cluster Coordinator"]);
+  const SYSTEM_ROLES = new Set(["Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Cluster Coordinator", OBSERVER_ROLE]);
 
   interface ImportRow {
     email: string;
@@ -2138,6 +2281,7 @@ adminRoutes.patch("/users/:id", async (c) => {
       "CES-ASDS",
       "CES-CID",
       "Pending",
+      OBSERVER_ROLE,
     ].includes(role)
   ) {
     updateData.school_id = null;
@@ -2217,7 +2361,17 @@ adminRoutes.post("/users/:id/reset-password", async (c) => {
 // ==========================================
 
 adminRoutes.get("/clusters", async (c) => {
-  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
+  const actor = requireAdminOrObserver(c);
+  if (!actor) return c.json({ error: "Unauthorized" }, 401);
+
+  if (actor.role === OBSERVER_ROLE) {
+    const clusters = await prisma.cluster.findMany({
+      select: { id: true, name: true, cluster_number: true, logo: true },
+      orderBy: { cluster_number: "asc" },
+    });
+    return c.json(clusters);
+  }
+
   const clusters = await prisma.cluster.findMany({
     include: {
       schools: {
@@ -2377,10 +2531,28 @@ adminRoutes.delete("/clusters/:id/logo", async (c) => {
 });
 
 adminRoutes.get("/schools", async (c) => {
-  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
+  const actor = requireAdminOrObserver(c);
+  if (!actor) return c.json({ error: "Unauthorized" }, 401);
   const clusterId = c.req.query("cluster")
     ? safeParseInt(c.req.query("cluster"), 0)
     : undefined;
+
+  if (actor.role === OBSERVER_ROLE) {
+    const schools = await prisma.school.findMany({
+      where: clusterId ? { cluster_id: clusterId } : undefined,
+      select: {
+        id: true,
+        name: true,
+        abbreviation: true,
+        cluster_id: true,
+        logo: true,
+        cluster: true,
+      },
+      orderBy: { name: "asc" },
+    });
+    return c.json(schools);
+  }
+
   const schools = await prisma.school.findMany({
     where: clusterId ? { cluster_id: clusterId } : undefined,
     include: {
@@ -2574,7 +2746,23 @@ adminRoutes.delete("/schools/:id/logo", async (c) => {
 // ==========================================
 
 adminRoutes.get("/programs", async (c) => {
-  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
+  const actor = requireAdminOrObserver(c);
+  if (!actor) return c.json({ error: "Unauthorized" }, 401);
+
+  if (actor.role === OBSERVER_ROLE) {
+    const programs = await prisma.program.findMany({
+      select: {
+        id: true,
+        title: true,
+        abbreviation: true,
+        division: true,
+        school_level_requirement: true,
+      },
+      orderBy: { title: "asc" },
+    });
+    return c.json(programs);
+  }
+
   const programs = await prisma.program.findMany({
     include: {
       personnel: {
@@ -3787,7 +3975,7 @@ adminRoutes.get("/audit-log", async (c) => {
 
 // Lightweight endpoint for AdminLayout — avoids the full /overview query
 adminRoutes.get("/layout-info", async (c) => {
-  if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
+  if (!requireAdminOrObserver(c)) return c.json({ error: "Unauthorized" }, 401);
   const year = new Date().getFullYear();
   const month = new Date().getMonth() + 1;
   const currentQuarter = Math.ceil(month / 3);

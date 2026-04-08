@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { EndOfListCue } from './EndOfListCue';
 
 const THEME_CLASSES = {
     pink: {
@@ -49,6 +50,21 @@ const THEME_CLASSES = {
     },
 };
 
+function SelectorBackground({ themeClasses }) {
+    return (
+        <>
+            <div className="fixed inset-0 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0">
+                <div
+                    className="absolute inset-0 pointer-events-none grayscale mix-blend-multiply backdrop-blur-none opacity-60"
+                    style={{ backgroundImage: `url('/SDO_Facade.webp')`, backgroundSize: 'cover', backgroundPosition: 'center 25%', filter: 'blur(3px)', transform: 'scale(1.05)' }}
+                />
+            </div>
+            <div className={`fixed top-1/4 left-1/4 w-[36rem] h-[36rem] rounded-full blur-[140px] pointer-events-none animate-pulse ${themeClasses.glow}`} style={{ animationDuration: '5000ms' }} />
+            <div className={`fixed bottom-1/3 right-1/4 w-[28rem] h-[28rem] rounded-full blur-[120px] pointer-events-none animate-pulse ${themeClasses.glowSecondary}`} style={{ animationDuration: '7000ms', animationDelay: '2s' }} />
+        </>
+    );
+}
+
 /**
  * ViewModeSelector — 2-stage splash screen
  *  Stage 1: Select a program from the available list
@@ -86,13 +102,15 @@ export const ViewModeSelector = ({
     const [selected, setSelected] = useState(propSelectedProgram);
 
     useEffect(() => {
-        if (propSelectedProgram) {
-            setSelected(propSelectedProgram);
-            setStage('mode');
-        } else {
-            setSelected(null);
-            setStage('program');
-        }
+        queueMicrotask(() => {
+            if (propSelectedProgram) {
+                setSelected(propSelectedProgram);
+                setStage('mode');
+            } else {
+                setSelected(null);
+                setStage('program');
+            }
+        });
     }, [propSelectedProgram]);
     const [search, setSearch] = useState('');
     const [sortFilter, setSortFilter] = useState('all');
@@ -100,51 +118,43 @@ export const ViewModeSelector = ({
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedPrograms, setSelectedPrograms] = useState([]);
     const c = THEME_CLASSES[theme] || THEME_CLASSES.pink;
+    const hasProgramFilter = search.trim().length > 0 || sortFilter !== 'all';
 
-    const { submittedCount, draftCount, pendingCount, returnedCount } = useMemo(() => {
-        const returnedCount  = returnedPrograms.filter(p => programs.includes(p)).length;
-        const draftCount     = draftPrograms.filter(p => programs.includes(p)).length;
-        const submittedCount = completedPrograms.filter(p => programs.includes(p) && !returnedPrograms.includes(p)).length;
-        return {
-            submittedCount,
-            returnedCount,
-            draftCount,
-            pendingCount: programs.length - submittedCount - returnedCount - draftCount
-        };
-    }, [completedPrograms, returnedPrograms, draftPrograms, programs]);
+    const returnedCount  = returnedPrograms.filter(p => programs.includes(p)).length;
+    const draftCount     = draftPrograms.filter(p => programs.includes(p)).length;
+    const submittedCount = completedPrograms.filter(p => programs.includes(p) && !returnedPrograms.includes(p)).length;
+    const pendingCount   = programs.length - submittedCount - returnedCount - draftCount;
 
-    const sortedFiltered = useMemo(() => {
-        const q = search.toLowerCase();
-        const filtered = search
-            ? programs.filter(p =>
-                p.toLowerCase().includes(q) ||
-                (programAbbreviations[p] && programAbbreviations[p].toLowerCase().includes(q))
-              )
-            : programs;
+    const q = search.toLowerCase();
+    const filtered = search
+        ? programs.filter(p =>
+            p.toLowerCase().includes(q) ||
+            (programAbbreviations[p] && programAbbreviations[p].toLowerCase().includes(q))
+          )
+        : programs;
 
-        const statusRank = p => {
-            if (draftPrograms.includes(p)) return 0;
-            if (returnedPrograms.includes(p)) return 1;
-            if (completedPrograms.includes(p)) return 2;
-            return 3;
-        };
+    const statusRank = p => {
+        if (draftPrograms.includes(p)) return 0;
+        if (returnedPrograms.includes(p)) return 1;
+        if (completedPrograms.includes(p)) return 2;
+        return 3;
+    };
 
-        return filtered
-            .filter(p => {
-                if (sortFilter === 'done')     return completedPrograms.includes(p) && !returnedPrograms.includes(p);
-                if (sortFilter === 'draft')    return draftPrograms.includes(p);
-                if (sortFilter === 'returned') return returnedPrograms.includes(p);
-                if (sortFilter === 'pending')  return !completedPrograms.includes(p) && !draftPrograms.includes(p) && !returnedPrograms.includes(p);
-                return true;
-            })
-            .sort((a, b) => {
-                if (sortOrder === 'status') return statusRank(a) - statusRank(b);
-                if (sortOrder === 'za') return b.localeCompare(a);
-                return a.localeCompare(b); // 'az' default
-            });
-    }, [search, sortFilter, sortOrder, programs, completedPrograms, draftPrograms, returnedPrograms]);
+    const sortedFiltered = filtered
+        .filter(p => {
+            if (sortFilter === 'done')     return completedPrograms.includes(p) && !returnedPrograms.includes(p);
+            if (sortFilter === 'draft')    return draftPrograms.includes(p);
+            if (sortFilter === 'returned') return returnedPrograms.includes(p);
+            if (sortFilter === 'pending')  return !completedPrograms.includes(p) && !draftPrograms.includes(p) && !returnedPrograms.includes(p);
+            return true;
+        })
+        .sort((a, b) => {
+            if (sortOrder === 'status') return statusRank(a) - statusRank(b);
+            if (sortOrder === 'za') return b.localeCompare(a);
+            return a.localeCompare(b); // 'az' default
+        });
 
-    const handlePickProgram = useCallback((p) => {
+    const handlePickProgram = (p) => {
         if (selectionMode) {
             const isSelectable = draftPrograms.includes(p) || returnedPrograms.includes(p);
             if (!isSelectable) return;
@@ -165,27 +175,13 @@ export const ViewModeSelector = ({
         setStage('mode');
         onSelectProgram?.(p);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, [completedPrograms, onStart, selectionMode, draftPrograms, returnedPrograms]);
-
-
-    const Background = () => (
-        <>
-            <div className="fixed inset-0 [mask-image:radial-gradient(ellipse_80%_60%_at_50%_50%,#000_70%,transparent_110%)] pointer-events-none z-0">
-                <div
-                    className="absolute inset-0 pointer-events-none grayscale mix-blend-multiply backdrop-blur-none opacity-60"
-                    style={{ backgroundImage: `url('/SDO_Facade.webp')`, backgroundSize: 'cover', backgroundPosition: 'center 25%', filter: 'blur(3px)', transform: 'scale(1.05)' }}
-                />
-            </div>
-            <div className={`fixed top-1/4 left-1/4 w-[36rem] h-[36rem] rounded-full blur-[140px] pointer-events-none animate-pulse ${c.glow}`} style={{ animationDuration: '5000ms' }} />
-            <div className={`fixed bottom-1/3 right-1/4 w-[28rem] h-[28rem] rounded-full blur-[120px] pointer-events-none animate-pulse ${c.glowSecondary}`} style={{ animationDuration: '7000ms', animationDelay: '2s' }} />
-        </>
-    );
+    };
 
     // ── STAGE 1: PROGRAM SELECTION ──────────────────────────────────────────
     if (stage === 'program') {
         return (
             <div className="bg-slate-50 dark:bg-dark-base min-h-screen flex flex-col font-sans relative overflow-hidden">
-                <Background />
+                <SelectorBackground themeClasses={c} />
                 <div className="relative z-10 container mx-auto px-6 py-14 flex flex-col items-center">
 
                     {/* Header */}
@@ -321,79 +317,88 @@ export const ViewModeSelector = ({
                                     )}
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {sortedFiltered.map(p => {
-                                        const isDraft      = draftPrograms.includes(p);
-                                        const isReturned   = returnedPrograms.includes(p);
-                                        const isDone       = completedPrograms.includes(p) && !isReturned;
-                                        const isSelectable = isDraft || isReturned;
-                                        const isSelected   = selectedPrograms.includes(p);
+                                <>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {sortedFiltered.map(p => {
+                                            const isDraft      = draftPrograms.includes(p);
+                                            const isReturned   = returnedPrograms.includes(p);
+                                            const isDone       = completedPrograms.includes(p) && !isReturned;
+                                            const isSelectable = isDraft || isReturned;
+                                            const isSelected   = selectedPrograms.includes(p);
 
-                                        const hasAutosave = autosavedPrograms.includes(p);
-                                        return (
-                                            <button
-                                                key={p}
-                                                onClick={() => handlePickProgram(p)}
-                                                className={[
-                                                    'group w-full flex flex-col gap-3 p-4 rounded-2xl text-left',
-                                                    'border-2 transition-all duration-150 shadow-sm active:scale-[0.97]',
-                                                    selectionMode && !isSelectable ? 'opacity-40 cursor-not-allowed' : '',
-                                                    selectionMode && isSelected
-                                                        ? 'border-red-400 bg-red-50 dark:bg-red-950/30 ring-2 ring-red-200'
-                                                        : isDraft
-                                                            ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 hover:border-amber-400 hover:shadow-amber-100/50'
-                                                            : isReturned
-                                                                ? 'border-orange-300 bg-orange-50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-900/50 hover:border-orange-400 hover:shadow-orange-100/50'
-                                                                : isDone
-                                                                    ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300 hover:shadow-emerald-100/50'
-                                                                    : `border-slate-200/80 dark:border-dark-border bg-slate-100/60 dark:bg-dark-surface/60 backdrop-blur-sm shadow-sm ${c.cardPendingHover}`,
-                                                ].join(' ')}
-                                            >
-                                                <div className="flex items-start justify-between gap-2">
-                                                    {/* Status badge */}
-                                                    <span className={`self-start text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
-                                                        isDraft
-                                                            ? 'text-amber-700 bg-amber-100 border-amber-300 dark:text-amber-300 dark:bg-amber-900/50 dark:border-amber-700'
-                                                            : isReturned
-                                                                ? 'text-orange-700 bg-orange-100 border-orange-300 dark:text-orange-300 dark:bg-orange-900/50 dark:border-orange-700'
-                                                                : isDone
-                                                                    ? 'text-emerald-700 bg-emerald-100 border-emerald-300 dark:text-emerald-300 dark:bg-emerald-900/50 dark:border-emerald-700'
-                                                                    : c.pendingBadge
-                                                    }`}>
-                                                        {isDraft ? 'Draft' : isReturned ? 'Returned' : isDone ? 'Submitted' : 'Pending'}
-                                                    </span>
-
-                                                    {/* Autosave indicator / Checkbox in selection mode */}
-                                                    {selectionMode && isSelectable ? (
-                                                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                                                            isSelected ? 'bg-red-500 border-red-500' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-surface'
+                                            const hasAutosave = autosavedPrograms.includes(p);
+                                            return (
+                                                <button
+                                                    key={p}
+                                                    onClick={() => handlePickProgram(p)}
+                                                    className={[
+                                                        'group w-full flex flex-col gap-3 p-4 rounded-2xl text-left',
+                                                        'border-2 transition-all duration-150 shadow-sm active:scale-[0.97]',
+                                                        selectionMode && !isSelectable ? 'opacity-40 cursor-not-allowed' : '',
+                                                        selectionMode && isSelected
+                                                            ? 'border-red-400 bg-red-50 dark:bg-red-950/30 ring-2 ring-red-200'
+                                                            : isDraft
+                                                                ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 hover:border-amber-400 hover:shadow-amber-100/50'
+                                                                : isReturned
+                                                                    ? 'border-orange-300 bg-orange-50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-900/50 hover:border-orange-400 hover:shadow-orange-100/50'
+                                                                    : isDone
+                                                                        ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300 hover:shadow-emerald-100/50'
+                                                                        : `border-slate-200/80 dark:border-dark-border bg-slate-100/60 dark:bg-dark-surface/60 backdrop-blur-sm shadow-sm ${c.cardPendingHover}`,
+                                                    ].join(' ')}
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        {/* Status badge */}
+                                                        <span className={`self-start text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                                                            isDraft
+                                                                ? 'text-amber-700 bg-amber-100 border-amber-300 dark:text-amber-300 dark:bg-amber-900/50 dark:border-amber-700'
+                                                                : isReturned
+                                                                    ? 'text-orange-700 bg-orange-100 border-orange-300 dark:text-orange-300 dark:bg-orange-900/50 dark:border-orange-700'
+                                                                    : isDone
+                                                                        ? 'text-emerald-700 bg-emerald-100 border-emerald-300 dark:text-emerald-300 dark:bg-emerald-900/50 dark:border-emerald-700'
+                                                                        : c.pendingBadge
                                                         }`}>
-                                                            {isSelected && (
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                                                                    <polyline points="20 6 9 17 4 12" />
-                                                                </svg>
-                                                            )}
-                                                        </div>
-                                                    ) : hasAutosave ? (
-                                                        <span className="inline-flex items-center gap-1 self-start text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border text-violet-700 bg-violet-100 border-violet-300 dark:text-violet-300 dark:bg-violet-900/50 dark:border-violet-700 shrink-0">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
-                                                                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                                                            </svg>
-                                                            Unsaved
+                                                            {isDraft ? 'Draft' : isReturned ? 'Returned' : isDone ? 'Submitted' : 'Pending'}
                                                         </span>
-                                                    ) : null}
-                                                </div>
 
-                                                {/* Program name */}
-                                                <span className={`text-sm font-bold leading-snug transition-colors ${
-                                                    isDraft ? 'text-amber-900 dark:text-amber-200' : isReturned ? 'text-orange-900 dark:text-orange-200' : isDone ? 'text-emerald-900 dark:text-emerald-200' : 'text-slate-800 dark:text-slate-100'
-                                                }`}>
-                                                    {p}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                                        {/* Autosave indicator / Checkbox in selection mode */}
+                                                        {selectionMode && isSelectable ? (
+                                                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                                                isSelected ? 'bg-red-500 border-red-500' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-dark-surface'
+                                                            }`}>
+                                                                {isSelected && (
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                                                        <polyline points="20 6 9 17 4 12" />
+                                                                    </svg>
+                                                                )}
+                                                            </div>
+                                                        ) : hasAutosave ? (
+                                                            <span className="inline-flex items-center gap-1 self-start text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border text-violet-700 bg-violet-100 border-violet-300 dark:text-violet-300 dark:bg-violet-900/50 dark:border-violet-700 shrink-0">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
+                                                                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                                                                </svg>
+                                                                Unsaved
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+
+                                                    {/* Program name */}
+                                                    <span className={`text-sm font-bold leading-snug transition-colors ${
+                                                        isDraft ? 'text-amber-900 dark:text-amber-200' : isReturned ? 'text-orange-900 dark:text-orange-200' : isDone ? 'text-emerald-900 dark:text-emerald-200' : 'text-slate-800 dark:text-slate-100'
+                                                    }`}>
+                                                        {p}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <EndOfListCue
+                                        count={sortedFiltered.length}
+                                        message={hasProgramFilter ? 'All matching programs shown' : 'End of program list'}
+                                        countLabel="program"
+                                        showCount
+                                        className="mt-6"
+                                    />
+                                </>
                             )}
 
                         </div>
@@ -445,11 +450,9 @@ export const ViewModeSelector = ({
 
     // ── STAGE 2: MODE SELECTION ─────────────────────────────────────────────
     const isDraftMatch = draftPrograms.includes(selected);
-    const isCompleted = completedPrograms.includes(selected);
-
     return (
         <div className="min-h-screen flex flex-col font-sans relative overflow-hidden bg-slate-50 dark:bg-dark-base">
-            <Background />
+            <SelectorBackground themeClasses={c} />
             <div className="relative z-10 container mx-auto px-6 flex flex-col items-center justify-center flex-1 py-10 md:py-16 lg:py-20">
                 <div className="max-w-xl md:max-w-2xl lg:max-w-3xl w-full">
 

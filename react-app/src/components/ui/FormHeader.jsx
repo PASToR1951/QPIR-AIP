@@ -1,7 +1,8 @@
 import React from 'react';
 import { ArrowLeft, FloppyDisk as Save, House as Home, CheckCircle } from '@phosphor-icons/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { ViewModeToggle } from './ViewModeToggle';
+import { SchoolAvatar } from './SchoolAvatar.jsx';
 
 export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, lastAutoSavedTime, theme = "indigo", appMode, toggleAppMode }) => {
     const userStr = sessionStorage.getItem('user');
@@ -42,6 +43,17 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                         <ArrowLeft size={22} weight="bold" />
                     </button>
 
+                    {schoolName && (
+                        <SchoolAvatar
+                            clusterNumber={user?.cluster_number}
+                            schoolLogo={user?.school_logo ?? null}
+                            clusterLogo={user?.cluster_logo ?? null}
+                            name={schoolName}
+                            size={34}
+                            className="hidden sm:block shrink-0"
+                        />
+                    )}
+
                     <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">
                             <h2 className="text-sm md:text-base font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none truncate max-w-[160px] md:max-w-[300px] lg:max-w-none">{displayTitle}</h2>
@@ -64,7 +76,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
 
                     <AnimatePresence>
                         {lastAutoSavedTime && !isSaved && (
-                            <motion.span
+                            <Motion.span
                                 key="autosaved"
                                 initial={{ opacity: 0, y: 4 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -74,7 +86,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                             >
                                 <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
                                 Auto-saved {lastAutoSavedTime}
-                            </motion.span>
+                            </Motion.span>
                         )}
                     </AnimatePresence>
                     {lastSavedTime && !isSaved && (
@@ -84,7 +96,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                     )}
                     <AnimatePresence mode="wait">
                         {isSaved ? (
-                            <motion.div
+                            <Motion.div
                                 key="saved"
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -94,9 +106,9 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                                 <CheckCircle size={18} />
                                 <span className="hidden sm:inline">Saved {lastSavedTime}</span>
                                 <span className="sm:hidden">Saved</span>
-                            </motion.div>
+                            </Motion.div>
                         ) : onSave ? (
-                            <motion.button 
+                            <Motion.button
                                 key="save-btn"
                                 onClick={onSave}
                                 disabled={isSaving}
@@ -112,7 +124,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                                 )}
                                 <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Draft'}</span>
                                 <span className="sm:hidden">{isSaving ? '...' : 'Save'}</span>
-                            </motion.button>
+                            </Motion.button>
                         ) : null}
                     </AnimatePresence>
 

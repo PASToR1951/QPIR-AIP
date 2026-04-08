@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { ArrowRight, MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
+import { EndOfListCue } from '../components/ui/EndOfListCue';
+import { shouldShowEndOfListCue } from '../components/ui/endOfListCue';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -35,16 +37,16 @@ export default function CESDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchPIRs = () => {
+  const fetchPIRs = useCallback(() => {
     setLoading(true);
     const params = quarter ? `?quarter=${encodeURIComponent(quarter)}` : '';
     axios.get(`${API}/api/admin/ces/pirs${params}`, { withCredentials: true })
       .then(r => setPirs(r.data))
       .catch(() => setPirs([]))
       .finally(() => setLoading(false));
-  };
+  }, [quarter]);
 
-  useEffect(() => { fetchPIRs(); }, [quarter]);
+  useEffect(() => { fetchPIRs(); }, [fetchPIRs]);
 
   const filtered = pirs.filter(p => {
     if (!search) return true;
@@ -55,6 +57,7 @@ export default function CESDashboard() {
       p.owner?.toLowerCase().includes(q)
     );
   });
+  const showReviewEndCue = shouldShowEndOfListCue(filtered.length);
 
   const openModal = (type, pir, e) => {
     e.stopPropagation();
@@ -193,9 +196,21 @@ export default function CESDashboard() {
         )}
       </div>
 
-      <p className="text-xs text-slate-400 dark:text-slate-500 mt-3 text-right">
-        {filtered.length} PIR{filtered.length !== 1 ? 's' : ''} pending review
-      </p>
+      {filtered.length > 0 && (
+        <div className="mt-3">
+          <EndOfListCue
+            count={filtered.length}
+            message={search || !quarter ? 'All matching PIRs shown' : 'End of review queue'}
+            countLabel="PIR"
+            showCount
+          />
+          {!showReviewEndCue && (
+            <p className="text-xs text-slate-400 dark:text-slate-500 text-right">
+              {filtered.length} PIR{filtered.length !== 1 ? 's' : ''} pending review
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Action Modal */}
       {modal && (

@@ -47,6 +47,17 @@ const ROLES = [
     iconBg: 'bg-rose-100 dark:bg-rose-950/50',
   },
   {
+    value: 'Observer',
+    label: 'Observer',
+    icon: Eye,
+    description: 'Read-only monitoring account. Can view dashboards, submissions, exports, and observer notes.',
+    group: 'system',
+    iconColor: 'text-slate-500',
+    activeBg: 'bg-slate-50 dark:bg-slate-900/30 border-slate-400 dark:border-slate-600',
+    hoverBg: 'hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-900/20',
+    iconBg: 'bg-slate-100 dark:bg-slate-900/50',
+  },
+  {
     value: 'Cluster Coordinator',
     label: 'Cluster Coordinator',
     icon: UsersThree,
@@ -124,8 +135,8 @@ function RolePicker({ selected, onSelect }) {
         <div className="flex-1 h-px bg-slate-100 dark:bg-dark-border" />
       </div>
 
-      {/* System (admin) group */}
-      <div>
+      {/* System group */}
+      <div className="flex flex-col gap-3">
         {system.map(r => <RoleCard key={r.value} role={r} selected={selected} onSelect={onSelect} />)}
       </div>
     </div>
@@ -162,7 +173,7 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
 
   return (
     <div className="space-y-4">
-      {(form.role === 'Admin' || form.role === 'Cluster Coordinator') && (
+      {(['Admin', 'Cluster Coordinator', 'Observer'].includes(form.role)) && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
             Full Name
@@ -171,7 +182,7 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
             value={form.name}
             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             className={inputCls}
-            placeholder={form.role === 'Cluster Coordinator' ? 'Cluster Coordinator Name' : 'Administrator Name'}
+            placeholder={form.role === 'Cluster Coordinator' ? 'Cluster Coordinator Name' : form.role === 'Observer' ? 'Observer Name' : 'Administrator Name'}
           />
         </div>
       )}

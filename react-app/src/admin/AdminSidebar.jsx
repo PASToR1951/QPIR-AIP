@@ -20,15 +20,15 @@ const NAV_GROUPS = [
   {
     label: 'Submissions & Data',
     items: [
-      { to: '/admin/users', label: 'Users', icon: Users, preload: () => import('./pages/AdminUsers.jsx') },
+      { to: '/admin/users', label: 'Users', icon: Users, adminOnly: true, preload: () => import('./pages/AdminUsers.jsx') },
     ],
   },
   {
     label: 'School Management',
     items: [
-      { to: '/admin/schools',   label: 'Schools',   icon: Buildings,    preload: () => import('./pages/AdminSchools.jsx') },
-      { to: '/admin/programs',  label: 'Programs',  icon: BookOpenIcon, preload: () => import('./pages/AdminPrograms.jsx') },
-      { to: '/admin/deadlines', label: 'Deadlines', icon: CalendarSlash, preload: () => import('./pages/AdminDeadlines.jsx') },
+      { to: '/admin/schools',   label: 'Schools',   icon: Buildings, adminOnly: true, preload: () => import('./pages/AdminSchools.jsx') },
+      { to: '/admin/programs',  label: 'Programs',  icon: BookOpenIcon, adminOnly: true, preload: () => import('./pages/AdminPrograms.jsx') },
+      { to: '/admin/deadlines', label: 'Deadlines', icon: CalendarSlash, adminOnly: true, preload: () => import('./pages/AdminDeadlines.jsx') },
     ],
   },
   {
@@ -38,10 +38,10 @@ const NAV_GROUPS = [
   {
     label: 'System',
     items: [
-      { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Beta' },
-      { to: '/admin/backups',  label: 'Backups',     icon: Database, badge: 'Beta', preload: () => import('./pages/AdminBackups.jsx') },
-      { to: '/admin/settings', label: 'Settings',    icon: Gear, preload: () => import('./pages/AdminSettings.jsx') },
-      { to: '/manual',         label: 'User Manual', icon: BookOpenUserIcon, badge: 'Beta' },
+      { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Beta', adminOnly: true },
+      { to: '/admin/backups',  label: 'Backups',     icon: Database, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminBackups.jsx') },
+      { to: '/admin/settings', label: 'Settings',    icon: Gear, adminOnly: true, preload: () => import('./pages/AdminSettings.jsx') },
+      { to: '/manual',         label: 'User Manual', icon: BookOpenUserIcon, badge: 'Beta', adminOnly: true },
     ],
   },
 ];
@@ -238,6 +238,16 @@ function CollapsibleReports({ onNavigate }) {
 export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose }) => {
   const glassClasses = 'bg-white/40 dark:bg-dark-base/40 backdrop-blur-2xl backdrop-saturate-[1.8] border-r border-white/50 dark:border-white/[0.06]';
   const glassShadow = { boxShadow: '0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5), inset -1px 0 0 rgba(255,255,255,0.2)' };
+  const isObserver = user?.role === 'Observer';
+  const visibleGroups = NAV_GROUPS
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => !isObserver || !item.adminOnly),
+    }))
+    .filter(group => {
+      if (!isObserver) return true;
+      return group.label === 'Monitoring' || group.label === 'Submissions & Data';
+    });
 
   const initials = (user?.name || 'A')
     .split(' ')
@@ -253,13 +263,13 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
         <img src="/AIP-PIR-logo.webp" alt="AIP-PIR" className="h-8 w-auto shrink-0" />
         <div className="flex flex-col">
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight tracking-[-0.01em]">AIP-PIR</span>
-          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-tight tracking-wide">Admin</span>
+          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-tight tracking-wide">{isObserver ? 'Observer' : 'Admin'}</span>
         </div>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-2 pb-3 space-y-5 scrollbar-thin scrollbar-thumb-white/30 dark:scrollbar-thumb-white/10">
-        {NAV_GROUPS.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.label}>
             <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.06em] px-3 mb-1.5">
               {group.label}
@@ -271,7 +281,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
               {group.label === 'Submissions & Data' && (
                 <CollapsibleSubmissions onNavigate={onMobileClose} />
               )}
-              {group.label === 'Analytics' && (
+              {!isObserver && group.label === 'Analytics' && (
                 <CollapsibleReports onNavigate={onMobileClose} />
               )}
             </div>
@@ -288,7 +298,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
             <span className="text-[11px] font-semibold text-white leading-none">{initials}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight">{user?.name || 'Admin'}</p>
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight">{user?.name || user?.role || 'Admin'}</p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate leading-tight mt-0.5">{user?.email}</p>
           </div>
         </div>

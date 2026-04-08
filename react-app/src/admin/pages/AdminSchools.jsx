@@ -7,32 +7,39 @@ import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import { MultiSelect } from '../components/MultiSelect.jsx';
 import { SchoolAvatar } from '../../components/ui/SchoolAvatar.jsx';
+import { EndOfListCue } from '../../components/ui/EndOfListCue.jsx';
 import { getClusterLogoPath, getUploadedLogoUrl } from '../../lib/clusterLogo.js';
 import { useTextMeasure } from '../../lib/useTextMeasure.js';
 
-function SchoolNameMarquee({ name }) {
+function SchoolNameMarquee({ name, abbreviation }) {
+  const displayName = abbreviation ? `${name} (${abbreviation})` : name;
   const { measureText, containerRef, containerWidth } = useTextMeasure({
     font: '900 14px Inter',
     lineHeight: 18,
   });
 
-  const overflows = containerWidth > 0 && measureText(name, containerWidth).lineCount > 1;
+  const overflows = containerWidth > 0 && measureText(displayName, containerWidth).lineCount > 1;
 
   return (
     <div
       ref={containerRef}
       className={overflows ? 'school-name-marquee' : 'min-w-0 overflow-hidden'}
-      title={name}
-      aria-label={name}
+      title={displayName}
+      aria-label={displayName}
       tabIndex={overflows ? 0 : undefined}
     >
       {overflows ? (
         <span className="school-name-marquee__track">
-          <span className="school-name-marquee__text font-black text-slate-900 dark:text-slate-100 text-sm leading-tight">{name}</span>
-          <span aria-hidden="true" className="school-name-marquee__text font-black text-slate-900 dark:text-slate-100 text-sm leading-tight">{name}</span>
+          <span className="school-name-marquee__text font-black text-slate-900 dark:text-slate-100 text-sm leading-tight">{displayName}</span>
+          <span aria-hidden="true" className="school-name-marquee__text font-black text-slate-900 dark:text-slate-100 text-sm leading-tight">{displayName}</span>
         </span>
       ) : (
-        <span className="block truncate font-black text-slate-900 dark:text-slate-100 text-sm leading-tight">{name}</span>
+        <span className="block truncate font-black text-slate-900 dark:text-slate-100 text-sm leading-tight">
+          {name}
+          {abbreviation && (
+            <span className="font-bold text-slate-400 dark:text-slate-500"> ({abbreviation})</span>
+          )}
+        </span>
       )}
     </div>
   );
@@ -548,12 +555,7 @@ export default function AdminSchools() {
                                   className="shrink-0"
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <SchoolNameMarquee name={school.name} />
-                                  {school.abbreviation && (
-                                    <p className="mt-0.5 text-[11px] sm:text-xs font-bold text-slate-400 dark:text-slate-500">
-                                      {school.abbreviation}
-                                    </p>
-                                  )}
+                                  <SchoolNameMarquee name={school.name} abbreviation={school.abbreviation} />
                                 </div>
                               </div>
                               <IconHoverLabelButton
@@ -597,6 +599,13 @@ export default function AdminSchools() {
                       {!cl.schools?.length && (
                         <p className="text-sm text-slate-400 dark:text-slate-600 col-span-full text-center py-4">No schools in this cluster.</p>
                       )}
+                      <EndOfListCue
+                        count={cl.schools?.length ?? 0}
+                        message={q ? `All matching schools in Cluster ${cl.cluster_number} shown` : `End of Cluster ${cl.cluster_number} schools`}
+                        countLabel="school"
+                        showCount
+                        className="col-span-full pt-1"
+                      />
                     </div>
                   </div>
                   </div>

@@ -5,6 +5,7 @@ import { Buildings, BookOpen, PencilSimple, Trash, Plus, CheckCircle, X } from '
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
+import { EndOfListCue } from '../../components/ui/EndOfListCue.jsx';
 
 const API = import.meta.env.VITE_API_URL;
 const MotionButton = motion.button;
@@ -377,6 +378,13 @@ export default function AdminPrograms() {
                     </div>
                   </div>
                 ))}
+                <EndOfListCue
+                  count={filteredPrograms.length}
+                  message={search || effectiveLevelFilter !== 'All' ? 'All matching school programs shown' : 'End of school program list'}
+                  countLabel="program"
+                  showCount
+                  className="col-span-full pt-1"
+                />
                 {!filteredPrograms.length && (
                   <p className="col-span-2 text-center text-slate-400 dark:text-slate-600 py-16">No programs found.</p>
                 )}
@@ -472,6 +480,13 @@ export default function AdminPrograms() {
                         </div>
                         );
                       })}
+                      <EndOfListCue
+                        count={groupedPrograms.length}
+                        message={divSearch || divisionFilter !== 'All' ? `All matching ${division} programs shown` : `End of ${division} program list`}
+                        countLabel="program"
+                        showCount
+                        className="col-span-full pt-1"
+                      />
                     </div>
                   </section>
                 ))}

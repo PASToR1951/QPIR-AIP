@@ -19,6 +19,7 @@ import {
 } from '@phosphor-icons/react';
 import { CURRENT_VERSION, getChangelog } from '../version';
 import Footer from './ui/Footer';
+import { EndOfListCue } from './ui/EndOfListCue';
 
 const TYPE_CONFIG = {
   feature: {
@@ -353,12 +354,13 @@ const Changelog = () => {
           )}
         </div>
 
-        {/* Footer note */}
-        <div className="text-center mt-12 mb-8">
-          <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-            End of changelog • {changelog.length} release{changelog.length !== 1 ? 's' : ''} documented
-          </p>
-        </div>
+        <EndOfListCue
+          count={filteredChangelog.length}
+          message={filterType ? 'End of matching changelog' : 'End of changelog'}
+          countLabel="release"
+          showCount
+          className="mt-12 mb-8"
+        />
       </div>
       <Footer />
     </div>

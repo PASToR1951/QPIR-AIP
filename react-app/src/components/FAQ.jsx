@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, MagnifyingGlass as Search, CaretDown as ChevronDown, CaretUp as ChevronUp, Question as HelpCircle, BookOpen, WarningCircle as AlertCircle } from '@phosphor-icons/react';
 import Footer from './ui/Footer';
+import { EndOfListCue } from './ui/EndOfListCue';
 
 const FAQ_DATA = [
   {
@@ -75,8 +76,8 @@ const FAQ_DATA = [
     icon: HelpCircle,
     questions: [
       {
-        q: "Can I sign in with Microsoft or Google?",
-        a: "Yes, when OAuth is configured for the deployment. Use the Microsoft 365 or Google DepEd sign-in buttons on the login page; the backend verifies the DepEd account before starting a portal session."
+        q: "Can I sign in with Google?",
+        a: "Yes, when OAuth is configured for the deployment. Use the Google DepEd sign-in button on the login page; the backend verifies the DepEd account before starting a portal session."
       },
       {
         q: "Why does the portal mention cookies after login?",
@@ -164,6 +165,7 @@ export default function FAQ() {
       q.a.toLowerCase().includes(searchQuery.toLowerCase())
     )
   })).filter(category => category.questions.length > 0);
+  const filteredQuestionCount = filteredData.reduce((sum, category) => sum + category.questions.length, 0);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col font-sans">
@@ -207,24 +209,33 @@ export default function FAQ() {
         {/* FAQ List */}
         <div className="space-y-6 md:space-y-10 mb-12 md:mb-16">
           {filteredData.length > 0 ? (
-            filteredData.map((category, idx) => {
-              const Icon = category.icon;
-              return (
-                <div key={idx} className="bg-white dark:bg-dark-surface p-4 sm:p-6 md:p-8 rounded-lg border border-slate-200 dark:border-dark-border shadow-sm">
-                  <div className="flex items-start sm:items-center gap-3 mb-5 sm:mb-6">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 rounded-lg flex items-center justify-center border border-indigo-100 dark:border-indigo-900 shrink-0">
-                      <Icon size={26} />
+            <>
+              {filteredData.map((category, idx) => {
+                const Icon = category.icon;
+                return (
+                  <div key={idx} className="bg-white dark:bg-dark-surface p-4 sm:p-6 md:p-8 rounded-lg border border-slate-200 dark:border-dark-border shadow-sm">
+                    <div className="flex items-start sm:items-center gap-3 mb-5 sm:mb-6">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 rounded-lg flex items-center justify-center border border-indigo-100 dark:border-indigo-900 shrink-0">
+                        <Icon size={26} />
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 leading-tight">{category.category}</h2>
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 leading-tight">{category.category}</h2>
+                    <div className="space-y-4">
+                      {category.questions.map((item, qIdx) => (
+                        <FAQItem key={qIdx} item={item} />
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-4">
-                    {category.questions.map((item, qIdx) => (
-                      <FAQItem key={qIdx} item={item} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })
+                );
+              })}
+              <EndOfListCue
+                count={filteredQuestionCount}
+                message={searchQuery ? 'End of matching FAQ results' : 'End of FAQ list'}
+                countLabel="question"
+                showCount
+                className="pt-2"
+              />
+            </>
           ) : (
             <div className="text-center px-4 py-12 sm:py-16 bg-white dark:bg-dark-surface rounded-lg border border-slate-200 dark:border-dark-border shadow-sm">
               <div className="w-16 h-16 bg-slate-100 dark:bg-dark-border rounded-lg flex items-center justify-center mx-auto mb-4">

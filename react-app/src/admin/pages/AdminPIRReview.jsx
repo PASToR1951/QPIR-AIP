@@ -8,6 +8,8 @@ import {
 } from '@phosphor-icons/react';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { useTextMeasure } from '../../lib/useTextMeasure';
+import { SchoolAvatar } from '../../components/ui/SchoolAvatar.jsx';
+import { auth } from '../../lib/auth.js';
 
 const API = import.meta.env.VITE_API_URL;
 const FACTOR_TYPES = ['Institutional', 'Technical', 'Infrastructure', 'Learning Resources', 'Environmental', 'Others'];
@@ -150,7 +152,7 @@ function FactorCell({ label, value, accent }) {
 }
 
 // ─── ActivityRow (inline table) ───────────────────────────────────────────────
-function ActivityRow({ review, pirId, onSaveNotes, measureText }) {
+function ActivityRow({ review, pirId, onSaveNotes, measureText, canEditNotes = true }) {
   const [expanded, setExpanded] = useState(false);
   const [notes, setNotes] = useState(review.admin_notes ?? '');
   const [saving, setSaving] = useState(false);
@@ -168,7 +170,7 @@ function ActivityRow({ review, pirId, onSaveNotes, measureText }) {
   }, [review.actions_to_address_gap, measureText]);
 
   const handleBlur = async () => {
-    if (notes === (review.admin_notes ?? '')) return;
+    if (!canEditNotes || notes === (review.admin_notes ?? '')) return;
     setSaving(true);
     setSaved(false);
     setSaveError(false);
@@ -250,8 +252,9 @@ function ActivityRow({ review, pirId, onSaveNotes, measureText }) {
               onChange={e => { setNotes(e.target.value); setSaved(false); }}
               onBlur={handleBlur}
               rows={2}
-              placeholder="Add remarks…"
-              className="w-full px-2 py-1.5 text-xs bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-lg resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-accent transition-colors"
+              readOnly={!canEditNotes}
+              placeholder={canEditNotes ? 'Add remarks…' : 'No admin remarks.'}
+              className="w-full px-2 py-1.5 text-xs bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-lg resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-accent transition-colors read-only:cursor-default"
             />
             {saving && <span className="absolute right-2 bottom-2 text-[10px] text-slate-400">Saving…</span>}
             {saved && <span className="absolute right-2 bottom-2 text-[10px] text-emerald-500">Saved</span>}
@@ -290,7 +293,7 @@ function ActivityRow({ review, pirId, onSaveNotes, measureText }) {
 }
 
 // ─── Side-by-side view ────────────────────────────────────────────────────────
-function SideBySideView({ reviews, allAipActivities, pirId, onSaveNotes, measureText }) {
+function SideBySideView({ reviews, allAipActivities, pirId, onSaveNotes, measureText, canEditNotes = true }) {
   const reviewedIds = new Set(reviews.map(r => r.aip_activity_id));
   const unreviewed = allAipActivities.filter(a => !reviewedIds.has(a.id));
 
@@ -305,7 +308,7 @@ function SideBySideView({ reviews, allAipActivities, pirId, onSaveNotes, measure
           const physPct = pct(review.physical_accomplished, review.physical_target);
           const finPct = pct(review.financial_accomplished, review.financial_target);
           return (
-            <SidePIRCard key={review.id} review={review} flags={flags} physPct={physPct} finPct={finPct} pirId={pirId} onSaveNotes={onSaveNotes} measureText={measureText} />
+            <SidePIRCard key={review.id} review={review} flags={flags} physPct={physPct} finPct={finPct} pirId={pirId} onSaveNotes={onSaveNotes} measureText={measureText} canEditNotes={canEditNotes} />
           );
         })}
       </div>
@@ -324,14 +327,14 @@ function SideBySideView({ reviews, allAipActivities, pirId, onSaveNotes, measure
   );
 }
 
-function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes, measureText }) {
+function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes, measureText, canEditNotes = true }) {
   const [notes, setNotes] = useState(review.admin_notes ?? '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
   const handleBlur = async () => {
-    if (notes === (review.admin_notes ?? '')) return;
+    if (!canEditNotes || notes === (review.admin_notes ?? '')) return;
     setSaving(true);
     setSaved(false);
     setSaveError(false);
@@ -388,8 +391,9 @@ function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes, measu
           onChange={e => { setNotes(e.target.value); setSaved(false); }}
           onBlur={handleBlur}
           rows={2}
-          placeholder="Admin notes…"
-          className="w-full px-2 py-1.5 text-xs bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-lg resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-accent transition-colors"
+          readOnly={!canEditNotes}
+          placeholder={canEditNotes ? 'Admin notes…' : 'No admin notes.'}
+          className="w-full px-2 py-1.5 text-xs bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-lg resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-accent transition-colors read-only:cursor-default"
         />
         {saving && <span className="absolute right-2 bottom-2 text-[10px] text-slate-400">Saving…</span>}
         {saved && <span className="absolute right-2 bottom-2 text-[10px] text-emerald-500">Saved</span>}
@@ -422,6 +426,7 @@ function SideAIPCard({ activity, greyed = false }) {
 export default function AdminPIRReview() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const isObserver = auth.isObserver();
 
   // Data: pir = shaped from GET /admin/pirs/:id
   //       sub = raw from GET /admin/submissions/:id?type=pir
@@ -439,6 +444,10 @@ export default function AdminPIRReview() {
   const [remarksSaving, setRemarksSaving] = useState(false);
   const [remarksSaved, setRemarksSaved] = useState(false);
   const [remarksError, setRemarksError] = useState(null);
+  const [observerNotes, setObserverNotes] = useState('');
+  const [observerNotesSaving, setObserverNotesSaving] = useState(false);
+  const [observerNotesSaved, setObserverNotesSaved] = useState(false);
+  const [observerNotesError, setObserverNotesError] = useState(null);
 
   // Presented toggle
   const [presented, setPresented] = useState(false);
@@ -472,6 +481,7 @@ export default function AdminPIRReview() {
       setPir(pirRes.data);
       setSub(subRes.data);
       setAdminRemarks(pirRes.data.adminRemarks ?? '');
+      setObserverNotes(pirRes.data.observerNotes ?? subRes.data.observer_notes ?? '');
       setPresented(pirRes.data.presented ?? false);
       (subRes.data.activity_reviews ?? []).forEach(rev => {
         notesCache.current[rev.id] = rev.admin_notes ?? '';
@@ -487,6 +497,7 @@ export default function AdminPIRReview() {
 
   // ── Handlers ──
   const handleSaveRemarks = async () => {
+    if (isObserver) return;
     setRemarksSaving(true);
     setRemarksError(null);
     setRemarksSaved(false);
@@ -500,6 +511,7 @@ export default function AdminPIRReview() {
   };
 
   const handleTogglePresented = async () => {
+    if (isObserver) return;
     const optimistic = !presented;
     setPresented(optimistic);
     setPresentedSaving(true);
@@ -514,7 +526,27 @@ export default function AdminPIRReview() {
     notesCache.current[reviewId] = notes;
   };
 
+  const handleSaveObserverNotes = async () => {
+    if (!isObserver) return;
+    setObserverNotesSaving(true);
+    setObserverNotesSaved(false);
+    setObserverNotesError(null);
+    try {
+      const r = await axios.patch(
+        `${API}/api/admin/submissions/${id}/observer-notes`,
+        { type: 'pir', notes: observerNotes },
+        { withCredentials: true }
+      );
+      setObserverNotes(r.data.observer_notes ?? observerNotes);
+      setObserverNotesSaved(true);
+      setTimeout(() => setObserverNotesSaved(false), 2500);
+    } catch {
+      setObserverNotesError('Failed to save observer notes. Please try again.');
+    } finally { setObserverNotesSaving(false); }
+  };
+
   const handleAction = async () => {
+    if (isObserver) return;
     setActionLoading(true);
     setActionError('');
     try {
@@ -597,10 +629,15 @@ export default function AdminPIRReview() {
   const totalFlags = reviews.flatMap(r => getValidationFlags(r));
 
   const school = pir?.school ?? '—';
+  const schoolMeta = sub?.aip?.school ?? null;
+  const clusterMeta = schoolMeta?.cluster ?? null;
+  const schoolLogo = schoolMeta?.logo ?? pir?.schoolLogo ?? null;
+  const clusterLogo = clusterMeta?.logo ?? pir?.clusterLogo ?? null;
+  const clusterNumber = clusterMeta?.cluster_number ?? pir?.clusterNumber ?? null;
   const program = pir?.program ?? '—';
   const quarter = pir?.quarter ?? '—';
   const status = pir?.status ?? '—';
-  const canAct = status !== 'Approved' && status !== 'Returned';
+  const canAct = !isObserver && status !== 'Approved' && status !== 'Returned';
   const factors = pir?.factors ?? {};
 
   const TABS = [
@@ -659,10 +696,22 @@ export default function AdminPIRReview() {
       {/* ── PIR Title Card ── */}
       <div className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-dark-border p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">PIR Review</p>
-            <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 leading-tight">{program}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{school} · {quarter}</p>
+          <div className="flex min-w-0 items-start gap-3">
+            {school !== 'Division' && (
+              <SchoolAvatar
+                clusterNumber={clusterNumber}
+                schoolLogo={schoolLogo}
+                clusterLogo={clusterLogo}
+                name={school}
+                size={44}
+                className="shrink-0"
+              />
+            )}
+            <div className="min-w-0">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">PIR Review</p>
+              <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 leading-tight truncate">{program}</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate">{school} · {quarter}</p>
+            </div>
           </div>
           <StatusBadge status={status} size="xs" />
         </div>
@@ -761,22 +810,23 @@ export default function AdminPIRReview() {
             </div>
           )}
 
-          {/* Presented toggle */}
-          <div className="flex items-center justify-between bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
-            <div>
-              <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Presented</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Mark whether this PIR was presented at the division level.</p>
+          {!isObserver && (
+            <div className="flex items-center justify-between bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
+              <div>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Presented</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Mark whether this PIR was presented at the division level.</p>
+              </div>
+              <button
+                onClick={handleTogglePresented}
+                disabled={presentedSaving}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-60 ${presented ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-dark-border'}`}
+                role="switch"
+                aria-checked={presented}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${presented ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
             </div>
-            <button
-              onClick={handleTogglePresented}
-              disabled={presentedSaving}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-60 ${presented ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-dark-border'}`}
-              role="switch"
-              aria-checked={presented}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${presented ? 'translate-x-6' : 'translate-x-1'}`} />
-            </button>
-          </div>
+          )}
 
           {/* Admin Remarks */}
           <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
@@ -787,22 +837,55 @@ export default function AdminPIRReview() {
               value={adminRemarks}
               onChange={e => { setAdminRemarks(e.target.value); setRemarksSaved(false); setRemarksError(null); }}
               rows={4}
-              placeholder="Write official remarks for this PIR submission…"
-              className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl resize-none text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-accent transition-colors"
+              readOnly={isObserver}
+              placeholder={isObserver ? 'No admin remarks yet.' : 'Write official remarks for this PIR submission…'}
+              className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl resize-none text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-accent transition-colors read-only:cursor-default"
             />
             {remarksError && <p className="mt-1.5 text-xs text-red-500">{remarksError}</p>}
             {remarksSaved && <p className="mt-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">Remarks saved.</p>}
-            <div className="flex justify-end mt-3">
-              <button
-                onClick={handleSaveRemarks}
-                disabled={remarksSaving}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-accent text-white rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity"
-              >
-                <FloppyDisk size={16} />
-                {remarksSaving ? 'Saving…' : 'Save Remarks'}
-              </button>
-            </div>
+            {!isObserver && (
+              <div className="flex justify-end mt-3">
+                <button
+                  onClick={handleSaveRemarks}
+                  disabled={remarksSaving}
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-accent text-white rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  <FloppyDisk size={16} />
+                  {remarksSaving ? 'Saving…' : 'Save Remarks'}
+                </button>
+              </div>
+            )}
           </div>
+
+          {(isObserver || observerNotes) && (
+            <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
+              <label className="flex items-center gap-2 text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                <NotePencil size={14} className="text-indigo-500" /> Observer Notes
+              </label>
+              <textarea
+                value={observerNotes}
+                onChange={e => { setObserverNotes(e.target.value); setObserverNotesSaved(false); setObserverNotesError(null); }}
+                rows={4}
+                readOnly={!isObserver}
+                placeholder={isObserver ? 'Add observer-only notes for monitoring…' : 'No observer notes yet.'}
+                className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl resize-none text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-400 transition-colors read-only:cursor-default"
+              />
+              {observerNotesError && <p className="mt-1.5 text-xs text-red-500">{observerNotesError}</p>}
+              {observerNotesSaved && <p className="mt-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">Observer notes saved.</p>}
+              {isObserver && (
+                <div className="flex justify-end mt-3">
+                  <button
+                    onClick={handleSaveObserverNotes}
+                    disabled={observerNotesSaving}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                  >
+                    <FloppyDisk size={16} />
+                    {observerNotesSaving ? 'Saving…' : 'Save Notes'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -857,7 +940,7 @@ export default function AdminPIRReview() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
                   {reviews.map(review => (
-                    <ActivityRow key={review.id} review={review} pirId={pirId} onSaveNotes={handleSaveNotes} measureText={measureText} />
+                    <ActivityRow key={review.id} review={review} pirId={pirId} onSaveNotes={handleSaveNotes} measureText={measureText} canEditNotes={!isObserver} />
                   ))}
                 </tbody>
               </table>
@@ -888,6 +971,7 @@ export default function AdminPIRReview() {
               pirId={pirId}
               onSaveNotes={handleSaveNotes}
               measureText={measureText}
+              canEditNotes={!isObserver}
             />
           )}
         </div>

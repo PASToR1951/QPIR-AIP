@@ -16,6 +16,7 @@ const STATUS_STYLES = {
   'CES-ASDS': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400',
   'CES-CID': 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400',
   'Cluster Coordinator': 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
+  Observer: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
 };
 
 export const StatusBadge = ({ status, size = 'sm' }) => {

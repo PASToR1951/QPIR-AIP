@@ -405,6 +405,11 @@ export default function App() {
         }
     }, [isLoading]);
 
+    // Keep a ref so the searchParams effect always reads the current appMode
+    // without needing it in the dependency array (avoids stale-closure double-calls).
+    const appModeRef = useRef(appMode);
+    appModeRef.current = appMode;
+
     // Sync splash/form state when URL params change
     useEffect(() => {
         if (!autoStarted.current) return;
@@ -412,17 +417,18 @@ export default function App() {
         const paramMode = searchParams.get('mode');
         if (!paramProgram) {
             setSplashSelectedProgram(null);
-            if (appMode !== 'splash') { setAppMode('splash'); setDepedProgram(''); }
+            if (appModeRef.current !== 'splash') { setAppMode('splash'); setDepedProgram(''); }
         } else if (!paramMode) {
             setSplashSelectedProgram(paramProgram);
-            if (appMode !== 'splash') { setAppMode('splash'); setDepedProgram(''); }
-        } else if (appMode === 'splash') {
+            if (appModeRef.current !== 'splash') { setAppMode('splash'); setDepedProgram(''); }
+        } else if (appModeRef.current === 'splash') {
             // URL params restored (e.g. browser back) — re-enter form
             handleStart(paramMode, paramProgram);
         }
     }, [searchParams]);
 
     const handleSaveForLater = async () => {
+        if (!depedProgram) return;
         clearTimeout(saveTimerRef.current);
         setIsSaving(true);
 

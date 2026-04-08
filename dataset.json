@@ -1,0 +1,22 @@
+[
+  {
+    "program_title": "Learning Action Cells (LAC) Program",
+    "school_level_requirement": "Division",
+    "division": "SGOD",
+    "alignment_name": "LAC - Outcome 1 O.1.1",
+    "is_default": true,
+    "outcome": "Outcome 1: High Performing Teachers",
+    "target": {
+      "code": "O.1.1",
+      "description": "Percentage of schools implementing LAC activities"
+    },
+    "indicators": [
+      {
+        "description": "Percentage of schools that regularly submitted LAC reports"
+      },
+      {
+        "description": "Percentage of schools that conducted LAC sessions"
+      }
+    ]
+  }
+]

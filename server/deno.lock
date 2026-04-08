@@ -3821,11 +3821,14 @@
   },
   "workspace": {
     "dependencies": [
+      "npm:@prisma/adapter-pg@^7.4.2",
       "npm:@prisma/client@^7.4.2",
       "npm:@prisma/config@^7.4.2",
       "npm:bcryptjs@^2.4.3",
       "npm:hono@4",
-      "npm:jsonwebtoken@^9.0.3"
+      "npm:jsonwebtoken@^9.0.3",
+      "npm:pg@^8.20.0",
+      "npm:xlsx@~0.18.5"
     ],
     "packageJson": {
       "dependencies": [
@@ -3833,6 +3836,7 @@
         "npm:@prisma/adapter-pg@^7.4.2",
         "npm:@prisma/client@^7.4.2",
         "npm:@types/jsonwebtoken@^9.0.10",
+        "npm:bcryptjs@^2.4.3",
         "npm:hono@^4.11.4",
         "npm:jsonwebtoken@^9.0.3",
         "npm:pg@^8.20.0",

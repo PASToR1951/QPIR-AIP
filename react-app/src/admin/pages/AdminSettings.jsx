@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import axios from 'axios';
 import {
   FloppyDisk, Buildings, Users, BookOpen, Database,
-  Info, Warning, WarningCircle, Megaphone, XCircle, LockSimple,
+  Megaphone, XCircle, LockSimple,
   Gear, CheckCircle, At, User, Trash, CalendarBlank,
   CaretLeft, CaretRight, Clock, CaretUp, CaretDown,
 } from '@phosphor-icons/react';
@@ -13,6 +13,92 @@ const API = import.meta.env.VITE_API_URL;
 
 
 const MAX_CHARS = 280;
+const EMPTY_ANNOUNCEMENT = {
+  message: '',
+  type: 'info',
+  is_active: true,
+  dismissible: true,
+  expires_at: '',
+};
+
+function toDateTimeInput(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 16);
+}
+
+function normalizeAnnouncement(source) {
+  return {
+    message: source?.message ?? '',
+    type: source?.type ?? 'info',
+    is_active: source?.is_active ?? true,
+    dismissible: source?.dismissible !== false,
+    expires_at: source?.expires_at ?? '',
+  };
+}
+
+function announcementFromApi(source) {
+  return {
+    ...normalizeAnnouncement(source),
+    expires_at: toDateTimeInput(source?.expires_at),
+  };
+}
+
+function announcementsEqual(left, right) {
+  const a = normalizeAnnouncement(left);
+  const b = normalizeAnnouncement(right);
+  return (
+    a.message === b.message &&
+    a.type === b.type &&
+    a.is_active === b.is_active &&
+    a.dismissible === b.dismissible &&
+    a.expires_at === b.expires_at
+  );
+}
+
+function hasAnnouncementMessage(source) {
+  return Boolean(source?.message?.trim());
+}
+
+function isAnnouncementExpired(source) {
+  if (!source?.expires_at) return false;
+  const expiresAt = new Date(source.expires_at);
+  return !Number.isNaN(expiresAt.getTime()) && expiresAt <= new Date();
+}
+
+function formatAnnouncementExpiry(value) {
+  if (!value) return '';
+  const expiresAt = new Date(value);
+  if (Number.isNaN(expiresAt.getTime())) return '';
+  return expiresAt.toLocaleString('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+const STATUS_TONE_CLASSES = {
+  amber: {
+    badge: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800/70',
+    dot: 'bg-amber-500',
+  },
+  emerald: {
+    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800/70',
+    dot: 'bg-emerald-500',
+  },
+  rose: {
+    badge: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-300 dark:border-rose-800/70',
+    dot: 'bg-rose-500',
+  },
+  slate: {
+    badge: 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-white/[0.04] dark:text-slate-300 dark:border-dark-border',
+    dot: 'bg-slate-400',
+  },
+};
 
 /* ─── Contenteditable editor helpers ─────────────────────────────── */
 function rawToEditorHTML(raw) {
@@ -44,40 +130,28 @@ function editorToRaw(el) {
 const TYPE_CONFIG = {
   info: {
     wrap:      'bg-blue-600 dark:bg-blue-700',
-    label:     'bg-blue-500 dark:bg-blue-600',
-    labelText: 'text-white/90',
-    iconBg:    'bg-white/15',
     card:      'border-blue-200 dark:border-blue-800/60 bg-blue-50/60 dark:bg-blue-950/20',
     cardActive:'border-blue-500 bg-blue-50 dark:bg-blue-950/40 ring-2 ring-blue-500/30',
     dot:       'bg-blue-500',
     textColor: 'text-blue-700 dark:text-blue-300',
-    Icon:      Info,
     label_str: 'Info',
     desc:      'General information or updates',
   },
   warning: {
     wrap:      'bg-amber-500 dark:bg-amber-600',
-    label:     'bg-amber-400 dark:bg-amber-500',
-    labelText: 'text-amber-900/80',
-    iconBg:    'bg-white/15',
     card:      'border-amber-200 dark:border-amber-800/60 bg-amber-50/60 dark:bg-amber-950/20',
     cardActive:'border-amber-500 bg-amber-50 dark:bg-amber-950/40 ring-2 ring-amber-500/30',
     dot:       'bg-amber-500',
     textColor: 'text-amber-700 dark:text-amber-300',
-    Icon:      Warning,
     label_str: 'Warning',
     desc:      'Caution or upcoming changes',
   },
   critical: {
     wrap:      'bg-rose-600 dark:bg-rose-700',
-    label:     'bg-rose-500 dark:bg-rose-600',
-    labelText: 'text-white/90',
-    iconBg:    'bg-white/15',
     card:      'border-rose-200 dark:border-rose-800/60 bg-rose-50/60 dark:bg-rose-950/20',
     cardActive:'border-rose-500 bg-rose-50 dark:bg-rose-950/40 ring-2 ring-rose-500/30',
     dot:       'bg-rose-600',
     textColor: 'text-rose-700 dark:text-rose-300',
-    Icon:      WarningCircle,
     label_str: 'Critical',
     desc:      'Urgent system-wide alert',
   },
@@ -93,10 +167,10 @@ function renderWithMentions(text, badgeClass = 'bg-white/25 text-white') {
       return (
         <span
           key={i}
-          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-black text-xs leading-none mx-0.5 ${badgeClass}`}
+          className={`inline-flex max-w-full align-middle items-center gap-0.5 px-1.5 py-0.5 rounded-md font-black text-xs leading-tight mx-0.5 ${badgeClass}`}
         >
-          <At size={10} weight="bold" />
-          {match[1]}
+          <At size={10} weight="bold" className="shrink-0" />
+          <span className="min-w-0 break-words">{match[1]}</span>
         </span>
       );
     }
@@ -107,19 +181,10 @@ function renderWithMentions(text, badgeClass = 'bg-white/25 text-white') {
 /* ─── Banner preview (mirrors live AnnouncementBanner) ──────────── */
 function BannerPreview({ announcement }) {
   const cfg = TYPE_CONFIG[announcement.type] ?? TYPE_CONFIG.info;
-  const { Icon } = cfg;
   return (
     <div className={`w-full rounded-xl overflow-hidden shadow-sm ${cfg.wrap}`}>
-      <div className="px-4 py-2.5 flex items-center gap-3">
-        <div className={`${cfg.label} ${cfg.labelText} flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0`}>
-          <Megaphone size={12} weight="fill" />
-          <span className="text-[10px] font-black uppercase tracking-widest leading-none">Announcement</span>
-        </div>
-        <div className="w-px h-4 bg-white/25 shrink-0" />
-        <div className={`${cfg.iconBg} rounded-lg p-1 shrink-0`}>
-          <Icon size={14} weight="bold" className="text-white" />
-        </div>
-        <p className="flex-1 text-sm font-semibold text-white leading-snug truncate flex items-center gap-0.5 flex-wrap">
+      <div className="px-4 py-2.5 flex items-start gap-2.5">
+        <p className="min-w-0 flex-1 text-sm font-semibold text-white leading-snug whitespace-pre-wrap break-words">
           {renderWithMentions(announcement.message)}
         </p>
         {announcement.dismissible !== false ? (
@@ -140,12 +205,14 @@ function BannerPreview({ announcement }) {
 }
 
 /* ─── Settings section wrapper ───────────────────────────────────── */
-function SettingsCard({ icon: Icon, iconColor, iconBg, title, description, children }) {
+function SettingsCard({ icon, iconColor, iconBg, title, description, children }) {
+  const CardIcon = icon;
+
   return (
     <div className="bg-white/70 dark:bg-dark-surface/80 backdrop-blur-sm border border-white/60 dark:border-dark-border rounded-2xl overflow-hidden shadow-sm">
       <div className="flex items-center gap-4 px-6 py-5 border-b border-slate-100 dark:border-dark-border bg-slate-50/50 dark:bg-white/[0.02]">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
-          <Icon size={20} weight="fill" className={iconColor} />
+          <CardIcon size={20} weight="fill" className={iconColor} />
         </div>
         <div>
           <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm leading-tight">{title}</h3>
@@ -158,12 +225,14 @@ function SettingsCard({ icon: Icon, iconColor, iconBg, title, description, child
 }
 
 /* ─── Stat tile ──────────────────────────────────────────────────── */
-function StatTile({ icon: Icon, label, value, sub }) {
+function StatTile({ icon, label, value, sub }) {
+  const TileIcon = icon;
+
   return (
     <div className="relative flex flex-col gap-3 p-4 bg-slate-50 dark:bg-dark-base rounded-xl border border-slate-100 dark:border-dark-border overflow-hidden group">
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/40 to-transparent dark:from-indigo-950/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
       <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-lg flex items-center justify-center shrink-0">
-        <Icon size={16} weight="bold" />
+        <TileIcon size={16} weight="bold" />
       </div>
       <div>
         <p className="text-2xl font-black text-slate-900 dark:text-slate-100 leading-none tracking-tight">{value}</p>
@@ -413,12 +482,12 @@ function DateTimePicker({ value, onChange }) {
 
 /* ─── Main component ─────────────────────────────────────────────── */
 export default function AdminSettings() {
-  const [announcement, setAnnouncement] = useState({ message: '', type: 'info', is_active: true, dismissible: true, expires_at: '' });
+  const [announcement, setAnnouncement] = useState(EMPTY_ANNOUNCEMENT);
+  const [savedAnnouncement, setSavedAnnouncement] = useState(EMPTY_ANNOUNCEMENT);
   const [sysInfo, setSysInfo]           = useState(null);
   const [loading, setLoading]           = useState(true);
   const [fetchError, setFetchError]     = useState(null);
   const [saving, setSaving]             = useState(false);
-  const [saved, setSaved]               = useState(false);
   const [formError, setFormError]       = useState('');
   const [deleting, setDeleting]         = useState(false);
 
@@ -429,7 +498,6 @@ export default function AdminSettings() {
   const [mentionSuggestions, setMentionSuggestions] = useState([]);
   const [mentionPos, setMentionPos]         = useState({ top: 0, left: 0, width: 0 });
   const textareaRef    = useRef(null);
-  const mentionAtIdx   = useRef(-1);
   const isInternalEdit = useRef(false);
 
   /* ── Sync editor HTML when announcement loads externally ─────────── */
@@ -454,13 +522,9 @@ export default function AdminSettings() {
       axios.get(`${API}/api/admin/announcements`,        { withCredentials: true }),
       axios.get(`${API}/api/admin/settings/system-info`, { withCredentials: true }),
     ]).then(([ar, sr]) => {
-      if (ar.data) setAnnouncement({
-        message:     ar.data.message     ?? '',
-        type:        ar.data.type        ?? 'info',
-        is_active:   ar.data.is_active   ?? true,
-        dismissible: ar.data.dismissible !== false,
-        expires_at:  ar.data.expires_at  ? new Date(ar.data.expires_at).toISOString().slice(0, 16) : '',
-      });
+      const loadedAnnouncement = announcementFromApi(ar.data);
+      setAnnouncement(loadedAnnouncement);
+      setSavedAnnouncement(loadedAnnouncement);
       setSysInfo(sr.data);
     }).catch(e => { console.error(e); setFetchError('Failed to load settings. Please refresh and try again.'); })
       .finally(() => setLoading(false));
@@ -491,12 +555,16 @@ export default function AdminSettings() {
 
   /* ── Announce save (Publish button) ──────────────────────────────── */
   const handleSave = async () => {
+    const payload = normalizeAnnouncement(announcement);
     setSaving(true);
     setFormError('');
     try {
-      await axios.post(`${API}/api/admin/announcements`, announcement, { withCredentials: true });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      const { data } = await axios.post(`${API}/api/admin/announcements`, payload, { withCredentials: true });
+      const persistedAnnouncement = data ? announcementFromApi(data) : payload;
+      setSavedAnnouncement(persistedAnnouncement);
+      setAnnouncement(current =>
+        announcementsEqual(current, payload) ? persistedAnnouncement : current
+      );
     } catch (e) {
       setFormError(e.response?.data?.error || 'Operation failed');
     } finally {
@@ -506,16 +574,23 @@ export default function AdminSettings() {
 
   /* ── Active toggle: auto-saves immediately ───────────────────────── */
   const handleToggleActive = async () => {
-    const updated = { ...announcement, is_active: !announcement.is_active };
+    const updated = normalizeAnnouncement({ ...announcement, is_active: !announcement.is_active });
     setAnnouncement(updated);
     setAutoSaving(true);
     try {
-      await axios.post(`${API}/api/admin/announcements`, updated, { withCredentials: true });
+      const { data } = await axios.post(`${API}/api/admin/announcements`, updated, { withCredentials: true });
+      const persistedAnnouncement = data ? announcementFromApi(data) : updated;
+      setSavedAnnouncement(persistedAnnouncement);
+      setAnnouncement(current =>
+        announcementsEqual(current, updated) ? persistedAnnouncement : current
+      );
       setAutoSaved(true);
       setTimeout(() => setAutoSaved(false), 2000);
     } catch {
       // revert
-      setAnnouncement(prev => ({ ...prev, is_active: !updated.is_active }));
+      setAnnouncement(prev =>
+        announcementsEqual(prev, updated) ? { ...updated, is_active: !updated.is_active } : prev
+      );
     } finally {
       setAutoSaving(false);
     }
@@ -527,7 +602,9 @@ export default function AdminSettings() {
     setFormError('');
     try {
       await axios.delete(`${API}/api/admin/announcements`, { withCredentials: true });
-      setAnnouncement({ message: '', type: 'info', is_active: true, dismissible: true, expires_at: '' });
+      const emptyAnnouncement = normalizeAnnouncement(EMPTY_ANNOUNCEMENT);
+      setAnnouncement(emptyAnnouncement);
+      setSavedAnnouncement(emptyAnnouncement);
       if (textareaRef.current) textareaRef.current.innerHTML = '';
     } catch (e) {
       setFormError(e.response?.data?.error || 'Delete failed');
@@ -635,6 +712,64 @@ export default function AdminSettings() {
   };
 
   const charsLeft = MAX_CHARS - announcement.message.length;
+  const hasDraftMessage = hasAnnouncementMessage(announcement);
+  const hasSavedMessage = hasAnnouncementMessage(savedAnnouncement);
+  const hasUnpublishedChanges = !announcementsEqual(announcement, savedAnnouncement);
+  const savedExpired = isAnnouncementExpired(savedAnnouncement);
+  const savedExpiryText = formatAnnouncementExpiry(savedAnnouncement.expires_at);
+  const savedStateLabel = !hasSavedMessage
+    ? 'No announcement'
+    : !savedAnnouncement.is_active
+      ? 'Saved inactive'
+      : savedExpired
+        ? 'Expired'
+        : 'Published';
+  const savedStateDetail = !hasSavedMessage
+    ? 'No announcement is currently visible to users.'
+    : !savedAnnouncement.is_active
+      ? 'Saved, but hidden from users.'
+      : savedExpired
+        ? savedExpiryText
+          ? `Expired on ${savedExpiryText}.`
+          : 'Expired and no longer visible to users.'
+        : savedAnnouncement.expires_at && savedExpiryText
+          ? `Visible to users until ${savedExpiryText}.`
+          : 'Visible to all users with no expiration.';
+  const statusTone = hasUnpublishedChanges
+    ? 'amber'
+    : !hasSavedMessage
+      ? 'slate'
+      : savedAnnouncement.is_active && !savedExpired
+        ? 'emerald'
+        : savedExpired
+          ? 'rose'
+          : 'slate';
+  const announcementStatus = {
+    label: hasUnpublishedChanges
+      ? hasDraftMessage ? 'Unpublished changes' : 'Message cleared in editor'
+      : savedStateLabel,
+    detail: hasUnpublishedChanges
+      ? hasDraftMessage
+        ? `Publish changes to update users. Current saved state: ${savedStateLabel}.`
+        : hasSavedMessage
+          ? 'Use Clear to remove the saved announcement, or add a message to publish changes.'
+          : 'Write a message before publishing.'
+      : savedStateDetail,
+    ...STATUS_TONE_CLASSES[statusTone],
+  };
+  const canPublishAnnouncement = hasDraftMessage && hasUnpublishedChanges && !saving;
+  const publishButtonLabel = saving
+    ? 'Saving…'
+    : hasUnpublishedChanges
+      ? hasSavedMessage ? 'Publish changes' : 'Publish'
+      : hasSavedMessage
+        ? savedStateLabel
+        : 'Publish';
+  const publishButtonStyle = saving || canPublishAnnouncement
+    ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+    : hasSavedMessage && !hasUnpublishedChanges && savedAnnouncement.is_active && !savedExpired
+      ? 'bg-emerald-500 text-white'
+      : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400';
 
   return (
     <>
@@ -861,11 +996,18 @@ export default function AdminSettings() {
 
                 <div className="flex flex-col items-start sm:items-end gap-1">
                   {formError && <p className="text-xs text-red-500 font-bold">{formError}</p>}
+                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-black ${announcementStatus.badge}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${announcementStatus.dot}`} />
+                    {announcementStatus.label}
+                  </div>
+                  <p className="max-w-xs text-[10px] text-slate-400 dark:text-slate-500 sm:text-right leading-snug">
+                    {announcementStatus.detail}
+                  </p>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleDelete}
-                      disabled={deleting || !announcement.message}
-                      title="Clear announcement"
+                      disabled={deleting || (!hasDraftMessage && !hasSavedMessage)}
+                      title="Clear saved announcement"
                       className="flex items-center gap-2 px-3 py-2 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-40 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/70 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
                     >
                       <Trash size={15} weight="bold" />
@@ -873,17 +1015,17 @@ export default function AdminSettings() {
                     </button>
                     <button
                       onClick={handleSave}
-                      disabled={saving}
-                      className={`flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-60 ${
-                        saved
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                      }`}
+                      disabled={!canPublishAnnouncement}
+                      className={`flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-xl transition-all shadow-sm disabled:cursor-not-allowed ${publishButtonStyle}`}
                     >
-                      {saved
-                        ? <><CheckCircle size={15} weight="fill" /> Saved</>
-                        : <><FloppyDisk size={15} weight="bold" /> {saving ? 'Saving…' : 'Publish'}</>
-                      }
+                      {saving ? (
+                        <span className="w-3.5 h-3.5 rounded-full border-2 border-white/50 border-t-white animate-spin" />
+                      ) : hasSavedMessage && !hasUnpublishedChanges ? (
+                        <CheckCircle size={15} weight="fill" />
+                      ) : (
+                        <FloppyDisk size={15} weight="bold" />
+                      )}
+                      {publishButtonLabel}
                     </button>
                   </div>
                 </div>

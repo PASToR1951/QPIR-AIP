@@ -15,7 +15,7 @@ const ERROR_MESSAGES = {
 };
 
 function roleToDashboard(role) {
-  if (role === 'Admin') return '/admin';
+  if (auth.isAdminPanelRole(role)) return '/admin';
   if (['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(role)) return '/ces';
   if (role === 'Cluster Coordinator') return '/cluster-head';
   return '/';

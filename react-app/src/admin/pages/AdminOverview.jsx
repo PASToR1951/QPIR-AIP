@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { ResponsivePie } from '@nivo/pie';
 
 const fadeUp = {
@@ -20,6 +20,7 @@ const staggerContainer = {
 };
 import { Buildings, BookOpen, Eye, ChartBar, ChartDonut, ArrowRight, Users, UserCircle, Warning, ClockCountdown, CaretDown, CaretUp, Info, ClockCounterClockwise, Notification } from '@phosphor-icons/react';
 import { StatusBadge } from '../components/StatusBadge.jsx';
+import { SchoolAvatar } from '../../components/ui/SchoolAvatar.jsx';
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -234,6 +235,13 @@ function PirClusterPanel({ cluster: cl, navigate }) {
         <span className={`text-[11px] font-black px-2 py-0.5 rounded-md shrink-0 ${pirPctBadge(cl.pct)}`}>
           {cl.pct}%
         </span>
+        <SchoolAvatar
+          clusterNumber={cl.cluster_number}
+          clusterLogo={cl.logo ?? null}
+          name={`Cluster ${cl.cluster_number}`}
+          size={32}
+          className="shrink-0"
+        />
         <div className="min-w-0 flex-1">
           <p className="font-black text-slate-900 dark:text-slate-100 text-sm truncate">
             Cluster {cl.cluster_number}
@@ -254,7 +262,7 @@ function PirClusterPanel({ cluster: cl, navigate }) {
       {/* Expanded content */}
       <AnimatePresence>
       {open && (
-        <motion.div
+        <Motion.div
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}
@@ -301,6 +309,14 @@ function PirClusterPanel({ cluster: cl, navigate }) {
                 key={sch.id}
                 className="flex items-center gap-3 px-2 py-2 -mx-0 rounded-lg hover:bg-slate-100/80 dark:hover:bg-dark-border/25 transition-colors cursor-default"
               >
+                <SchoolAvatar
+                  clusterNumber={cl.cluster_number}
+                  schoolLogo={sch.logo ?? null}
+                  clusterLogo={cl.logo ?? null}
+                  name={sch.name}
+                  size={28}
+                  className="shrink-0"
+                />
                 <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 min-w-0 flex-1 truncate">
                   {sch.name}
                   {sch.abbreviation && <span className="font-normal text-slate-400 dark:text-slate-500"> ({sch.abbreviation})</span>}
@@ -324,7 +340,7 @@ function PirClusterPanel({ cluster: cl, navigate }) {
               View all submissions <ArrowRight size={12} weight="bold" />
             </button>
           </div>
-        </motion.div>
+        </Motion.div>
       )}
       </AnimatePresence>
     </div>
@@ -426,7 +442,7 @@ export default function AdminOverview() {
           </div>
         </div>
       ) : (
-        <motion.div
+        <Motion.div
           className="space-y-6"
           variants={staggerContainer}
           initial="hidden"
@@ -434,7 +450,7 @@ export default function AdminOverview() {
         >
 
           {/* Hero Welcome Card */}
-          <motion.div variants={fadeUp} className="relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] shadow-sm overflow-hidden group">
+          <Motion.div variants={fadeUp} className="relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] shadow-sm overflow-hidden group">
             {/* SDO Facade background */}
             <div
               className="absolute inset-y-0 -left-4 w-[65%] opacity-30 grayscale pointer-events-none transition-all duration-700 group-hover:opacity-45 group-hover:grayscale-0"
@@ -592,16 +608,16 @@ export default function AdminOverview() {
               </div>
 
             </div>
-          </motion.div>
+          </Motion.div>
 
           {/* Charts Section Header */}
-          <motion.div variants={fadeUp} className="flex items-center gap-4 px-1">
+          <Motion.div variants={fadeUp} className="flex items-center gap-4 px-1">
             <h2 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Analytics</h2>
             <span className="flex-1 h-px bg-slate-200 dark:bg-dark-border/60" />
-          </motion.div>
+          </Motion.div>
 
           {/* Charts Row */}
-          <motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* PIR Quarterly Progress (primary) */}
             <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-4">
@@ -678,9 +694,9 @@ export default function AdminOverview() {
                 <div className="h-52 flex items-center justify-center text-slate-400 dark:text-slate-600 text-sm">No data</div>
               )}
             </div>
-          </motion.div>
+          </Motion.div>
 
-          <motion.div variants={fadeUp} className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+          <Motion.div variants={fadeUp} className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
             {/* PIR Submission Status by Cluster — per-school breakdown */}
             {data?.pirClusterStatus?.length > 0 && (
               <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
@@ -765,9 +781,9 @@ export default function AdminOverview() {
                 <p className="text-sm text-slate-400 dark:text-slate-600 py-8 text-center">No submissions yet.</p>
               )}
             </div>
-          </motion.div>
+          </Motion.div>
 
-        </motion.div>
+        </Motion.div>
       )}
     </>
   );

@@ -12,6 +12,8 @@ export const auth = {
   getUser:    ()  => parseStoredUser(),
   getExpiry:  ()  => parseInt(sessionStorage.getItem('tokenExpiry') || '0', 10),
   isExpired:  ()  => Date.now() / 1000 >= auth.getExpiry(),
+  isObserver: () => auth.getUser()?.role === 'Observer',
+  isAdminPanelRole: (role = auth.getUser()?.role) => ['Admin', 'Observer'].includes(role),
   setSession: (user, exp) => {
     sessionStorage.setItem('user', JSON.stringify(user));
     sessionStorage.setItem('tokenExpiry', String(exp));
