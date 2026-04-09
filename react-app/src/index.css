@@ -358,6 +358,49 @@ html:not(.dark).a11y-high-contrast .border-slate-200 {
 }
 .login-shake { animation: login-shake 0.3s ease-in-out; }
 
+.login-panel-shell {
+  overflow: hidden;
+  will-change: height;
+  transition: height 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-panel-track {
+  display: flex;
+  width: 200%;
+  align-items: flex-start;
+  transform: translateX(0);
+  will-change: transform;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-panel-track--manual {
+  transform: translateX(-50%);
+}
+
+.login-panel {
+  flex: 0 0 50%;
+  max-width: 50%;
+}
+
+.login-panel-content {
+  opacity: 0.2;
+  transform: translateY(12px);
+  will-change: opacity, transform;
+  transition:
+    opacity 0.24s ease,
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-panel[data-active='true'] .login-panel-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.08s;
+}
+
+.login-panel[data-active='false'] .login-panel-content {
+  pointer-events: none;
+}
+
 @keyframes login-footer-up {
   from { opacity: 0; transform: translateY(30px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -476,6 +519,9 @@ html:not(.dark).a11y-high-contrast .border-slate-200 {
 .a11y-reduce-motion .login-orb-float-1,
 .a11y-reduce-motion .login-orb-float-2,
 .a11y-reduce-motion .login-shake,
+.a11y-reduce-motion .login-panel-shell,
+.a11y-reduce-motion .login-panel-track,
+.a11y-reduce-motion .login-panel-content,
 .a11y-reduce-motion .login-footer-entrance,
 .a11y-reduce-motion .footer-item,
 .a11y-reduce-motion .nc-overlay,
@@ -493,12 +539,25 @@ html:not(.dark).a11y-high-contrast .border-slate-200 {
 .a11y-reduce-motion .school-card-watermark--active {
   animation: none !important;
 }
+.a11y-reduce-motion .login-panel-shell,
+.a11y-reduce-motion .login-panel-track,
+.a11y-reduce-motion .login-panel-content {
+  transition: none !important;
+}
 .a11y-reduce-motion .school-name-marquee__track {
   animation: none !important;
   transform: none !important;
 }
 .a11y-reduce-motion {
   scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-panel-shell,
+  .login-panel-track,
+  .login-panel-content {
+    transition: none !important;
+  }
 }
 
 /* --- Dyslexia-Friendly Font --- */
