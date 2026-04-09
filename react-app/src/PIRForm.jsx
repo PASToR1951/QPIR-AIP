@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
-
-import { getFriendlyError } from './lib/errorMessages.js';
+import api from './lib/api.js';
 
 const FACTOR_TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
 
@@ -23,6 +21,7 @@ import WizardStepper from './components/ui/WizardStepper';
 import SectionHeader from './components/ui/SectionHeader';
 import SignatureBlock from './components/ui/SignatureBlock';
 import FinalizeCard from './components/ui/FinalizeCard';
+import WizardStickyNav from './components/ui/WizardStickyNav';
 
 import PIRProfileSection from './components/forms/pir/PIRProfileSection';
 import PIRIndicatorsSection from './components/forms/pir/PIRIndicatorsSection';
@@ -86,11 +85,11 @@ export default function App() {
         const init = async () => {
             try {
                 const requests = [
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { withCredentials: true }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-pirs`, { params: { quarter: quarterString }, withCredentials: true }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/config`),
+                    api.get('/api/programs/with-aips'),
+                    api.get('/api/programs/with-pirs', { params: { quarter: quarterString } }),
+                    api.get('/api/config'),
                 ];
-                requests.push(axios.get(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, { withCredentials: true }));
+                requests.push(api.get('/api/pirs/draft'));
                 const results = await Promise.allSettled(requests);
                 const [withAIPsRes, withPIRsRes, configRes, draftRes] = results;
                 if (withAIPsRes.status === 'fulfilled') {
@@ -123,6 +122,7 @@ export default function App() {
     const totalSteps = 6;
     const [activeFactorTab, setActiveFactorTab] = useState(FACTOR_TYPES[0]);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [showFinalConfirm, setShowFinalConfirm] = useState(false);
     const [isAddingActivity, setIsAddingActivity] = useState(false);
     const [activityToDelete, setActivityToDelete] = useState(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -133,6 +133,7 @@ export default function App() {
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
     const [lastSavedTime, setLastSavedTime] = useState(null);
+    const [lastAutoSavedTime, setLastAutoSavedTime] = useState(null);
 
     // Modal State
     const [modal, setModal] = useState({
@@ -141,6 +142,8 @@ export default function App() {
         title: '',
         message: '',
         confirmText: 'Confirm',
+        cancelText: 'Cancel',
+        onClose: null,
         onConfirm: () => { }
     });
 
@@ -217,6 +220,25 @@ export default function App() {
     const [draftInfo, setDraftInfo] = useState(null);
     const [loadedDraftData, setLoadedDraftData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const autosaveTimerRef = useRef(null);
+
+    const loadDraftIntoState = useCallback((draft) => {
+        if (!draft) return;
+        if (isDivisionPersonnel) {
+            setSchool(draft.school || "Division");
+            setFunctionalDivision(draft.functionalDivision || "");
+        }
+        setOwner(draft.owner || "");
+        setBudgetFromDivision(draft.budgetFromDivision || "");
+        setBudgetFromCoPSF(draft.budgetFromCoPSF || "");
+        if (draft.indicatorQuarterlyTargets?.length) {
+            setIndicatorTargets(draft.indicatorQuarterlyTargets);
+            draftIndicatorsLoaded.current = true;
+        }
+        if (draft.actionItems?.length) setActionItems(draft.actionItems);
+        if (draft.activities) setActivities(draft.activities);
+        if (draft.factors) setFactors(draft.factors);
+    }, [isDivisionPersonnel]);
 
     // Reset AIP-prefilled lock flags and cached AIP doc when program changes
     useEffect(() => {
@@ -242,7 +264,7 @@ export default function App() {
                     ? { user_id: user?.id, program_title: program, year }
                     : { school_id: schoolId, program_title: program, year };
 
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/activities`, { params, withCredentials: true });
+                const res = await api.get('/api/aips/activities', { params });
                 const aipActivities = res.data.activities;
                 if (aipActivities && aipActivities.length > 0) {
                     if (pirActivitiesLoaded.current) {
@@ -312,10 +334,9 @@ export default function App() {
 
         if (mode === 'readonly') {
             try {
-                const res = await axios.get(
-                    `${import.meta.env.VITE_API_URL}/api/pirs`,
-                    { params: { program_title: selectedProgram, quarter: quarterString }, withCredentials: true }
-                );
+                const res = await api.get('/api/pirs', {
+                    params: { program_title: selectedProgram, quarter: quarterString },
+                });
                 const d = res.data;
                 setPirId(d.id ?? null);
                 setPirStatus(d.status ?? null);
@@ -337,25 +358,47 @@ export default function App() {
             return;
         }
 
+        const lsKey = `pir_draft_${selectedProgram}_${quarterString}`;
+        const lsRaw = localStorage.getItem(lsKey);
+        if (lsRaw) {
+            try {
+                const lsData = JSON.parse(lsRaw);
+                const serverDraftRes = await api.get('/api/pirs/draft', {
+                    params: { program_title: selectedProgram, quarter: quarterString },
+                });
+                const hasServerDraft = serverDraftRes.data.hasDraft;
+                setModal({
+                    isOpen: true,
+                    type: 'warning',
+                    title: 'Continue your saved draft?',
+                    message: `We found an auto-saved draft from ${new Date(lsData.savedAt).toLocaleString()}. Continue from that draft?${hasServerDraft ? ' You can also skip it and open your last saved draft instead.' : ''}`,
+                    confirmText: 'Continue draft',
+                    cancelText: hasServerDraft ? 'Open saved draft' : 'Start fresh',
+                    onConfirm: () => {
+                        loadDraftIntoState(lsData);
+                        closeModal();
+                        setAppMode(mode);
+                        setSearchParams({ program: selectedProgram, mode }, { replace: true });
+                    },
+                    onClose: async () => {
+                        closeModal();
+                        localStorage.removeItem(lsKey);
+                        if (hasServerDraft) {
+                            loadDraftIntoState(serverDraftRes.data.draftData);
+                        }
+                        setAppMode(mode);
+                        setSearchParams({ program: selectedProgram, mode }, { replace: true });
+                    }
+                });
+                return;
+            } catch {
+                localStorage.removeItem(lsKey);
+            }
+        }
+
         if (hasDraft && loadedDraftData) {
             try {
-                const draft = loadedDraftData;
-                if (isDivisionPersonnel) {
-                    setSchool(draft.school || "Division");
-                    setFunctionalDivision(draft.functionalDivision || "");
-                }
-                setOwner(draft.owner || "");
-                setBudgetFromDivision(draft.budgetFromDivision || "");
-                setBudgetFromCoPSF(draft.budgetFromCoPSF || "");
-                if (draft.indicatorQuarterlyTargets?.length) {
-                    setIndicatorTargets(draft.indicatorQuarterlyTargets);
-                    draftIndicatorsLoaded.current = true;
-                }
-                if (draft.actionItems?.length) {
-                    setActionItems(draft.actionItems);
-                }
-                if (draft.activities) setActivities(draft.activities);
-                if (draft.factors) setFactors(draft.factors);
+                loadDraftIntoState(loadedDraftData);
             } catch (e) {
                 console.error("Failed to load draft:", e);
             }
@@ -440,7 +483,7 @@ export default function App() {
             onConfirm: async () => {
                 closeModal();
                 try {
-                    await axios.delete(`${import.meta.env.VITE_API_URL}/api/pirs/${pirId}`, { withCredentials: true });
+                    await api.delete(`/api/pirs/${pirId}`);
                     // Remove from completedPrograms and refresh
                     setCompletedPrograms(prev => prev.filter(p => p !== program));
                     setPirId(null);
@@ -452,9 +495,9 @@ export default function App() {
                     setModal({
                         isOpen: true,
                         type: 'warning',
-                        title: 'Delete Failed',
-                        message: e.response?.data?.error || 'Failed to delete the PIR. It may already be under review.',
-                        confirmText: 'Dismiss',
+                        title: "We couldn't delete this PIR",
+                        message: e.friendlyMessage ?? 'Please try again. If the problem continues, contact SDO IT.',
+                        confirmText: 'Close',
                         onConfirm: closeModal,
                     });
                 }
@@ -467,10 +510,7 @@ export default function App() {
             try {
                 const yearMatch = quarterString.match(/CY (\d{4})/);
                 const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips`, {
-                    params: { program_title: program, year },
-                    withCredentials: true
-                });
+                const res = await api.get('/api/aips', { params: { program_title: program, year } });
                 setAipDocumentData(res.data);
             } catch (e) {
                 console.error("Failed to load AIP for preview:", e);
@@ -484,7 +524,7 @@ export default function App() {
         setIsSaving(true);
 
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL}/api/pirs/draft`, {
+            await api.post('/api/pirs/draft', {
                 program_title: program,
                 quarter: quarterString,
                 program_owner: owner,
@@ -514,7 +554,7 @@ export default function App() {
                         recommendations: factors[type]?.recommendations ?? '',
                     }])
                 ),
-            }, { withCredentials: true });
+            });
         } catch (e) {
             console.error("Failed to save draft:", e);
         }
@@ -529,7 +569,43 @@ export default function App() {
     };
 
     // Clean up save timers on unmount
-    useEffect(() => () => clearTimeout(saveTimerRef.current), []);
+    useEffect(() => () => {
+        clearTimeout(saveTimerRef.current);
+        clearTimeout(autosaveTimerRef.current);
+    }, []);
+
+    useEffect(() => {
+        if (appMode !== 'wizard' && appMode !== 'full') return;
+        if (!program) return;
+
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = setTimeout(() => {
+            try {
+                const key = `pir_draft_${program}_${quarterString}`;
+                const snapshot = {
+                    program,
+                    quarter: quarterString,
+                    school,
+                    owner,
+                    budgetFromDivision,
+                    budgetFromCoPSF,
+                    functionalDivision,
+                    indicatorQuarterlyTargets: indicatorTargets,
+                    actionItems,
+                    activities,
+                    factors,
+                    savedAt: new Date().toISOString()
+                };
+                localStorage.setItem(key, JSON.stringify(snapshot));
+                setLastAutoSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                setTimeout(() => setLastAutoSavedTime(null), 3000);
+            } catch {
+                // Ignore local storage failures.
+            }
+        }, 15000);
+
+        return () => clearTimeout(autosaveTimerRef.current);
+    }, [appMode, program, quarterString, school, owner, budgetFromDivision, budgetFromCoPSF, functionalDivision, indicatorTargets, actionItems, activities, factors]);
 
     // Draft state is already loaded from the server in the init useEffect above
 
@@ -667,33 +743,28 @@ export default function App() {
 
         try {
             if (isEditing && pirId) {
-                await axios.put(
-                    `${import.meta.env.VITE_API_URL}/api/pirs/${pirId}`,
-                    pirBody,
-                    { withCredentials: true }
-                );
+                await api.put(`/api/pirs/${pirId}`, pirBody);
                 setIsEditing(false);
                 setModal({
                     isOpen: true,
                     type: 'success',
-                    title: 'PIR Updated!',
-                    message: 'Your changes have been saved and re-submitted for review.',
+                    title: 'PIR updated',
+                    message: 'Your changes have been saved and sent back for review.',
                     confirmText: 'View Submission',
-                    onConfirm: () => { closeModal(); handleStart('readonly', program); }
+                    onConfirm: () => { closeModal(); handleStart('readonly', program); },
+                    hideCancelButton: true,
+                    extraAction: { text: 'Back to Dashboard', onClick: () => { closeModal(); navigate('/'); } }
                 });
             } else {
-                await axios.post(
-                    `${import.meta.env.VITE_API_URL}/api/pirs`,
-                    pirBody,
-                    { withCredentials: true }
-                );
+                await api.post('/api/pirs', pirBody);
                 setIsSubmitted(true);
+                localStorage.removeItem(`pir_draft_${program}_${quarterString}`);
                 // Draft is promoted to Submitted in the backend — no separate delete needed
                 setModal({
                     isOpen: true,
                     type: 'success',
-                    title: 'Success!',
-                    message: 'The QPIR document has been saved to the database.',
+                    title: 'PIR submitted',
+                    message: 'Your PIR - Quarterly Report has been submitted. You can review it from your submission history.',
                     confirmText: 'View Submission',
                     onConfirm: () => { closeModal(); handleStart('readonly', program); },
                     hideCancelButton: true,
@@ -706,9 +777,9 @@ export default function App() {
             setModal({
                 isOpen: true,
                 type: 'warning',
-                title: isWindowError ? 'Submission Window Closed' : isEditing ? 'Update Failed' : 'Submission Failed',
-                message: getFriendlyError(error.response?.data?.error, 'An error occurred while saving the PIR. Please ensure the associated AIP exists.'),
-                confirmText: 'Dismiss',
+                title: isWindowError ? 'Submission window closed' : isEditing ? "We couldn't update this PIR" : "We couldn't submit this PIR",
+                message: error.friendlyMessage ?? 'Please try again. Make sure the related AIP has already been submitted.',
+                confirmText: 'Close',
                 onConfirm: closeModal
             });
         }
@@ -718,6 +789,8 @@ export default function App() {
     // RENDER APPLICATION WITH TRANSITIONS
     // ==========================================
     if (isLoading) return <PageLoader message="Loading PIR..." />;
+
+    const showWizardStickyNav = appMode === 'wizard' && isMobile;
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-dark-base">
@@ -834,6 +907,7 @@ export default function App() {
                                 isSaving={isSaving}
                                 isSaved={isSaved}
                                 lastSavedTime={lastSavedTime}
+                                lastAutoSavedTime={lastAutoSavedTime}
                                 theme="blue"
                                 appMode={appMode}
                                 toggleAppMode={() => {
@@ -908,7 +982,7 @@ export default function App() {
 
 
                             {/* MAIN CONTAINER */}
-                            <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0">
+                            <div className={`container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0 ${showWizardStickyNav ? 'pb-28' : ''}`}>
 
                                 {/* Independent Header Card (Wizard View) */}
                                 {appMode === 'wizard' && (
@@ -935,18 +1009,20 @@ export default function App() {
                                     {/* WIZARD MODE: STEPPER & CARDS */}
                                     {/* ============================================================== */}
                                     {appMode === 'wizard' && (
-                                        <WizardStepper
-                                            steps={[
-                                                { num: 1, label: "Profile" },
-                                                { num: 2, label: "Indicators" },
-                                                { num: 3, label: "M&E" },
-                                                { num: 4, label: "Factors" },
-                                                { num: 5, label: "Action Items" },
-                                                { num: 6, label: "Finalize" }
-                                            ]}
-                                            currentStep={currentStep}
-                                            theme="blue"
-                                        />
+                                        <div data-tour="form-step-nav">
+                                            <WizardStepper
+                                                steps={[
+                                                    { num: 1, label: "Profile" },
+                                                    { num: 2, label: "Indicators" },
+                                                    { num: 3, label: "M&E" },
+                                                    { num: 4, label: "Factors" },
+                                                    { num: 5, label: "Action Items" },
+                                                    { num: 6, label: "Finalize" }
+                                                ]}
+                                                currentStep={currentStep}
+                                                theme="blue"
+                                            />
+                                        </div>
                                     )}
 
                                     <form onSubmit={(e) => e.preventDefault()}>
@@ -1069,10 +1145,10 @@ export default function App() {
                                                     </div>
 
                                                     {appMode === 'wizard' && currentStep === 6 && (
-                                                        <div className="animate-in fade-in slide-in-from-bottom-4 duration-200 mt-6">
+                                                        <div data-tour="form-review-submit" className="animate-in fade-in slide-in-from-bottom-4 duration-200 mt-6">
                                                             <FinalizeCard
                                                                 isSubmitted={isSubmitted}
-                                                                onSubmit={handleConfirmSubmit}
+                                                                onSubmit={() => setShowFinalConfirm(true)}
                                                                 onPreview={() => setIsPreviewOpen(true)}
                                                                 theme="blue"
                                                                 submitLabel={isEditing ? "Save Changes" : undefined}
@@ -1082,7 +1158,7 @@ export default function App() {
                                                 </div>
 
                                                 {/* Navigation Buttons for Wizard Mode */}
-                                                {appMode === 'wizard' && (
+                                                {appMode === 'wizard' && !showWizardStickyNav && (
                                                     <div className="mt-12 pt-6 border-t border-slate-200 dark:border-dark-border flex justify-between items-center">
                                                         <button
                                                             type="button"
@@ -1114,7 +1190,7 @@ export default function App() {
 
                                                 {/* FINAL ACTION BUTTONS (Below Full Form Only) */}
                                                 {appMode === 'full' && (
-                                                    <div className="mt-12 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
+                                                    <div data-tour="form-review-submit" className="mt-12 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
                                                         <h3 className="text-slate-800 dark:text-slate-100 font-bold text-xl mb-6">Ready to finalize your review?</h3>
 
                                                         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
@@ -1129,7 +1205,7 @@ export default function App() {
 
                                                             <button
                                                                 type="button"
-                                                                onClick={handleConfirmSubmit}
+                                                                onClick={() => setShowFinalConfirm(true)}
                                                                 disabled={isSubmitted}
                                                                 className="inline-flex h-14 items-center justify-center rounded-2xl bg-blue-600 px-8 py-1 text-sm font-bold text-white transition-colors gap-3 hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-md"
                                                             >
@@ -1150,14 +1226,34 @@ export default function App() {
             </AnimatePresence>
             <ConfirmationModal
                 isOpen={modal.isOpen}
-                onClose={closeModal}
+                onClose={modal.onClose ?? closeModal}
                 onConfirm={modal.onConfirm}
                 type={modal.type}
                 title={modal.title}
                 message={modal.message}
                 confirmText={modal.confirmText}
+                cancelText={modal.cancelText}
                 hideCancelButton={modal.hideCancelButton}
                 extraAction={modal.extraAction}
+            />
+            <ConfirmationModal
+                isOpen={showFinalConfirm}
+                onClose={() => setShowFinalConfirm(false)}
+                onConfirm={() => { setShowFinalConfirm(false); handleConfirmSubmit(); }}
+                type="warning"
+                title={isEditing ? 'Save PIR changes?' : 'Submit this PIR?'}
+                message={isEditing ? 'Your updated PIR will stay in the review process after you save these changes.' : 'Your PIR will be sent for review after submission.'}
+                confirmText={isEditing ? 'Save changes' : 'Submit PIR'}
+                cancelText="Keep editing"
+            />
+            <WizardStickyNav
+                show={showWizardStickyNav}
+                theme="blue"
+                onPrevious={prevStep}
+                onNext={currentStep < totalSteps ? nextStep : () => setShowFinalConfirm(true)}
+                previousDisabled={currentStep === 1}
+                nextLabel={currentStep < totalSteps ? 'Continue' : isEditing ? 'Save Changes' : 'Submit PIR'}
+                showNext
             />
         </div>
     );

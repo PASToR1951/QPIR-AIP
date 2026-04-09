@@ -185,17 +185,17 @@ export const ViewModeSelector = ({
                 <div className="relative z-10 container mx-auto px-6 py-14 flex flex-col items-center">
 
                     {/* Header */}
-                    <div className="text-center mb-9 max-w-md">
+                    <div data-tour="form-program-selector" className="text-center mb-9 max-w-md">
                         <p className={`text-xs font-black uppercase tracking-[0.2em] mb-3 ${c.accent}`}>
-                            {theme === 'blue' ? 'PIR Form' : 'AIP Form'}
+                            {theme === 'blue' ? 'PIR - Quarterly Report' : 'AIP - Annual Plan'}
                         </p>
                         <h1 className="text-4xl md:text-[2.75rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-100 leading-tight mb-3">
                             Select a Program
                         </h1>
                         <p className="text-slate-600 dark:text-slate-200 text-sm leading-relaxed drop-shadow-sm">
                             {theme === 'blue'
-                                ? 'Only programs with a submitted AIP are available.'
-                                : 'Choose the DepEd program this plan is aligned to.'}
+                                ? 'Only programs with a submitted AIP are available for quarterly reporting.'
+                                : 'Choose the DepEd program this annual plan belongs to.'}
                         </p>
                     </div>
 

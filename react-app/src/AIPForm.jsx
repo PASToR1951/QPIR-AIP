@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import axios from 'axios';
 
-import { auth } from './lib/auth';
-import { getFriendlyError } from './lib/errorMessages.js';
+import api from './lib/api.js';
 import { Input } from './components/ui/Input';
 import { Select } from './components/ui/Select';
 import { TextareaAuto } from './components/ui/TextareaAuto';
@@ -20,6 +18,7 @@ import WizardStepper from './components/ui/WizardStepper';
 import SectionHeader from './components/ui/SectionHeader';
 import SignatureBlock from './components/ui/SignatureBlock';
 import FinalizeCard from './components/ui/FinalizeCard';
+import WizardStickyNav from './components/ui/WizardStickyNav';
 
 import AIPProfileSection from './components/forms/aip/AIPProfileSection';
 import AIPGoalsTargetsSection from './components/forms/aip/AIPGoalsTargetsSection';
@@ -197,11 +196,11 @@ export default function App() {
             try {
                 const schoolOrUserId = user?.school_id || user?.id;
                 const requests = [
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs`, { withCredentials: true }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/programs/with-aips`, { withCredentials: true }),
-                    axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, { withCredentials: true }),
-                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/coordinators`, { withCredentials: true }) : Promise.resolve(null),
-                    schoolOrUserId ? axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${schoolOrUserId}/persons-terms`, { withCredentials: true }) : Promise.resolve(null),
+                    api.get('/api/programs'),
+                    api.get('/api/programs/with-aips'),
+                    api.get('/api/aips/draft'),
+                    schoolOrUserId ? api.get(`/api/schools/${schoolOrUserId}/coordinators`) : Promise.resolve(null),
+                    schoolOrUserId ? api.get(`/api/schools/${schoolOrUserId}/persons-terms`) : Promise.resolve(null),
                 ];
                 const results = await Promise.allSettled(requests);
                 const [programsRes, completedRes, draftRes, coordsRes, termsRes] = results;
@@ -211,17 +210,12 @@ export default function App() {
                     setProgramAbbreviations(Object.fromEntries(pdata.filter(p => p.abbreviation).map(p => [p.title, p.abbreviation])));
                 } else {
                     const status = programsRes.reason?.response?.status;
-                    if (status === 401) {
-                        void auth.clearSession();
-                        navigate('/login?message=' + encodeURIComponent('Your session has expired. Please sign in again.'), { replace: true });
-                        return;
-                    }
-                    setLoadError(getFriendlyError(
-                        programsRes.reason?.response?.data?.error,
+                    setLoadError(
+                        programsRes.reason?.friendlyMessage ??
                         status === 403
                             ? 'You do not have permission to load programs for this account.'
                             : 'Programs could not be loaded. Please refresh and try again.'
-                    ));
+                    );
                 }
                 if (completedRes.status === 'fulfilled') {
                     const data = completedRes.value.data;
@@ -248,10 +242,7 @@ export default function App() {
         if (mode === 'readonly') {
             try {
                 const year = new Date().getFullYear();
-                const res = await axios.get(
-                    `${import.meta.env.VITE_API_URL}/api/aips`,
-                    { params: { program_title: selectedProgram, year }, withCredentials: true }
-                );
+                const res = await api.get('/api/aips', { params: { program_title: selectedProgram, year } });
                 const d = res.data;
                 setAipId(d.id ?? null);
                 setAipStatus(d.status ?? null);
@@ -269,7 +260,7 @@ export default function App() {
                 if (d.activities) setActivities(d.activities);
             } catch (e) {
                 console.error('Failed to load AIP data:', e);
-                setLoadError(e?.response?.data?.error || 'Failed to load the AIP. Please try again.');
+                setLoadError(e?.friendlyMessage ?? 'Failed to load the AIP. Please try again.');
                 return; // stay on splash
             }
             setAppMode('readonly');
@@ -287,10 +278,10 @@ export default function App() {
                 setModal({
                     isOpen: true,
                     type: 'warning',
-                    title: 'Restore Auto-Save?',
-                    message: `An auto-saved draft was found from ${new Date(lsData.savedAt).toLocaleString()}. Restore it?${hasServerDraft ? ' Or discard it to load your last saved draft instead.' : ''}`,
-                    confirmText: 'Yes, Restore',
-                    cancelText: hasServerDraft ? 'No, Load Saved Draft' : 'Cancel',
+                    title: 'Continue your saved draft?',
+                    message: `We found an auto-saved draft from ${new Date(lsData.savedAt).toLocaleString()}. Continue from that draft?${hasServerDraft ? ' You can also skip it and open your last saved draft instead.' : ''}`,
+                    confirmText: 'Continue draft',
+                    cancelText: hasServerDraft ? 'Open saved draft' : 'Start fresh',
                     onConfirm: () => {
                         loadDraftIntoState(lsData);
                         closeModal();
@@ -303,10 +294,9 @@ export default function App() {
                         if (hasServerDraft) {
                             try {
                                 const currentYear = parseInt(year);
-                                const draftRes = await axios.get(
-                                    `${import.meta.env.VITE_API_URL}/api/aips/draft`,
-                                    { params: { program_title: selectedProgram, year: currentYear }, withCredentials: true }
-                                );
+                                const draftRes = await api.get('/api/aips/draft', {
+                                    params: { program_title: selectedProgram, year: currentYear },
+                                });
                                 if (draftRes.data.hasDraft) loadDraftIntoState(draftRes.data.draftData);
                             } catch { /* proceed with blank form */ }
                         }
@@ -322,10 +312,9 @@ export default function App() {
         if (draftPrograms.includes(selectedProgram)) {
             try {
                 const currentYear = parseInt(year);
-                const draftRes = await axios.get(
-                    `${import.meta.env.VITE_API_URL}/api/aips/draft`,
-                    { params: { program_title: selectedProgram, year: currentYear }, withCredentials: true }
-                );
+                const draftRes = await api.get('/api/aips/draft', {
+                    params: { program_title: selectedProgram, year: currentYear },
+                });
                 if (draftRes.data.hasDraft) loadDraftIntoState(draftRes.data.draftData);
             } catch { /* proceed with blank form */ }
         }
@@ -433,7 +422,7 @@ export default function App() {
         setIsSaving(true);
 
         try {
-            await axios.post(`${import.meta.env.VITE_API_URL}/api/aips/draft`, {
+            await api.post('/api/aips/draft', {
                 program_title: depedProgram,
                 year: parseInt(year),
                 outcome,
@@ -446,7 +435,7 @@ export default function App() {
                 approved_by_name: approvedByName,
                 approved_by_title: approvedByTitle,
                 activities
-            }, { withCredentials: true });
+            });
             localStorage.removeItem(`aip_draft_${depedProgram}_${year}`);
         } catch (e) {
         }
@@ -616,10 +605,7 @@ export default function App() {
                 const currentYear = parseInt(year);
                 const results = await Promise.allSettled(
                     programsToDelete.map(prog =>
-                        axios.delete(`${import.meta.env.VITE_API_URL}/api/aips`, {
-                            params: { program_title: prog, year: currentYear },
-                            withCredentials: true
-                        })
+                        api.delete('/api/aips', { params: { program_title: prog, year: currentYear } })
                     )
                 );
                 const deleted = programsToDelete.filter((_, i) => results[i].status === 'fulfilled');
@@ -650,10 +636,7 @@ export default function App() {
             onConfirm: async () => {
                 closeModal();
                 try {
-                    await axios.delete(
-                        `${import.meta.env.VITE_API_URL}/api/aips`,
-                        { params: { program_title: depedProgram, year }, withCredentials: true }
-                    );
+                    await api.delete('/api/aips', { params: { program_title: depedProgram, year } });
                     setCompletedPrograms(prev => prev.filter(p => p !== depedProgram));
                     setReturnedPrograms(prev => prev.filter(p => p !== depedProgram));
                     setDraftPrograms(prev => prev.filter(p => p !== depedProgram));
@@ -664,9 +647,9 @@ export default function App() {
                     setModal({
                         isOpen: true,
                         type: 'warning',
-                        title: 'Deletion Failed',
-                        message: getFriendlyError(error.response?.data?.error, 'An error occurred while deleting the AIP. Please try again.'),
-                        confirmText: 'Dismiss',
+                        title: "We couldn't delete this AIP",
+                        message: error.friendlyMessage ?? 'Please try again. If the problem continues, contact SDO IT.',
+                        confirmText: 'Close',
                         onConfirm: closeModal
                     });
                 }
@@ -678,17 +661,17 @@ export default function App() {
         const filledActivities = activities.filter(a => a.name.trim() !== '');
 
         const validationErrors = [];
-        if (!outcome) validationErrors.push('Outcome Category is required.');
-        if (!sipTitle.trim()) validationErrors.push('SIP Title is required.');
-        if (filledActivities.length === 0) validationErrors.push('At least one activity with a name is required.');
+        if (!outcome) validationErrors.push('Please choose an Outcome Category.');
+        if (!sipTitle.trim()) validationErrors.push('Please enter a SIP Title.');
+        if (filledActivities.length === 0) validationErrors.push('Add at least one activity before submitting.');
 
         if (validationErrors.length > 0) {
             setModal({
                 isOpen: true,
                 type: 'warning',
-                title: 'Required Fields Missing',
+                title: 'Complete the required fields',
                 message: validationErrors.join(' '),
-                confirmText: 'OK',
+                confirmText: 'Review form',
                 onConfirm: closeModal
             });
             return;
@@ -711,49 +694,41 @@ export default function App() {
 
         try {
             if (isEditing && aipId) {
-                await axios.put(
-                    `${import.meta.env.VITE_API_URL}/api/aips/${aipId}`,
-                    aipBody,
-                    { withCredentials: true }
-                );
+                await api.put(`/api/aips/${aipId}`, aipBody);
                 setIsEditing(false);
                 setAipStatus('Submitted');
                 setModal({
                     isOpen: true,
                     type: 'success',
-                    title: 'AIP Updated!',
-                    message: 'Your changes have been saved.',
+                    title: 'AIP updated',
+                    message: 'Your changes have been saved and sent back for review.',
                     confirmText: 'View Submission',
                     onConfirm: () => { closeModal(); setAppMode('readonly'); setSearchParams({ program: depedProgram, mode: 'readonly' }, { replace: true }); },
                     hideCancelButton: true,
                     extraAction: { text: 'Back to Dashboard', onClick: () => { closeModal(); navigate('/'); } }
                 });
             } else {
-                await axios.post(
-                    `${import.meta.env.VITE_API_URL}/api/aips`,
-                    aipBody,
-                    { withCredentials: true }
-                );
+                await api.post('/api/aips', aipBody);
                 setIsSubmitted(true);
                 localStorage.removeItem(`aip_draft_${depedProgram}_${year}`);
                 setModal({
                     isOpen: true,
                     type: 'success',
-                    title: 'Success!',
-                    message: 'The Annual Implementation Plan has been saved to the database.',
-                    confirmText: 'Back to Dashboard',
-                    onConfirm: () => { closeModal(); navigate('/'); },
+                    title: 'AIP submitted',
+                    message: 'Your AIP - Annual Plan has been submitted. You can review it from your submission history.',
+                    confirmText: 'View Submission',
+                    onConfirm: () => { closeModal(); setAppMode('readonly'); setSearchParams({ program: depedProgram, mode: 'readonly' }, { replace: true }); },
                     hideCancelButton: true,
-                    extraAction: { text: 'View Programs', onClick: () => { closeModal(); navigate('/aip'); } }
+                    extraAction: { text: 'Back to Dashboard', onClick: () => { closeModal(); navigate('/'); } }
                 });
             }
         } catch (error) {
             setModal({
                 isOpen: true,
                 type: 'warning',
-                title: isEditing ? 'Update Failed' : 'Submission Failed',
-                message: getFriendlyError(error.response?.data?.error, 'An error occurred while saving the AIP. Please try again.'),
-                confirmText: 'Dismiss',
+                title: isEditing ? "We couldn't update this AIP" : "We couldn't submit this AIP",
+                message: error.friendlyMessage ?? 'Please try again. If the problem continues, contact SDO IT.',
+                confirmText: 'Close',
                 onConfirm: closeModal
             });
         }
@@ -763,6 +738,8 @@ export default function App() {
     // RENDER APPLICATION WITH TRANSITIONS
     // ==========================================
     if (isLoading) return <PageLoader message="Loading AIP..." />;
+
+    const showWizardStickyNav = appMode === 'wizard' && isMobile;
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-dark-base">
@@ -783,10 +760,10 @@ export default function App() {
             onClose={() => setShowFinalConfirm(false)}
             onConfirm={() => { setShowFinalConfirm(false); handleConfirmSubmit(); }}
             type="warning"
-            title="Submit AIP — Final Confirmation"
-            message={isEditing ? "Save your changes to this AIP? It will remain in the review queue." : "Submit this AIP for review? You can still edit it while it is pending review."}
-            confirmText={isEditing ? "Yes, Save Changes" : "Yes, Submit"}
-            cancelText="Cancel"
+            title={isEditing ? 'Save AIP changes?' : 'Submit this AIP?'}
+            message={isEditing ? 'Your updated AIP will stay in the review process after you save these changes.' : 'Your AIP will be sent for review after submission. You can still edit it while it is pending.'}
+            confirmText={isEditing ? 'Save changes' : 'Submit AIP'}
+            cancelText="Keep editing"
         />
         {toast && (
             <button
@@ -998,7 +975,7 @@ export default function App() {
 
 
             {/* MAIN CONTAINER */}
-            <div className="container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0">
+            <div className={`container mx-auto max-w-5xl relative z-10 mt-8 mb-12 print:hidden px-4 md:px-0 ${showWizardStickyNav ? 'pb-28' : ''}`}>
 
                 {/* Independent Header Card (Wizard View) */}
                 {appMode === 'wizard' && (
@@ -1023,18 +1000,20 @@ export default function App() {
                     {/* WIZARD MODE: STEPPER */}
                     {/* ============================================================== */}
                     {appMode === 'wizard' && (
-                        <WizardStepper 
-                            steps={[
-                                { num: 1, label: "Alignment" },
-                                { num: 2, label: "Targets" },
-                                { num: 3, label: "Action Plan" },
-                                { num: 4, label: "M&E" },
-                                { num: 5, label: "Signatures" },
-                                { num: 6, label: "Finalize" }
-                            ]}
-                            currentStep={currentStep}
-                            theme="pink"
-                        />
+                        <div data-tour="form-step-nav">
+                            <WizardStepper 
+                                steps={[
+                                    { num: 1, label: "Alignment" },
+                                    { num: 2, label: "Targets" },
+                                    { num: 3, label: "Action Plan" },
+                                    { num: 4, label: "M&E" },
+                                    { num: 5, label: "Signatures" },
+                                    { num: 6, label: "Finalize" }
+                                ]}
+                                currentStep={currentStep}
+                                theme="pink"
+                            />
+                        </div>
                     )}
 
                     <form onSubmit={(e) => e.preventDefault()}>
@@ -1151,12 +1130,15 @@ export default function App() {
                             {(appMode === 'full' || currentStep === 6) && (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-200">
                                     {appMode === 'wizard' && (
-                                        <FinalizeCard 
-                                            isSubmitted={isSubmitted} 
-                                            onSubmit={handleConfirmSubmit} 
-                                            onPreview={() => setIsPreviewOpen(true)}
-                                            theme="pink" 
-                                        />
+                                        <div data-tour="form-review-submit">
+                                            <FinalizeCard 
+                                                isSubmitted={isSubmitted} 
+                                                onSubmit={() => setShowFinalConfirm(true)}
+                                                onPreview={() => setIsPreviewOpen(true)}
+                                                theme="pink" 
+                                                submitLabel={isEditing ? 'Save Changes' : undefined}
+                                            />
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -1165,7 +1147,7 @@ export default function App() {
                         {/* ======================================================== */}
                         {/* WIZARD MODE: NAVIGATION BUTTONS (Back / Continue)       */}
                         {/* ======================================================== */}
-                        {appMode === 'wizard' && (
+                        {appMode === 'wizard' && !showWizardStickyNav && (
                             <div className="mt-12 flex justify-between items-center pt-6 border-t border-slate-200 dark:border-dark-border">
                                 <button
                                     type="button"
@@ -1191,7 +1173,7 @@ export default function App() {
                         )}
                         {/* FINAL ACTION BUTTONS (Below Full Form Only) */}
                         {appMode === 'full' && (
-                            <div className="print:hidden mt-12 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
+                            <div data-tour="form-review-submit" className="print:hidden mt-12 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
                                 <h3 className="text-slate-800 dark:text-slate-100 font-bold text-xl mb-6">Ready to finalize your plan?</h3>
 
                                 <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
@@ -1223,6 +1205,15 @@ export default function App() {
             </div>
 
         </div>
+        <WizardStickyNav
+            show={showWizardStickyNav}
+            theme="pink"
+            onPrevious={prevStep}
+            onNext={currentStep < totalSteps ? nextStep : () => setShowFinalConfirm(true)}
+            previousDisabled={currentStep === 1}
+            nextLabel={currentStep < totalSteps ? 'Continue' : isEditing ? 'Save Changes' : 'Submit AIP'}
+            showNext
+        />
                 </motion.div>
             )}
         </AnimatePresence>

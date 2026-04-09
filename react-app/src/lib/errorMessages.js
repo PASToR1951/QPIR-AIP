@@ -162,7 +162,7 @@ const EXACT_MAP = {
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
   'Login failed':
-    'Sign-in failed due to an unexpected error. Please try again.',
+    "We couldn't sign you in. Please check your details and try again.",
 
   // ── System / rate limiting ───────────────────────────────────────────────────
   'Too many requests, please try again later.':

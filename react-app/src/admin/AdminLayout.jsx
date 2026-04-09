@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Outlet } from 'react-router-dom';
-import axios from 'axios';
 import { AdminSidebar } from './AdminSidebar.jsx';
 import { AdminTopBar } from './AdminTopBar.jsx';
+import HelpLauncher from '../components/ui/HelpLauncher.jsx';
+import api, { API } from '../lib/api.js';
 import { mergeNotifications } from '../lib/notifications.js';
 import { auth } from '../lib/auth.js';
 import { SSE_INITIAL_RETRY_MS, SSE_MAX_RETRY_MS } from '../constants.js';
-
-const API = import.meta.env.VITE_API_URL;
 
 
 export const AdminLayout = () => {
@@ -17,29 +16,23 @@ export const AdminLayout = () => {
   const [notifications, setNotifications] = useState([]);
 
   const redirectToLogin = useCallback(() => {
-    auth.clearSession();
+    void auth.clearSession();
     navigate('/login', { replace: true });
   }, [navigate]);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/layout-info`, { withCredentials: true })
+    api.get('/api/admin/layout-info')
       .then(r => setDeadline({ daysLeft: r.data.daysLeft, currentQuarter: r.data.currentQuarter }))
       .catch((err) => {
-        if (err?.response?.status === 401) {
-          redirectToLogin();
-          return;
-        }
         console.warn('[layout-info]', err?.response?.status);
       });
-  }, [redirectToLogin]);
+  }, []);
 
   const fetchNotifications = useCallback(() => {
-    axios.get(`${API}/api/notifications`, { withCredentials: true })
+    api.get('/api/notifications')
       .then(r => setNotifications(mergeNotifications([], r.data)))
-      .catch(err => {
-        if (err?.response?.status === 401) redirectToLogin();
-      });
-  }, [redirectToLogin]);
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetchNotifications();
@@ -116,14 +109,14 @@ export const AdminLayout = () => {
 
   const markOne = async (id) => {
     try {
-      await axios.patch(`${API}/api/notifications/${id}/read`, {}, { withCredentials: true });
+      await api.patch(`/api/notifications/${id}/read`);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch { /* silent */ }
   };
 
   const markAll = async () => {
     try {
-      await axios.patch(`${API}/api/notifications/read-all`, {}, { withCredentials: true });
+      await api.patch('/api/notifications/read-all');
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch { /* silent */ }
   };
@@ -132,8 +125,7 @@ export const AdminLayout = () => {
 
   const handleLogout = () => {
     navigate('/login', { replace: true });
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('user');
+    void auth.clearSession();
   };
 
   return (
@@ -158,10 +150,11 @@ export const AdminLayout = () => {
           markOne={markOne}
           markAll={markAll}
         />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 relative">
+        <main data-tour="admin-workspace" className="flex-1 overflow-y-auto p-4 md:p-6 relative">
           <Outlet />
         </main>
       </div>
+      <HelpLauncher />
     </div>
   );
 };

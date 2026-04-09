@@ -1,11 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import axios from 'axios';
+import api from '../lib/api.js';
 import { MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 import { EndOfListCue } from '../components/ui/EndOfListCue';
 import { shouldShowEndOfListCue } from '../components/ui/endOfListCue';
-
-const API = import.meta.env.VITE_API_URL;
-
 
 const QUARTERS = ['1st', '2nd', '3rd', '4th'];
 const currentQ = Math.ceil((new Date().getMonth() + 1) / 3);
@@ -43,7 +40,7 @@ export default function ClusterHeadDashboard() {
   const fetchPIRs = useCallback(() => {
     setLoading(true);
     const params = quarter ? `?quarter=${encodeURIComponent(quarter)}` : '';
-    axios.get(`${API}/api/admin/cluster-head/pirs${params}`, { withCredentials: true })
+    api.get(`/api/admin/cluster-head/pirs${params}`)
       .then(r => setPirs(r.data))
       .catch(() => setPirs([]))
       .finally(() => setLoading(false));
@@ -78,14 +75,14 @@ export default function ClusterHeadDashboard() {
     // Start 3-minute timer if not already Under Review
     if (pir.status !== 'Under Review' && startReviewFiredRef.current !== pir.id) {
       stopTimer();
-      setReviewCountdown(3 * 60);
-      countdownRef.current = setInterval(() => {
-        setReviewCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(countdownRef.current);
-            if (startReviewFiredRef.current !== pir.id) {
-              startReviewFiredRef.current = pir.id;
-              axios.post(`${API}/api/admin/cluster-head/pirs/${pir.id}/start-review`, {}, { withCredentials: true })
+        setReviewCountdown(3 * 60);
+        countdownRef.current = setInterval(() => {
+          setReviewCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(countdownRef.current);
+              if (startReviewFiredRef.current !== pir.id) {
+                startReviewFiredRef.current = pir.id;
+                api.post(`/api/admin/cluster-head/pirs/${pir.id}/start-review`, {})
                 .then(() => setUnderReviewPirId(pir.id))
                 .catch(() => {});
             }
@@ -108,15 +105,15 @@ export default function ClusterHeadDashboard() {
     setError('');
     try {
       const endpoint = modal.type === 'note'
-        ? `${API}/api/admin/cluster-head/pirs/${modal.pirId}/note`
-        : `${API}/api/admin/cluster-head/pirs/${modal.pirId}/return`;
-      await axios.post(endpoint, { remarks }, { withCredentials: true });
+        ? `/api/admin/cluster-head/pirs/${modal.pirId}/note`
+        : `/api/admin/cluster-head/pirs/${modal.pirId}/return`;
+      await api.post(endpoint, { remarks });
       setUnderReviewPirId(null);
       startReviewFiredRef.current = null;
       setModal(null);
       fetchPIRs();
     } catch (err) {
-      setError(err?.response?.data?.error ?? 'Action failed. Please try again.');
+      setError(err.friendlyMessage ?? 'Action failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -134,7 +131,7 @@ export default function ClusterHeadDashboard() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div data-tour="cluster-filters" className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1 max-w-xs">
           <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -157,7 +154,7 @@ export default function ClusterHeadDashboard() {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-dark-border overflow-hidden shadow-sm">
+      <div data-tour="cluster-queue" className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-dark-border overflow-hidden shadow-sm">
         {loading ? (
           <div className="p-12 flex justify-center">
             <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-amber-500 animate-spin" />

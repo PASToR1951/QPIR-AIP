@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../lib/api.js';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { ResponsivePie } from '@nivo/pie';
 
@@ -21,9 +21,6 @@ const staggerContainer = {
 import { Buildings, BookOpen, Eye, ChartBar, ChartDonut, ArrowRight, Users, UserCircle, Warning, ClockCountdown, CaretDown, CaretUp, Info, ClockCounterClockwise, Notification } from '@phosphor-icons/react';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { SchoolAvatar } from '../../components/ui/SchoolAvatar.jsx';
-
-const API = import.meta.env.VITE_API_URL;
-
 
 const CHART_COLORS = ['#E94560', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316'];
 const BAR_COLORS = { Submitted: '#3b82f6', Approved: '#10b981', 'Under Review': '#f59e0b', Returned: '#E94560' };
@@ -357,7 +354,7 @@ export default function AdminOverview() {
   const nivoTheme = getNivoTheme(isDark);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/overview`, { withCredentials: true })
+    api.get('/api/admin/overview')
       .then(r => setData(r.data))
       .catch(e => { console.error(e); setFetchError('Failed to load dashboard data. Please refresh and try again.'); })
       .finally(() => setLoading(false));
@@ -443,6 +440,7 @@ export default function AdminOverview() {
         </div>
       ) : (
         <Motion.div
+          data-tour="admin-overview"
           className="space-y-6"
           variants={staggerContainer}
           initial="hidden"

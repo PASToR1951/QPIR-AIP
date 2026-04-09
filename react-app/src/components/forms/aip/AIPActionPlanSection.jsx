@@ -3,7 +3,7 @@ import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
 import FuzzyAutocomplete from '../../ui/FuzzyAutocomplete';
 
-export const AIP_PHASES = ["Planning", "Implementation", "Monitoring and Evaluation"];
+const AIP_PHASES = ["Planning", "Implementation", "Monitoring and Evaluation"];
 
 const MONTHS = [
     { value: 1, label: 'Jan' }, { value: 2, label: 'Feb' }, { value: 3, label: 'Mar' },
@@ -113,7 +113,7 @@ export default React.memo(function AIPActionPlanSection({
                                                         <button
                                                             type="button"
                                                             onClick={() => handleRemoveActivity(act.id)}
-                                                            className="text-slate-400 dark:text-slate-500 hover:text-red-500 transition-colors"
+                                                            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30 transition-colors"
                                                             title="Delete Activity"
                                                         >
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
@@ -187,7 +187,132 @@ export default React.memo(function AIPActionPlanSection({
 
             {/* FULL MODE: Table View */}
             {appMode === 'full' && (
-                <div className="overflow-x-auto pb-4">
+                <>
+                <div className="space-y-4 md:hidden">
+                    {AIP_PHASES.map((phase, pIdx) => {
+                        const phaseActivities = activities.filter(a => a.phase === phase);
+                        return (
+                            <div key={phase} className="rounded-3xl border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-base p-4 shadow-sm">
+                                <div className="mb-4 flex items-center gap-3">
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-pink-100 text-xs font-bold text-pink-700 dark:bg-pink-950/40 dark:text-pink-300">
+                                        {pIdx + 1}
+                                    </span>
+                                    <div>
+                                        <h3 className="text-sm font-black uppercase tracking-wider text-pink-800 dark:text-pink-300">{phase}</h3>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">Review and update each activity for this phase.</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {phaseActivities.map((act, aIdx) => (
+                                        <div key={act.id} className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface p-4 shadow-sm">
+                                            <div className="mb-3 flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                                                        {pIdx + 1}.{aIdx + 1}
+                                                    </p>
+                                                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Activity details</p>
+                                                </div>
+                                                {phaseActivities.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveActivity(act.id)}
+                                                        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30 transition-colors"
+                                                        title="Delete Activity"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Activity</label>
+                                                    <TextareaAuto
+                                                        placeholder="Describe activity..."
+                                                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-200"
+                                                        value={act.name}
+                                                        onChange={(e) => handleActivityChange(act.id, 'name', e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Implementation Period</label>
+                                                    <MonthRangePicker
+                                                        startMonth={act.periodStartMonth}
+                                                        endMonth={act.periodEndMonth}
+                                                        onStartChange={(v) => handleActivityChange(act.id, 'periodStartMonth', v)}
+                                                        onEndChange={(v) => handleActivityChange(act.id, 'periodEndMonth', v)}
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <FuzzyAutocomplete
+                                                        label="Persons Involved"
+                                                        placeholder="e.g. Teachers"
+                                                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-100"
+                                                        terms={personsTerms}
+                                                        value={act.persons}
+                                                        onChange={(v) => handleActivityChange(act.id, 'persons', v)}
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Outputs</label>
+                                                    <TextareaAuto
+                                                        placeholder="Expected output"
+                                                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-100"
+                                                        value={act.outputs}
+                                                        onChange={(e) => handleActivityChange(act.id, 'outputs', e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                    <div>
+                                                        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Amount</label>
+                                                        <div className="relative">
+                                                            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500">₱</span>
+                                                            <input
+                                                                type="text"
+                                                                inputMode="decimal"
+                                                                className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-7 pr-3 text-sm font-mono text-slate-800 transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-100"
+                                                                placeholder="0.00"
+                                                                value={act.budgetAmount}
+                                                                onChange={(e) => handleActivityChange(act.id, 'budgetAmount', e.target.value.replace(/[^0-9.]/g, ''))}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">Source</label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-100"
+                                                            placeholder="NONE"
+                                                            value={act.budgetSource}
+                                                            onChange={(e) => handleActivityChange(act.id, 'budgetSource', e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleAddActivityPhase(phase)}
+                                    className="mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-2xl bg-pink-50 px-4 py-2.5 text-sm font-bold text-pink-700 transition-colors hover:bg-pink-100 dark:bg-pink-950/30 dark:text-pink-300 dark:hover:bg-pink-900/30"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    Add Activity to {phase}
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto pb-4">
                     <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-visible min-w-[1000px]">
                         <table className="w-full border-collapse text-sm">
                             <thead>
@@ -257,7 +382,7 @@ export default React.memo(function AIPActionPlanSection({
                                                     </td>
                                                     <td className="border-none p-1 w-10 align-middle bg-white dark:bg-dark-surface">
                                                         {activities.filter(a => a.phase === act.phase).length > 1 && (
-                                                            <button type="button" onClick={() => handleRemoveActivity(act.id)} className="flex h-8 w-8 items-center justify-center mx-auto rounded-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500 shadow-sm hover:border-red-200 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 focus:outline-none transition-colors opacity-40 group-hover:opacity-100" title="Delete Row">
+                                                            <button type="button" onClick={() => handleRemoveActivity(act.id)} className="flex min-h-[44px] min-w-[44px] items-center justify-center mx-auto rounded-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border text-slate-400 dark:text-slate-500 shadow-sm hover:border-red-200 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 focus:outline-none transition-colors opacity-40 group-hover:opacity-100" title="Delete Row">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                                                             </button>
                                                         )}
@@ -294,6 +419,7 @@ export default React.memo(function AIPActionPlanSection({
                         </table>
                     </div>
                 </div>
+                </>
             )}
         </>
     );

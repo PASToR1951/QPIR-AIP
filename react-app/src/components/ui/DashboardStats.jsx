@@ -202,16 +202,16 @@ export function getActionPrompt(data, aipStatus) {
     const daysLeft = calculateDaysLeft(data.deadline);
 
     if (aipCompletion.completed === 0) {
-        return `Start by submitting your Annual Implementation Plan for FY ${new Date().getFullYear()}.`;
+        return `Start by submitting your AIP - Annual Plan for FY ${new Date().getFullYear()}.`;
     }
     if (pirSubmitted.total > 0 && pirSubmitted.submitted < pirSubmitted.total) {
-        return `Your Q${currentQuarter} review is due in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — submit your quarterly PIR.`;
+        return `Your Q${currentQuarter} PIR - Quarterly Report is due in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.`;
     }
     if (pirSubmitted.total === 0 && aipCompletion.completed > 0) {
-        return `No activities scheduled for Q${currentQuarter}. ${currentQuarter < 4 ? `Your next review opens in Q${currentQuarter + 1}.` : 'All quarters reviewed.'}`;
+        return `No activities are scheduled for Q${currentQuarter}. ${currentQuarter < 4 ? `Your next report opens in Q${currentQuarter + 1}.` : 'All quarters are complete.'}`;
     }
     if (pirSubmitted.submitted >= pirSubmitted.total && aipCompletion.completed >= aipCompletion.total) {
-        return `You're on track for Q${currentQuarter}. ${currentQuarter < 4 ? `Next review opens in Q${currentQuarter + 1}.` : 'Great work this year!'}`;
+        return `You are on track for Q${currentQuarter}. ${currentQuarter < 4 ? `Your next report opens in Q${currentQuarter + 1}.` : 'Great work this year.'}`;
     }
-    return `You are currently managing the planning and review cycle for FY ${new Date().getFullYear()}.`;
+    return `You are managing the planning and reporting cycle for FY ${new Date().getFullYear()}.`;
 }

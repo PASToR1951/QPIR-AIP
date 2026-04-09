@@ -88,7 +88,52 @@ export default React.memo(function PIRFactorsSection({
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto pb-2">
+                    <div className="space-y-4 pb-2 md:hidden">
+                        {FACTOR_TYPES.map((type) => (
+                            <div key={type} className="rounded-3xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface p-4 shadow-sm">
+                                <h3 className="mb-4 text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">{type}</h3>
+
+                                <div className={`grid grid-cols-1 gap-4 ${showRecommendations ? 'lg:grid-cols-3' : 'lg:grid-cols-2'}`}>
+                                    <div>
+                                        <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-emerald-600">Facilitating</label>
+                                        <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50 p-3 focus-within:border-emerald-300 dark:bg-dark-base">
+                                            <TextareaAuto
+                                                className="min-h-[70px] w-full bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
+                                                value={factors[type].facilitating}
+                                                onChange={(e) => handleFactorChange(type, 'facilitating', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-rose-600">Hindering</label>
+                                        <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50 p-3 focus-within:border-rose-300 dark:bg-dark-base">
+                                            <TextareaAuto
+                                                className="min-h-[70px] w-full bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
+                                                value={factors[type].hindering}
+                                                onChange={(e) => handleFactorChange(type, 'hindering', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {showRecommendations && (
+                                        <div>
+                                            <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-blue-600">Recommendations</label>
+                                            <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50 p-3 focus-within:border-blue-300 dark:bg-dark-base">
+                                                <TextareaAuto
+                                                    className="min-h-[70px] w-full bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
+                                                    value={factors[type].recommendations ?? ''}
+                                                    onChange={(e) => handleFactorChange(type, 'recommendations', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="hidden md:block overflow-x-auto pb-2">
                         <div className="border border-slate-200 dark:border-dark-border rounded-2xl bg-white dark:bg-dark-surface shadow-sm overflow-hidden min-w-[800px]">
                             <div className={`grid ${showRecommendations ? 'grid-cols-3' : 'grid-cols-2'} bg-slate-50 dark:bg-dark-base border-b border-slate-200 dark:border-dark-border font-bold text-center text-sm uppercase tracking-wider`}>
                                 <div className="p-3 border-r border-slate-200 dark:border-dark-border text-emerald-700">Facilitating Factors</div>

@@ -1,11 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone, LockKeyOpen, LockKey } from '@phosphor-icons/react';
+import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone, LockKeyOpen, LockKey, CalendarBlank } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
+import api, { API } from '../../lib/api.js';
 import { mergeNotifications } from '../../lib/notifications.js';
-
-const API = import.meta.env.VITE_API_URL;
 
 
 const TYPE_ICON = {
@@ -22,6 +20,7 @@ const TYPE_ICON = {
   announcement:            <Megaphone size={16} className="text-rose-400 shrink-0" />,
   aip_edit_approved:       <LockKeyOpen size={16} className="text-emerald-400 shrink-0" />,
   aip_edit_denied:         <LockKey size={16} className="text-red-400 shrink-0" />,
+  deadline_reminder:       <CalendarBlank size={16} className="text-sky-400 shrink-0" />,
 };
 
 function timeAgo(dateStr) {
@@ -80,8 +79,8 @@ export function NotificationBell() {
   })();
 
   const fetchNotifications = useCallback(() => {
-    axios
-      .get(`${API}/api/notifications`, { withCredentials: true })
+    api
+      .get('/api/notifications')
       .then(r => setNotifications(mergeNotifications([], r.data)))
       .catch(() => {});
   }, []);
@@ -156,14 +155,14 @@ export function NotificationBell() {
 
   const markOne = async (id) => {
     try {
-      await axios.patch(`${API}/api/notifications/${id}/read`, {}, { withCredentials: true });
+      await api.patch(`/api/notifications/${id}/read`);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch { /* silent */ }
   };
 
   const markAll = async () => {
     try {
-      await axios.patch(`${API}/api/notifications/read-all`, {}, { withCredentials: true });
+      await api.patch('/api/notifications/read-all');
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch { /* silent */ }
   };

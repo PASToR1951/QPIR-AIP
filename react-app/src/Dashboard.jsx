@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
 import { NotePencil, Table, LockKey as Lock, Warning as AlertTriangle, CaretCircleRight } from '@phosphor-icons/react';
 import { auth } from './lib/auth';
-import { getFriendlyError } from './lib/errorMessages.js';
+import api from './lib/api.js';
 import { DashboardHeader } from './components/ui/DashboardHeader';
 import { AnnouncementBanner } from './components/ui/AnnouncementBanner';
 import Footer from './components/ui/Footer';
@@ -70,9 +69,7 @@ export default function Dashboard() {
       setDashboardError('');
       try {
         // Fetch aggregated dashboard stats
-        const dashRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard`, {
-          withCredentials: true
-        });
+        const dashRes = await api.get('/api/dashboard');
         setDashboardData(dashRes.data);
 
         // Derive AIP card status from dashboard data + draft check
@@ -81,9 +78,7 @@ export default function Dashboard() {
           setAipStatus('review');
         } else {
           try {
-            const draftRes = await axios.get(`${import.meta.env.VITE_API_URL}/api/aips/draft`, {
-              withCredentials: true
-            });
+            const draftRes = await api.get('/api/aips/draft');
             setAipStatus(draftRes.data.hasDraft ? 'draft' : 'none');
           } catch {
             setAipStatus('none');
@@ -91,15 +86,7 @@ export default function Dashboard() {
         }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
-        if (error.response?.status === 401) {
-          void auth.clearSession();
-          navigate('/login?message=' + encodeURIComponent('Your session has expired. Please sign in again.'), { replace: true });
-          return;
-        }
-        setDashboardError(getFriendlyError(
-          error.response?.data?.error,
-          'Dashboard data could not be loaded. Please refresh and try again.'
-        ));
+        setDashboardError(error.friendlyMessage ?? 'Dashboard data could not be loaded. Please refresh and try again.');
       } finally {
         setDashboardLoading(false);
       }
@@ -126,16 +113,9 @@ export default function Dashboard() {
 
   const actionPrompt = dashboardData ? getActionPrompt(dashboardData, aipStatus) : '';
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     navigate('/login', { replace: true });
-    sessionStorage.removeItem('tokenExpiry');
-    sessionStorage.removeItem('user');
-    // Clear the HttpOnly cookie server-side
-    try {
-      await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
-        method: 'POST', credentials: 'include'
-      });
-    } catch { /* ignore network errors on logout */ }
+    void auth.clearSession();
   };
 
   return (
@@ -185,11 +165,7 @@ export default function Dashboard() {
                 </span>
               </h1>
 
-              <p className="text-slate-500 dark:text-slate-400 font-medium max-w-md text-sm md:text-base leading-relaxed mb-8">
-                You are currently managing the planning and review cycle for <span className="text-slate-900 dark:text-slate-100 font-bold">FY {new Date().getFullYear()}</span>.
-              </p>
-
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-auto">
+              <p data-tour="dashboard-action-prompt" className="text-sm font-semibold text-slate-500 dark:text-slate-400 mt-auto">
                 {dashboardLoading
                   ? <span className="inline-block w-64 h-4 bg-slate-200 dark:bg-dark-border/60 rounded animate-pulse" />
                   : actionPrompt
@@ -220,7 +196,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* AIP Card */}
-          <Link to="/aip" onMouseEnter={() => import('./AIPForm')} className="group block bg-white dark:bg-dark-surface rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 dark:border-dark-border hover:border-pink-200 dark:hover:border-pink-400 relative">
+          <Link data-tour="dashboard-aip-card" to="/aip" onMouseEnter={() => import('./AIPForm')} className="group block bg-white dark:bg-dark-surface rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 dark:border-dark-border hover:border-pink-200 dark:hover:border-pink-400 relative">
             <div className="absolute top-0 right-0 w-64 h-64 bg-pink-50 dark:bg-pink-950 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
 
             <div className="p-8 md:p-10 relative z-10 flex flex-col h-full">
@@ -243,13 +219,12 @@ export default function Dashboard() {
               </div>
 
               <div className="mt-auto">
-                <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:text-pink-600">AIP Form</h3>
+                <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:text-pink-600">AIP - Annual Plan</h3>
                 <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                  Annual Implementation Plan <br />
                   <span className="text-slate-400 dark:text-slate-500 text-sm md:text-base font-normal">
                     {dashboardData && dashboardData.aipCompletion.completed < dashboardData.aipCompletion.total
-                      ? `${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed} program${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed !== 1 ? 's' : ''} still need planning for FY ${new Date().getFullYear()}.`
-                      : 'Plan strategic objectives, target outputs, and allocate budget for the fiscal year.'
+                      ? `${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed} program${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed !== 1 ? 's still need planning' : ' still needs planning'} for FY ${new Date().getFullYear()}.`
+                      : 'Plan your objectives, activities, and budget for the fiscal year.'
                     }
                   </span>
                 </p>
@@ -269,7 +244,7 @@ export default function Dashboard() {
 
           {/* PIR Card */}
           {hasAIP ? (
-            <div className="group block bg-white dark:bg-dark-surface rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 dark:border-dark-border hover:border-blue-200 dark:hover:border-blue-400 relative">
+            <div data-tour="dashboard-pir-card" className="group block bg-white dark:bg-dark-surface rounded-[2rem] border-2 shadow-sm hover:shadow-xl transition-all duration-500 active:scale-[0.98] overflow-hidden border-slate-100 dark:border-dark-border hover:border-blue-200 dark:hover:border-blue-400 relative">
               <Link to="/pir" onMouseEnter={() => import('./PIRForm')} className="absolute inset-0 z-10"></Link>
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 dark:bg-blue-950 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none -mr-20 -mt-20"></div>
 
@@ -299,15 +274,14 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-auto">
-                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:text-blue-600">PIR Form</h3>
+                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:text-blue-600">PIR - Quarterly Report</h3>
                   <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
-                    Program Implementation Review <br />
                     <span className="text-slate-400 dark:text-slate-500 text-sm md:text-base font-normal">
                       {dashboardData && dashboardData.pirSubmitted.total > 0 && dashboardData.pirSubmitted.submitted < dashboardData.pirSubmitted.total
-                        ? `${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted} quarterly review${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted !== 1 ? 's' : ''} pending for Q${dashboardData.currentQuarter}.`
+                        ? `${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted} quarterly report${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted !== 1 ? 's are' : ' is'} still pending for Q${dashboardData.currentQuarter}.`
                         : dashboardData && dashboardData.pirSubmitted.total === 0
-                          ? `No activities scheduled this quarter. Check back next quarter.`
-                          : 'Report physical accomplishments and financial utilization per quarter.'
+                          ? `No activities are scheduled this quarter. Check back next quarter.`
+                          : 'Report your accomplishments and spending for the current quarter.'
                       }
                     </span>
                   </p>
@@ -325,7 +299,7 @@ export default function Dashboard() {
               </div>
             </div>
           ) : (
-            <div className="block bg-slate-50/50 dark:bg-dark-surface/50 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-dark-border relative overflow-hidden group">
+            <div data-tour="dashboard-pir-card" className="block bg-slate-50/50 dark:bg-dark-surface/50 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-dark-border relative overflow-hidden group">
               <div className="p-8 md:p-10 flex flex-col h-full opacity-60 grayscale transition-opacity group-hover:opacity-80">
                 <div className="flex justify-between items-start mb-12">
                   <div className="w-16 h-16 bg-white dark:bg-dark-border text-slate-400 dark:text-slate-500 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-dark-border shadow-sm">
@@ -338,15 +312,14 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-auto">
-                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3">PIR Form</h3>
+                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3">PIR - Quarterly Report</h3>
                   <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6">
-                    Program Implementation Review <br />
-                    <span className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-normal">Complete and submit your AIP first to unlock quarterly performance reviews.</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-normal">Submit your AIP first to unlock quarterly reports.</span>
                   </p>
 
                   <div className="inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 text-amber-700 border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm">
                     <AlertTriangle size={18} />
-                    AIP Submission Required
+                    Submit AIP first
                   </div>
                 </div>
               </div>

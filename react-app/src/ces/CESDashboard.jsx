@@ -1,12 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../lib/api.js';
 import { ArrowRight, MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 import { EndOfListCue } from '../components/ui/EndOfListCue';
 import { shouldShowEndOfListCue } from '../components/ui/endOfListCue';
-
-const API = import.meta.env.VITE_API_URL;
-
 
 const QUARTERS = ['1st', '2nd', '3rd', '4th'];
 const currentQ = Math.ceil((new Date().getMonth() + 1) / 3);
@@ -40,7 +37,7 @@ export default function CESDashboard() {
   const fetchPIRs = useCallback(() => {
     setLoading(true);
     const params = quarter ? `?quarter=${encodeURIComponent(quarter)}` : '';
-    axios.get(`${API}/api/admin/ces/pirs${params}`, { withCredentials: true })
+    api.get(`/api/admin/ces/pirs${params}`)
       .then(r => setPirs(r.data))
       .catch(() => setPirs([]))
       .finally(() => setLoading(false));
@@ -71,13 +68,13 @@ export default function CESDashboard() {
     setError('');
     try {
       const endpoint = modal.type === 'note'
-        ? `${API}/api/admin/ces/pirs/${modal.pirId}/note`
-        : `${API}/api/admin/ces/pirs/${modal.pirId}/return`;
-      await axios.post(endpoint, { ces_remarks: remarks }, { withCredentials: true });
+        ? `/api/admin/ces/pirs/${modal.pirId}/note`
+        : `/api/admin/ces/pirs/${modal.pirId}/return`;
+      await api.post(endpoint, { ces_remarks: remarks });
       setModal(null);
       fetchPIRs();
     } catch (err) {
-      setError(err?.response?.data?.error ?? 'Action failed. Please try again.');
+      setError(err.friendlyMessage ?? 'Action failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -95,7 +92,7 @@ export default function CESDashboard() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      <div data-tour="ces-filters" className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1 max-w-xs">
           <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -118,7 +115,7 @@ export default function CESDashboard() {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-dark-border overflow-hidden shadow-sm">
+      <div data-tour="ces-queue" className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-dark-border overflow-hidden shadow-sm">
         {loading ? (
           <div className="p-12 flex justify-center">
             <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-teal-500 animate-spin" />

@@ -41,7 +41,7 @@ const NAV_GROUPS = [
       { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Beta', adminOnly: true },
       { to: '/admin/backups',  label: 'Backups',     icon: Database, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminBackups.jsx') },
       { to: '/admin/settings', label: 'Settings',    icon: Gear, adminOnly: true, preload: () => import('./pages/AdminSettings.jsx') },
-      { to: '/manual',         label: 'User Manual', icon: BookOpenUserIcon, badge: 'Beta', adminOnly: true },
+      { to: '/getting-started', label: 'Getting Started', icon: BookOpenUserIcon, adminOnly: true, preload: () => import('../components/GettingStarted.jsx') },
     ],
   },
 ];
@@ -354,6 +354,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
 
       {/* Desktop sidebar */}
       <aside
+        data-tour="admin-sidebar"
         className={`hidden lg:flex flex-col ${glassClasses} h-screen sticky top-0 shrink-0 overflow-hidden w-[240px]`}
         style={glassShadow}
       >

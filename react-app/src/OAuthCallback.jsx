@@ -1,18 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { auth } from './lib/auth';
-
-const ERROR_MESSAGES = {
-  oauth_denied:          'You cancelled the sign-in request.',
-  domain_not_allowed:    'Only @deped.gov.ph accounts are allowed.',
-  account_pending:       'Your account is pending admin approval. Please contact your administrator.',
-  account_inactive:      'Your account has been deactivated. Please contact your administrator.',
-  invalid_state:         'Invalid sign-in session. Please try again.',
-  state_expired:         'Sign-in session expired. Please try again.',
-  token_exchange_failed: 'Could not complete sign-in. Please try again.',
-  oauth_misconfigured:   'This sign-in method is not yet configured. Please use email and password.',
-  oauth_error:           'An unexpected error occurred during sign-in. Please try again.',
-};
+import { getOAuthErrorMessage, LOGIN_COPY } from './lib/authCopy.js';
 
 function roleToDashboard(role) {
   if (auth.isAdminPanelRole(role)) return '/admin';
@@ -30,7 +19,7 @@ export default function OAuthCallback() {
     const error = searchParams.get('error');
 
     if (error) {
-      const message = ERROR_MESSAGES[error] ?? 'Sign-in failed. Please try again.';
+      const message = getOAuthErrorMessage(error);
       navigate(`/login?message=${encodeURIComponent(message)}`, { replace: true });
       return;
     }
@@ -41,8 +30,8 @@ export default function OAuthCallback() {
         navigate(roleToDashboard(user.role), { replace: true });
       })
       .catch(() => {
-        setStatusMessage('Sign-in failed. Redirecting…');
-        navigate('/login?message=' + encodeURIComponent('Sign-in failed. Please try again.'), {
+        setStatusMessage('Sign-in could not be completed. Redirecting…');
+        navigate('/login?message=' + encodeURIComponent(LOGIN_COPY.oauthRedirectError), {
           replace: true,
         });
       });

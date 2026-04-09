@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import axios from 'axios';
 import { ClockCounterClockwise, CaretDown, CaretUp, Eye, SpinnerGap, Tray, PencilSimple, CheckCircle } from '@phosphor-icons/react';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
 import { AIPDocument } from '../docs/AIPDocument';
@@ -7,8 +6,7 @@ import { PIRDocument } from '../docs/PIRDocument';
 import { StatusBadge } from '../../admin/components/StatusBadge';
 import { useTextMeasure } from '../../lib/useTextMeasure';
 import { EndOfListCue } from './EndOfListCue';
-
-const API = import.meta.env.VITE_API_URL;
+import api from '../../lib/api.js';
 
 const ROW_PADDING_Y = 40;
 const PIR_BUTTON_HEIGHT = 32;
@@ -58,7 +56,7 @@ export default function SubmissionsHistory() {
   }, [history, measureText]);
 
   useEffect(() => {
-    axios.get(`${API}/api/config`)
+    api.get('/api/config')
       .then(r => {
         setSupervisorName(r.data.supervisor_name ?? '');
         setSupervisorTitle(r.data.supervisor_title ?? '');
@@ -67,7 +65,7 @@ export default function SubmissionsHistory() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${API}/api/history`, { withCredentials: true })
+    api.get('/api/history')
       .then(r => {
         setHistory(r.data);
         const init = {};
@@ -90,9 +88,8 @@ export default function SubmissionsHistory() {
   const handlePreviewAIP = useCallback(async (programTitle, year) => {
     setPreviewLoading(true);
     try {
-      const { data: d } = await axios.get(`${API}/api/aips`, {
+      const { data: d } = await api.get('/api/aips', {
         params: { program_title: programTitle, year },
-        withCredentials: true,
       });
       setPreviewTitle('Annual Implementation Plan');
       setPreviewSubtitle(`${programTitle} — FY ${year}`);
@@ -122,9 +119,8 @@ export default function SubmissionsHistory() {
   const handlePreviewPIR = useCallback(async (programTitle, quarter) => {
     setPreviewLoading(true);
     try {
-      const { data: d } = await axios.get(`${API}/api/pirs`, {
+      const { data: d } = await api.get('/api/pirs', {
         params: { program_title: programTitle, quarter },
-        withCredentials: true,
       });
       setPreviewTitle('Program Implementation Review');
       setPreviewSubtitle(`${programTitle} — ${quarter}`);
@@ -155,7 +151,7 @@ export default function SubmissionsHistory() {
   const handleRequestEdit = useCallback(async (aipId) => {
     setRequestingEditId(aipId);
     try {
-      await axios.post(`${API}/api/aips/${aipId}/request-edit`, {}, { withCredentials: true });
+      await api.post(`/api/aips/${aipId}/request-edit`);
       setRequestedEditIds(prev => new Set(prev).add(aipId));
       setEditRequestToast('Edit request sent — an admin will be notified.');
       setTimeout(() => setEditRequestToast(null), 3500);
@@ -172,7 +168,7 @@ export default function SubmissionsHistory() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-8 px-2 mt-4">
+      <div data-tour="dashboard-submission-history" className="flex items-center justify-between mb-8 px-2 mt-4">
         <h2 className="text-sm font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-4">
           <ClockCounterClockwise size={16} />
           Submission History

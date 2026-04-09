@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { List as Menu, Bell, Check, ArrowBendUpLeft, NotePencil, FileText, ClipboardText, CheckCircle, HourglassMedium, PencilSimple, LockKeyOpen, LockKey, Megaphone } from '@phosphor-icons/react';
+import { List as Menu, Bell, Check, ArrowBendUpLeft, NotePencil, FileText, ClipboardText, CheckCircle, HourglassMedium, PencilSimple, LockKeyOpen, LockKey, Megaphone, CalendarBlank } from '@phosphor-icons/react';
 
 const PAGE_LABELS = {
   '/admin': 'Dashboard',
@@ -38,6 +38,7 @@ const NOTIF_ICON = {
   aip_edit_approved:       <LockKeyOpen size={15} className="text-emerald-400 shrink-0 mt-0.5" />,
   aip_edit_denied:         <LockKey size={15} className="text-red-400 shrink-0 mt-0.5" />,
   announcement:            <Megaphone size={15} className="text-rose-400 shrink-0 mt-0.5" />,
+  deadline_reminder:       <CalendarBlank size={15} className="text-sky-400 shrink-0 mt-0.5" />,
   submitted:               <CheckCircle size={15} className="text-slate-400 shrink-0 mt-0.5" />,
 };
 
@@ -98,6 +99,7 @@ export const AdminTopBar = ({ onMobileMenuToggle, notifications = [], markOne, m
       {/* Bell button — always visible on all pages and screen sizes */}
       <div className="relative" ref={dropRef}>
         <button
+          data-tour="admin-notifications"
           onClick={() => setOpen(o => !o)}
           className="relative w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-dark-border/40 transition-colors"
         >

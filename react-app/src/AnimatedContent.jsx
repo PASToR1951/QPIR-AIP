@@ -2,10 +2,11 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { useAccessibility } from './context/AccessibilityContext';
-import axios from 'axios';
+import api from './lib/api.js';
 import PageTransition from './components/ui/PageTransition';
 import FormBackground from './components/ui/FormBackground';
 import AccessibilityPanel from './components/ui/AccessibilityPanel';
+import HelpLauncher from './components/ui/HelpLauncher.jsx';
 import { auth } from './lib/auth';
 import Login from './Login';
 
@@ -17,6 +18,7 @@ const NotFound       = lazy(() => import('./NotFound'));
 const ErrorPage      = lazy(() => import('./ErrorPage'));
 const Changelog      = lazy(() => import('./components/Changelog'));
 const SystemDocs     = lazy(() => import('./components/SystemDocs'));
+const GettingStarted = lazy(() => import('./components/GettingStarted.jsx'));
 const FAQ            = lazy(() => import('./components/FAQ'));
 const PrivacyPolicy  = lazy(() => import('./components/PrivacyPolicy'));
 const OAuthCallback  = lazy(() => import('./OAuthCallback'));
@@ -160,10 +162,10 @@ const PIRRouteGuard = ({ children }) => {
       try {
         let dbExists = false;
         if (isDivisionPersonnel) {
-          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${user.id}/aip-status`, { withCredentials: true });
+          const res = await api.get(`/api/users/${user.id}/aip-status`);
           dbExists = res.data.hasAIP;
         } else if (user.school_id) {
-          const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/schools/${user.school_id}/aip-status`, { withCredentials: true });
+          const res = await api.get(`/api/schools/${user.school_id}/aip-status`);
           dbExists = res.data.hasAIP;
         }
         setHasAIP(dbExists);
@@ -253,6 +255,7 @@ export default function AnimatedContent() {
             <Route path="/oauth/callback" element={<OAuthCallback />} />
             <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
             <Route path="/docs" element={<PageTransition><SystemDocs /></PageTransition>} />
+            <Route path="/getting-started" element={<PageTransition><GettingStarted /></PageTransition>} />
             <Route path="/faq" element={<PageTransition><FAQ /></PageTransition>} />
             <Route path="/privacy" element={<PageTransition><PrivacyPolicy /></PageTransition>} />
 
@@ -299,6 +302,7 @@ export default function AnimatedContent() {
           </Routes>
         </AnimatePresence>
       </Suspense>
+      <HelpLauncher />
       <AccessibilityPanel />
     </MotionConfig>
   );

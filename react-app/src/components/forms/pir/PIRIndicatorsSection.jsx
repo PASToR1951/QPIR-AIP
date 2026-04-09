@@ -44,7 +44,37 @@ export default React.memo(function PIRIndicatorsSection({
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">You may continue to the next section.</p>
                 </div>
             ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="space-y-4 md:hidden">
+                    {indicatorTargets.map((ind, i) => (
+                        <div key={i} className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface p-4 shadow-sm">
+                            <div className="mb-3 flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Indicator {i + 1}</p>
+                                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{ind.description}</p>
+                                </div>
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-dark-base dark:text-slate-300">
+                                    Annual: {ind.annual_target ? `${ind.annual_target}%` : '—%'}
+                                </span>
+                            </div>
+
+                            <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                                This Quarter's Target
+                            </label>
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50 px-3 py-3 focus-within:border-blue-300 focus-within:bg-blue-50/40 dark:bg-dark-base dark:focus-within:bg-blue-950/10">
+                                <TextareaAuto
+                                    className="min-h-[40px] flex-1 bg-transparent text-sm font-medium text-slate-800 outline-none dark:text-slate-100"
+                                    placeholder="Enter quarterly target..."
+                                    value={ind.quarterly_target}
+                                    onChange={(e) => handleChange(i, e.target.value)}
+                                />
+                                <span className="shrink-0 text-sm font-bold text-slate-400 dark:text-slate-500">%</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto">
                     <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-hidden min-w-[600px]">
                         <div className="grid grid-cols-[1fr_140px_180px] bg-slate-50 dark:bg-dark-base border-b border-slate-200 dark:border-dark-border">
                             <div className="p-3 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider border-r border-slate-200 dark:border-dark-border">
@@ -81,6 +111,7 @@ export default React.memo(function PIRIndicatorsSection({
                         ))}
                     </div>
                 </div>
+                </>
             )}
         </div>
     );

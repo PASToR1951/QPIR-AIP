@@ -11,6 +11,7 @@ import backupRoutes from "./routes/backup.ts";
 import { prisma as _prisma } from "./db/client.ts";
 import { getUserFromToken } from "./lib/auth.ts";
 import { logger } from "./lib/logger.ts";
+import { startDeadlineReminderScheduler } from "./lib/deadlineReminders.ts";
 
 const app = new Hono();
 
@@ -176,5 +177,6 @@ app.route('/api/admin/backup', backupRoutes);
 
 const PORT = parseInt(Deno.env.get("PORT") || "3001");
 logger.info(`AIP-PIR backend running on http://localhost:${PORT}`);
+startDeadlineReminderScheduler();
 
 Deno.serve({ port: PORT }, app.fetch);

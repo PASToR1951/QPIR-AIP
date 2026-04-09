@@ -32,7 +32,7 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                     className="relative group bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-blue-300 transition-colors cursor-pointer flex items-center justify-between"
                 >
                     <div className="flex items-center gap-4 overflow-hidden pr-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border text-slate-500 dark:text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border text-slate-500 dark:text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                             <span className="font-bold text-sm">{index + 1}</span>
                         </div>
                         <div className="flex flex-col truncate">
@@ -62,13 +62,13 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                             <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleRemoveActivity(act.id); }}
-                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                                 title="Delete"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
                             </button>
                         )}
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
+                        <div className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-slate-400 dark:text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
                         </div>
                     </div>
@@ -94,13 +94,13 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                             <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleRemoveActivity(act.id); }}
-                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                                 title="Remove Activity"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                             </button>
                         )}
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full text-blue-600 bg-blue-100 transition-colors">
+                        <div className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-blue-600 bg-blue-100 transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
                         </div>
                     </div>
@@ -355,7 +355,46 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                         </div>
                     </div>
 
-                    <div className="overflow-visible overflow-x-auto pb-4">
+                    <div className="space-y-4 md:hidden">
+                        {activities.filter(a => !a.isUnplanned).map((act, index) => renderActivityCard(act, index))}
+
+                        <div className="flex justify-center">
+                            <button
+                                type="button"
+                                onClick={handleAddActivity}
+                                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border-2 border-blue-100 bg-white px-6 py-3 text-sm font-bold text-blue-600 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50 dark:border-dark-border dark:bg-dark-surface dark:hover:bg-blue-950/20"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                Add Another Activity
+                            </button>
+                        </div>
+
+                        <div className="border-t-2 border-dashed border-slate-200 pt-6 dark:border-dark-border">
+                            <h3 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                Activities Conducted But Not Included in AIP
+                            </h3>
+
+                            {activities.filter(a => a.isUnplanned).length > 0 && (
+                                <div className="space-y-4">
+                                    {activities.filter(a => a.isUnplanned).map((act, index) => renderActivityCard(act, index))}
+                                </div>
+                            )}
+
+                            <div className="mt-4 flex justify-center">
+                                <button
+                                    type="button"
+                                    onClick={handleAddUnplannedActivity}
+                                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-600 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 dark:border-dark-border dark:bg-dark-surface dark:text-slate-300 dark:hover:bg-dark-base"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    Add Unplanned Activity
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="hidden md:block overflow-visible overflow-x-auto pb-4">
                         <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm overflow-hidden">
                             <table className="w-full min-w-[900px] border-collapse text-sm">
                                 <thead>
@@ -422,7 +461,7 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                                                 </td>
                                                 <td className="p-2 align-middle text-center w-10">
                                                     {activities.length > 1 && (
-                                                        <button type="button" onClick={() => handleRemoveActivity(act.id)} className="flex h-8 w-8 items-center justify-center rounded-full text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors mx-auto" title="Delete Row">
+                                                        <button type="button" onClick={() => handleRemoveActivity(act.id)} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors mx-auto" title="Delete Row">
                                                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
                                                         </button>
                                                     )}
@@ -434,7 +473,7 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                             </table>
                         </div>
                     </div>
-                    <div className="mt-4 flex justify-start">
+                    <div className="mt-4 hidden justify-start md:flex">
                         <button type="button" onClick={handleAddActivity} className="inline-flex items-center justify-center gap-2 rounded-xl bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border shadow-sm px-5 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-dark-base hover:text-blue-600 hover:border-blue-200 active:scale-95 transition-all">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             Add Activity Row

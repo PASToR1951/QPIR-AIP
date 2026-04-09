@@ -34,8 +34,8 @@ export default function FinalizeCard({ isSubmitted, onSubmit, onPreview, theme =
                     <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
             </div>
-            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">Final Review</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 max-w-sm">Please ensure all required information is complete and accurate. Once submitted, the AIP will be recorded and you will not be able to make further edits.</p>
+            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">Review before you submit</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 max-w-sm">Check that the required details are complete and correct. Preview the document first if you want to review the layout before submission.</p>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full justify-center relative z-10">
                 {onPreview && (

@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../lib/api.js';
 import { ArrowLeft, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 
-const API = import.meta.env.VITE_API_URL;
 const FACTOR_TYPES = ['Institutional', 'Technical', 'Infrastructure', 'Learning Resources', 'Environmental', 'Others'];
 
 const formatCurrency = (val) => {
@@ -36,7 +35,7 @@ export default function CESPIRReview() {
   const startReviewFiredRef = useRef(false);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/pirs/${id}`, { withCredentials: true })
+    api.get(`/api/admin/pirs/${id}`)
       .then(r => {
         setPir(r.data);
         // If already under review (e.g. re-opened), skip timer
@@ -59,7 +58,7 @@ export default function CESPIRReview() {
           clearInterval(countdownRef.current);
           if (!startReviewFiredRef.current) {
             startReviewFiredRef.current = true;
-            axios.post(`${API}/api/admin/ces/pirs/${id}/start-review`, {}, { withCredentials: true })
+            api.post(`/api/admin/ces/pirs/${id}/start-review`, {})
               .then(() => setIsUnderReview(true))
               .catch(() => {}); // silently fail — status update is best-effort
           }
@@ -77,12 +76,12 @@ export default function CESPIRReview() {
     setError('');
     try {
       const endpoint = modal === 'note'
-        ? `${API}/api/admin/ces/pirs/${id}/note`
-        : `${API}/api/admin/ces/pirs/${id}/return`;
-      await axios.post(endpoint, { ces_remarks: remarks }, { withCredentials: true });
+        ? `/api/admin/ces/pirs/${id}/note`
+        : `/api/admin/ces/pirs/${id}/return`;
+      await api.post(endpoint, { ces_remarks: remarks });
       setDone(true);
     } catch (err) {
-      setError(err?.response?.data?.error ?? 'Action failed. Please try again.');
+      setError(err.friendlyMessage ?? 'Action failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -130,7 +129,7 @@ export default function CESPIRReview() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Back + Actions */}
-      <div className="flex items-center justify-between mb-6">
+      <div data-tour="ces-review-actions" className="flex items-center justify-between mb-6">
         <button
           onClick={() => navigate('/ces')}
           className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
@@ -170,7 +169,7 @@ export default function CESPIRReview() {
       </div>
 
       {/* PIR Header */}
-      <div className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-dark-border p-6 mb-6 shadow-sm">
+      <div data-tour="ces-review-content" className="bg-white dark:bg-dark-surface rounded-2xl border border-slate-200 dark:border-dark-border p-6 mb-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-1">{pir.program}</h1>

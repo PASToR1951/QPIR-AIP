@@ -4,6 +4,7 @@ import axios from 'axios';
 import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, MapPinIcon as MapPin, EnvelopeIcon as Mail, FacebookLogoIcon as Facebook, PhoneIcon as Phone } from '@phosphor-icons/react';
 import { Input } from './components/ui/Input';
 import { auth } from './lib/auth';
+import { getOAuthErrorMessage, LOGIN_COPY, SIGN_IN_FAILED_TITLE } from './lib/authCopy.js';
 
 export default function Login() {
   const [activeTab, setActiveTab] = useState('sso');
@@ -12,7 +13,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [consentChecked, setConsentChecked] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -26,22 +26,11 @@ export default function Login() {
   useEffect(() => {
     const msg = searchParams.get('message');
     const errorCode = searchParams.get('error');
-    const OAUTH_ERROR_MESSAGES = {
-      oauth_denied:          'You cancelled the sign-in request.',
-      domain_not_allowed:    'Only @deped.gov.ph accounts are allowed.',
-      account_pending:       'Your account is pending admin approval. Please contact your administrator.',
-      account_inactive:      'Your account has been deactivated. Please contact your administrator.',
-      invalid_state:         'Invalid sign-in session. Please try again.',
-      state_expired:         'Sign-in session expired. Please try again.',
-      token_exchange_failed: 'Could not complete sign-in. Please try again.',
-      oauth_misconfigured:   'This sign-in method is not yet configured. Please use email and password.',
-      oauth_error:           'An unexpected error occurred during sign-in. Please try again.',
-    };
     if (msg) {
       setError(decodeURIComponent(msg));
       setActiveTab('sso');
     } else if (errorCode) {
-      setError(OAUTH_ERROR_MESSAGES[errorCode] ?? 'Sign-in failed. Please try again.');
+      setError(getOAuthErrorMessage(errorCode));
       setActiveTab('sso');
     }
   }, [searchParams]);
@@ -176,8 +165,8 @@ export default function Login() {
       shakeCard();
       setError(
         err.message === 'SESSION_REFRESH_FAILED'
-          ? 'Sign-in reached the server, but this browser did not accept the session cookie. Please refresh and sign in again.'
-          : err.response?.data?.error || 'Failed to login. Check your credentials.'
+          ? LOGIN_COPY.sessionRefreshError
+          : err.response?.data?.error || LOGIN_COPY.invalidCredentials
       );
     } finally {
       setIsLoading(false);
@@ -186,33 +175,13 @@ export default function Login() {
 
   // Shared privacy notice — rendered in both tabs
   const privacyNotice = (
-    <div className="text-left bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl p-2.5 space-y-1.5">
-      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-          By signing in, you acknowledge that DepEd Division of Guihulngan City collects and
-          processes your personal information (name, email, school affiliation) for the purpose
-          of managing the AIP-PIR system, in accordance with the{' '}
-          <a href="https://privacy.gov.ph/data-privacy-act/#w16" target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-            Data Privacy Act of 2012 (RA 10173)
-          </a>
-          . Your data will not be shared with unauthorized parties. See our{' '}
-          <Link to="/privacy" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-            Privacy Notice
-          </Link>
-          {' '}for full details.
-        </p>
-      <label className="flex items-start gap-2 cursor-pointer group">
-        <input
-          type="checkbox"
-          id="privacy-consent"
-          checked={consentChecked}
-          onChange={(e) => setConsentChecked(e.target.checked)}
-          className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer flex-shrink-0"
-        />
-        <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium group-hover:text-slate-800 dark:group-hover:text-slate-100 transition-colors">
-          I have read and agree to the data privacy notice.
-        </span>
-      </label>
-    </div>
+    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed text-center px-2">
+      By signing in, you agree to the portal&apos;s{' '}
+      <Link to="/privacy" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+        Privacy Notice
+      </Link>
+      {' '}under the Data Privacy Act of 2012.
+    </p>
   );
 
   return (
@@ -248,7 +217,10 @@ export default function Login() {
           </p>
 
           {/* Tab switcher */}
-          <div className="flex bg-slate-100 dark:bg-dark-base rounded-xl p-1 gap-1 mb-5 login-stagger-child" style={{'--stagger-i': 3}}>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-3 login-stagger-child" style={{'--stagger-i': 3}}>
+            DepEd Google is the fastest option for most users. Use Email &amp; Password if Google sign-in is unavailable.
+          </p>
+          <div className="flex bg-slate-100 dark:bg-dark-base rounded-xl p-1 gap-1 mb-5 login-stagger-child" style={{'--stagger-i': 4}}>
             <button
               type="button"
               onClick={() => switchTab('sso')}
@@ -258,7 +230,7 @@ export default function Login() {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
-              Single Sign-On
+              DepEd Google
             </button>
             <button
               type="button"
@@ -269,7 +241,7 @@ export default function Login() {
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
               }`}
             >
-              Email Login
+              Email &amp; Password
             </button>
           </div>
 
@@ -281,7 +253,7 @@ export default function Login() {
                   <AlertCircle size={15} weight="fill" />
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-red-500 dark:text-red-400 mb-0.5">Sign-in failed</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-red-500 dark:text-red-400 mb-0.5">{SIGN_IN_FAILED_TITLE}</p>
                   <p className="text-sm text-red-700 dark:text-red-300 font-medium leading-snug">{error}</p>
                 </div>
                 <button
@@ -303,9 +275,8 @@ export default function Login() {
             <div ref={ssoTabRef} className="space-y-3 absolute inset-x-0 top-0 p-1">
               {privacyNotice}
               <a
-                href={consentChecked ? `${import.meta.env.VITE_API_URL}/api/auth/oauth/google` : undefined}
-                aria-disabled={!consentChecked}
-                className={`w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-[#0F3460] bg-white dark:bg-[#1A1A2E] text-slate-700 dark:text-gray-200 text-sm font-semibold transition-all shadow-sm ${consentChecked ? 'hover:bg-slate-50 dark:hover:bg-[#0F3460]/60' : 'opacity-50 pointer-events-none'}`}
+                href={`${import.meta.env.VITE_API_URL}/api/auth/oauth/google`}
+                className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-[#0F3460] bg-white dark:bg-[#1A1A2E] text-slate-700 dark:text-gray-200 text-sm font-semibold transition-all shadow-sm hover:bg-slate-50 dark:hover:bg-[#0F3460]/60"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -313,8 +284,15 @@ export default function Login() {
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                 </svg>
-                Continue with DepEd Google
+                Sign in with DepEd Google
               </a>
+              <button
+                type="button"
+                onClick={() => switchTab('email')}
+                className="w-full text-xs text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300 underline decoration-dotted underline-offset-2"
+              >
+                Having trouble with Google? Use Email &amp; Password.
+              </button>
             </div>
 
             {/* Email panel */}
@@ -359,7 +337,7 @@ export default function Login() {
               {privacyNotice}
               <button
                 type="submit"
-                disabled={isLoading || !consentChecked}
+                disabled={isLoading}
                 className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
@@ -368,7 +346,7 @@ export default function Login() {
                     Signing in...
                   </>
                 ) : (
-                  'Sign In with Email'
+                  'Sign in with Email & Password'
                 )}
               </button>
             </form>

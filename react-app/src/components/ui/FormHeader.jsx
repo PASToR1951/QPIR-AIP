@@ -71,7 +71,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div data-tour="form-autosave" className="flex items-center gap-3">
                     <ViewModeToggle appMode={appMode} toggleAppMode={toggleAppMode} theme={theme} />
 
                     <AnimatePresence>
@@ -82,10 +82,13 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -4 }}
                                 transition={{ duration: 0.25, ease: 'easeOut' }}
-                                className="hidden md:flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 select-none"
+                                className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500 select-none"
                             >
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
-                                Auto-saved {lastAutoSavedTime}
+                                <Save size={12} className="md:hidden text-slate-300 dark:text-slate-600 shrink-0" />
+                                <span className="hidden md:flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+                                    Auto-saved {lastAutoSavedTime}
+                                </span>
                             </Motion.span>
                         )}
                     </AnimatePresence>
