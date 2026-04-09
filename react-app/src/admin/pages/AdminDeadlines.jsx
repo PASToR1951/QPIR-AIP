@@ -1,14 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
+import api from '../../lib/api.js';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarSlash, CalendarBlank, ArrowCounterClockwise, FloppyDisk,
   ClockCountdown, CaretDown, Hourglass, Warning, Info, LockSimple,
   CheckCircle, Timer,
 } from '@phosphor-icons/react';
-
-const API = import.meta.env.VITE_API_URL;
-
 
 function Tip({ text }) {
   return (
@@ -149,8 +146,8 @@ export default function AdminDeadlines() {
   const fetchDeadlines = useCallback(() => {
     setLoading(true);
     Promise.all([
-      axios.get(`${API}/api/admin/deadlines?year=${year}`, { withCredentials: true }),
-      axios.get(`${API}/api/admin/deadlines/history`,      { withCredentials: true }),
+      api.get(`/api/admin/deadlines?year=${year}`),
+      api.get('/api/admin/deadlines/history'),
     ]).then(([dr, hr]) => {
       setDeadlines(dr.data);
       setLocalDates(Object.fromEntries(dr.data.map(d => [d.quarter, {
@@ -170,16 +167,16 @@ export default function AdminDeadlines() {
     try {
       setFormError('');
       const ld = localDates[quarter];
-      await axios.post(`${API}/api/admin/deadlines`, {
+      await api.post('/api/admin/deadlines', {
         year,
         quarter,
         date:              ld.date,
         open_date:         ld.openDate || null,
         grace_period_days: parseInt(ld.graceDays) || 0,
-      }, { withCredentials: true });
+      });
       fetchDeadlines();
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setSaving(null); }
   };
 
@@ -188,10 +185,10 @@ export default function AdminDeadlines() {
     setSaving(deadline.quarter);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/deadlines/${deadline.id}`, { withCredentials: true });
+      await api.delete(`/api/admin/deadlines/${deadline.id}`);
       fetchDeadlines();
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setSaving(null); }
   };
 

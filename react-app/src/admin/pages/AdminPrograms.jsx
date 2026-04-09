@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
+import api from '../../lib/api.js';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Buildings, BookOpen, PencilSimple, Trash, Plus, CheckCircle, X } from '@phosphor-icons/react';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
@@ -7,7 +7,6 @@ import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import { EndOfListCue } from '../../components/ui/EndOfListCue.jsx';
 
-const API = import.meta.env.VITE_API_URL;
 const MotionButton = motion.button;
 const MotionDiv = motion.div;
 
@@ -107,7 +106,7 @@ export default function AdminPrograms() {
   // ── Fetchers ───────────────────────────────────────────────────────────────
   const fetchPrograms = useCallback(() => {
     setLoadingPrograms(true);
-    axios.get(`${API}/api/admin/programs`, { withCredentials: true })
+    api.get('/api/admin/programs')
       .then(r => setPrograms(r.data))
       .catch(e => { console.error(e); showToast('Failed to load programs. Please refresh.', 'error'); })
       .finally(() => setLoadingPrograms(false));
@@ -115,7 +114,7 @@ export default function AdminPrograms() {
 
   const fetchDivPrograms = useCallback(() => {
     setLoadingDivPrograms(true);
-    axios.get(`${API}/api/admin/division-programs`, { withCredentials: true })
+    api.get('/api/admin/division-programs')
       .then(r => setDivPrograms(r.data))
       .catch(e => { console.error(e); showToast('Failed to load division programs. Please refresh.', 'error'); })
       .finally(() => setLoadingDivPrograms(false));
@@ -129,13 +128,13 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.post(`${API}/api/admin/programs`, programForm, { withCredentials: true });
+      await api.post('/api/admin/programs', programForm);
       setAddProgramOpen(false);
       setProgramForm({ title: '', abbreviation: '', division: '', school_level_requirement: 'Both' });
       fetchPrograms();
       showToast('Program added successfully.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
@@ -143,12 +142,12 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/programs/${editProgram.id}`, { title: programForm.title, abbreviation: programForm.abbreviation, division: programForm.division || null, school_level_requirement: programForm.school_level_requirement }, { withCredentials: true });
+      await api.patch(`/api/admin/programs/${editProgram.id}`, { title: programForm.title, abbreviation: programForm.abbreviation, division: programForm.division || null, school_level_requirement: programForm.school_level_requirement });
       setEditProgram(null);
       fetchPrograms();
       showToast('Program updated successfully.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
@@ -156,12 +155,12 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/programs/${deleteProgram.id}`, { withCredentials: true });
+      await api.delete(`/api/admin/programs/${deleteProgram.id}`);
       setDeleteProgram(null);
       fetchPrograms();
       showToast('Program deleted.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
@@ -170,13 +169,13 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.post(`${API}/api/admin/division-programs`, divForm, { withCredentials: true });
+      await api.post('/api/admin/division-programs', divForm);
       setAddDivOpen(false);
       setDivForm({ title: '', abbreviation: '', division: 'CID' });
       fetchDivPrograms();
       showToast('Division program added.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
@@ -184,12 +183,12 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/division-programs/${editDivProgram.id}`, divForm, { withCredentials: true });
+      await api.patch(`/api/admin/division-programs/${editDivProgram.id}`, divForm);
       setEditDivProgram(null);
       fetchDivPrograms();
       showToast('Division program updated.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
@@ -197,12 +196,12 @@ export default function AdminPrograms() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/division-programs/${deleteDivProgram.id}`, { withCredentials: true });
+      await api.delete(`/api/admin/division-programs/${deleteDivProgram.id}`);
       setDeleteDivProgram(null);
       fetchDivPrograms();
       showToast('Division program deleted.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
 

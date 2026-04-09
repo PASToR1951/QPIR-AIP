@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, MapPinIcon as MapPin, EnvelopeIcon as Mail, FacebookLogoIcon as Facebook, PhoneIcon as Phone } from '@phosphor-icons/react';
@@ -7,7 +7,6 @@ import { auth } from './lib/auth';
 import { getOAuthErrorMessage, LOGIN_COPY, SIGN_IN_FAILED_TITLE } from './lib/authCopy.js';
 
 export default function Login() {
-  const [activeTab, setActiveTab] = useState('sso');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -28,113 +27,12 @@ export default function Login() {
     const errorCode = searchParams.get('error');
     if (msg) {
       setError(decodeURIComponent(msg));
-      setActiveTab('sso');
     } else if (errorCode) {
       setError(getOAuthErrorMessage(errorCode));
-      setActiveTab('sso');
     }
   }, [searchParams]);
 
   const cardRef     = useRef(null);
-  const ssoTabRef   = useRef(null);
-  const emailTabRef = useRef(null);
-  const contentRef  = useRef(null);
-  const activeTabRef = useRef(activeTab);
-
-  const getTabPanel = useCallback((tab) => (
-    tab === 'email' ? emailTabRef.current : ssoTabRef.current
-  ), []);
-
-  const syncContentHeight = useCallback((tab = activeTabRef.current, transition) => {
-    const panel = getTabPanel(tab);
-    if (!contentRef.current || !panel) return;
-
-    if (transition !== undefined) {
-      contentRef.current.style.transition = transition;
-    }
-    contentRef.current.style.height = `${panel.scrollHeight}px`;
-  }, [getTabPanel]);
-
-  useEffect(() => {
-    activeTabRef.current = activeTab;
-  }, [activeTab]);
-
-  // Keep the animated tab wrapper matched to whichever panel is visible.
-  useLayoutEffect(() => {
-    if (!contentRef.current || !ssoTabRef.current || !emailTabRef.current) return;
-    const ssoPanel = ssoTabRef.current;
-    const emailPanel = emailTabRef.current;
-    const initialTab = activeTabRef.current;
-
-    syncContentHeight(initialTab, 'none');
-
-    ssoPanel.style.opacity = initialTab === 'sso' ? '1' : '0';
-    ssoPanel.style.pointerEvents = initialTab === 'sso' ? 'auto' : 'none';
-    emailPanel.style.opacity = initialTab === 'email' ? '1' : '0';
-    emailPanel.style.pointerEvents = initialTab === 'email' ? 'auto' : 'none';
-
-    const handleResize = () => syncContentHeight(activeTabRef.current);
-    let resizeObserver;
-
-    if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(handleResize);
-      resizeObserver.observe(ssoPanel);
-      resizeObserver.observe(emailPanel);
-    }
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [syncContentHeight]);
-
-  const switchTab = (newTab) => {
-    if (newTab === activeTab) return;
-
-    const reducedMotion =
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-      document.documentElement.classList.contains('a11y-reduce-motion');
-
-    const outgoing = activeTab === 'sso' ? ssoTabRef.current : emailTabRef.current;
-    const incoming = newTab   === 'sso' ? ssoTabRef.current : emailTabRef.current;
-    if (!outgoing || !incoming || !contentRef.current) return;
-
-    activeTabRef.current = newTab;
-    setActiveTab(newTab);
-    setError('');
-
-    if (reducedMotion) {
-      outgoing.style.transition = 'none';
-      outgoing.style.opacity = '0';
-      outgoing.style.pointerEvents = 'none';
-      incoming.style.transition = 'none';
-      incoming.style.opacity = '1';
-      incoming.style.pointerEvents = 'auto';
-      syncContentHeight(newTab, 'none');
-      return;
-    }
-
-    // Fade out outgoing panel
-    outgoing.style.transition = 'opacity 0.15s ease-in';
-    outgoing.style.opacity = '0';
-    outgoing.style.pointerEvents = 'none';
-
-    // Bounce-expand/retract content height — cubic-bezier mimics back.out(2)
-    syncContentHeight(newTab, 'height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)');
-
-    // Slide + fade incoming panel in after outgoing fades
-    setTimeout(() => {
-      incoming.style.transition = 'none';
-      incoming.style.transform = `translateX(${newTab === 'email' ? '12px' : '-12px'})`;
-      incoming.style.opacity = '0';
-      incoming.style.pointerEvents = 'auto';
-      incoming.offsetHeight; // force reflow
-      incoming.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
-      incoming.style.transform = 'translateX(0)';
-      incoming.style.opacity = '1';
-    }, 120);
-  };
 
   const shakeCard = () => {
     if (!cardRef.current) return;
@@ -216,34 +114,10 @@ export default function Login() {
             Tracking of Education Programs: Program Implementation Review System.
           </p>
 
-          {/* Tab switcher */}
+          {/* Sign-in options */}
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-3 login-stagger-child" style={{'--stagger-i': 3}}>
-            DepEd Google is the fastest option for most users. Use Email &amp; Password if Google sign-in is unavailable.
+            DepEd Google is recommended for most users. If your account uses direct portal access, you can sign in with Email &amp; Password below.
           </p>
-          <div className="flex bg-slate-100 dark:bg-dark-base rounded-xl p-1 gap-1 mb-5 login-stagger-child" style={{'--stagger-i': 4}}>
-            <button
-              type="button"
-              onClick={() => switchTab('sso')}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
-                activeTab === 'sso'
-                  ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-              }`}
-            >
-              DepEd Google
-            </button>
-            <button
-              type="button"
-              onClick={() => switchTab('email')}
-              className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${
-                activeTab === 'email'
-                  ? 'bg-white dark:bg-dark-surface text-indigo-600 dark:text-indigo-400 shadow-sm'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-              }`}
-            >
-              Email &amp; Password
-            </button>
-          </div>
 
           {/* Error banner */}
           {error && (
@@ -268,12 +142,8 @@ export default function Login() {
             </div>
           )}
 
-          {/* ── Tab content — both always mounted, height follows active panel ── */}
-          <div ref={contentRef} className="relative overflow-hidden -mx-1">
-
-            {/* SSO panel */}
-            <div ref={ssoTabRef} className="space-y-3 absolute inset-x-0 top-0 p-1">
-              {privacyNotice}
+          <div className="space-y-5 -mx-1 login-stagger-child" style={{'--stagger-i': 4}}>
+            <div className="space-y-3 p-1">
               <a
                 href={`${import.meta.env.VITE_API_URL}/api/auth/oauth/google`}
                 className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-[#0F3460] bg-white dark:bg-[#1A1A2E] text-slate-700 dark:text-gray-200 text-sm font-semibold transition-all shadow-sm hover:bg-slate-50 dark:hover:bg-[#0F3460]/60"
@@ -286,17 +156,20 @@ export default function Login() {
                 </svg>
                 Sign in with DepEd Google
               </a>
-              <button
-                type="button"
-                onClick={() => switchTab('email')}
-                className="w-full text-xs text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300 underline decoration-dotted underline-offset-2"
-              >
-                Having trouble with Google? Use Email &amp; Password.
-              </button>
+              <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
+                Use this first if your DepEd Google account is active.
+              </p>
             </div>
 
-            {/* Email panel */}
-            <form ref={emailTabRef} className="space-y-4 absolute inset-x-0 top-0 p-1" onSubmit={handleLogin}>
+            <div className="flex items-center gap-3 px-1">
+              <div className="h-px flex-1 bg-slate-200 dark:bg-dark-border" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+                or use Email &amp; Password
+              </span>
+              <div className="h-px flex-1 bg-slate-200 dark:bg-dark-border" />
+            </div>
+
+            <form className="space-y-4 p-1" onSubmit={handleLogin}>
               <div className="space-y-3">
                 <Input
                   theme="indigo"
@@ -334,6 +207,9 @@ export default function Login() {
                   }
                 />
               </div>
+              <p className="text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
+                Use the form below only if your account was set up for direct portal sign-in.
+              </p>
               {privacyNotice}
               <button
                 type="submit"
@@ -350,7 +226,6 @@ export default function Login() {
                 )}
               </button>
             </form>
-
           </div>
         </div>
       </div>

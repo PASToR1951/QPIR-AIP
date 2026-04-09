@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import axios from 'axios';
+import api from '../../lib/api.js';
 import {
   FloppyDisk, Buildings, Users, BookOpen, Database,
   Megaphone, XCircle, LockSimple,
@@ -8,9 +8,6 @@ import {
   CaretLeft, CaretRight, Clock, CaretUp, CaretDown,
 } from '@phosphor-icons/react';
 import { CURRENT_VERSION } from '../../version.js';
-
-const API = import.meta.env.VITE_API_URL;
-
 
 const MAX_CHARS = 280;
 const EMPTY_ANNOUNCEMENT = {
@@ -519,8 +516,8 @@ export default function AdminSettings() {
     // Core settings — required for page to render
     setLoading(true);
     Promise.all([
-      axios.get(`${API}/api/admin/announcements`,        { withCredentials: true }),
-      axios.get(`${API}/api/admin/settings/system-info`, { withCredentials: true }),
+      api.get('/api/admin/announcements'),
+      api.get('/api/admin/settings/system-info'),
     ]).then(([ar, sr]) => {
       const loadedAnnouncement = announcementFromApi(ar.data);
       setAnnouncement(loadedAnnouncement);
@@ -530,11 +527,11 @@ export default function AdminSettings() {
       .finally(() => setLoading(false));
 
     // Mention candidates — non-critical, loaded independently
-    axios.get(`${API}/api/admin/schools`, { withCredentials: true })
+    api.get('/api/admin/schools')
       .then(res => setSchools(Array.isArray(res.data) ? res.data : []))
       .catch(() => {});
 
-    axios.get(`${API}/api/admin/users`, { withCredentials: true })
+    api.get('/api/admin/users')
       .then(res => {
         const rawUsers = Array.isArray(res.data) ? res.data : [];
         // Only Division Personnel can be mentioned directly.
@@ -559,14 +556,14 @@ export default function AdminSettings() {
     setSaving(true);
     setFormError('');
     try {
-      const { data } = await axios.post(`${API}/api/admin/announcements`, payload, { withCredentials: true });
+      const { data } = await api.post('/api/admin/announcements', payload);
       const persistedAnnouncement = data ? announcementFromApi(data) : payload;
       setSavedAnnouncement(persistedAnnouncement);
       setAnnouncement(current =>
         announcementsEqual(current, payload) ? persistedAnnouncement : current
       );
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally {
       setSaving(false);
     }
@@ -578,7 +575,7 @@ export default function AdminSettings() {
     setAnnouncement(updated);
     setAutoSaving(true);
     try {
-      const { data } = await axios.post(`${API}/api/admin/announcements`, updated, { withCredentials: true });
+      const { data } = await api.post('/api/admin/announcements', updated);
       const persistedAnnouncement = data ? announcementFromApi(data) : updated;
       setSavedAnnouncement(persistedAnnouncement);
       setAnnouncement(current =>
@@ -601,13 +598,13 @@ export default function AdminSettings() {
     setDeleting(true);
     setFormError('');
     try {
-      await axios.delete(`${API}/api/admin/announcements`, { withCredentials: true });
+      await api.delete('/api/admin/announcements');
       const emptyAnnouncement = normalizeAnnouncement(EMPTY_ANNOUNCEMENT);
       setAnnouncement(emptyAnnouncement);
       setSavedAnnouncement(emptyAnnouncement);
       if (textareaRef.current) textareaRef.current.innerHTML = '';
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Delete failed');
+      setFormError(e.friendlyMessage ?? 'Delete failed');
     } finally {
       setDeleting(false);
     }

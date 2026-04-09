@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import axios from 'axios';
-import { getFriendlyError } from '../../lib/errorMessages.js';
 import { PencilSimple, Key, LockKey, LockKeyOpen, Trash, Plus, MagnifyingGlass, Copy, Check, XCircle, CheckCircle, UploadSimple } from '@phosphor-icons/react';
+import api from '../../lib/api.js';
 import { DataTable } from '../components/DataTable.jsx';
 import { withResponsiveHide } from '../components/dataTableColumns.js';
 import { StatusBadge } from '../components/StatusBadge.jsx';
@@ -12,8 +11,6 @@ import { MultiSelect } from '../components/MultiSelect.jsx';
 import { CreateUserWizard } from '../components/CreateUserWizard.jsx';
 import { ImportUsersModal } from '../components/ImportUsersModal.jsx';
 import { UserProfileModal } from '../components/UserProfileModal.jsx';
-
-const API = import.meta.env.VITE_API_URL;
 
 
 const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin', 'Observer'];
@@ -159,34 +156,34 @@ export default function AdminUsers() {
     const params = new URLSearchParams();
     if (roleFilter !== 'All') params.set('role', roleFilter);
     if (search) params.set('search', search);
-    axios.get(`${API}/api/admin/users?${params}`, { withCredentials: true })
+    api.get(`/api/admin/users?${params}`)
       .then(r => setUsers(r.data))
-      .catch(e => { console.error(e); showToast('Failed to load users. Please refresh and try again.', 'error'); })
+      .catch(e => { console.error(e); showToast(e.friendlyMessage ?? 'Failed to load users. Please refresh and try again.', 'error'); })
       .finally(() => setLoading(false));
   }, [search, roleFilter]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
   useEffect(() => {
-    axios.get(`${API}/api/admin/schools`, { withCredentials: true }).then(r => setSchools(r.data)).catch(() => {});
-    axios.get(`${API}/api/admin/programs`, { withCredentials: true }).then(r => setPrograms(r.data)).catch(() => {});
-    axios.get(`${API}/api/admin/clusters`, { withCredentials: true }).then(r => setClusters(r.data)).catch(() => {});
+    api.get('/api/admin/schools').then(r => setSchools(r.data)).catch(() => {});
+    api.get('/api/admin/programs').then(r => setPrograms(r.data)).catch(() => {});
+    api.get('/api/admin/clusters').then(r => setClusters(r.data)).catch(() => {});
   }, []);
 
   const handleCreate = async (wizardForm) => {
     setActionLoading(true); setFormError('');
     try {
-      await axios.post(`${API}/api/admin/users`, { ...wizardForm }, { withCredentials: true });
+      await api.post('/api/admin/users', { ...wizardForm });
       setCreateOpen(false); setForm(emptyForm); fetchAll();
       showToast('User created successfully.');
     } catch (e) {
-      setFormError(getFriendlyError(e.response?.data?.error, 'Failed to create user'));
+      setFormError(e.friendlyMessage ?? 'Failed to create user');
     } finally { setActionLoading(false); }
   };
 
   const handleEdit = async () => {
     setActionLoading(true); setFormError('');
     try {
-      await axios.patch(`${API}/api/admin/users/${editUser.id}`, { name: form.name, first_name: form.first_name, middle_initial: form.middle_initial, last_name: form.last_name, role: form.role, school_id: form.school_id, program_ids: form.program_ids }, { withCredentials: true });
+      await api.patch(`/api/admin/users/${editUser.id}`, { name: form.name, first_name: form.first_name, middle_initial: form.middle_initial, last_name: form.last_name, role: form.role, school_id: form.school_id, program_ids: form.program_ids });
       // If the edited user is the currently logged-in user, sync sessionStorage so
       // the header/sidebar reflect the new name without requiring a re-login.
       try {
@@ -204,14 +201,14 @@ export default function AdminUsers() {
       setEditUser(null); fetchAll();
       showToast('User updated successfully.');
     } catch (e) {
-      setFormError(getFriendlyError(e.response?.data?.error, 'Failed to update user'));
+      setFormError(e.friendlyMessage ?? 'Failed to update user');
     } finally { setActionLoading(false); }
   };
 
   const handleDelete = async () => {
     setActionLoading(true);
     try {
-      await axios.delete(`${API}/api/admin/users/${deleteUser.id}`, { withCredentials: true });
+      await api.delete(`/api/admin/users/${deleteUser.id}`);
       setDeleteUser(null); fetchAll();
     } finally { setActionLoading(false); }
   };
@@ -219,7 +216,7 @@ export default function AdminUsers() {
   const handleToggle = async () => {
     setActionLoading(true);
     try {
-      await axios.patch(`${API}/api/admin/users/${toggleUser.id}`, { is_active: !toggleUser.is_active }, { withCredentials: true });
+      await api.patch(`/api/admin/users/${toggleUser.id}`, { is_active: !toggleUser.is_active });
       setToggleUser(null); fetchAll();
     } finally { setActionLoading(false); }
   };
@@ -227,7 +224,7 @@ export default function AdminUsers() {
   const handleResetPassword = async () => {
     setActionLoading(true);
     try {
-      const r = await axios.post(`${API}/api/admin/users/${resetUser.id}/reset-password`, {}, { withCredentials: true });
+      const r = await api.post(`/api/admin/users/${resetUser.id}/reset-password`);
       setTempPassword(r.data.temporaryPassword); setResetUser(null);
     } finally { setActionLoading(false); }
   };
@@ -437,7 +434,7 @@ export default function AdminUsers() {
           setFormError('');
         }}
         onResetPassword={async (userId) => {
-          const r = await axios.post(`${API}/api/admin/users/${userId}/reset-password`, {}, { withCredentials: true });
+          const r = await api.post(`/api/admin/users/${userId}/reset-password`);
           return r.data.temporaryPassword;
         }}
         onToggle={() => { const u = viewUser; setViewUser(null); setToggleUser(u); }}

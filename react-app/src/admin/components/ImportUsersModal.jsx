@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import {
   XCircle, ArrowLeft, UploadSimple, CheckCircle, Warning,
   FileArrowUp, CaretDown, CaretRight,
 } from '@phosphor-icons/react';
-import { getFriendlyError } from '../../lib/errorMessages.js';
-
-const API = import.meta.env.VITE_API_URL;
+import api from '../../lib/api.js';
 
 const VALID_ROLES = new Set([
   'School', 'Division Personnel', 'Admin',
@@ -347,11 +344,11 @@ export function ImportUsersModal({ open, onClose, onImportComplete }) {
       }));
 
     try {
-      const res = await axios.post(`${API}/api/admin/users/import`, { users: validRows }, { withCredentials: true });
+      const res = await api.post('/api/admin/users/import', { users: validRows });
       setResults(res.data);
       setStep(3);
     } catch (err) {
-      setApiError(getFriendlyError(err));
+      setApiError(err.friendlyMessage ?? 'Import failed. Please try again.');
     } finally {
       setImporting(false);
     }

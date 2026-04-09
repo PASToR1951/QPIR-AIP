@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import {
   ArrowLeft, Check, ArrowBendUpLeft, NotePencil, FloppyDisk,
   CaretDown, CaretRight, ArrowsLeftRight, ListDashes,
   Warning, ChartBar, CurrencyCircleDollar, Checks, Stamp,
 } from '@phosphor-icons/react';
+import api from '../../lib/api.js';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { useTextMeasure } from '../../lib/useTextMeasure';
 import { SchoolAvatar } from '../../components/ui/SchoolAvatar.jsx';
 import { auth } from '../../lib/auth.js';
-
-const API = import.meta.env.VITE_API_URL;
 const FACTOR_TYPES = ['Institutional', 'Technical', 'Infrastructure', 'Learning Resources', 'Environmental', 'Others'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -175,11 +173,10 @@ function ActivityRow({ review, pirId, onSaveNotes, measureText, canEditNotes = t
     setSaved(false);
     setSaveError(false);
     try {
-      await axios.patch(
-        `${API}/api/admin/pirs/${pirId}/activity-notes`,
-        { activity_review_id: review.id, notes },
-        { withCredentials: true }
-      );
+      await api.patch(`/api/admin/pirs/${pirId}/activity-notes`, {
+        activity_review_id: review.id,
+        notes,
+      });
       onSaveNotes(review.id, notes);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -339,11 +336,10 @@ function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes, measu
     setSaved(false);
     setSaveError(false);
     try {
-      await axios.patch(
-        `${API}/api/admin/pirs/${pirId}/activity-notes`,
-        { activity_review_id: review.id, notes },
-        { withCredentials: true }
-      );
+      await api.patch(`/api/admin/pirs/${pirId}/activity-notes`, {
+        activity_review_id: review.id,
+        notes,
+      });
       onSaveNotes(review.id, notes);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -474,8 +470,8 @@ export default function AdminPIRReview() {
     setLoadError(null);
 
     Promise.all([
-      axios.get(`${API}/api/admin/pirs/${id}`, { withCredentials: true }),
-      axios.get(`${API}/api/admin/submissions/${id}?type=pir`, { withCredentials: true }),
+      api.get(`/api/admin/pirs/${id}`),
+      api.get(`/api/admin/submissions/${id}?type=pir`),
     ]).then(([pirRes, subRes]) => {
       if (cancelled) return;
       setPir(pirRes.data);
@@ -502,7 +498,7 @@ export default function AdminPIRReview() {
     setRemarksError(null);
     setRemarksSaved(false);
     try {
-      await axios.patch(`${API}/api/admin/pirs/${id}/remarks`, { remarks: adminRemarks }, { withCredentials: true });
+      await api.patch(`/api/admin/pirs/${id}/remarks`, { remarks: adminRemarks });
       setRemarksSaved(true);
       setTimeout(() => setRemarksSaved(false), 2500);
     } catch {
@@ -516,7 +512,7 @@ export default function AdminPIRReview() {
     setPresented(optimistic);
     setPresentedSaving(true);
     try {
-      await axios.patch(`${API}/api/admin/pirs/${id}/presented`, {}, { withCredentials: true });
+      await api.patch(`/api/admin/pirs/${id}/presented`);
     } catch {
       setPresented(!optimistic); // revert
     } finally { setPresentedSaving(false); }
@@ -532,11 +528,10 @@ export default function AdminPIRReview() {
     setObserverNotesSaved(false);
     setObserverNotesError(null);
     try {
-      const r = await axios.patch(
-        `${API}/api/admin/submissions/${id}/observer-notes`,
-        { type: 'pir', notes: observerNotes },
-        { withCredentials: true }
-      );
+      const r = await api.patch(`/api/admin/submissions/${id}/observer-notes`, {
+        type: 'pir',
+        notes: observerNotes,
+      });
       setObserverNotes(r.data.observer_notes ?? observerNotes);
       setObserverNotesSaved(true);
       setTimeout(() => setObserverNotesSaved(false), 2500);
@@ -550,16 +545,16 @@ export default function AdminPIRReview() {
     setActionLoading(true);
     setActionError('');
     try {
-      await axios.patch(
-        `${API}/api/admin/submissions/${id}/status`,
-        { type: 'pir', status: modal === 'approve' ? 'Approved' : 'Returned', feedback },
-        { withCredentials: true }
-      );
+      await api.patch(`/api/admin/submissions/${id}/status`, {
+        type: 'pir',
+        status: modal === 'approve' ? 'Approved' : 'Returned',
+        feedback,
+      });
       setDoneAction(modal === 'approve' ? 'Approved' : 'Returned');
       setModal(null);
       setDone(true);
     } catch (err) {
-      setActionError(err?.response?.data?.error ?? 'Action failed. Please try again.');
+      setActionError(err.friendlyMessage ?? 'Action failed. Please try again.');
     } finally { setActionLoading(false); }
   };
 

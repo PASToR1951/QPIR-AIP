@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import axios from 'axios';
+import api from '../../lib/api.js';
 import { CaretRight, CheckCircle, PencilSimple, Trash, Plus, MagnifyingGlass, X } from '@phosphor-icons/react';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
@@ -79,7 +79,6 @@ function IconHoverLabelButton({
   );
 }
 
-const API = import.meta.env.VITE_API_URL;
 const MotionDiv = motion.div;
 
 const LEVELS = ['Elementary', 'Secondary'];
@@ -127,8 +126,8 @@ export default function AdminSchools() {
   const fetchAll = useCallback(() => {
     setLoading(true);
     return Promise.all([
-      axios.get(`${API}/api/admin/clusters`, { withCredentials: true }),
-      axios.get(`${API}/api/admin/programs`, { withCredentials: true }),
+      api.get('/api/admin/clusters'),
+      api.get('/api/admin/programs'),
     ]).then(([cr, pr]) => { setFetchError(null); setClusters(cr.data); setPrograms(pr.data); })
       .catch(e => { console.error(e); setFetchError('Failed to load data. Please refresh and try again.'); })
       .finally(() => setLoading(false));
@@ -172,13 +171,13 @@ export default function AdminSchools() {
       setFormError('');
       const num = Number(clusterForm.cluster_number);
       // CONSTRAINT: Clusters have no meaningful name — identified by number only. Do not set name to "Cluster N"; that causes redundant display elsewhere.
-      const res = await axios.post(`${API}/api/admin/clusters`, { cluster_number: num, name: String(num) }, { withCredentials: true });
+      const res = await api.post('/api/admin/clusters', { cluster_number: num, name: String(num) });
       const newClusterId = res.data.id;
       setAddClusterOpen(false); setClusterForm({ cluster_number: '' });
       setHighlightedClusterId(newClusterId);
       await fetchAll();
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
   const handleEditCluster = async () => {
@@ -187,12 +186,12 @@ export default function AdminSchools() {
       setFormError('');
       const num = Number(clusterForm.cluster_number);
       const clusterId = editCluster.id;
-      await axios.patch(`${API}/api/admin/clusters/${clusterId}`, { cluster_number: num, name: String(num) }, { withCredentials: true });
+      await api.patch(`/api/admin/clusters/${clusterId}`, { cluster_number: num, name: String(num) });
       setEditCluster(null);
       setHighlightedClusterId(clusterId);
       await fetchAll();
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
@@ -208,13 +207,13 @@ export default function AdminSchools() {
     formData.append('logo', file);
 
     try {
-      const res = await axios.post(`${API}/api/admin/clusters/${editCluster.id}/logo`, formData, { withCredentials: true });
+      const res = await api.post(`/api/admin/clusters/${editCluster.id}/logo`, formData);
       const logo = res.data.logo ?? null;
       setEditCluster(c => c ? ({ ...c, logo }) : c);
       await fetchAll();
       showToast('Cluster logo uploaded.');
     } catch (e) {
-      showToast(e.response?.data?.error || 'Upload failed.', 'error');
+      showToast(e.friendlyMessage ?? 'Upload failed.', 'error');
     } finally {
       setLogoUploading(false);
       input.value = '';
@@ -228,12 +227,12 @@ export default function AdminSchools() {
     setFormError('');
 
     try {
-      await axios.delete(`${API}/api/admin/clusters/${editCluster.id}/logo`, { withCredentials: true });
+      await api.delete(`/api/admin/clusters/${editCluster.id}/logo`);
       setEditCluster(c => c ? ({ ...c, logo: null }) : c);
       await fetchAll();
       showToast('Cluster logo removed.');
     } catch (e) {
-      showToast(e.response?.data?.error || 'Failed to remove cluster logo.', 'error');
+      showToast(e.friendlyMessage ?? 'Failed to remove cluster logo.', 'error');
     } finally {
       setLogoUploading(false);
     }
@@ -243,10 +242,10 @@ export default function AdminSchools() {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/clusters/${deleteCluster.id}`, { withCredentials: true });
+      await api.delete(`/api/admin/clusters/${deleteCluster.id}`);
       setDeleteCluster(null); fetchAll();
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
@@ -260,7 +259,7 @@ export default function AdminSchools() {
         setFormError('Please select a cluster.');
         return;
       }
-      const res = await axios.post(`${API}/api/admin/schools`, { ...schoolForm, cluster_id: clusterId }, { withCredentials: true });
+      const res = await api.post('/api/admin/schools', { ...schoolForm, cluster_id: clusterId });
       const newSchoolId = res.data.id;
       setExpanded(e => ({ ...e, [clusterId]: true }));
       setAddSchoolOpen(false); setSchoolForm({ name: '', abbreviation: '', level: 'Elementary', cluster_id: null });
@@ -268,7 +267,7 @@ export default function AdminSchools() {
       await fetchAll();
       showToast('School added successfully.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
   const handleEditSchool = async () => {
@@ -281,36 +280,36 @@ export default function AdminSchools() {
         return;
       }
       const schoolId = editSchool.id;
-      await axios.patch(`${API}/api/admin/schools/${schoolId}`, { name: schoolForm.name, abbreviation: schoolForm.abbreviation, level: schoolForm.level, cluster_id: clusterId }, { withCredentials: true });
+      await api.patch(`/api/admin/schools/${schoolId}`, { name: schoolForm.name, abbreviation: schoolForm.abbreviation, level: schoolForm.level, cluster_id: clusterId });
       setExpanded(e => ({ ...e, [clusterId]: true }));
       setEditSchool(null);
       setHighlightedSchoolId(schoolId);
       await fetchAll();
       showToast('School updated.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
   const handleDeleteSchool = async () => {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.delete(`${API}/api/admin/schools/${deleteSchool.id}`, { withCredentials: true });
+      await api.delete(`/api/admin/schools/${deleteSchool.id}`);
       setDeleteSchool(null); fetchAll();
       showToast('School deleted.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
   const handleSaveRestrictions = async () => {
     setActionLoading(true);
     try {
       setFormError('');
-      await axios.patch(`${API}/api/admin/schools/${restrictSchool.id}/restrictions`, { restricted_program_ids: restrictedIds }, { withCredentials: true });
+      await api.patch(`/api/admin/schools/${restrictSchool.id}/restrictions`, { restricted_program_ids: restrictedIds });
       setRestrictSchool(null); fetchAll();
       showToast('Restrictions saved.');
     } catch (e) {
-      setFormError(e.response?.data?.error || 'Operation failed');
+      setFormError(e.friendlyMessage ?? 'Operation failed');
     } finally { setActionLoading(false); }
   };
 
@@ -326,13 +325,13 @@ export default function AdminSchools() {
     formData.append('logo', file);
 
     try {
-      const res = await axios.post(`${API}/api/admin/schools/${editSchool.id}/logo`, formData, { withCredentials: true });
+      const res = await api.post(`/api/admin/schools/${editSchool.id}/logo`, formData);
       const logo = res.data.logo ?? null;
       setEditSchool(s => s ? ({ ...s, logo }) : s);
       fetchAll();
       showToast('Logo uploaded.');
     } catch (e) {
-      showToast(e.response?.data?.error || 'Upload failed.', 'error');
+      showToast(e.friendlyMessage ?? 'Upload failed.', 'error');
     } finally {
       setLogoUploading(false);
       input.value = '';
@@ -346,12 +345,12 @@ export default function AdminSchools() {
     setFormError('');
 
     try {
-      await axios.delete(`${API}/api/admin/schools/${editSchool.id}/logo`, { withCredentials: true });
+      await api.delete(`/api/admin/schools/${editSchool.id}/logo`);
       setEditSchool(s => s ? ({ ...s, logo: null }) : s);
       fetchAll();
       showToast('Logo removed.');
     } catch (e) {
-      showToast(e.response?.data?.error || 'Failed to remove logo.', 'error');
+      showToast(e.friendlyMessage ?? 'Failed to remove logo.', 'error');
     } finally {
       setLogoUploading(false);
     }

@@ -1,12 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import axios from 'axios';
+import api from '../../lib/api.js';
 import {
   Database, CheckCircle, Warning, X, CloudArrowUp,
   ArrowClockwise, Terminal, Clock, HardDrive, CalendarBlank,
   ShieldCheck, Info,
 } from '@phosphor-icons/react';
-
-const API = import.meta.env.VITE_API_URL;
 
 function formatBytes(bytes) {
   if (bytes === 0 || bytes == null) return '0 B';
@@ -107,7 +105,7 @@ export default function AdminBackups() {
   const fetchStatus = useCallback(() => {
     setLoading(true);
     setError(null);
-    axios.get(`${API}/api/admin/backup/status`, { withCredentials: true })
+    api.get('/api/admin/backup/status')
       .then(r => setStatus(r.data))
       .catch(e => {
         console.error(e);
@@ -122,11 +120,11 @@ export default function AdminBackups() {
     setTriggering(true);
     setTriggerMsg(null);
     try {
-      await axios.post(`${API}/api/admin/backup/trigger`, {}, { withCredentials: true });
+      await api.post('/api/admin/backup/trigger', {});
       setTriggerMsg({ type: 'ok', text: 'Backup started in background. Refresh status in ~30 seconds.' });
       setTimeout(fetchStatus, 10000);
     } catch (e) {
-      const msg = e?.response?.data?.error || 'Failed to trigger backup.';
+      const msg = e.friendlyMessage ?? 'Failed to trigger backup.';
       setTriggerMsg({ type: 'err', text: msg });
     } finally {
       setTriggering(false);

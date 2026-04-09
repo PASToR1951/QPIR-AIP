@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { Eye, Check, ArrowBendUpLeft, DownloadSimple, XCircle, Funnel, CalendarDots, Warning, CheckCircle, FloppyDisk, LockKeyOpen, LockKey } from '@phosphor-icons/react';
+import api, { API } from '../../lib/api.js';
 import { DataTable } from '../components/DataTable.jsx';
 import { withResponsiveHide } from '../components/dataTableColumns.js';
 import { StatusBadge } from '../components/StatusBadge.jsx';
@@ -11,12 +11,9 @@ import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import { SchoolAvatar } from '../../components/ui/SchoolAvatar.jsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { getFriendlyError } from '../../lib/errorMessages.js';
 import { relativeDate } from '../../lib/dateUtils.js';
 import { HIGHLIGHT_DURATION_MS, REVIEW_TIMER_MS, TOAST_DURATION_MS } from '../../constants.js';
 import { auth } from '../../lib/auth.js';
-
-const API = import.meta.env.VITE_API_URL;
 
 
 const TERM_OPTIONS = [
@@ -117,11 +114,7 @@ export default function AdminSubmissions() {
     try {
       const nextTermType = pendingTermType;
       const nextPeriods = periodMonths.map((m, i) => ({ period: i + 1, startMonth: m.start, endMonth: m.end }));
-      await axios.patch(
-        `${API}/api/admin/term-config`,
-        { termType: nextTermType, periods: nextPeriods },
-        { withCredentials: true }
-      );
+      await api.patch('/api/admin/term-config', { termType: nextTermType, periods: nextPeriods });
       setTermConfig({ termType: nextTermType, periods: nextPeriods });
       setTermSaved(true);
       setPendingTermType(null);
@@ -131,7 +124,7 @@ export default function AdminSubmissions() {
         navigate({ pathname: '/admin/submissions', search: currentSearch ? `?${currentSearch}` : '' }, { replace: true });
       }, 1200);
     } catch (e) {
-      setTermError(e.response?.data?.error || 'Failed to update term structure');
+      setTermError(e.friendlyMessage ?? 'Failed to update term structure');
     } finally {
       setTermSaving(false);
     }
@@ -153,17 +146,17 @@ export default function AdminSubmissions() {
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
   useEffect(() => {
-    axios.get(`${API}/api/admin/clusters`, { withCredentials: true })
+    api.get('/api/admin/clusters')
       .then(r => setClusters(r.data))
       .catch(err => console.warn('[clusters filter]', err?.response?.status));
-    axios.get(`${API}/api/admin/programs`, { withCredentials: true })
+    api.get('/api/admin/programs')
       .then(r => setPrograms(r.data))
       .catch(err => console.warn('[programs filter]', err?.response?.status));
   }, []);
 
   useEffect(() => {
     if (filters.cluster) {
-      axios.get(`${API}/api/admin/schools?cluster=${filters.cluster}`, { withCredentials: true })
+      api.get(`/api/admin/schools?cluster=${filters.cluster}`)
         .then(r => setSchools(r.data))
         .catch(err => console.warn('[schools filter]', err?.response?.status));
     } else {
@@ -182,13 +175,13 @@ export default function AdminSubmissions() {
     if (filters.year) params.set('year', filters.year);
     if (filters.status) params.set('status', filters.status);
     params.set('page', page);
-    axios.get(`${API}/api/admin/submissions?${params}`, { withCredentials: true })
+    api.get(`/api/admin/submissions?${params}`)
       .then(r => {
         setFetchError(null);
         setSubmissions(r.data.data);
         setTotals({ aipTotal: r.data.aipTotal, pirTotal: r.data.pirTotal, total: r.data.total });
       })
-      .catch(e => { console.error(e); setFetchError('Failed to load submissions. Please refresh and try again.'); })
+      .catch(e => { console.error(e); setFetchError(e.friendlyMessage ?? 'Failed to load submissions. Please refresh and try again.'); })
       .finally(() => setLoading(false));
   }, [tab, filters, page]);
 
@@ -237,11 +230,11 @@ export default function AdminSubmissions() {
     if (!viewItem || isObserver) return;
     setEditActionLoading(action);
     try {
-      await axios.patch(`${API}/api/admin/aips/${viewItem.id}/${action}-edit`, {}, { withCredentials: true });
+      await api.patch(`/api/admin/aips/${viewItem.id}/${action}-edit`);
       closeView();
       fetchSubmissions();
     } catch (e) {
-      setActionError(getFriendlyError(e.response?.data?.error, `Failed to ${action} edit request. Please try again.`));
+      setActionError(e.friendlyMessage ?? `Failed to ${action} edit request. Please try again.`);
     }
     finally { setEditActionLoading(null); }
   };
@@ -256,7 +249,7 @@ export default function AdminSubmissions() {
     setObserverNotesSaved(false);
     setObserverNotesError('');
     try {
-      const r = await axios.get(`${API}/api/admin/submissions/${item.id}?type=${item.type.toLowerCase()}`, { withCredentials: true });
+      const r = await api.get(`/api/admin/submissions/${item.id}?type=${item.type.toLowerCase()}`);
       setViewData(r.data);
       setObserverNotes(r.data.observer_notes ?? r.data.observerNotes ?? '');
 
@@ -288,7 +281,7 @@ export default function AdminSubmissions() {
     underReviewTimerRef.current = null;
     setActionLoading(true);
     try {
-      await axios.patch(`${API}/api/admin/submissions/${id}/status`, { type: type.toLowerCase(), status, feedback: feedback.trim() }, { withCredentials: true });
+      await api.patch(`/api/admin/submissions/${id}/status`, { type: type.toLowerCase(), status, feedback: feedback.trim() });
       fetchSubmissions();
       setApproveItem(null);
       setReturnItem(null);
@@ -297,7 +290,7 @@ export default function AdminSubmissions() {
       if (viewData) {
         setViewData(prev => prev ? { ...prev, status } : prev);
       }
-    } catch (e) { console.error(e); setActionError(getFriendlyError(e.response?.data?.error, 'Failed to update status. Please try again.')); }
+    } catch (e) { console.error(e); setActionError(e.friendlyMessage ?? 'Failed to update status. Please try again.'); }
     finally { setActionLoading(false); }
   };
 
@@ -328,11 +321,11 @@ export default function AdminSubmissions() {
     try {
       const toApprove = submissions.filter(s => selectedIds.includes(s.id) && canChangeSubmissionStatus(s));
       for (const item of toApprove) {
-        await axios.patch(`${API}/api/admin/submissions/${item.id}/status`, { type: item.type.toLowerCase(), status: 'Approved', feedback: '' }, { withCredentials: true });
+        await api.patch(`/api/admin/submissions/${item.id}/status`, { type: item.type.toLowerCase(), status: 'Approved', feedback: '' });
       }
       setSelectedIds([]);
       fetchSubmissions();
-    } catch (e) { console.error(e); setActionError(getFriendlyError(e.response?.data?.error, 'Failed to approve selected submissions. Please try again.')); }
+    } catch (e) { console.error(e); setActionError(e.friendlyMessage ?? 'Failed to approve selected submissions. Please try again.'); }
     finally { setActionLoading(false); }
   };
 
@@ -400,18 +393,17 @@ export default function AdminSubmissions() {
     setObserverNotesSaved(false);
     setObserverNotesError('');
     try {
-      const r = await axios.patch(
-        `${API}/api/admin/submissions/${viewItem.id}/observer-notes`,
-        { type: viewItem.type.toLowerCase(), notes: observerNotes },
-        { withCredentials: true }
-      );
+      const r = await api.patch(`/api/admin/submissions/${viewItem.id}/observer-notes`, {
+        type: viewItem.type.toLowerCase(),
+        notes: observerNotes,
+      });
       const savedNotes = r.data.observer_notes ?? observerNotes;
       setObserverNotes(savedNotes);
       setViewData(prev => prev ? { ...prev, observer_notes: savedNotes } : prev);
       setObserverNotesSaved(true);
       setTimeout(() => setObserverNotesSaved(false), 2500);
     } catch (e) {
-      setObserverNotesError(getFriendlyError(e.response?.data?.error, 'Failed to save observer notes.'));
+      setObserverNotesError(e.friendlyMessage ?? 'Failed to save observer notes.');
     } finally {
       setObserverNotesSaving(false);
     }
