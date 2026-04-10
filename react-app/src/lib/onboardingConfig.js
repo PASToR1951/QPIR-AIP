@@ -317,12 +317,103 @@ export const onboardingHintsByRole = {
   ],
 };
 
+export const practiceTasksByRole = {
+  school: [
+    {
+      id: 'practice-school-submit-aip',
+      label: 'Practice: Submit an AIP',
+      description: 'Walk through the AIP submission step on a mock program — no real data is affected.',
+      practiceType: 'aip_submit',
+      completeOn: ['practice.aip_submitted'],
+    },
+    {
+      id: 'practice-school-file-pir',
+      label: 'Practice: File a PIR',
+      description: 'Try the quarterly PIR filing flow without submitting anything real.',
+      practiceType: 'pir_submit',
+      completeOn: ['practice.pir_submitted'],
+    },
+  ],
+  division: [
+    {
+      id: 'practice-division-submit-aip',
+      label: 'Practice: Submit an AIP',
+      description: 'Walk through the AIP submission step on a mock program — no real data is affected.',
+      practiceType: 'aip_submit',
+      completeOn: ['practice.aip_submitted'],
+    },
+    {
+      id: 'practice-division-file-pir',
+      label: 'Practice: File a PIR',
+      description: 'Try the quarterly PIR filing flow without submitting anything real.',
+      practiceType: 'pir_submit',
+      completeOn: ['practice.pir_submitted'],
+    },
+  ],
+  ces: [
+    {
+      id: 'practice-ces-forward',
+      label: 'Practice: Forward a PIR to SDS',
+      description: 'Note and forward a mock PIR to the SDS — no real records change.',
+      practiceType: 'ces_forward',
+      completeOn: ['practice.ces_forwarded'],
+    },
+    {
+      id: 'practice-ces-return',
+      label: 'Practice: Return a PIR',
+      description: 'Return a mock PIR with feedback — no real records change.',
+      practiceType: 'ces_return',
+      completeOn: ['practice.ces_returned'],
+    },
+  ],
+  cluster: [
+    {
+      id: 'practice-cluster-note',
+      label: 'Practice: Note and approve a PIR',
+      description: 'Approve a mock school PIR with optional remarks — no real records change.',
+      practiceType: 'cluster_note',
+      completeOn: ['practice.cluster_noted'],
+    },
+    {
+      id: 'practice-cluster-return',
+      label: 'Practice: Return a PIR',
+      description: 'Return a mock school PIR with feedback — no real records change.',
+      practiceType: 'cluster_return',
+      completeOn: ['practice.cluster_returned'],
+    },
+  ],
+  admin: [
+    {
+      id: 'practice-admin-create-user',
+      label: 'Practice: Create a user',
+      description: 'Fill out the user creation form on a mock account — nothing is saved.',
+      practiceType: 'admin_create_user',
+      completeOn: ['practice.admin_user_created'],
+    },
+    {
+      id: 'practice-admin-assign-role',
+      label: 'Practice: Assign a role',
+      description: 'Change the role of a mock user — no real accounts are modified.',
+      practiceType: 'admin_assign_role',
+      completeOn: ['practice.admin_role_assigned'],
+    },
+  ],
+};
+
 export function getOnboardingTasks(roleKey) {
   return onboardingTasksByRole[roleKey] ?? [];
 }
 
 export function getOnboardingHints(roleKey) {
   return onboardingHintsByRole[roleKey] ?? [];
+}
+
+export function getPracticeTasks(roleKey) {
+  return practiceTasksByRole[roleKey] ?? [];
+}
+
+export function hasPracticeMode(roleKey) {
+  return (practiceTasksByRole[roleKey]?.length ?? 0) > 0;
 }
 
 export function normalizeChecklistProgress(progress, roleKey) {

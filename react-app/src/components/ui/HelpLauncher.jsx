@@ -7,13 +7,14 @@ import {
   Moon, Sun, Lightning as ZapOff,
   TextAlignLeft as AlignLeft, TextT as Type,
   ArrowCounterClockwise as RotateCcw,
-  ListChecks,
+  ListChecks, Flask,
 } from '@phosphor-icons/react';
 import OnboardingTour from './OnboardingTour.jsx';
 import { getPortalHelp } from '../../lib/portalHelpConfig.js';
 import { THEMES, resolveRouteThemeName } from '../../lib/routeTheme.js';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { useOnboarding } from '../../hooks/useOnboarding.jsx';
+import { usePracticeMode } from '../../context/PracticeModeContext.jsx';
 
 const FONT_SIZES = [
   { value: 'sm',     label: 'A', size: 'text-[10px]' },
@@ -82,6 +83,7 @@ export default function HelpLauncher() {
     roleKey,
     showUpdatedContentBadge,
   } = useOnboarding();
+  const { canPractice, active: practiceActive, enterPracticeMode } = usePracticeMode();
   const themeName = resolveRouteThemeName(location.pathname);
   const t = THEMES[themeName];
   const showChecklistActions = hasChecklist && !['observer', 'pending'].includes(roleKey);
@@ -232,6 +234,12 @@ export default function HelpLauncher() {
                           icon: <RotateCcw size={18} />,
                           label: 'Reset onboarding',
                           onClick: () => { resetOnboarding(); setIsOpen(false); },
+                        }] : []),
+                        ...(canPractice && !practiceActive ? [{
+                          as: 'button',
+                          icon: <Flask size={18} />,
+                          label: 'Try practice mode',
+                          onClick: () => { enterPracticeMode(); setIsOpen(false); },
                         }] : []),
                         ...(helpConfig.steps?.length > 0 ? [{
                           as: 'button',

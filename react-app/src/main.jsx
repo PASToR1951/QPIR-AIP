@@ -7,6 +7,7 @@ import { AccessibilityProvider } from './context/AccessibilityContext.jsx'
 import { BrandingProvider } from './context/BrandingContext.jsx'
 import NoConnectionScreen from './components/ui/NoConnectionScreen.jsx'
 import { OnboardingProvider } from './hooks/useOnboarding.jsx'
+import { PracticeModeProvider } from './context/PracticeModeContext.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -14,9 +15,11 @@ createRoot(document.getElementById('root')).render(
       <BrandingProvider>
         <AccessibilityProvider>
           <OnboardingProvider>
-            <NoConnectionScreen>
-              <App />
-            </NoConnectionScreen>
+            <PracticeModeProvider>
+              <NoConnectionScreen>
+                <App />
+              </NoConnectionScreen>
+            </PracticeModeProvider>
           </OnboardingProvider>
         </AccessibilityProvider>
       </BrandingProvider>

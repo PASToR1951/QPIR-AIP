@@ -7,6 +7,7 @@ import PageTransition from './components/ui/PageTransition';
 import FormBackground from './components/ui/FormBackground';
 import HelpLauncher from './components/ui/HelpLauncher.jsx';
 import OnboardingController from './components/ui/OnboardingController.jsx';
+import PracticeModeController from './components/ui/PracticeModeController.jsx';
 import { auth } from './lib/auth';
 import Login from './Login';
 
@@ -239,6 +240,7 @@ export default function AnimatedContent() {
           </Routes>
         </Suspense>
         <OnboardingController />
+        <PracticeModeController />
         <HelpLauncher />
       </MotionConfig>
     );
@@ -304,6 +306,7 @@ export default function AnimatedContent() {
         </AnimatePresence>
       </Suspense>
       <OnboardingController />
+      <PracticeModeController />
       <HelpLauncher />
     </MotionConfig>
   );
