@@ -119,17 +119,23 @@ app.get('/cluster-logos/:filename', async (c) => {
   return serveUploadedLogo(c, './public/cluster-logos');
 });
 
+// Serve the admin-uploaded app logo.
+app.get('/app-logo/:filename', async (c) => {
+  return serveUploadedLogo(c, './public/app-logo');
+});
+
 // Health check
 app.get('/api/health', (c) => {
   return c.json({ status: 'ok', time: new Date().toISOString() });
 });
 
-// Public: division config (supervisor name/title for PIR documents)
+// Public: division config (supervisor name/title for PIR documents, app branding)
 app.get('/api/config', async (c) => {
   const config = await _prisma.divisionConfig.findFirst();
   return c.json({
     supervisor_name:  config?.supervisor_name  ?? "",
     supervisor_title: config?.supervisor_title ?? "",
+    app_logo:         config?.app_logo         ?? null,
   });
 });
 

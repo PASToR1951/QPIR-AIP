@@ -17,6 +17,7 @@ const QUARTERS_PER_YEAR = 4;
 const MONTHS_PER_QUARTER = 12 / QUARTERS_PER_YEAR;
 const SCHOOL_LOGO_DIR = "./public/school-logos";
 const CLUSTER_LOGO_DIR = "./public/cluster-logos";
+const APP_LOGO_DIR = "./public/app-logo";
 const LOGO_MIME_EXTENSIONS: Record<string, string> = {
   "image/webp": "webp",
   "image/png": "png",
@@ -73,6 +74,16 @@ async function removeExistingClusterLogos(clusterId: number) {
   await removeExistingLogoFiles(CLUSTER_LOGO_DIR, clusterId);
 }
 
+async function removeExistingAppLogos() {
+  try {
+    for await (const entry of Deno.readDir(APP_LOGO_DIR)) {
+      if (entry.isFile) await Deno.remove(`${APP_LOGO_DIR}/${entry.name}`);
+    }
+  } catch {
+    // Directory may not exist yet — that's fine.
+  }
+}
+
 function requireAdmin(c: Context | string | undefined): TokenPayload | null {
   const user = getUserFromToken(c);
   if (!user || user.role !== "Admin") return null;
@@ -117,6 +128,7 @@ function isObserverAllowedAdminRoute(c: Context, user: TokenPayload): boolean {
   if (c.req.method === "GET") {
     return [
       "/overview",
+      "/onboarding-overview",
       "/layout-info",
       "/submissions",
       "/submissions/export",
@@ -1108,6 +1120,113 @@ adminRoutes.get("/overview", async (c) => {
     clusterCompliance,
     pirQuarterly,
     pirClusterStatus,
+  });
+});
+
+adminRoutes.get("/onboarding-overview", async (c) => {
+  const user = requireAdminOrObserver(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const daysRaw = c.req.query("days") ?? "30";
+  const days = daysRaw === "all" ? "all" : safeParseInt(daysRaw, 30, 1, 365);
+  const since = days === "all"
+    ? null
+    : new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const supportedRoles = [
+    "School",
+    "Division Personnel",
+    "CES-SGOD",
+    "CES-ASDS",
+    "CES-CID",
+    "Cluster Coordinator",
+    "Admin",
+  ];
+
+  const users = await prisma.user.findMany({
+    where: {
+      is_active: true,
+      role: { in: supportedRoles },
+    },
+    select: {
+      id: true,
+      role: true,
+      created_at: true,
+      onboarding_dismissed_at: true,
+      onboarding_completed_at: true,
+      checklist_progress: true,
+    } as any,
+  } as any);
+
+  const rows = users.filter((row) => {
+    if (!since) return true;
+    const relevantDate = row.onboarding_completed_at ??
+      row.onboarding_dismissed_at ??
+      row.created_at;
+    return relevantDate >= since;
+  }).map((row) => {
+    const progress = row.checklist_progress &&
+        typeof row.checklist_progress === "object" &&
+        !Array.isArray(row.checklist_progress)
+      ? row.checklist_progress as Record<string, unknown>
+      : {};
+    const completedTaskIds = Array.isArray(progress.completed_task_ids)
+      ? progress.completed_task_ids.filter((item) => typeof item === "string")
+      : [];
+
+    let status: "completed" | "in_progress" | "dismissed" | "not_started" =
+      "not_started";
+    if (row.onboarding_completed_at) {
+      status = "completed";
+    } else if (completedTaskIds.length > 0) {
+      status = "in_progress";
+    } else if (row.onboarding_dismissed_at) {
+      status = "dismissed";
+    }
+
+    return {
+      role: row.role,
+      status,
+    };
+  });
+
+  const emptyCounts = {
+    completed: 0,
+    in_progress: 0,
+    dismissed: 0,
+    not_started: 0,
+    total: 0,
+  };
+
+  const summary = rows.reduce((acc, row) => {
+    acc[row.status] += 1;
+    acc.total += 1;
+    return acc;
+  }, { ...emptyCounts });
+
+  const byRole = supportedRoles.map((role) => {
+    const counts = rows
+      .filter((row) => row.role === role)
+      .reduce((acc, row) => {
+        acc[row.status] += 1;
+        acc.total += 1;
+        return acc;
+      }, { ...emptyCounts });
+
+    return {
+      role,
+      ...counts,
+    };
+  }).filter((row) => row.total > 0);
+
+  return c.json({
+    days,
+    summary,
+    byRole,
+    range: {
+      mode: days === "all" ? "all" : "rolling",
+      start: since?.toISOString() ?? null,
+      end: new Date().toISOString(),
+    },
   });
 });
 
@@ -4010,7 +4129,7 @@ adminRoutes.get("/settings/system-info", async (c) => {
 adminRoutes.get("/settings/division-config", async (c) => {
   if (!requireAdmin(c)) return c.json({ error: "Unauthorized" }, 401);
   const config = await prisma.divisionConfig.findFirst();
-  return c.json(config ?? { supervisor_name: "", supervisor_title: "" });
+  return c.json(config ?? { supervisor_name: "", supervisor_title: "", app_logo: null });
 });
 
 adminRoutes.post("/settings/division-config", async (c) => {
@@ -4045,6 +4164,58 @@ adminRoutes.post("/settings/division-config", async (c) => {
     { supervisor_name, supervisor_title },
   );
   return c.json(config);
+});
+
+// ==========================================
+// APP LOGO (Admin-only branding)
+// ==========================================
+
+adminRoutes.post("/settings/app-logo", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  let formData: FormData;
+  try {
+    formData = await c.req.formData();
+  } catch {
+    return c.json({ error: "Expected multipart/form-data" }, 400);
+  }
+
+  const file = formData.get("logo");
+  if (!(file instanceof File)) return c.json({ error: "Missing logo file" }, 400);
+
+  const extension = LOGO_MIME_EXTENSIONS[file.type];
+  if (!extension) {
+    return c.json({ error: "Logo must be a WebP, PNG, JPEG, or GIF image" }, 400);
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    return c.json({ error: "Logo must be 2 MB or smaller" }, 400);
+  }
+
+  await Deno.mkdir(APP_LOGO_DIR, { recursive: true });
+  await removeExistingAppLogos();
+
+  const logoPath = `/app-logo/logo.${extension}?v=${Date.now()}`;
+  const buffer = await file.arrayBuffer();
+  await Deno.writeFile(`${APP_LOGO_DIR}/logo.${extension}`, new Uint8Array(buffer));
+
+  await prisma.divisionConfig.updateMany({ data: { app_logo: logoPath } });
+
+  await writeAuditLog(admin.id, "uploaded_app_logo", "DivisionConfig", 1, {
+    app_logo: logoPath,
+  });
+  return c.json({ app_logo: logoPath });
+});
+
+adminRoutes.delete("/settings/app-logo", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  await removeExistingAppLogos();
+  await prisma.divisionConfig.updateMany({ data: { app_logo: null } });
+
+  await writeAuditLog(admin.id, "deleted_app_logo", "DivisionConfig", 1, {});
+  return c.json({ success: true });
 });
 
 // ==========================================

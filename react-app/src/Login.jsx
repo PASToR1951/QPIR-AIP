@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
+import { useAppLogo } from './context/BrandingContext.jsx';
 import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, EnvelopeIcon as Mail, ArrowLeft } from '@phosphor-icons/react';
 import { Input } from './components/ui/Input';
 import { auth } from './lib/auth';
@@ -9,6 +10,32 @@ import { getOAuthErrorMessage, LOGIN_COPY, SIGN_IN_FAILED_TITLE } from './lib/au
 const GOOGLE_VIEW = 'google';
 const MANUAL_VIEW = 'manual';
 const LOGIN_VIEW_TRANSITION_MS = 380;
+
+function isPrivateIpv4Host(hostname) {
+  const parts = hostname.split('.').map((part) => Number.parseInt(part, 10));
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
+    return false;
+  }
+
+  const [first, second] = parts;
+  return (
+    first === 10 ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168)
+  );
+}
+
+function getGoogleOAuthUnavailableReason() {
+  const configuredHost = import.meta.env.VITE_PUBLIC_HOST || '';
+  const browserHost = typeof window === 'undefined' ? '' : window.location.hostname;
+  const oauthHost = configuredHost || browserHost;
+
+  if (isPrivateIpv4Host(oauthHost)) {
+    return 'Google sign-in is unavailable in local-network mode because Google blocks private-IP callback URLs. Use Email & Password for LAN testing.';
+  }
+
+  return '';
+}
 
 function prefersReducedMotion() {
   if (typeof window === 'undefined') return false;
@@ -19,10 +46,13 @@ function prefersReducedMotion() {
 }
 
 export default function Login() {
+  const appLogo = useAppLogo();
+  const googleOAuthUnavailableReason = getGoogleOAuthUnavailableReason();
+  const googleOAuthAvailable = !googleOAuthUnavailableReason;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loginView, setLoginView] = useState(GOOGLE_VIEW);
+  const [loginView, setLoginView] = useState(googleOAuthAvailable ? GOOGLE_VIEW : MANUAL_VIEW);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -141,7 +171,10 @@ export default function Login() {
   };
 
   const openManualView = () => setLoginView(MANUAL_VIEW);
-  const returnToGoogleView = () => setLoginView(GOOGLE_VIEW);
+  const returnToGoogleView = () => {
+    if (!googleOAuthAvailable) return;
+    setLoginView(GOOGLE_VIEW);
+  };
 
   // Shared privacy notice below both login views
   const privacyNotice = (
@@ -158,12 +191,42 @@ export default function Login() {
     <div className="bg-slate-50 dark:bg-dark-base min-h-[100svh] flex flex-col items-center justify-center relative font-sans overflow-x-hidden">
       {/* Background Image */}
       <div
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-[0.14]"
-        style={{ backgroundImage: `url('/SDO_Facade.webp')` }}
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url('/SDO_Facade.webp')`,
+          opacity: 0.58,
+          filter: 'saturate(1.3) contrast(1.08) brightness(1.04)',
+        }}
       />
 
-      {/* Soft overlay */}
-      <div className="absolute inset-0 bg-white/60 dark:bg-slate-950/65 backdrop-blur-[2px] pointer-events-none z-10" />
+      {/* Vignette — darkens edges, keeps center open */}
+      <div
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{
+          background:
+            'radial-gradient(ellipse 75% 75% at 50% 50%, transparent 30%, rgba(15,23,42,0.38) 100%)',
+        }}
+      />
+
+      {/* Directional gradient — grounds the bottom, lightens center */}
+      <div
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(248,250,252,0.22) 0%, rgba(248,250,252,0.44) 45%, rgba(15,23,42,0.18) 100%)',
+        }}
+      />
+
+      {/* Grain / noise texture */}
+      <div
+        className="absolute inset-0 pointer-events-none z-20"
+        style={{
+          opacity: 0.06,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'repeat',
+          backgroundSize: '180px 180px',
+        }}
+      />
 
       {/* Main Content */}
       <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center flex-1 w-full py-8 md:pb-32">
@@ -171,33 +234,38 @@ export default function Login() {
           ref={cardRef}
           className="relative bg-[#fafafa]/90 dark:bg-dark-surface/90 border border-slate-200 dark:border-dark-border rounded-[2rem] p-6 md:p-8 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 dark:ring-dark-border/30 backdrop-blur-md login-card-entrance"
         >
-          {loginView === MANUAL_VIEW && (
-            <button
-              type="button"
-              onClick={returnToGoogleView}
-              className="absolute top-5 left-5 inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 dark:border-dark-border bg-white/90 dark:bg-dark-base/80 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-sm transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
-            >
-              <ArrowLeft size={14} weight="bold" />
-              Back
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={returnToGoogleView}
+            aria-hidden={loginView !== MANUAL_VIEW || !googleOAuthAvailable}
+            tabIndex={loginView === MANUAL_VIEW && googleOAuthAvailable ? 0 : -1}
+            className={`absolute top-5 left-5 z-10 inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 dark:border-dark-border bg-white/90 dark:bg-dark-base/80 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 shadow-sm hover:text-indigo-600 dark:hover:text-indigo-400 transition-all duration-[380ms] ${loginView === MANUAL_VIEW && googleOAuthAvailable
+                ? 'opacity-100 translate-x-0 pointer-events-auto'
+                : 'opacity-0 -translate-x-2 pointer-events-none'
+              }`}
+          >
+            <ArrowLeft size={14} weight="bold" />
+            Back
+          </button>
 
           {/* Logo + Title */}
-          <div className="mb-3 flex justify-center login-stagger-child" style={{'--stagger-i': 0}}>
-            <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-16 w-auto drop-shadow-sm" fetchPriority="high" />
+          <div className="mb-3 flex justify-center login-stagger-child" style={{ '--stagger-i': 0 }}>
+            <img src={appLogo} alt="AIP-PIR Logo" className="h-16 w-auto drop-shadow-sm" fetchPriority="high" />
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tighter text-slate-900 dark:text-slate-100 login-stagger-child" style={{'--stagger-i': 1}}>
+          <h2 className="text-2xl font-extrabold tracking-tighter text-slate-900 dark:text-slate-100 login-stagger-child" style={{ '--stagger-i': 1 }}>
             AIP-PIR System
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 mb-5 px-4 login-stagger-child" style={{'--stagger-i': 2}}>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 mb-5 px-4 login-stagger-child" style={{ '--stagger-i': 2 }}>
             Schools Division of Guihulngan City, DepEd NIR.
           </p>
 
           {/* Sign-in options */}
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-3 login-stagger-child" style={{'--stagger-i': 3}}>
-            {loginView === MANUAL_VIEW
-              ? 'Use manual sign-in only for direct portal accounts.'
-              : 'Sign in with your DepEd Google account.'}
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-3 login-stagger-child" style={{ '--stagger-i': 3 }}>
+            {!googleOAuthAvailable
+              ? 'Google sign-in is unavailable in local-network mode. Use your portal password for testing.'
+              : loginView === MANUAL_VIEW
+                ? 'Use manual sign-in only for direct portal accounts.'
+                : 'Sign in with your DepEd Google account.'}
           </p>
 
           {/* Error banner */}
@@ -217,13 +285,13 @@ export default function Login() {
                   className="flex-shrink-0 mt-0.5 text-red-300 dark:text-red-700 hover:text-red-500 dark:hover:text-red-400 transition-colors"
                   aria-label="Dismiss error"
                 >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
                 </button>
               </div>
             </div>
           )}
 
-          <div className="space-y-5 -mx-1 login-stagger-child" style={{'--stagger-i': 4}}>
+          <div className="space-y-5 -mx-1 login-stagger-child" style={{ '--stagger-i': 4 }}>
             <div ref={panelShellRef} className="login-panel-shell">
               <div className={`login-panel-track ${loginView === MANUAL_VIEW ? 'login-panel-track--manual' : ''}`}>
                 <section
@@ -233,26 +301,39 @@ export default function Login() {
                   aria-hidden={loginView !== GOOGLE_VIEW}
                 >
                   <div className="login-panel-content space-y-4 p-1">
-                    <a
-                      href={`${import.meta.env.VITE_API_URL}/api/auth/oauth/google`}
-                      tabIndex={loginView === GOOGLE_VIEW ? 0 : -1}
-                      className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-[#0F3460] bg-white dark:bg-[#1A1A2E] text-slate-700 dark:text-gray-200 text-sm font-semibold transition-all shadow-sm hover:bg-slate-50 dark:hover:bg-[#0F3460]/60"
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                      </svg>
-                      Sign in with DepEd Google
-                    </a>
+                    {googleOAuthAvailable ? (
+                      <a
+                        href={`${import.meta.env.VITE_API_URL}/api/auth/oauth/google`}
+                        tabIndex={loginView === GOOGLE_VIEW ? 0 : -1}
+                        className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-[#0F3460] bg-white dark:bg-[#1A1A2E] text-slate-700 dark:text-gray-200 text-sm font-semibold transition-all shadow-sm hover:bg-slate-50 dark:hover:bg-[#0F3460]/60"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                        </svg>
+                        Sign in with DepEd Google
+                      </a>
+                    ) : (
+                      <div className="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/90 dark:bg-amber-950/20 px-4 py-3 text-left shadow-sm">
+                        <p className="text-[11px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-300">
+                          Google Sign-In Unavailable
+                        </p>
+                        <p className="mt-1 text-sm font-medium leading-snug text-amber-900 dark:text-amber-100">
+                          {googleOAuthUnavailableReason}
+                        </p>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={openManualView}
                       tabIndex={loginView === GOOGLE_VIEW ? 0 : -1}
                       className="text-xs font-medium text-indigo-600 dark:text-indigo-400 underline decoration-dotted underline-offset-4 transition-colors hover:text-indigo-700 dark:hover:text-indigo-300"
                     >
-                      Can&apos;t access your DepEd Google email? Sign in manually.
+                      {googleOAuthAvailable
+                        ? 'Can&apos;t access your DepEd Google email? Sign in manually.'
+                        : 'Continue with Email & Password instead.'}
                     </button>
                   </div>
                 </section>
@@ -265,17 +346,6 @@ export default function Login() {
                 >
                   <div className="login-panel-content p-1">
                     <div className="rounded-2xl border border-slate-200/80 dark:border-dark-border bg-slate-50/80 dark:bg-dark-base/50 p-4 shadow-sm text-left">
-                      <div className="mb-4">
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                            Manual Sign-in
-                          </h3>
-                          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                            Use this only if SDO IT set up a direct portal account for you.
-                          </p>
-                        </div>
-                      </div>
-
                       <form className="space-y-4" onSubmit={handleLogin}>
                         <div className="space-y-3">
                           <Input
@@ -332,7 +402,7 @@ export default function Login() {
                               Signing in...
                             </>
                           ) : (
-                            'Sign in with Email & Password'
+                            'Sign in'
                           )}
                         </button>
                       </form>

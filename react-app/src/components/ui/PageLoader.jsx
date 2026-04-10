@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const logos = [
-  { src: '/AIP-PIR-logo.webp', alt: 'AIP-PIR Logo' },
-  { src: '/DepEd_Seal.webp', alt: 'DepEd Seal' },
-  { src: '/DepEd NIR Logo.webp', alt: 'DepEd NIR Logo' },
-  { src: '/Division_Logo.webp', alt: 'Division Logo' }
-];
+import { useAppLogo } from '../../context/BrandingContext.jsx';
 
 export const PageLoader = ({ message = "Loading..." }) => {
+  const appLogo = useAppLogo();
   const [currentLogoIndex, setCurrentLogoIndex] = useState(0);
+
+  const logos = [
+    { src: appLogo, alt: 'AIP-PIR Logo' },
+    { src: '/DepEd_Seal.webp', alt: 'DepEd Seal' },
+    { src: '/DepEd NIR Logo.webp', alt: 'DepEd NIR Logo' },
+    { src: '/Division_Logo.webp', alt: 'Division Logo' },
+  ];
 
   useEffect(() => {
     // Preload images

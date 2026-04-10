@@ -4,6 +4,7 @@ import api from '../lib/api.js';
 import { ArrowRight, MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 import { EndOfListCue } from '../components/ui/EndOfListCue';
 import { shouldShowEndOfListCue } from '../components/ui/endOfListCue';
+import { emitOnboardingSignal } from '../lib/onboardingSignals.js';
 
 const QUARTERS = ['1st', '2nd', '3rd', '4th'];
 const currentQ = Math.ceil((new Date().getMonth() + 1) / 3);
@@ -98,14 +99,20 @@ export default function CESDashboard() {
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => {
+              setSearch(e.target.value);
+              emitOnboardingSignal('ces.filter_applied', { control: 'search' });
+            }}
             placeholder="Search program, school, owner…"
             className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:focus:ring-teal-700"
           />
         </div>
         <select
           value={quarter}
-          onChange={e => setQuarter(e.target.value)}
+          onChange={e => {
+            setQuarter(e.target.value);
+            emitOnboardingSignal('ces.filter_applied', { control: 'quarter' });
+          }}
           className="text-sm rounded-xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:focus:ring-teal-700"
         >
           {buildQuarterOptions().map(o => (
@@ -121,8 +128,13 @@ export default function CESDashboard() {
             <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-teal-500 animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="p-12 text-center text-sm text-slate-400 dark:text-slate-500">
-            No PIRs pending your review{quarter ? ` for ${quarter}` : ''}.
+          <div className="p-12 text-center">
+            <p className="text-sm text-slate-400 dark:text-slate-500">
+              No PIRs pending your review{quarter ? ` for ${quarter}` : ''}.
+            </p>
+            <p className="mt-2 text-xs font-medium text-slate-400 dark:text-slate-500">
+              Submissions will appear here once schools submit for review.
+            </p>
           </div>
         ) : (
           <table className="w-full text-sm">

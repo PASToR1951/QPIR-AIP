@@ -1,8 +1,9 @@
-import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { House as Home, ArrowLeft, WifiSlash as WifiOff, ArrowClockwise as RefreshCcw, LockKey as Lock } from '@phosphor-icons/react';
+import { useAppLogo } from './context/BrandingContext.jsx';
 
 const ErrorPage = ({ type = "500", title, message, onRetry }) => {
+  const appLogo = useAppLogo();
   const navigate = useNavigate();
 
   const errorConfigs = {
@@ -63,7 +64,7 @@ const ErrorPage = ({ type = "500", title, message, onRetry }) => {
       <div className="relative z-20 flex flex-col items-center text-center max-w-2xl px-4">
         {/* Branding */}
         <div className="relative mb-10">
-            <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-28 md:h-36 w-auto drop-shadow-2xl" />
+            <img src={appLogo} alt="AIP-PIR Logo" className="h-28 md:h-36 w-auto drop-shadow-2xl" />
         </div>
 
         {/* Status indicator */}

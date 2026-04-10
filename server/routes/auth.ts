@@ -9,6 +9,48 @@ import { getUserFromToken } from "../lib/auth.ts";
 import { clearTokenCookieOptions, tokenCookieOptions } from "../lib/sessionCookie.ts";
 
 const authRoutes = new Hono();
+const DEFAULT_CHECKLIST_PROGRESS = {
+  completed_task_ids: [],
+  hint_ids_seen: [],
+  panel_hidden: false,
+};
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string =>
+    typeof item === "string" && item.trim().length > 0
+  );
+}
+
+function normalizeChecklistProgress(value: unknown) {
+  const raw = value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+
+  return {
+    completed_task_ids: normalizeStringArray(raw.completed_task_ids),
+    hint_ids_seen: normalizeStringArray(raw.hint_ids_seen),
+    panel_hidden: Boolean(raw.panel_hidden),
+  };
+}
+
+function buildOnboardingPayload(user: Record<string, unknown>) {
+  return {
+    onboarding_version_seen: Number.isInteger(user.onboarding_version_seen)
+      ? user.onboarding_version_seen
+      : 0,
+    onboarding_show_on_login: user.onboarding_show_on_login !== false,
+    onboarding_dismissed_at: user.onboarding_dismissed_at instanceof Date
+      ? user.onboarding_dismissed_at.toISOString()
+      : null,
+    onboarding_completed_at: user.onboarding_completed_at instanceof Date
+      ? user.onboarding_completed_at.toISOString()
+      : null,
+    checklist_progress: normalizeChecklistProgress(
+      user.checklist_progress ?? DEFAULT_CHECKLIST_PROGRESS,
+    ),
+  };
+}
 
 // ── In-memory login rate limiter ─────────────────────────────────────────────
 // Limits each email to MAX_ATTEMPTS failed login attempts within WINDOW_MS.
@@ -107,6 +149,7 @@ authRoutes.post('/login', async (c) => {
         first_name: user.first_name,
         middle_initial: user.middle_initial,
         last_name: user.last_name,
+        ...buildOnboardingPayload(user as Record<string, unknown>),
       }
     });
   } catch (error) {
@@ -157,10 +200,107 @@ authRoutes.get('/me', async (c) => {
       cluster_number: user.cluster?.cluster_number ?? user.school?.cluster?.cluster_number ?? null,
       cluster_logo: user.cluster?.logo ?? user.school?.cluster?.logo ?? null,
       school_logo: user.school?.logo ?? null,
+      ...buildOnboardingPayload(user as Record<string, unknown>),
       expiresAt,
     });
   } catch (error) {
     logger.error('GET /me failed', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+authRoutes.patch('/me/onboarding', async (c) => {
+  const tokenUser = getUserFromToken(c);
+  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
+
+  try {
+    const body = await c.req.json().catch(() => ({}));
+    const {
+      show_on_login,
+      version_seen,
+      dismissed_at,
+      completed_at,
+      checklist_progress,
+      reset,
+    } = body ?? {};
+
+    if (typeof reset === 'boolean' && reset) {
+      const user = await prisma.user.update({
+        where: { id: tokenUser.id },
+        data: {
+          onboarding_version_seen: 0,
+          onboarding_show_on_login: true,
+          onboarding_dismissed_at: null,
+          onboarding_completed_at: null,
+          checklist_progress: DEFAULT_CHECKLIST_PROGRESS,
+        } as any,
+      } as any);
+
+      return c.json(buildOnboardingPayload(user as Record<string, unknown>));
+    }
+
+    const data: Record<string, unknown> = {};
+
+    if (typeof show_on_login === 'boolean') {
+      data.onboarding_show_on_login = show_on_login;
+    }
+
+    if (version_seen !== undefined) {
+      if (!Number.isInteger(version_seen) || version_seen < 0) {
+        return c.json({ error: 'version_seen must be a non-negative integer' }, 400);
+      }
+      data.onboarding_version_seen = version_seen;
+    }
+
+    if (dismissed_at !== undefined) {
+      if (dismissed_at !== null && Number.isNaN(new Date(dismissed_at).getTime())) {
+        return c.json({ error: 'dismissed_at must be a valid ISO date or null' }, 400);
+      }
+      data.onboarding_dismissed_at = dismissed_at ? new Date(dismissed_at) : null;
+    }
+
+    if (completed_at !== undefined) {
+      if (completed_at !== null && Number.isNaN(new Date(completed_at).getTime())) {
+        return c.json({ error: 'completed_at must be a valid ISO date or null' }, 400);
+      }
+      data.onboarding_completed_at = completed_at ? new Date(completed_at) : null;
+    }
+
+    if (checklist_progress !== undefined) {
+      data.checklist_progress = normalizeChecklistProgress(checklist_progress);
+    }
+
+    if (Object.keys(data).length === 0) {
+      const user = await prisma.user.findUnique({
+        where: { id: tokenUser.id },
+        select: {
+          onboarding_version_seen: true,
+          onboarding_show_on_login: true,
+          onboarding_dismissed_at: true,
+          onboarding_completed_at: true,
+          checklist_progress: true,
+        } as any,
+      } as any);
+
+      if (!user) return c.json({ error: 'Unauthorized' }, 401);
+      return c.json(buildOnboardingPayload(user as Record<string, unknown>));
+    }
+
+    const user = await prisma.user.update({
+      where: { id: tokenUser.id },
+      data: data as any,
+      select: {
+        onboarding_version_seen: true,
+        onboarding_show_on_login: true,
+        onboarding_dismissed_at: true,
+        onboarding_completed_at: true,
+        checklist_progress: true,
+      } as any,
+    } as any);
+
+    return c.json(buildOnboardingPayload(user as Record<string, unknown>));
+  } catch (error) {
+    logger.error('PATCH /me/onboarding failed', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });

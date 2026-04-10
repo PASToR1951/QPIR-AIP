@@ -80,6 +80,11 @@ model User {
   last_name       String?
   is_active       Boolean   @default(true)
   deleted_at      DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
+  onboarding_version_seen  Int       @default(0)
+  onboarding_show_on_login Boolean   @default(true)
+  onboarding_dismissed_at  DateTime?
+  onboarding_completed_at  DateTime?
+  checklist_progress       Json      @default("{}")
 
   // Relation to School (For School Role Users)
   school_id  Int?
@@ -338,6 +343,7 @@ model DivisionConfig {
   id               Int      @id @default(autoincrement())
   supervisor_name  String   @default("")
   supervisor_title String   @default("")
+  app_logo         String?  // null = use default; "/app-logo/logo.{ext}?v=..." when set by Admin
   updated_at       DateTime @updatedAt
 
   @@map("division_config")

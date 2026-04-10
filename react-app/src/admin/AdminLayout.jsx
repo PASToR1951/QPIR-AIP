@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Outlet } from 'react-router-dom';
 import { AdminSidebar } from './AdminSidebar.jsx';
 import { AdminTopBar } from './AdminTopBar.jsx';
-import HelpLauncher from '../components/ui/HelpLauncher.jsx';
 import api, { API } from '../lib/api.js';
 import { mergeNotifications } from '../lib/notifications.js';
 import { auth } from '../lib/auth.js';
@@ -154,7 +153,6 @@ export const AdminLayout = () => {
           <Outlet />
         </main>
       </div>
-      <HelpLauncher />
     </div>
   );
 };

@@ -19,6 +19,7 @@ import SectionHeader from './components/ui/SectionHeader';
 import SignatureBlock from './components/ui/SignatureBlock';
 import FinalizeCard from './components/ui/FinalizeCard';
 import WizardStickyNav from './components/ui/WizardStickyNav';
+import { emitOnboardingSignal } from './lib/onboardingSignals.js';
 
 import AIPProfileSection from './components/forms/aip/AIPProfileSection';
 import AIPGoalsTargetsSection from './components/forms/aip/AIPGoalsTargetsSection';
@@ -46,6 +47,7 @@ export default function App() {
 
     const saveTimerRef = useRef(null);
     const autoStarted = useRef(false);
+    const reviewAreaRef = useRef(null);
 
     // App Mode State: 'splash', 'wizard', or 'full'
     const [appMode, setAppMode] = useState('splash');
@@ -238,6 +240,10 @@ export default function App() {
         setDepedProgram(selectedProgram);
         setIsSubmitted(false);
         resetFormState();
+
+        if (mode !== 'readonly' && selectedProgram) {
+            emitOnboardingSignal('author.program_selected', { program: selectedProgram, mode });
+        }
 
         if (mode === 'readonly') {
             try {
@@ -437,6 +443,7 @@ export default function App() {
                 activities
             });
             localStorage.removeItem(`aip_draft_${depedProgram}_${year}`);
+            emitOnboardingSignal('author.draft_saved', { source: 'server-draft' });
         } catch (e) {
         }
 
@@ -477,6 +484,7 @@ export default function App() {
                 setAutosavedPrograms(prev => prev.includes(depedProgram) ? prev : [...prev, depedProgram]);
                 setLastAutoSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
                 setTimeout(() => setLastAutoSavedTime(null), 3000);
+                emitOnboardingSignal('author.draft_saved', { source: 'autosave' });
             } catch { /* quota exceeded or private browsing — silently skip */ }
         }, 15000);
 
@@ -509,6 +517,26 @@ export default function App() {
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, [appMode]);
+
+    useEffect(() => {
+        const reviewArea = reviewAreaRef.current;
+        if (!reviewArea || appMode === 'splash' || appMode === 'readonly') return undefined;
+
+        if (typeof IntersectionObserver === 'undefined') {
+            emitOnboardingSignal('author.review_area_opened');
+            return undefined;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) {
+                emitOnboardingSignal('author.review_area_opened');
+                observer.disconnect();
+            }
+        }, { threshold: 0.35 });
+
+        observer.observe(reviewArea);
+        return () => observer.disconnect();
+    }, [appMode, currentStep]);
 
     const formatCurrency = (val) => {
         if (!val) return "";
@@ -1130,7 +1158,7 @@ export default function App() {
                             {(appMode === 'full' || currentStep === 6) && (
                                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-200">
                                     {appMode === 'wizard' && (
-                                        <div data-tour="form-review-submit">
+                                        <div ref={reviewAreaRef} data-tour="form-review-submit">
                                             <FinalizeCard 
                                                 isSubmitted={isSubmitted} 
                                                 onSubmit={() => setShowFinalConfirm(true)}
@@ -1173,7 +1201,7 @@ export default function App() {
                         )}
                         {/* FINAL ACTION BUTTONS (Below Full Form Only) */}
                         {appMode === 'full' && (
-                            <div data-tour="form-review-submit" className="print:hidden mt-12 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
+                            <div ref={reviewAreaRef} data-tour="form-review-submit" className="print:hidden mt-12 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2rem] p-8 flex flex-col items-center justify-center text-center shadow-lg relative z-10">
                                 <h3 className="text-slate-800 dark:text-slate-100 font-bold text-xl mb-6">Ready to finalize your plan?</h3>
 
                                 <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">

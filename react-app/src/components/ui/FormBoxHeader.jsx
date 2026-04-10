@@ -1,6 +1,7 @@
-import React from 'react';
+import { useAppLogo } from '../../context/BrandingContext.jsx';
 
 export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
+    const appLogo = useAppLogo();
     if (compact) {
         return (
             <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 p-4 sm:p-6 bg-slate-50/50 dark:bg-dark-surface rounded-2xl border border-slate-100 dark:border-dark-border select-none mb-4">
@@ -50,7 +51,7 @@ export const FormBoxHeader = ({ title, subtitle, badge, compact = false }) => {
                 </div>
                 <div className="items-center gap-3 shrink-0 hidden md:flex print:flex">
                     <img src="/Division_Logo.webp" alt="Division Logo" className="h-24 w-auto drop-shadow-md" />
-                    <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-md" />
+                    <img src={appLogo} alt="AIP-PIR Logo" className="h-24 w-auto drop-shadow-md" />
                 </div>
             </div>
 

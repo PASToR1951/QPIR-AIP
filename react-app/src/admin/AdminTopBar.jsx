@@ -81,6 +81,7 @@ export const AdminTopBar = ({ onMobileMenuToggle, notifications = [], markOne, m
     <header className="h-14 bg-white/80 dark:bg-dark-base/80 backdrop-blur-md flex items-center px-4 gap-4 sticky top-0 z-30">
       {/* Mobile menu toggle */}
       <button
+        data-tour="admin-menu-toggle"
         onClick={onMobileMenuToggle}
         className="lg:hidden text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
       >

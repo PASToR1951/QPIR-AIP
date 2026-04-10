@@ -5,18 +5,29 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const tunnelHost = env.VITE_TUNNEL_HOST
+  const legacyTunnelHost = env.VITE_TUNNEL_HOST
+  const publicHost = env.VITE_PUBLIC_HOST || legacyTunnelHost
+  const devHost = env.VITE_DEV_HOST
   const apiProxyTarget = env.VITE_API_PROXY_TARGET
+  const allowedHosts = env.VITE_ALLOWED_HOSTS
+    ? env.VITE_ALLOWED_HOSTS.split(',').map((host) => host.trim()).filter(Boolean)
+    : publicHost
+      ? [publicHost]
+      : undefined
+  const hmrProtocol = env.VITE_HMR_PROTOCOL || (legacyTunnelHost ? 'wss' : 'ws')
+  const hmrClientPort = Number(
+    env.VITE_HMR_CLIENT_PORT || (hmrProtocol === 'wss' ? '443' : '5173')
+  )
 
   return {
     plugins: [react()],
     server: {
-      // In tunnel mode: listen on all interfaces and point HMR at the public host.
-      // In local dev: default behaviour (127.0.0.1 only).
-      host: tunnelHost ? '0.0.0.0' : undefined,
-      allowedHosts: tunnelHost ? [tunnelHost] : undefined,
-      hmr: tunnelHost
-        ? { host: tunnelHost, clientPort: 443, protocol: 'wss' }
+      // When a public host is configured, listen on all interfaces and point HMR
+      // at that host so phones/tablets on the LAN can reach the dev server.
+      host: devHost || (publicHost ? '0.0.0.0' : undefined),
+      allowedHosts,
+      hmr: publicHost
+        ? { host: publicHost, clientPort: hmrClientPort, protocol: hmrProtocol }
         : { host: 'localhost', port: 5173 },
       proxy: apiProxyTarget
         ? {
@@ -31,6 +42,11 @@ export default defineConfig(({ mode }) => {
               secure: false,
             },
             '/cluster-logos': {
+              target: apiProxyTarget,
+              changeOrigin: true,
+              secure: false,
+            },
+            '/app-logo': {
               target: apiProxyTarget,
               changeOrigin: true,
               secure: false,

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useAppLogo } from '../context/BrandingContext.jsx';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -30,6 +31,7 @@ docsContent.split('\n').forEach(line => {
 });
 
 export default function SystemDocs() {
+  const appLogo = useAppLogo();
   const [activeId, setActiveId] = useState('');
   const [isMobileTocOpen, setIsMobileTocOpen] = useState(false);
 
@@ -184,7 +186,7 @@ export default function SystemDocs() {
                 </div>
 
                 <div className="flex flex-col items-center gap-3 text-center md:flex-1">
-                  <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-14 sm:h-16 md:h-20 w-auto" />
+                  <img src={appLogo} alt="AIP-PIR Logo" className="h-14 sm:h-16 md:h-20 w-auto" />
                   <div>
                     <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight leading-tight">AIP-PIR Portal</h1>
                     <p className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm mt-1 tracking-wide">System Architecture & Technical Thesis</p>

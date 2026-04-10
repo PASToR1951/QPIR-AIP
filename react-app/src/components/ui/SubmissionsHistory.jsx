@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ClockCounterClockwise, CaretDown, CaretUp, Eye, SpinnerGap, Tray, PencilSimple, CheckCircle } from '@phosphor-icons/react';
+import { Link } from 'react-router-dom';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
 import { AIPDocument } from '../docs/AIPDocument';
 import { PIRDocument } from '../docs/PIRDocument';
@@ -203,6 +204,12 @@ export default function SubmissionsHistory() {
           <p className="text-sm text-slate-400 dark:text-slate-500 font-medium max-w-xs">
             Your submitted AIPs and PIRs will appear here, grouped by fiscal year.
           </p>
+          <Link
+            to="/aip"
+            className="mt-4 inline-flex items-center rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-indigo-700"
+          >
+            Create your first AIP
+          </Link>
         </div>
       ) : (
         <div className="space-y-4 mb-12">

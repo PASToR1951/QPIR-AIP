@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react';
 
+const SESSION_EVENT = 'auth:session-updated';
+
 function parseStoredUser() {
   try {
     return JSON.parse(sessionStorage.getItem('user') || 'null');
   } catch {
     return null;
   }
+}
+
+function dispatchSessionUpdate(user) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(SESSION_EVENT, { detail: user }));
 }
 
 export const auth = {
@@ -17,6 +24,7 @@ export const auth = {
   setSession: (user, exp) => {
     sessionStorage.setItem('user', JSON.stringify(user));
     sessionStorage.setItem('tokenExpiry', String(exp));
+    dispatchSessionUpdate(user);
   },
   refreshSession: async () => {
     const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
@@ -32,6 +40,10 @@ export const auth = {
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('tokenExpiry');
+    Object.keys(sessionStorage)
+      .filter((key) => key.startsWith('onboarding:loginPrompt:'))
+      .forEach((key) => sessionStorage.removeItem(key));
+    dispatchSessionUpdate(null);
     try {
       await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
         method: 'POST', credentials: 'include'
@@ -49,8 +61,13 @@ export function useUser() {
     const handler = (e) => {
       if (e.key === 'user') setUser(auth.getUser());
     };
+    const sessionHandler = (e) => setUser(e.detail ?? auth.getUser());
     window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
+    window.addEventListener(SESSION_EVENT, sessionHandler);
+    return () => {
+      window.removeEventListener('storage', handler);
+      window.removeEventListener(SESSION_EVENT, sessionHandler);
+    };
   }, []);
 
   return user;

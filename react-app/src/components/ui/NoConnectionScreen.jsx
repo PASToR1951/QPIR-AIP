@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { WifiSlash, ArrowClockwise } from '@phosphor-icons/react';
+import { useAppLogo } from '../../context/BrandingContext.jsx';
 
 const NoConnectionScreen = ({ children }) => {
+  const appLogo = useAppLogo();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isRetrying, setIsRetrying] = useState(false);
   const [justRestored, setJustRestored] = useState(false);
@@ -76,7 +78,7 @@ const NoConnectionScreen = ({ children }) => {
 
             {/* Logo */}
             <div className="mb-10 nc-slide-down" style={{ animationDelay: '0.15s' }}>
-              <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-24 md:h-28 w-auto drop-shadow-2xl" />
+              <img src={appLogo} alt="AIP-PIR Logo" className="h-24 md:h-28 w-auto drop-shadow-2xl" />
             </div>
 
             {/* Headline */}

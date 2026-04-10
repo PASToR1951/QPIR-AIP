@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useAppLogo } from '../context/BrandingContext.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   House, X,
@@ -236,6 +237,7 @@ function CollapsibleReports({ onNavigate }) {
 }
 
 export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose }) => {
+  const appLogo = useAppLogo();
   const glassClasses = 'bg-white/40 dark:bg-dark-base/40 backdrop-blur-2xl backdrop-saturate-[1.8] border-r border-white/50 dark:border-white/[0.06]';
   const glassShadow = { boxShadow: '0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5), inset -1px 0 0 rgba(255,255,255,0.2)' };
   const isObserver = user?.role === 'Observer';
@@ -260,7 +262,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
     <div className="flex flex-col h-full w-[240px]">
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-4 pt-5 pb-4">
-        <img src="/AIP-PIR-logo.webp" alt="AIP-PIR" className="h-8 w-auto shrink-0" />
+        <img src={appLogo} alt="AIP-PIR" className="h-8 w-auto shrink-0" />
         <div className="flex flex-col">
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight tracking-[-0.01em]">AIP-PIR</span>
           <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-tight tracking-wide">{isObserver ? 'Observer' : 'Admin'}</span>
@@ -334,6 +336,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
       <AnimatePresence>
         {mobileOpen && (
           <motion.aside
+            data-tour="admin-sidebar"
             initial={{ x: -260 }}
             animate={{ x: 0 }}
             exit={{ x: -260 }}

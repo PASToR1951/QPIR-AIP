@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../../lib/api.js';
 import {
@@ -6,8 +6,10 @@ import {
   Megaphone, XCircle, LockSimple,
   Gear, CheckCircle, At, User, Trash, CalendarBlank,
   CaretLeft, CaretRight, Clock, CaretUp, CaretDown,
+  Palette, UploadSimple,
 } from '@phosphor-icons/react';
 import { CURRENT_VERSION } from '../../version.js';
+import { useAppLogo, useReloadBranding } from '../../context/BrandingContext.jsx';
 
 const MAX_CHARS = 280;
 const EMPTY_ANNOUNCEMENT = {
@@ -479,6 +481,9 @@ function DateTimePicker({ value, onChange }) {
 
 /* ─── Main component ─────────────────────────────────────────────── */
 export default function AdminSettings() {
+  const appLogo        = useAppLogo();
+  const reloadBranding = useReloadBranding();
+
   const [announcement, setAnnouncement] = useState(EMPTY_ANNOUNCEMENT);
   const [savedAnnouncement, setSavedAnnouncement] = useState(EMPTY_ANNOUNCEMENT);
   const [sysInfo, setSysInfo]           = useState(null);
@@ -487,6 +492,46 @@ export default function AdminSettings() {
   const [saving, setSaving]             = useState(false);
   const [formError, setFormError]       = useState('');
   const [deleting, setDeleting]         = useState(false);
+
+  /* ── App logo state ─────────────────────────────────────────────── */
+  const [toast, setToast]               = useState(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoResetting, setLogoResetting] = useState(false);
+  const logoFileRef = useRef(null);
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleLogoUpload = async (file) => {
+    setLogoUploading(true);
+    const formData = new FormData();
+    formData.append('logo', file);
+    try {
+      await api.post('/api/admin/settings/app-logo', formData);
+      await reloadBranding();
+      showToast('App logo updated.');
+    } catch (e) {
+      showToast(e.friendlyMessage ?? 'Upload failed.', 'error');
+    } finally {
+      setLogoUploading(false);
+      if (logoFileRef.current) logoFileRef.current.value = '';
+    }
+  };
+
+  const handleLogoReset = async () => {
+    setLogoResetting(true);
+    try {
+      await api.delete('/api/admin/settings/app-logo');
+      await reloadBranding();
+      showToast('App logo reset to default.');
+    } catch (e) {
+      showToast(e.friendlyMessage ?? 'Reset failed.', 'error');
+    } finally {
+      setLogoResetting(false);
+    }
+  };
 
   /* ── Mention state ──────────────────────────────────────────────── */
   const [schools, setSchools]               = useState([]);
@@ -793,6 +838,61 @@ export default function AdminSettings() {
             </p>
           </div>
 
+          {/* ── App Branding ────────────────────────────── */}
+          <SettingsCard
+            icon={Palette}
+            iconBg="bg-pink-100 dark:bg-pink-950/50"
+            iconColor="text-pink-600 dark:text-pink-400"
+            title="App Branding"
+            description="Upload a custom logo for the application. Changes take effect immediately across all pages."
+          >
+            <div className="flex flex-col sm:flex-row items-start gap-6">
+              {/* Logo preview */}
+              <div className="shrink-0 flex flex-col items-center gap-2">
+                <div className="w-28 h-28 rounded-2xl border-2 border-dashed border-slate-200 dark:border-dark-border flex items-center justify-center bg-slate-50 dark:bg-dark-base overflow-hidden">
+                  <img src={appLogo} alt="Current app logo" className="max-h-24 max-w-[6rem] w-auto h-auto object-contain" />
+                </div>
+                <span className="text-xs text-slate-400 dark:text-slate-500">Current logo</span>
+              </div>
+
+              {/* Controls */}
+              <div className="flex-1 flex flex-col gap-3">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Accepted formats: WebP · PNG · JPEG · GIF<br />Maximum file size: 2 MB
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    ref={logoFileRef}
+                    type="file"
+                    accept="image/webp,image/png,image/jpeg,image/gif"
+                    className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoUpload(f); }}
+                  />
+                  <button
+                    onClick={() => logoFileRef.current?.click()}
+                    disabled={logoUploading || logoResetting}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-colors"
+                  >
+                    {logoUploading
+                      ? <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                      : <UploadSimple size={15} weight="bold" />}
+                    {logoUploading ? 'Uploading…' : 'Upload Logo'}
+                  </button>
+                  <button
+                    onClick={handleLogoReset}
+                    disabled={logoUploading || logoResetting}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-dark-base dark:hover:bg-white/[0.06] text-slate-600 dark:text-slate-300 disabled:opacity-50 transition-colors"
+                  >
+                    {logoResetting
+                      ? <span className="w-4 h-4 rounded-full border-2 border-slate-400/40 border-t-slate-500 animate-spin" />
+                      : <Trash size={15} weight="bold" />}
+                    {logoResetting ? 'Resetting…' : 'Reset to Default'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </SettingsCard>
+
           {/* ── System Announcement ─────────────────────── */}
           <SettingsCard
             icon={Megaphone}
@@ -1051,6 +1151,18 @@ export default function AdminSettings() {
             </div>
           </SettingsCard>
 
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border text-sm font-bold
+          ${toast.type === 'success'
+            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+            : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400'
+          }`}>
+          <CheckCircle size={18} weight="fill" className={toast.type === 'success' ? 'text-emerald-500' : 'text-rose-500'} />
+          {toast.msg}
         </div>
       )}
     </>

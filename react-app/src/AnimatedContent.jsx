@@ -5,8 +5,8 @@ import { useAccessibility } from './context/AccessibilityContext';
 import api from './lib/api.js';
 import PageTransition from './components/ui/PageTransition';
 import FormBackground from './components/ui/FormBackground';
-import AccessibilityPanel from './components/ui/AccessibilityPanel';
 import HelpLauncher from './components/ui/HelpLauncher.jsx';
+import OnboardingController from './components/ui/OnboardingController.jsx';
 import { auth } from './lib/auth';
 import Login from './Login';
 
@@ -238,7 +238,8 @@ export default function AnimatedContent() {
             </Route>
           </Routes>
         </Suspense>
-        <AccessibilityPanel />
+        <OnboardingController />
+        <HelpLauncher />
       </MotionConfig>
     );
   }
@@ -302,8 +303,8 @@ export default function AnimatedContent() {
           </Routes>
         </AnimatePresence>
       </Suspense>
+      <OnboardingController />
       <HelpLauncher />
-      <AccessibilityPanel />
     </MotionConfig>
   );
 }

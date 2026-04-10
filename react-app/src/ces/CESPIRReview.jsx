@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/api.js';
 import { ArrowLeft, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
+import { emitOnboardingSignal } from '../lib/onboardingSignals.js';
 
 const FACTOR_TYPES = ['Institutional', 'Technical', 'Infrastructure', 'Learning Resources', 'Environmental', 'Others'];
 
@@ -38,6 +39,7 @@ export default function CESPIRReview() {
     api.get(`/api/admin/pirs/${id}`)
       .then(r => {
         setPir(r.data);
+        emitOnboardingSignal('ces.review_opened', { pirId: id });
         // If already under review (e.g. re-opened), skip timer
         if (r.data?.status === 'Under Review') {
           setIsUnderReview(true);
@@ -47,6 +49,12 @@ export default function CESPIRReview() {
       .catch(() => setPir(null))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!loading && pir && (pir.status === 'For CES Review' || pir.status === 'Under Review')) {
+      emitOnboardingSignal('ces.action_area_viewed', { pirId: pir.id });
+    }
+  }, [loading, pir]);
 
   // 3-minute countdown — starts once PIR is loaded and not already Under Review
   useEffect(() => {

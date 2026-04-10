@@ -174,7 +174,7 @@ Some local checkouts include ignored convenience scripts for personal developmen
 | Script | Purpose |
 |--------|---------|
 | `bash ./start.sh` | Starts local PostgreSQL, the Deno backend, and the Vite frontend on Linux |
-| `bash ./tunnel.sh` | Starts Cloudflare tunnels and writes temporary tunnel env overrides |
+| `bash ./tunnel.sh` | Starts the app for local-network testing and writes temporary LAN env overrides |
 
 These scripts are listed in `.gitignore`, so fresh clones should use the manual or Docker commands unless you add your own copies.
 

@@ -1,6 +1,7 @@
 
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useAppLogo } from '../../context/BrandingContext.jsx';
 import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageCircle, TagIcon, IdentificationCardIcon, ListBulletsIcon, BookOpenUserIcon, BooksIcon } from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,6 +11,7 @@ import { SchoolAvatar } from './SchoolAvatar.jsx';
 const MotionDiv = motion.div;
 
 export const DashboardHeader = ({ user, onLogout }) => {
+    const appLogo = useAppLogo();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
 
@@ -39,7 +41,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                 {/* Left Side Logo */}
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                        <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="h-9 w-auto drop-shadow-sm" />
+                        <img src={appLogo} alt="AIP-PIR Logo" className="h-9 w-auto drop-shadow-sm" />
                         <div className="w-px h-6 bg-slate-200 dark:bg-dark-border/60 mx-1 hidden sm:block"></div>
                         <img src="/DepEd_Seal.webp" alt="DepEd Seal" width={36} height={36} loading="lazy" className="h-9 w-auto drop-shadow-sm hidden sm:block" />
                         <img src="/Division_Logo.webp" alt="Division Logo" width={36} height={36} loading="lazy" className="h-9 w-auto drop-shadow-sm hidden sm:block" />

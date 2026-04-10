@@ -1,0 +1,162 @@
+export const THEMES = {
+  pink: {
+    strip:          'from-pink-500 via-purple-500 to-indigo-500',
+    icon:           'text-pink-500',
+    toggleOn:       'from-pink-500 to-rose-500',
+    segmentOn:      'from-pink-500 to-rose-500',
+    segmentShadow:  'shadow-pink-200',
+    btnOpen:        'from-pink-500 to-rose-500 border-pink-600 shadow-pink-200',
+    btnClosed:      'hover:border-pink-200 dark:hover:border-pink-500/40 hover:text-pink-500 dark:hover:text-pink-400 hover:shadow-pink-100 dark:hover:shadow-none',
+    focusRing:      'focus-visible:outline-pink-500',
+    tab:            'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
+    hoverItem:      'hover:bg-pink-50 hover:text-pink-700 dark:hover:bg-pink-950/30 dark:hover:text-pink-400',
+    fab:            'bg-gradient-to-br from-pink-500 via-rose-500 to-fuchsia-600 text-white shadow-[0_18px_38px_-18px_rgba(236,72,153,0.9)] ring-1 ring-pink-200/70 dark:ring-pink-400/30',
+    fabHover:       'hover:from-pink-600 hover:via-rose-600 hover:to-fuchsia-700',
+    tourLabel:      'text-pink-500 dark:text-pink-300',
+    tourProgress:   'bg-pink-500 dark:bg-pink-400',
+    tourActiveDot:  'bg-pink-500 dark:bg-pink-400',
+    tourIconShell:  'bg-pink-50 text-pink-500 dark:bg-pink-950/40 dark:text-pink-300',
+    tourPrimary:    'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg shadow-pink-200/70 dark:shadow-pink-950/40',
+    tourSpotlight:  'border-pink-400/90',
+    tourCardAccentStyle: {
+      backgroundImage:
+        'radial-gradient(circle at top right, rgba(236,72,153,0.16), transparent 44%), radial-gradient(circle at bottom left, rgba(251,113,133,0.10), transparent 38%)',
+    },
+  },
+  blue: {
+    strip:          'from-blue-500 via-cyan-400 to-indigo-500',
+    icon:           'text-blue-500',
+    toggleOn:       'from-blue-500 to-cyan-500',
+    segmentOn:      'from-blue-500 to-cyan-500',
+    segmentShadow:  'shadow-blue-200',
+    btnOpen:        'from-blue-500 to-cyan-500 border-blue-600 shadow-blue-200',
+    btnClosed:      'hover:border-blue-200 dark:hover:border-blue-500/40 hover:text-blue-500 dark:hover:text-blue-400 hover:shadow-blue-100 dark:hover:shadow-none',
+    focusRing:      'focus-visible:outline-blue-500',
+    tab:            'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    hoverItem:      'hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-950/30 dark:hover:text-blue-400',
+    fab:            'bg-gradient-to-br from-blue-500 via-sky-500 to-cyan-600 text-white shadow-[0_18px_38px_-18px_rgba(59,130,246,0.9)] ring-1 ring-blue-200/70 dark:ring-blue-400/30',
+    fabHover:       'hover:from-blue-600 hover:via-sky-600 hover:to-cyan-700',
+    tourLabel:      'text-blue-500 dark:text-blue-300',
+    tourProgress:   'bg-blue-500 dark:bg-blue-400',
+    tourActiveDot:  'bg-blue-500 dark:bg-blue-400',
+    tourIconShell:  'bg-blue-50 text-blue-500 dark:bg-blue-950/40 dark:text-blue-300',
+    tourPrimary:    'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 shadow-lg shadow-blue-200/70 dark:shadow-blue-950/40',
+    tourSpotlight:  'border-blue-400/90',
+    tourCardAccentStyle: {
+      backgroundImage:
+        'radial-gradient(circle at top right, rgba(59,130,246,0.16), transparent 44%), radial-gradient(circle at bottom left, rgba(34,211,238,0.10), transparent 38%)',
+    },
+  },
+  indigo: {
+    strip:          'from-indigo-500 via-violet-500 to-purple-500',
+    icon:           'text-indigo-500',
+    toggleOn:       'from-indigo-500 to-violet-500',
+    segmentOn:      'from-indigo-500 to-violet-500',
+    segmentShadow:  'shadow-indigo-200',
+    btnOpen:        'from-indigo-500 to-violet-500 border-indigo-600 shadow-indigo-200',
+    btnClosed:      'hover:border-indigo-200 dark:hover:border-indigo-500/40 hover:text-indigo-500 dark:hover:text-indigo-400 hover:shadow-indigo-100 dark:hover:shadow-none',
+    focusRing:      'focus-visible:outline-indigo-500',
+    tab:            'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
+    hoverItem:      'hover:bg-indigo-50 hover:text-indigo-700 dark:hover:bg-indigo-950/30 dark:hover:text-indigo-400',
+    fab:            'bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 text-white shadow-[0_18px_38px_-18px_rgba(99,102,241,0.95)] ring-1 ring-indigo-200/70 dark:ring-indigo-400/30',
+    fabHover:       'hover:from-indigo-600 hover:via-violet-600 hover:to-purple-700',
+    tourLabel:      'text-indigo-500 dark:text-indigo-300',
+    tourProgress:   'bg-indigo-500 dark:bg-indigo-400',
+    tourActiveDot:  'bg-indigo-500 dark:bg-indigo-400',
+    tourIconShell:  'bg-indigo-50 text-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-300',
+    tourPrimary:    'bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 shadow-lg shadow-indigo-200/70 dark:shadow-indigo-950/40',
+    tourSpotlight:  'border-indigo-400/90',
+    tourCardAccentStyle: {
+      backgroundImage:
+        'radial-gradient(circle at top right, rgba(99,102,241,0.17), transparent 44%), radial-gradient(circle at bottom left, rgba(139,92,246,0.11), transparent 38%)',
+    },
+  },
+  teal: {
+    strip:          'from-teal-500 via-emerald-500 to-cyan-500',
+    icon:           'text-teal-500',
+    toggleOn:       'from-teal-500 to-emerald-500',
+    segmentOn:      'from-teal-500 to-emerald-500',
+    segmentShadow:  'shadow-teal-200',
+    btnOpen:        'from-teal-500 to-emerald-500 border-teal-600 shadow-teal-200',
+    btnClosed:      'hover:border-teal-200 dark:hover:border-teal-500/40 hover:text-teal-500 dark:hover:text-teal-400 hover:shadow-teal-100 dark:hover:shadow-none',
+    focusRing:      'focus-visible:outline-teal-500',
+    tab:            'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+    hoverItem:      'hover:bg-teal-50 hover:text-teal-700 dark:hover:bg-teal-950/30 dark:hover:text-teal-400',
+    fab:            'bg-gradient-to-br from-teal-500 via-emerald-500 to-cyan-600 text-white shadow-[0_18px_38px_-18px_rgba(20,184,166,0.9)] ring-1 ring-teal-200/70 dark:ring-teal-400/30',
+    fabHover:       'hover:from-teal-600 hover:via-emerald-600 hover:to-cyan-700',
+    tourLabel:      'text-teal-500 dark:text-teal-300',
+    tourProgress:   'bg-teal-500 dark:bg-teal-400',
+    tourActiveDot:  'bg-teal-500 dark:bg-teal-400',
+    tourIconShell:  'bg-teal-50 text-teal-500 dark:bg-teal-950/40 dark:text-teal-300',
+    tourPrimary:    'bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 shadow-lg shadow-teal-200/70 dark:shadow-teal-950/40',
+    tourSpotlight:  'border-teal-400/90',
+    tourCardAccentStyle: {
+      backgroundImage:
+        'radial-gradient(circle at top right, rgba(20,184,166,0.17), transparent 44%), radial-gradient(circle at bottom left, rgba(16,185,129,0.11), transparent 38%)',
+    },
+  },
+  amber: {
+    strip:          'from-amber-500 via-orange-500 to-rose-500',
+    icon:           'text-amber-500',
+    toggleOn:       'from-amber-500 to-orange-500',
+    segmentOn:      'from-amber-500 to-orange-500',
+    segmentShadow:  'shadow-amber-200',
+    btnOpen:        'from-amber-500 to-orange-500 border-amber-600 shadow-amber-200',
+    btnClosed:      'hover:border-amber-200 dark:hover:border-amber-500/40 hover:text-amber-500 dark:hover:text-amber-400 hover:shadow-amber-100 dark:hover:shadow-none',
+    focusRing:      'focus-visible:outline-amber-500',
+    tab:            'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    hoverItem:      'hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/30 dark:hover:text-amber-400',
+    fab:            'bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500 text-white shadow-[0_18px_38px_-18px_rgba(245,158,11,0.92)] ring-1 ring-amber-200/70 dark:ring-amber-400/30',
+    fabHover:       'hover:from-amber-600 hover:via-orange-600 hover:to-rose-600',
+    tourLabel:      'text-amber-600 dark:text-amber-300',
+    tourProgress:   'bg-amber-500 dark:bg-amber-400',
+    tourActiveDot:  'bg-amber-500 dark:bg-amber-400',
+    tourIconShell:  'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300',
+    tourPrimary:    'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-200/70 dark:shadow-amber-950/40',
+    tourSpotlight:  'border-amber-400/90',
+    tourCardAccentStyle: {
+      backgroundImage:
+        'radial-gradient(circle at top right, rgba(245,158,11,0.18), transparent 44%), radial-gradient(circle at bottom left, rgba(249,115,22,0.12), transparent 38%)',
+    },
+  },
+  slate: {
+    strip:          'from-slate-400 via-slate-500 to-slate-600',
+    icon:           'text-slate-500',
+    toggleOn:       'from-slate-600 to-slate-700',
+    segmentOn:      'from-slate-600 to-slate-700',
+    segmentShadow:  'shadow-slate-200',
+    btnOpen:        'from-slate-600 to-slate-700 border-slate-700 shadow-slate-200',
+    btnClosed:      'hover:border-slate-400 dark:hover:border-slate-500/40 hover:text-slate-600 dark:hover:text-slate-400 hover:shadow-slate-100 dark:hover:shadow-none',
+    focusRing:      'focus-visible:outline-slate-500',
+    tab:            'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+    hoverItem:      'hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-dark-border dark:hover:text-slate-200',
+    fab:            'bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 text-white shadow-[0_18px_38px_-18px_rgba(15,23,42,0.92)] ring-1 ring-slate-200/70 dark:ring-slate-400/20',
+    fabHover:       'hover:from-slate-800 hover:via-slate-900 hover:to-black',
+    tourLabel:      'text-slate-500 dark:text-slate-300',
+    tourProgress:   'bg-slate-600 dark:bg-slate-400',
+    tourActiveDot:  'bg-slate-600 dark:bg-slate-400',
+    tourIconShell:  'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200',
+    tourPrimary:    'bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 shadow-lg shadow-slate-300/70 dark:shadow-slate-950/40',
+    tourSpotlight:  'border-slate-400/90',
+    tourCardAccentStyle: {
+      backgroundImage:
+        'radial-gradient(circle at top right, rgba(100,116,139,0.14), transparent 44%), radial-gradient(circle at bottom left, rgba(51,65,85,0.10), transparent 38%)',
+    },
+  },
+};
+
+const ROUTE_THEME_MATCHERS = [
+  { match: (pathname) => pathname === '/' || pathname.startsWith('/aip'), theme: 'pink' },
+  { match: (pathname) => pathname.startsWith('/pir'), theme: 'blue' },
+  { match: (pathname) => pathname === '/login' || pathname.startsWith('/admin'), theme: 'indigo' },
+  { match: (pathname) => pathname.startsWith('/ces'), theme: 'teal' },
+  { match: (pathname) => pathname.startsWith('/cluster-head'), theme: 'amber' },
+];
+
+export function resolveRouteThemeName(pathname = '') {
+  return ROUTE_THEME_MATCHERS.find(({ match }) => match(pathname))?.theme ?? 'slate';
+}
+
+export function getRouteTheme(pathname = '') {
+  return THEMES[resolveRouteThemeName(pathname)] ?? THEMES.slate;
+}

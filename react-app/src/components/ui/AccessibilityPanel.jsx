@@ -12,62 +12,7 @@ import {
     ArrowCounterClockwise as RotateCcw,
 } from '@phosphor-icons/react';
 import { useAccessibility } from '../../context/AccessibilityContext';
-
-/* ── Theme definitions ─────────────────────────────────────────────────── */
-const ROUTE_THEMES = {
-    '/':          'pink',
-    '/aip':       'pink',
-    '/pir':       'blue',
-    '/login':     'indigo',
-    '/changelog': 'slate',
-    '/docs':      'slate',
-    '/faq':       'slate',
-    '/403':       'slate',
-    '/500':       'slate',
-};
-
-const THEMES = {
-    pink: {
-        strip:          'from-pink-500 via-purple-500 to-indigo-500',
-        icon:           'text-pink-500',
-        toggleOn:       'from-pink-500 to-rose-500',
-        segmentOn:      'from-pink-500 to-rose-500',
-        segmentShadow:  'shadow-pink-200',
-        btnOpen:        'from-pink-500 to-rose-500 border-pink-600 shadow-pink-200',
-        btnClosed:      'hover:border-pink-200 dark:hover:border-pink-500/40 hover:text-pink-500 dark:hover:text-pink-400 hover:shadow-pink-100 dark:hover:shadow-none',
-        focusRing:      'focus-visible:outline-pink-500',
-    },
-    blue: {
-        strip:          'from-blue-500 via-cyan-400 to-indigo-500',
-        icon:           'text-blue-500',
-        toggleOn:       'from-blue-500 to-cyan-500',
-        segmentOn:      'from-blue-500 to-cyan-500',
-        segmentShadow:  'shadow-blue-200',
-        btnOpen:        'from-blue-500 to-cyan-500 border-blue-600 shadow-blue-200',
-        btnClosed:      'hover:border-blue-200 dark:hover:border-blue-500/40 hover:text-blue-500 dark:hover:text-blue-400 hover:shadow-blue-100 dark:hover:shadow-none',
-        focusRing:      'focus-visible:outline-blue-500',
-    },
-    indigo: {
-        strip:          'from-indigo-500 via-violet-500 to-purple-500',
-        icon:           'text-indigo-500',
-        toggleOn:       'from-indigo-500 to-violet-500',
-        segmentOn:      'from-indigo-500 to-violet-500',
-        segmentShadow:  'shadow-indigo-200',
-        btnOpen:        'from-indigo-500 to-violet-500 border-indigo-600 shadow-indigo-200',
-        btnClosed:      'hover:border-indigo-200 dark:hover:border-indigo-500/40 hover:text-indigo-500 dark:hover:text-indigo-400 hover:shadow-indigo-100 dark:hover:shadow-none',
-        focusRing:      'focus-visible:outline-indigo-500',
-    },
-    slate: {
-        strip:          'from-slate-400 via-slate-500 to-slate-600',
-        icon:           'text-slate-500',
-        toggleOn:       'from-slate-600 to-slate-700',
-        segmentOn:      'from-slate-600 to-slate-700',
-        segmentShadow:  'shadow-slate-200',
-        btnOpen:        'from-slate-600 to-slate-700 border-slate-700 shadow-slate-200',
-        btnClosed:      'hover:border-slate-400 dark:hover:border-slate-500/40 hover:text-slate-600 dark:hover:text-slate-400 hover:shadow-slate-100 dark:hover:shadow-none',
-        focusRing:      'focus-visible:outline-slate-500',
-    },
-};
+import { THEMES, resolveRouteThemeName } from '../../lib/routeTheme.js';
 
 /* ── Sub-components ────────────────────────────────────────────────────── */
 function ToggleSwitch({ value, onChange, theme }) {
@@ -126,7 +71,7 @@ export default function AccessibilityPanel() {
     const { settings, update, reset } = useAccessibility();
     const { pathname } = useLocation();
 
-    const themeName = ROUTE_THEMES[pathname] ?? 'slate';
+    const themeName = resolveRouteThemeName(pathname);
     const t = THEMES[themeName];
 
     const segmentActive = (active) =>
