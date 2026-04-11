@@ -1,4 +1,13 @@
 import { useReducer } from 'react';
+import {
+    appendArrayItem,
+    appendExpandedArrayItem,
+    removeArrayItemAtIndex,
+    removeExpandedArrayItem,
+    replaceExpandedArrayItems,
+    updateArrayItemAtIndex,
+    updateArrayItemById,
+} from '../shared/createArraySectionReducer.js';
 
 export const AIP_PHASES = ["Planning", "Implementation", "Monitoring and Evaluation"];
 
@@ -85,16 +94,6 @@ export function createInitialAipState({
     };
 }
 
-function resolveExpandedActivityId(activities, previousExpandedId = null) {
-    if (activities.length === 0) {
-        return null;
-    }
-
-    return activities.some((activity) => activity.id === previousExpandedId)
-        ? previousExpandedId
-        : activities[activities.length - 1].id;
-}
-
 function aipReducer(state, action) {
     switch (action.type) {
         case 'RESET':
@@ -135,53 +134,46 @@ function aipReducer(state, action) {
         case 'SET_OBJECTIVE':
             return {
                 ...state,
-                objectives: state.objectives.map((objective, index) => (
-                    index === action.payload.index ? action.payload.value : objective
-                )),
+                objectives: updateArrayItemAtIndex(state.objectives, action.payload.index, action.payload.value),
             };
 
         case 'ADD_OBJECTIVE':
             return {
                 ...state,
-                objectives: [...state.objectives, ''],
+                objectives: appendArrayItem(state.objectives, ''),
             };
 
-        case 'REMOVE_OBJECTIVE': {
-            const nextObjectives = state.objectives.filter((_, index) => index !== action.payload.index);
+        case 'REMOVE_OBJECTIVE':
             return {
                 ...state,
-                objectives: nextObjectives.length > 0 ? nextObjectives : [''],
+                objectives: removeArrayItemAtIndex(state.objectives, action.payload.index, ['']),
             };
-        }
 
         case 'SET_INDICATOR':
             return {
                 ...state,
-                indicators: state.indicators.map((indicator, index) => (
-                    index === action.payload.index
-                        ? { ...indicator, [action.payload.field]: action.payload.value }
-                        : indicator
-                )),
+                indicators: updateArrayItemAtIndex(state.indicators, action.payload.index, (indicator) => ({
+                    ...indicator,
+                    [action.payload.field]: action.payload.value,
+                })),
             };
 
         case 'ADD_INDICATOR':
             return {
                 ...state,
-                indicators: [...state.indicators, { description: '', target: '' }],
+                indicators: appendArrayItem(state.indicators, { description: '', target: '' }),
             };
 
-        case 'REMOVE_INDICATOR': {
-            const nextIndicators = state.indicators.filter((_, index) => index !== action.payload.index);
+        case 'REMOVE_INDICATOR':
             return {
                 ...state,
-                indicators: nextIndicators.length > 0 ? nextIndicators : [{ description: '', target: '' }],
+                indicators: removeArrayItemAtIndex(state.indicators, action.payload.index, [{ description: '', target: '' }]),
             };
-        }
 
         case 'SET_ACTIVITY':
             return {
                 ...state,
-                activities: state.activities.map((activity) => {
+                activities: updateArrayItemById(state.activities, action.payload.id, (activity) => {
                     if (activity.id !== action.payload.id) {
                         return activity;
                     }
@@ -206,27 +198,31 @@ function aipReducer(state, action) {
             };
 
         case 'ADD_ACTIVITY': {
-            const nextActivities = [...state.activities, action.payload.activity];
+            const { items, ui } = appendExpandedArrayItem({
+                items: state.activities,
+                item: action.payload.activity,
+                ui: state.ui,
+            });
+
             return {
                 ...state,
-                activities: nextActivities,
-                ui: {
-                    ...state.ui,
-                    expandedActivityId: action.payload.activity.id,
-                },
+                activities: items,
+                ui,
             };
         }
 
         case 'REMOVE_ACTIVITY': {
-            const nextActivities = state.activities.filter((activity) => activity.id !== action.payload.id);
-            const fallbackActivities = nextActivities.length > 0 ? nextActivities : createInitialAipActivities();
+            const { items, ui } = removeExpandedArrayItem({
+                items: state.activities,
+                id: action.payload.id,
+                ui: state.ui,
+                fallbackItems: createInitialAipActivities,
+            });
+
             return {
                 ...state,
-                activities: fallbackActivities,
-                ui: {
-                    ...state.ui,
-                    expandedActivityId: resolveExpandedActivityId(nextActivities, state.ui.expandedActivityId),
-                },
+                activities: items,
+                ui,
             };
         }
 
@@ -270,6 +266,11 @@ function aipReducer(state, action) {
             const draft = action.payload.draft ?? {};
             const nextActivities = draft.activities?.length ? draft.activities : state.activities;
             const nextIndicators = draft.indicators?.length ? draft.indicators : state.indicators;
+            const hydratedActivities = replaceExpandedArrayItems({
+                nextItems: nextActivities,
+                ui: state.ui,
+                fallbackItems: createInitialAipActivities,
+            });
 
             return {
                 ...state,
@@ -283,17 +284,14 @@ function aipReducer(state, action) {
                 },
                 objectives: draft.objectives?.length ? draft.objectives : [''],
                 indicators: nextIndicators,
-                activities: nextActivities,
+                activities: hydratedActivities.items,
                 signatories: {
                     preparedByName: draft.preparedByName || '',
                     preparedByTitle: draft.preparedByTitle || '',
                     approvedByName: draft.approvedByName || '',
                     approvedByTitle: draft.approvedByTitle || '',
                 },
-                ui: {
-                    ...state.ui,
-                    expandedActivityId: resolveExpandedActivityId(nextActivities, state.ui.expandedActivityId),
-                },
+                ui: hydratedActivities.ui,
             };
         }
 
@@ -301,6 +299,11 @@ function aipReducer(state, action) {
             const aip = action.payload.aip ?? {};
             const nextActivities = aip.activities?.length ? aip.activities : state.activities;
             const nextIndicators = aip.indicators?.length ? aip.indicators : state.indicators;
+            const hydratedActivities = replaceExpandedArrayItems({
+                nextItems: nextActivities,
+                ui: state.ui,
+                fallbackItems: createInitialAipActivities,
+            });
 
             return {
                 ...state,
@@ -314,7 +317,7 @@ function aipReducer(state, action) {
                 },
                 objectives: aip.objectives || [],
                 indicators: nextIndicators,
-                activities: nextActivities,
+                activities: hydratedActivities.items,
                 signatories: {
                     preparedByName: aip.preparedByName || '',
                     preparedByTitle: aip.preparedByTitle || '',
@@ -326,10 +329,7 @@ function aipReducer(state, action) {
                     aipId: aip.id ?? null,
                     aipStatus: aip.status ?? null,
                 },
-                ui: {
-                    ...state.ui,
-                    expandedActivityId: resolveExpandedActivityId(nextActivities, state.ui.expandedActivityId),
-                },
+                ui: hydratedActivities.ui,
             };
         }
 
@@ -341,4 +341,3 @@ function aipReducer(state, action) {
 export default function useAipFormState(options) {
     return useReducer(aipReducer, options, createInitialAipState);
 }
-

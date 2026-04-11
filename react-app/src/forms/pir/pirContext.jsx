@@ -1,37 +1,13 @@
-import React, { createContext, useContext } from 'react';
+import createFormProvider from '../shared/createFormProvider.js';
 
-const PirStateContext = createContext(null);
-const PirDispatchContext = createContext(null);
+const {
+    Provider: PirProvider,
+    useState: usePirState,
+    useDispatch: usePirDispatch,
+    useSelector: usePirSelector,
+} = createFormProvider({ name: 'Pir' });
 
-export function PirProvider({ state, dispatch, children }) {
-    return (
-        <PirStateContext.Provider value={state}>
-            <PirDispatchContext.Provider value={dispatch}>
-                {children}
-            </PirDispatchContext.Provider>
-        </PirStateContext.Provider>
-    );
-}
-
-export function usePirState() {
-    const value = useContext(PirStateContext);
-    if (!value) {
-        throw new Error('usePirState must be used within a PirProvider.');
-    }
-    return value;
-}
-
-export function usePirDispatch() {
-    const value = useContext(PirDispatchContext);
-    if (!value) {
-        throw new Error('usePirDispatch must be used within a PirProvider.');
-    }
-    return value;
-}
-
-export function usePirSelector(selector) {
-    return selector(usePirState());
-}
+export { PirProvider, usePirState, usePirDispatch, usePirSelector };
 
 export const selectProfile = (state) => state.profile;
 export const selectBudget = (state) => state.budget;
@@ -42,4 +18,3 @@ export const selectFactors = (state) => state.factors;
 export const selectActionItems = (state) => state.actionItems;
 export const selectPirUi = (state) => state.ui;
 export const selectPirSubmission = (state) => state.submission;
-

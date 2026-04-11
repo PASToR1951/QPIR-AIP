@@ -1,4 +1,13 @@
 import { useReducer } from 'react';
+import {
+    appendArrayItem,
+    appendExpandedArrayItem,
+    removeArrayItemAtIndex,
+    removeExpandedArrayItem,
+    replaceExpandedArrayItems,
+    updateArrayItemAtIndex,
+    updateArrayItemById,
+} from '../shared/createArraySectionReducer.js';
 
 export const FACTOR_TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
 
@@ -69,15 +78,6 @@ export function createInitialPirState({
     };
 }
 
-function resolveExpandedActivityId(activities, previousExpandedId = null) {
-    if (activities.length === 0) {
-        return null;
-    }
-    return activities.some((activity) => activity.id === previousExpandedId)
-        ? previousExpandedId
-        : activities[activities.length - 1].id;
-}
-
 function pirReducer(state, action) {
     switch (action.type) {
         case 'RESET':
@@ -119,65 +119,61 @@ function pirReducer(state, action) {
         case 'UPDATE_INDICATOR_TARGET':
             return {
                 ...state,
-                indicatorTargets: state.indicatorTargets.map((item, index) => (
-                    index === action.payload.index
-                        ? { ...item, quarterly_target: action.payload.value }
-                        : item
-                )),
+                indicatorTargets: updateArrayItemAtIndex(state.indicatorTargets, action.payload.index, (item) => ({
+                    ...item,
+                    quarterly_target: action.payload.value,
+                })),
             };
 
         case 'SET_ACTION_ITEM':
             return {
                 ...state,
-                actionItems: state.actionItems.map((item, index) => (
-                    index === action.payload.index
-                        ? { ...item, [action.payload.field]: action.payload.value }
-                        : item
-                )),
+                actionItems: updateArrayItemAtIndex(state.actionItems, action.payload.index, (item) => ({
+                    ...item,
+                    [action.payload.field]: action.payload.value,
+                })),
             };
 
         case 'ADD_ACTION_ITEM':
             return {
                 ...state,
-                actionItems: [...state.actionItems, { action: '', response_asds: '', response_sds: '' }],
+                actionItems: appendArrayItem(state.actionItems, { action: '', response_asds: '', response_sds: '' }),
             };
 
-        case 'REMOVE_ACTION_ITEM': {
-            const nextActionItems = state.actionItems.filter((_, index) => index !== action.payload.index);
+        case 'REMOVE_ACTION_ITEM':
             return {
                 ...state,
-                actionItems: nextActionItems.length > 0
-                    ? nextActionItems
-                    : [{ action: '', response_asds: '', response_sds: '' }],
+                actionItems: removeArrayItemAtIndex(state.actionItems, action.payload.index, [{ action: '', response_asds: '', response_sds: '' }]),
             };
-        }
 
         case 'ADD_ACTIVITY': {
-            const nextActivities = [...state.activities, action.payload.activity];
-            return {
-                ...state,
-                activities: nextActivities,
-                ui: {
-                    ...state.ui,
-                    expandedActivityId: action.payload.activity.id,
+            const { items, ui } = appendExpandedArrayItem({
+                items: state.activities,
+                item: action.payload.activity,
+                ui: state.ui,
+                extraUi: {
                     isAddingActivity: action.payload.showAddedFlash ?? state.ui.isAddingActivity,
                 },
+            });
+
+            return {
+                ...state,
+                activities: items,
+                ui,
             };
         }
 
         case 'UPDATE_ACTIVITY':
             return {
                 ...state,
-                activities: state.activities.map((activity) => (
-                    activity.id === action.payload.id
-                        ? { ...activity, [action.payload.field]: action.payload.value }
-                        : activity
-                )),
+                activities: updateArrayItemById(state.activities, action.payload.id, (activity) => ({
+                    ...activity,
+                    [action.payload.field]: action.payload.value,
+                })),
             };
 
         case 'REMOVE_ACTIVITY': {
             const activityToRemove = state.activities.find((activity) => activity.id === action.payload.id);
-            const nextActivities = state.activities.filter((activity) => activity.id !== action.payload.id);
             const nextRemovedActivities = (
                 action.payload.moveToRemovedAip
                 && activityToRemove?.fromAIP
@@ -185,15 +181,18 @@ function pirReducer(state, action) {
             )
                 ? [...state.removedAIPActivities, activityToRemove]
                 : state.removedAIPActivities;
+            const nextActivityState = removeExpandedArrayItem({
+                items: state.activities,
+                id: action.payload.id,
+                ui: state.ui,
+                fallbackItems: [createEmptyPirActivity()],
+            });
 
             return {
                 ...state,
-                activities: nextActivities.length > 0 ? nextActivities : [createEmptyPirActivity()],
+                activities: nextActivityState.items,
                 removedAIPActivities: nextRemovedActivities,
-                ui: {
-                    ...state.ui,
-                    expandedActivityId: resolveExpandedActivityId(nextActivities, state.ui.expandedActivityId),
-                },
+                ui: nextActivityState.ui,
             };
         }
 
@@ -203,29 +202,33 @@ function pirReducer(state, action) {
                 return state;
             }
 
-            const nextActivities = [...state.activities, activityToRestore];
+            const nextActivityState = appendExpandedArrayItem({
+                items: state.activities,
+                item: activityToRestore,
+                ui: state.ui,
+            });
+
             return {
                 ...state,
-                activities: nextActivities,
+                activities: nextActivityState.items,
                 removedAIPActivities: state.removedAIPActivities.filter((activity) => activity.id !== action.payload.id),
-                ui: {
-                    ...state.ui,
-                    expandedActivityId: activityToRestore.id,
-                },
+                ui: nextActivityState.ui,
             };
         }
 
-        case 'REPLACE_ACTIVITIES_FROM_AIP':
+        case 'REPLACE_ACTIVITIES_FROM_AIP': {
+            const nextActivityState = replaceExpandedArrayItems({
+                nextItems: action.payload.activities,
+                ui: state.ui,
+                fallbackItems: [createEmptyPirActivity()],
+            });
+
             return {
                 ...state,
-                activities: action.payload.activities.length > 0
-                    ? action.payload.activities
-                    : [createEmptyPirActivity()],
-                ui: {
-                    ...state.ui,
-                    expandedActivityId: resolveExpandedActivityId(action.payload.activities, state.ui.expandedActivityId),
-                },
+                activities: nextActivityState.items,
+                ui: nextActivityState.ui,
             };
+        }
 
         case 'SET_FACTOR':
             return {
@@ -275,6 +278,11 @@ function pirReducer(state, action) {
         case 'HYDRATE_DRAFT': {
             const draft = action.payload.draft ?? {};
             const nextActivities = draft.activities?.length ? draft.activities : state.activities;
+            const hydratedActivities = replaceExpandedArrayItems({
+                nextItems: nextActivities,
+                ui: state.ui,
+                fallbackItems: [createEmptyPirActivity()],
+            });
 
             return {
                 ...state,
@@ -296,18 +304,20 @@ function pirReducer(state, action) {
                 actionItems: draft.actionItems?.length
                     ? draft.actionItems
                     : state.actionItems,
-                activities: nextActivities,
+                activities: hydratedActivities.items,
                 factors: draft.factors || state.factors,
-                ui: {
-                    ...state.ui,
-                    expandedActivityId: resolveExpandedActivityId(nextActivities, state.ui.expandedActivityId),
-                },
+                ui: hydratedActivities.ui,
             };
         }
 
         case 'HYDRATE_SUBMITTED': {
             const pir = action.payload.pir ?? {};
             const nextActivities = pir.activities?.length ? pir.activities : state.activities;
+            const hydratedActivities = replaceExpandedArrayItems({
+                nextItems: nextActivities,
+                ui: state.ui,
+                fallbackItems: [createEmptyPirActivity()],
+            });
 
             return {
                 ...state,
@@ -323,17 +333,14 @@ function pirReducer(state, action) {
                 },
                 indicatorTargets: pir.indicatorQuarterlyTargets || [],
                 actionItems: pir.actionItems || state.actionItems,
-                activities: nextActivities,
+                activities: hydratedActivities.items,
                 factors: pir.factors || state.factors,
                 submission: {
                     ...state.submission,
                     pirId: pir.id ?? null,
                     pirStatus: pir.status ?? null,
                 },
-                ui: {
-                    ...state.ui,
-                    expandedActivityId: resolveExpandedActivityId(nextActivities, state.ui.expandedActivityId),
-                },
+                ui: hydratedActivities.ui,
             };
         }
 
@@ -345,4 +352,3 @@ function pirReducer(state, action) {
 export default function usePirFormState(options) {
     return useReducer(pirReducer, options, createInitialPirState);
 }
-

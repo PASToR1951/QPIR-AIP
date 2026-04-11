@@ -11,6 +11,7 @@ import FormShellLayout from '../shared/FormShellLayout.jsx';
 import { FormShellProvider } from '../shared/formShellContext.jsx';
 import useFormShell from '../shared/useFormShell.js';
 import useProgramsAndConfig from '../shared/useProgramsAndConfig.js';
+import useFormLifecycle from '../shared/useFormLifecycle.js';
 import useAipFormState from './useAipFormState.js';
 import { AipProvider, selectAipProfile, selectAipSubmission } from './aipContext.jsx';
 import useAipDraft from './useAipDraft.js';
@@ -61,12 +62,6 @@ export default function AIPFormContainer() {
 
     const reviewAreaRef = useRef(null);
     const toastTimerRef = useRef(null);
-    const appModeRef = useRef(shell.appMode);
-    const autoStartedRef = useRef(false);
-
-    useEffect(() => {
-        appModeRef.current = shell.appMode;
-    }, [shell.appMode]);
 
     useEffect(() => {
         setProgramList(data.programList);
@@ -96,11 +91,13 @@ export default function AIPFormContainer() {
 
     const handleManualDraftSaved = useCallback(() => {
         const storageKey = `aip_draft_${profile.depedProgram}_${profile.year}`;
+
         try {
             localStorage.removeItem(storageKey);
         } catch {
             // Ignore storage failures.
         }
+
         setAutosavedPrograms((currentPrograms) => currentPrograms.filter((program) => program !== profile.depedProgram));
         emitOnboardingSignal('author.draft_saved', { source: 'server-draft' });
     }, [profile.depedProgram, profile.year]);
@@ -149,6 +146,7 @@ export default function AIPFormContainer() {
             clearTimeout(toastTimerRef.current);
             toastTimerRef.current = setTimeout(() => setToast(null), 4000);
         }
+
         return () => clearTimeout(toastTimerRef.current);
     }, [toast]);
 
@@ -213,167 +211,90 @@ export default function AIPFormContainer() {
         return false;
     }, [draft]);
 
-    const hasInputtedData = useCallback(() => {
-        return profile.outcome
-            || profile.sipTitle
-            || profile.projectCoord
-            || state.objectives.some((objective) => objective.trim())
-            || state.indicators.some((indicator) => indicator.description.trim() || indicator.target.trim())
-            || state.signatories.preparedByName
-            || state.signatories.approvedByName
-            || state.activities.some((activity) => activity.name || activity.period || activity.persons || activity.outputs || activity.budgetAmount || activity.budgetSource);
-    }, [profile.outcome, profile.projectCoord, profile.sipTitle, state.activities, state.indicators, state.objectives, state.signatories.approvedByName, state.signatories.preparedByName]);
+    const hasInputtedData = useCallback(() => (
+        profile.outcome
+        || profile.sipTitle
+        || profile.projectCoord
+        || state.objectives.some((objective) => objective.trim())
+        || state.indicators.some((indicator) => indicator.description.trim() || indicator.target.trim())
+        || state.signatories.preparedByName
+        || state.signatories.approvedByName
+        || state.activities.some((activity) => activity.name || activity.period || activity.persons || activity.outputs || activity.budgetAmount || activity.budgetSource)
+    ), [
+        profile.outcome,
+        profile.projectCoord,
+        profile.sipTitle,
+        state.activities,
+        state.indicators,
+        state.objectives,
+        state.signatories.approvedByName,
+        state.signatories.preparedByName,
+    ]);
 
-    const handleStart = useCallback(async (mode, selectedProgram) => {
-        if (!selectedProgram) {
-            return;
-        }
-
-        const currentYear = String(new Date().getFullYear());
-        resetFormState(selectedProgram);
-        dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'isSubmitted', value: false } });
-        dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'isEditing', value: false } });
-
-        if (mode !== 'readonly') {
-            emitOnboardingSignal('author.program_selected', { program: selectedProgram, mode });
-        }
-
-        if (mode === 'readonly') {
-            try {
-                const response = await api.get('/api/aips', {
-                    params: { program_title: selectedProgram, year: new Date().getFullYear() },
-                });
-                dispatch({ type: 'HYDRATE_SUBMITTED', payload: { aip: response.data } });
-            } catch (error) {
-                setLoadError(error?.friendlyMessage ?? 'Failed to load the AIP. Please try again.');
-                return;
-            }
-
-            shell.setAppMode('readonly');
-            setSearchParams({ program: selectedProgram, mode: 'readonly' }, { replace: true });
-            return;
-        }
-
-        const localStorageKey = `aip_draft_${selectedProgram}_${currentYear}`;
-        const localDraft = draft.readDraft(localStorageKey);
-
-        if (localDraft) {
+    const { handleStart, handleBack, handleHome, handleToggleAppMode } = useFormLifecycle({
+        shell,
+        searchParams,
+        setSearchParams,
+        navigate,
+        isLoading: data.isLoading,
+        currentProgram: profile.depedProgram,
+        isEditing: submission.isEditing,
+        hasInputtedData,
+        draft,
+        resetFormState,
+        resetSubmissionState: () => {
+            dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'isSubmitted', value: false } });
+            dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'isEditing', value: false } });
+        },
+        exitEditMode: () => {
+            dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'isEditing', value: false } });
+        },
+        clearProgramField: () => {
+            dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'depedProgram', value: '' } });
+        },
+        loadReadonlyRecord: async (selectedProgram) => {
+            const response = await api.get('/api/aips', {
+                params: { program_title: selectedProgram, year: new Date().getFullYear() },
+            });
+            dispatch({ type: 'HYDRATE_SUBMITTED', payload: { aip: response.data } });
+        },
+        hydrateDraft: (draftData) => {
+            draft.hydrate(draftData);
+        },
+        getLocalDraftKey: (selectedProgram) => `aip_draft_${selectedProgram}_${String(new Date().getFullYear())}`,
+        getLocalDraftModal: ({ localDraft, selectedProgram }) => {
             const hasServerDraft = draftPrograms.includes(selectedProgram);
-            shell.openModal({
+
+            return {
                 type: 'warning',
                 title: 'Continue your saved draft?',
                 message: `We found an auto-saved draft from ${new Date(localDraft.savedAt).toLocaleString()}. Continue from that draft?${hasServerDraft ? ' You can also skip it and open your last saved draft instead.' : ''}`,
                 confirmText: 'Continue draft',
                 cancelText: hasServerDraft ? 'Open saved draft' : 'Start fresh',
-                onConfirm: () => {
-                    draft.hydrate(localDraft);
-                    shell.closeModal();
-                    shell.setAppMode(mode);
-                    setSearchParams({ program: selectedProgram, mode }, { replace: true });
-                },
-                onClose: async () => {
-                    shell.closeModal();
-                    draft.clearDraft(localStorageKey);
-                    if (hasServerDraft) {
-                        try {
-                            await loadServerDraft(selectedProgram, currentYear);
-                        } catch {
-                            // Fall back to blank form.
-                        }
-                    }
-                    shell.setAppMode(mode);
-                    setSearchParams({ program: selectedProgram, mode }, { replace: true });
-                },
-            });
-            return;
-        }
-
-        if (draftPrograms.includes(selectedProgram)) {
-            try {
+            };
+        },
+        loadInitialDraft: async (selectedProgram) => {
+            const currentYear = String(new Date().getFullYear());
+            if (draftPrograms.includes(selectedProgram)) {
                 await loadServerDraft(selectedProgram, currentYear);
-            } catch {
-                // Continue with a blank form.
             }
-        }
-
-        shell.setAppMode(mode);
-        setSearchParams({ program: selectedProgram, mode }, { replace: true });
-    }, [dispatch, draft, draftPrograms, loadServerDraft, resetFormState, setSearchParams, shell]);
-
-    const handleBack = useCallback(() => {
-        if (submission.isEditing) {
-            dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'isEditing', value: false } });
-            shell.setAppMode('readonly');
-            setSearchParams({ program: profile.depedProgram, mode: 'readonly' }, { replace: true });
-            return;
-        }
-
-        if (shell.appMode === 'splash') {
-            navigate('/');
-            return;
-        }
-
-        if (hasInputtedData()) {
-            draft.saveNow();
-        }
-
-        shell.setAppMode('splash');
-        setSearchParams({}, { replace: true });
-    }, [dispatch, draft, hasInputtedData, navigate, profile.depedProgram, setSearchParams, shell, submission.isEditing]);
-
-    const handleHome = useCallback(() => {
-        if (hasInputtedData()) {
-            draft.saveNow();
-        }
-        navigate('/');
-    }, [draft, hasInputtedData, navigate]);
-
-    useEffect(() => {
-        if (data.isLoading || autoStartedRef.current) {
-            return;
-        }
-
-        autoStartedRef.current = true;
-        const paramProgram = searchParams.get('program');
-        const paramMode = searchParams.get('mode');
-
-        if (paramProgram && ['wizard', 'full', 'readonly'].includes(paramMode)) {
-            handleStart(paramMode, paramProgram);
-        } else if (paramProgram && !paramMode) {
-            shell.setSplashSelectedProgram(paramProgram);
-        }
-    }, [data.isLoading, handleStart, searchParams, shell]);
-
-    useEffect(() => {
-        if (!autoStartedRef.current) {
-            return;
-        }
-
-        const paramProgram = searchParams.get('program');
-        const paramMode = searchParams.get('mode');
-
-        if (!paramProgram) {
-            shell.setSplashSelectedProgram(null);
-            if (appModeRef.current !== 'splash') {
-                shell.setAppMode('splash');
-                dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'depedProgram', value: '' } });
+        },
+        loadDiscardedLocalDraftFallback: async (selectedProgram) => {
+            const currentYear = String(new Date().getFullYear());
+            if (draftPrograms.includes(selectedProgram)) {
+                await loadServerDraft(selectedProgram, currentYear);
             }
-        } else if (!paramMode) {
-            shell.setSplashSelectedProgram(paramProgram);
-            if (appModeRef.current !== 'splash') {
-                shell.setAppMode('splash');
-                dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'depedProgram', value: '' } });
+        },
+        onBeforeStart: ({ mode, selectedProgram }) => {
+            setLoadError(null);
+            if (mode !== 'readonly') {
+                emitOnboardingSignal('author.program_selected', { program: selectedProgram, mode });
             }
-        } else if (appModeRef.current === 'splash') {
-            handleStart(paramMode, paramProgram);
-        }
-    }, [dispatch, handleStart, searchParams, shell]);
-
-    const handleToggleAppMode = useCallback(() => {
-        const nextMode = shell.appMode === 'wizard' ? 'full' : 'wizard';
-        shell.setAppMode(nextMode);
-        setSearchParams({ program: profile.depedProgram, mode: nextMode }, { replace: true });
-    }, [profile.depedProgram, setSearchParams, shell]);
+        },
+        onReadonlyError: (error) => {
+            setLoadError(error?.friendlyMessage ?? 'Failed to load the AIP. Please try again.');
+        },
+    });
 
     const handleBulkDelete = useCallback((programsToDelete) => {
         shell.openModal({
@@ -390,6 +311,7 @@ export default function AIPFormContainer() {
                     )),
                 );
                 const deletedPrograms = programsToDelete.filter((_, index) => results[index].status === 'fulfilled');
+
                 if (deletedPrograms.length > 0) {
                     setCompletedPrograms((currentPrograms) => currentPrograms.filter((program) => !deletedPrograms.includes(program)));
                     setReturnedPrograms((currentPrograms) => currentPrograms.filter((program) => !deletedPrograms.includes(program)));
@@ -562,7 +484,7 @@ export default function AIPFormContainer() {
                                 theme="pink"
                             />
                             {loadError && (
-                                <div className="mx-auto max-w-2xl mt-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 text-sm font-medium">
+                                <div className="mx-auto mt-4 max-w-2xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">
                                     {loadError}
                                 </div>
                             )}
@@ -621,13 +543,14 @@ export default function AIPFormContainer() {
                             {toast && (
                                 <button
                                     onClick={() => setDeletedPopup(toast.programs)}
-                                    className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-lg border text-sm font-bold bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/70 transition-colors cursor-pointer"
+                                    className="fixed bottom-6 left-1/2 z-[200] flex -translate-x-1/2 cursor-pointer items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 text-sm font-bold text-emerald-700 shadow-lg transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/70"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                        <polyline points="22 4 12 14.01 9 11.01" />
                                     </svg>
                                     {toast.message}
-                                    <span className="text-[10px] font-semibold opacity-60 border border-current rounded px-1.5 py-0.5 ml-1">details</span>
+                                    <span className="ml-1 rounded border border-current px-1.5 py-0.5 text-[10px] font-semibold opacity-60">details</span>
                                 </button>
                             )}
                             {deletedPopup && (
@@ -636,24 +559,28 @@ export default function AIPFormContainer() {
                                     onClick={() => setDeletedPopup(null)}
                                 >
                                     <div
-                                        className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4"
+                                        className="mx-4 w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-dark-border dark:bg-dark-surface"
                                         onClick={(event) => event.stopPropagation()}
                                     >
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
+                                        <div className="mb-4 flex items-center gap-3">
+                                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 dark:bg-emerald-900/40">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
-                                                    <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                                    <polyline points="3 6 5 6 21 6" />
+                                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                                    <path d="M10 11v6" />
+                                                    <path d="M14 11v6" />
+                                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
                                                 </svg>
                                             </div>
                                             <div>
-                                                <h3 className="font-black text-slate-800 dark:text-slate-100 text-sm">Deleted Programs</h3>
+                                                <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">Deleted Programs</h3>
                                                 <p className="text-xs text-slate-400 dark:text-slate-500">{deletedPopup.length} AIP{deletedPopup.length > 1 ? 's' : ''} removed</p>
                                             </div>
                                         </div>
-                                        <ul className="space-y-2 mb-5 max-h-60 overflow-y-auto">
+                                        <ul className="mb-5 max-h-60 space-y-2 overflow-y-auto">
                                             {deletedPopup.map((program) => (
-                                                <li key={program} className="flex items-center gap-2.5 text-sm text-slate-700 dark:text-slate-300 py-1.5 border-b border-slate-100 dark:border-dark-border last:border-0">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500 shrink-0">
+                                                <li key={program} className="flex items-center gap-2.5 border-b border-slate-100 py-1.5 text-sm text-slate-700 last:border-0 dark:border-dark-border dark:text-slate-300">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-emerald-500">
                                                         <polyline points="20 6 9 17 4 12" />
                                                     </svg>
                                                     {program}
@@ -662,7 +589,7 @@ export default function AIPFormContainer() {
                                         </ul>
                                         <button
                                             onClick={() => setDeletedPopup(null)}
-                                            className="w-full py-2 rounded-xl bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-colors"
+                                            className="w-full rounded-xl bg-slate-100 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-dark-border dark:text-slate-300 dark:hover:bg-dark-border/80"
                                         >
                                             Close
                                         </button>
