@@ -11,6 +11,8 @@ node_modules/
 
 # ── Draft file storage (user data — not source code) ─────────────────────────
 data/
+!routes/data/
+!routes/data/**
 
 # ── Logs & runtime ────────────────────────────────────────────────────────────
 *.log
