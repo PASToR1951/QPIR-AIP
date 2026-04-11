@@ -5,10 +5,10 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
-import { getRoleKey, getPracticeTasks, hasPracticeMode } from '../lib/onboardingConfig.js';
+import { getRoleKey } from '../lib/onboardingConfig.js';
+import { getPracticeTasks, hasPracticeMode } from '../lib/onboardingUtils.js';
 import { ONBOARDING_SIGNAL_EVENT, emitOnboardingSignal } from '../lib/onboardingSignals.js';
 import { useUser } from '../lib/auth.js';
 
@@ -17,23 +17,21 @@ const PracticeModeContext = createContext(null);
 export function PracticeModeProvider({ children }) {
   const user = useUser();
   const roleKey = getRoleKey(user?.role);
+
+  return (
+    <PracticeModeProviderState key={roleKey || 'anonymous'} roleKey={roleKey}>
+      {children}
+    </PracticeModeProviderState>
+  );
+}
+
+function PracticeModeProviderState({ children, roleKey }) {
   const tasks = useMemo(() => getPracticeTasks(roleKey), [roleKey]);
   const canPractice = hasPracticeMode(roleKey);
 
   const [active, setActive] = useState(false);
   const [completedIds, setCompletedIds] = useState([]);
   const [activeTaskId, setActiveTaskId] = useState(null);
-
-  // Reset state when role changes (e.g. after re-login)
-  const prevRoleKeyRef = useRef(roleKey);
-  useEffect(() => {
-    if (prevRoleKeyRef.current !== roleKey) {
-      prevRoleKeyRef.current = roleKey;
-      setActive(false);
-      setCompletedIds([]);
-      setActiveTaskId(null);
-    }
-  }, [roleKey]);
 
   // Listen for practice signals and complete matching tasks
   useEffect(() => {

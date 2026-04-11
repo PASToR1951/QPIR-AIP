@@ -154,7 +154,7 @@ export default function Dashboard() {
                 <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Summary</span>
               </div>
 
-              <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-2">
+              <h1 className="text-2xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-2">
                 Welcome back, <br />
                 <span className="text-pink-600">
                   {user?.role === 'School'

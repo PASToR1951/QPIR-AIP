@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppLogo } from '../context/BrandingContext.jsx';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
@@ -6,7 +6,17 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import rehypeSlug from 'rehype-slug';
 import GithubSlugger from 'github-slugger';
-import { ArrowLeft, BookOpen, Tag, List, X, List as Menu } from '@phosphor-icons/react';
+import {
+  ArrowLeft,
+  ArrowsOut,
+  BookOpen,
+  List,
+  MagnifyingGlassMinus,
+  MagnifyingGlassPlus,
+  Tag,
+  X,
+  List as Menu,
+} from '@phosphor-icons/react';
 import { CURRENT_VERSION } from '../version';
 import docsContent from '../../../docs/SYSTEM_DOCUMENTATION_THESIS.md?raw';
 import Footer from './ui/Footer';
@@ -34,6 +44,24 @@ export default function SystemDocs() {
   const appLogo = useAppLogo();
   const [activeId, setActiveId] = useState('');
   const [isMobileTocOpen, setIsMobileTocOpen] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState(null);
+  const [imageZoom, setImageZoom] = useState(1);
+  const articleRef = useRef(null);
+
+  const clampZoom = useCallback((value) => Math.min(Math.max(value, 0.75), 4), []);
+
+  const closeZoomedImage = useCallback(() => {
+    setZoomedImage(null);
+    setImageZoom(1);
+  }, []);
+
+  const zoomImageBy = useCallback((factor) => {
+    setImageZoom((current) => clampZoom(Number((current * factor).toFixed(2))));
+  }, [clampZoom]);
+
+  const resetImageZoom = useCallback(() => {
+    setImageZoom(1);
+  }, []);
 
   useEffect(() => {
     const handleObserver = (entries) => {
@@ -49,6 +77,54 @@ export default function SystemDocs() {
     elements.forEach(elem => observer.observe(elem));
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    const article = articleRef.current;
+    if (!article) return undefined;
+
+    const handleImageClick = (event) => {
+      const image = event.target.closest('img');
+      if (!image || !article.contains(image)) return;
+
+      const source =
+        image.closest('a[href]')?.getAttribute('href') ||
+        image.currentSrc ||
+        image.getAttribute('src');
+
+      if (!source) return;
+
+      event.preventDefault();
+      setZoomedImage({
+        alt: image.getAttribute('alt') || 'Documentation image',
+        src: source,
+      });
+      setImageZoom(1);
+    };
+
+    article.addEventListener('click', handleImageClick);
+    return () => article.removeEventListener('click', handleImageClick);
+  }, []);
+
+  useEffect(() => {
+    if (!zoomedImage) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') closeZoomedImage();
+      if (event.key === '+' || event.key === '=') zoomImageBy(1.2);
+      if (event.key === '-') zoomImageBy(1 / 1.2);
+      if (event.key === '0') resetImageZoom();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [closeZoomedImage, resetImageZoom, zoomImageBy, zoomedImage]);
 
   const scrollToHeading = (id) => {
     const element = document.getElementById(id);
@@ -199,7 +275,9 @@ export default function SystemDocs() {
 
             {/* Document Content */}
             <div className="px-4 py-6 sm:px-6 md:px-14 md:py-14">
-              <article className="
+              <article
+                ref={articleRef}
+                className="
                 prose prose-sm sm:prose-base prose-slate max-w-none
                 prose-headings:font-black prose-headings:text-slate-900 dark:prose-headings:text-slate-100 prose-headings:scroll-mt-28 prose-headings:tracking-tight
                 prose-h1:text-2xl sm:prose-h1:text-3xl md:prose-h1:text-4xl prose-h1:mt-0
@@ -211,11 +289,12 @@ export default function SystemDocs() {
                 prose-blockquote:border-l-4 prose-blockquote:border-indigo-400 prose-blockquote:bg-indigo-50/60 dark:prose-blockquote:bg-indigo-950/20 prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:not-italic prose-blockquote:text-slate-700 dark:prose-blockquote:text-slate-300
                 prose-code:text-indigo-600 prose-code:bg-indigo-50 dark:prose-code:bg-indigo-950/30 dark:prose-code:text-indigo-400 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:text-[0.85em] prose-code:font-medium prose-code:before:content-none prose-code:after:content-none
                 prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 prose-pre:rounded-lg prose-pre:shadow-lg prose-pre:max-w-full prose-pre:overflow-x-auto
-                prose-img:rounded-lg prose-img:border prose-img:border-slate-200 dark:prose-img:border-dark-border prose-img:shadow-sm
+                prose-img:rounded-lg prose-img:border prose-img:border-slate-200 dark:prose-img:border-dark-border prose-img:shadow-sm prose-img:cursor-zoom-in
                 prose-strong:text-slate-800 dark:prose-strong:text-slate-100
                 prose-table:block prose-table:max-w-full prose-table:overflow-x-auto prose-table:text-xs sm:prose-table:text-sm prose-th:bg-slate-50 dark:prose-th:bg-dark-border prose-th:text-slate-700 dark:prose-th:text-slate-200 prose-td:text-slate-600 dark:prose-td:text-slate-300
                 break-words
-              ">
+              "
+              >
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeRaw, rehypeSlug]}
@@ -228,6 +307,84 @@ export default function SystemDocs() {
 
         </div>
       </div>
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-[70] bg-slate-950/90 backdrop-blur-sm"
+          onClick={closeZoomedImage}
+          role="dialog"
+          aria-modal="true"
+          aria-label={zoomedImage.alt}
+        >
+          <div
+            className="flex h-full flex-col"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 text-white sm:px-6">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black tracking-tight">{zoomedImage.alt}</p>
+                <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">
+                  Scroll to inspect, use the controls to zoom, press Esc to close
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => zoomImageBy(1.2)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
+                  title="Zoom in"
+                >
+                  <MagnifyingGlassPlus size={18} weight="bold" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => zoomImageBy(1 / 1.2)}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
+                  title="Zoom out"
+                >
+                  <MagnifyingGlassMinus size={18} weight="bold" />
+                </button>
+                <button
+                  type="button"
+                  onClick={resetImageZoom}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-white/10"
+                  title="Reset zoom"
+                >
+                  Reset
+                </button>
+                <a
+                  href={zoomedImage.src}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hidden h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-xs font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-white/10 sm:inline-flex"
+                  title="Open original"
+                >
+                  <ArrowsOut size={16} weight="bold" />
+                  Original
+                </a>
+                <button
+                  type="button"
+                  onClick={closeZoomedImage}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
+                  title="Close"
+                >
+                  <X size={18} weight="bold" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto px-4 py-4 sm:px-6 sm:py-6">
+              <div className="flex min-h-full min-w-full items-start justify-center">
+                <img
+                  src={zoomedImage.src}
+                  alt={zoomedImage.alt}
+                  className="max-w-none rounded-2xl border border-white/10 bg-white shadow-2xl"
+                  style={{ width: `${imageZoom * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <Footer />
     </div>
   );

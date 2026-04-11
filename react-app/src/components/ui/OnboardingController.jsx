@@ -1,13 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useOnboarding } from '../../hooks/useOnboarding.jsx';
 import { auth } from '../../lib/auth.js';
 import {
   shouldSuppressAutoWelcome,
   isChecklistRole,
-} from '../../lib/onboardingConfig.js';
+  isChecklistLandingPage,
+} from '../../lib/onboardingUtils.js';
 import WelcomeCard from './WelcomeCard.jsx';
 import OnboardingChecklist from './OnboardingChecklist.jsx';
+import OnboardingTour from './OnboardingTour.jsx';
 
 function getSessionPromptKey(userId, expiry) {
   return userId && expiry
@@ -142,6 +144,41 @@ export default function OnboardingController() {
     recordSignal,
   } = useOnboarding();
   const hasAutoOpenedRef = useRef('');
+  const [activeTaskTour, setActiveTaskTour] = useState(null);
+  const showChecklistOnPage = isChecklistLandingPage(roleKey, location.pathname);
+  // Holds tour data for a task whose target route hasn't been reached yet.
+  // Activated by the route effect once the user navigates to the correct page.
+  const pendingTourRef = useRef(null);
+
+  // Launch a tour for a checklist task.
+  // If the task lives on the current route, activates immediately.
+  // If it requires a different route, arms pendingTourRef so it activates on arrival.
+  const launchTour = useCallback((task) => {
+    if (!task?.tourSteps?.length) return;
+    const data = { id: task.id, title: task.label, steps: task.tourSteps, route: task.route ?? null };
+    if (!task.route || task.route === location.pathname) {
+      pendingTourRef.current = null;
+      setActiveTaskTour(data);
+    } else {
+      pendingTourRef.current = data;
+      setActiveTaskTour(null);
+    }
+  }, [location.pathname]);
+
+  // Activate a pending tour on arrival, or close the active tour when leaving its route.
+  // Intentionally omits `activeTaskTour` from deps so the effect only runs on
+  // route changes — not on the render where setActiveTaskTour itself fires, which
+  // would immediately close a just-launched cross-route tour.
+  useEffect(() => {
+    if (pendingTourRef.current?.route === location.pathname) {
+      setActiveTaskTour(pendingTourRef.current);
+      pendingTourRef.current = null;
+      return;
+    }
+    setActiveTaskTour((cur) =>
+      cur?.route && location.pathname !== cur.route ? null : cur
+    );
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const signal = getRouteSignal(roleKey, location.pathname);
@@ -189,25 +226,67 @@ export default function OnboardingController() {
         roleKey={roleKey}
         showOnLogin={onboarding.onboarding_show_on_login}
         onToggleShowOnLogin={toggleShowOnLogin}
-        onGetStarted={startOnboarding}
+        onGetStarted={() => {
+          startOnboarding();
+          // Auto-launch the first incomplete task's tour.
+          // Prefer a task whose route matches the current page (immediate);
+          // fall back to the first incomplete task overall (pending on nav).
+          const doneIds = onboarding.checklist_progress.completed_task_ids;
+          const first =
+            tasks.find((t) => !doneIds.includes(t.id) && t.tourSteps?.length && t.route === location.pathname) ??
+            tasks.find((t) => !doneIds.includes(t.id) && t.tourSteps?.length);
+          if (first) launchTour(first);
+        }}
         onSkip={skipWelcome}
         onDismissPending={acknowledgePending}
       />
 
-      {hasChecklist && (
+      {hasChecklist && isHydrated && (
         <>
-          <OnboardingChecklist
-            open={checklistOpen}
-            hidden={onboarding.checklist_progress.panel_hidden}
-            tasks={tasks}
-            completedIds={onboarding.checklist_progress.completed_task_ids}
-            completedCount={completedCount}
-            isComplete={isComplete}
-            onToggle={toggleChecklist}
-            onDismiss={dismissChecklist}
-            onTaskClick={() => setChecklistOpen(true)}
-            onClose={() => setChecklistOpen(false)}
-          />
+          {showChecklistOnPage && (
+            <OnboardingChecklist
+              open={checklistOpen}
+              hidden={onboarding.checklist_progress.panel_hidden}
+              tasks={tasks}
+              completedIds={onboarding.checklist_progress.completed_task_ids}
+              completedCount={completedCount}
+              isComplete={isComplete}
+              onToggle={toggleChecklist}
+              onDismiss={dismissChecklist}
+              onTaskClick={(task) => {
+                setChecklistOpen(true);
+                launchTour(task);
+              }}
+              onClose={() => setChecklistOpen(false)}
+              sidebarOffset={roleKey === 'admin'}
+              hidePill={roleKey === 'admin'}
+            />
+          )}
+          {activeTaskTour && (
+            <OnboardingTour
+              key={`checklist-task-tour:${activeTaskTour.id}`}
+              open
+              title={activeTaskTour.title}
+              steps={activeTaskTour.steps}
+              onClose={(reason) => {
+                if (reason === 'completed') {
+                  // Auto-advance to the next incomplete task on the same route.
+                  const doneIds = onboarding.checklist_progress.completed_task_ids;
+                  const next = tasks.find((t) =>
+                    t.id !== activeTaskTour.id &&
+                    !doneIds.includes(t.id) &&
+                    t.tourSteps?.length &&
+                    t.route === location.pathname
+                  );
+                  if (next) {
+                    launchTour(next);
+                    return;
+                  }
+                }
+                setActiveTaskTour(null);
+              }}
+            />
+          )}
           <OnboardingHints />
         </>
       )}

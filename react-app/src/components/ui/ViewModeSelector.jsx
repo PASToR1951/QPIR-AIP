@@ -182,14 +182,14 @@ export const ViewModeSelector = ({
         return (
             <div className="bg-slate-50 dark:bg-dark-base min-h-screen flex flex-col font-sans relative overflow-hidden">
                 <SelectorBackground themeClasses={c} />
-                <div className="relative z-10 container mx-auto px-6 py-14 flex flex-col items-center">
+                <div className="relative z-10 container mx-auto flex flex-col items-center px-4 py-10 sm:px-6 sm:py-14">
 
                     {/* Header */}
-                    <div data-tour="form-program-selector" className="text-center mb-9 max-w-md">
+                    <div data-tour="form-program-selector" className="mb-7 max-w-md text-center sm:mb-9">
                         <p className={`text-xs font-black uppercase tracking-[0.2em] mb-3 ${c.accent}`}>
                             {theme === 'blue' ? 'PIR - Quarterly Report' : 'AIP - Annual Plan'}
                         </p>
-                        <h1 className="text-4xl md:text-[2.75rem] font-extrabold tracking-tight text-slate-900 dark:text-slate-100 leading-tight mb-3">
+                        <h1 className="mb-3 text-3xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl md:text-[2.75rem]">
                             Select a Program
                         </h1>
                         <p className="text-slate-600 dark:text-slate-200 text-sm leading-relaxed drop-shadow-sm">
@@ -201,7 +201,7 @@ export const ViewModeSelector = ({
 
                     {/* Search + Filter toolbar */}
                     {programs.length > 0 && (
-                        <div className="w-full max-w-2xl mb-4 flex flex-col gap-2.5">
+                        <div className="mb-4 flex w-full max-w-2xl flex-col gap-2.5">
                             {/* Search */}
                             <div className="relative">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10">
@@ -217,8 +217,8 @@ export const ViewModeSelector = ({
                             </div>
 
                             {/* Filter tabs + Sort */}
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex flex-wrap items-center gap-1.5">
                                     {[
                                         { key: 'all',      label: 'All',      count: programs.length },
                                         { key: 'done',     label: 'Done',     count: submittedCount },
@@ -248,7 +248,7 @@ export const ViewModeSelector = ({
                                 </div>
 
                                 {/* Select + Sort */}
-                                <div className="flex items-center gap-2 shrink-0">
+                                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                                 {onBulkDelete && (draftPrograms.length > 0 || returnedPrograms.length > 0) && (
                                     <button
                                         onClick={() => { setSelectionMode(m => !m); setSelectedPrograms([]); }}
@@ -318,7 +318,7 @@ export const ViewModeSelector = ({
                                 </div>
                             ) : (
                                 <>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         {sortedFiltered.map(p => {
                                             const isDraft      = draftPrograms.includes(p);
                                             const isReturned   = returnedPrograms.includes(p);
@@ -332,7 +332,8 @@ export const ViewModeSelector = ({
                                                     key={p}
                                                     onClick={() => handlePickProgram(p)}
                                                     className={[
-                                                        'group w-full flex flex-col gap-3 p-4 rounded-2xl text-left',
+                                                        'group w-full rounded-2xl p-4 text-left sm:p-5',
+                                                        'flex flex-col gap-3',
                                                         'border-2 transition-all duration-150 shadow-sm active:scale-[0.97]',
                                                         selectionMode && !isSelectable ? 'opacity-40 cursor-not-allowed' : '',
                                                         selectionMode && isSelected
@@ -406,7 +407,7 @@ export const ViewModeSelector = ({
 
                     {/* Bulk delete action bar */}
                     {selectionMode && (
-                        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl shadow-xl whitespace-nowrap">
+                        <div className="fixed inset-x-3 bottom-4 z-50 flex flex-wrap items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-xl dark:border-dark-border dark:bg-dark-surface sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 sm:px-5">
                             <span className="text-sm font-bold text-slate-600 dark:text-slate-300">
                                 {selectedPrograms.length > 0 ? `${selectedPrograms.length} selected` : 'Select to delete'}
                             </span>
@@ -453,7 +454,7 @@ export const ViewModeSelector = ({
     return (
         <div className="min-h-screen flex flex-col font-sans relative overflow-hidden bg-slate-50 dark:bg-dark-base">
             <SelectorBackground themeClasses={c} />
-            <div className="relative z-10 container mx-auto px-6 flex flex-col items-center justify-center flex-1 py-10 md:py-16 lg:py-20">
+            <div className="relative z-10 container mx-auto flex flex-1 flex-col items-center justify-center px-4 py-8 sm:px-6 sm:py-10 md:py-16 lg:py-20">
                 <div className="max-w-xl md:max-w-2xl lg:max-w-3xl w-full">
 
                     {/* Back link */}

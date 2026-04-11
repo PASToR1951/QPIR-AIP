@@ -11,6 +11,13 @@ const GOOGLE_VIEW = 'google';
 const MANUAL_VIEW = 'manual';
 const LOGIN_VIEW_TRANSITION_MS = 380;
 
+function roleToDashboard(role) {
+  if (auth.isAdminPanelRole(role)) return '/admin';
+  if (['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(role)) return '/ces';
+  if (role === 'Cluster Coordinator') return '/cluster-head';
+  return '/';
+}
+
 function isPrivateIpv4Host(hostname) {
   const parts = hostname.split('.').map((part) => Number.parseInt(part, 10));
   if (parts.length !== 4 || parts.some((part) => Number.isNaN(part) || part < 0 || part > 255)) {
@@ -63,6 +70,18 @@ export default function Login() {
     const id = requestIdleCallback(() => import('./Dashboard'), { timeout: 3000 });
     return () => cancelIdleCallback(id);
   }, []);
+
+  useEffect(() => {
+    const user = auth.getUser();
+
+    if (!user?.role) return;
+    if (auth.isExpired()) {
+      void auth.clearSession();
+      return;
+    }
+
+    navigate(roleToDashboard(user.role), { replace: true });
+  }, [navigate]);
 
   // Display error messages redirected from OAuth callbacks
   useEffect(() => {
@@ -157,7 +176,7 @@ export default function Login() {
       }, { withCredentials: true });
 
       const user = await auth.refreshSession();
-      navigate(auth.isAdminPanelRole(user.role) ? '/admin' : '/');
+      navigate(roleToDashboard(user.role), { replace: true });
     } catch (err) {
       shakeCard();
       setError(

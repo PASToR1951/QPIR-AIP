@@ -13,14 +13,16 @@ import api from '../lib/api.js';
 import { auth, useUser } from '../lib/auth.js';
 import {
   DEFAULT_CHECKLIST_PROGRESS,
+  getRoleKey,
+  ONBOARDING_VERSION,
+} from '../lib/onboardingConfig.js';
+import {
   getOnboardingHints,
   getOnboardingTasks,
-  getRoleKey,
   isChecklistRole,
   isWelcomeEligibleRole,
   normalizeChecklistProgress,
-  ONBOARDING_VERSION,
-} from '../lib/onboardingConfig.js';
+} from '../lib/onboardingUtils.js';
 import { ONBOARDING_SIGNAL_EVENT } from '../lib/onboardingSignals.js';
 
 const OnboardingContext = createContext(null);
@@ -128,8 +130,11 @@ export function OnboardingProvider({ children }) {
     if (!user?.id || auth.isExpired()) return undefined;
 
     let cancelled = false;
-    auth.refreshSession()
-      .then((freshUser) => {
+    // Use a direct API call instead of auth.refreshSession() to avoid triggering
+    // auth.setSession() → dispatchSessionUpdate → useUser() re-render → initialState
+    // recompute → hydration effect re-run → setWelcomeOpen(false) closing the card.
+    api.get('/api/auth/me')
+      .then(({ data: freshUser }) => {
         if (cancelled) return;
         const nextState = sanitizeServerPayload(freshUser, getRoleKey(freshUser.role));
         startTransition(() => {

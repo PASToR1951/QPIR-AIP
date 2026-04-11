@@ -37,9 +37,9 @@ export const DashboardHeader = ({ user, onLogout }) => {
 
     return (
         <nav className="bg-white/80 dark:bg-dark-base/80 backdrop-blur-md border-b border-slate-200 dark:border-dark-border sticky top-0 z-50 shadow-sm print:hidden">
-            <div className="container mx-auto px-4 flex justify-between items-center h-16 max-w-6xl">
+            <div className="container mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 sm:px-4">
                 {/* Left Side Logo */}
-                <div className="flex items-center gap-4">
+                <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4">
                     <div className="flex items-center gap-2">
                         <img src={appLogo} alt="AIP-PIR Logo" className="h-9 w-auto drop-shadow-sm" />
                         <div className="w-px h-6 bg-slate-200 dark:bg-dark-border/60 mx-1 hidden sm:block"></div>
@@ -47,29 +47,29 @@ export const DashboardHeader = ({ user, onLogout }) => {
                         <img src="/Division_Logo.webp" alt="Division Logo" width={36} height={36} loading="lazy" className="h-9 w-auto drop-shadow-sm hidden sm:block" />
                     </div>
                     <div className="h-8 w-px bg-slate-200 dark:bg-dark-border/60 hidden sm:block"></div>
-                    <div className="flex flex-col">
-                        <div className="font-black text-slate-900 dark:text-slate-100 tracking-tighter leading-none uppercase text-xs md:text-sm">
-                            DepEd Division of <br className="sm:hidden"/> Guihulngan City
+                    <div className="hidden sm:flex min-w-0 flex-col">
+                        <div className="font-black text-slate-900 dark:text-slate-100 tracking-tighter leading-none uppercase text-[11px] sm:text-xs md:text-sm">
+                            DepEd Division of Guihulngan City
                         </div>
                         <div className="text-[9px] font-black text-blue-600 tracking-[0.2em] uppercase mt-0.5">AIP-PIR Portal</div>
                     </div>
                 </div>
 
                 {/* Right Side Actions */}
-                <div className="flex items-center gap-1">
+                <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
 
                 {/* Profile Dropdown */}
                 <div className="flex items-center relative" ref={dropdownRef}>
                     <button
                         aria-label="Open profile menu"
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className={`flex items-center gap-3 px-3 py-1.5 rounded-2xl transition-colors active:scale-95 ${isDropdownOpen ? 'bg-slate-100 dark:bg-dark-border' : 'hover:bg-slate-50 dark:hover:bg-dark-base'}`}
+                        className={`flex min-w-0 max-w-[58vw] items-center gap-2 rounded-2xl px-2 py-1.5 transition-colors active:scale-95 sm:gap-3 sm:px-3 md:max-w-none ${isDropdownOpen ? 'bg-slate-100 dark:bg-dark-border' : 'hover:bg-slate-50 dark:hover:bg-dark-base'}`}
                     >
-                        <div className="hidden md:flex flex-col items-end text-right">
-                            <span className="text-sm font-black text-slate-900 dark:text-slate-100 leading-none truncate max-w-[150px]">
+                        <div className="hidden sm:flex min-w-0 flex-col items-start text-left md:items-end md:text-right">
+                            <span className="text-xs font-black text-slate-900 dark:text-slate-100 leading-tight break-words sm:text-sm">
                                 {displayName}
                             </span>
-                            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-1 uppercase tracking-widest">
+                            <span className="mt-1 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest sm:text-[10px]">
                                 {displayRole}
                             </span>
                         </div>
@@ -101,8 +101,8 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                 className="absolute top-14 right-0 w-64 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border shadow-xl rounded-2xl py-2 z-50 transform origin-top-right"
                             >
                                 <div className="px-4 py-3 border-b border-slate-100 dark:border-dark-border md:hidden">
-                                    <p className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">{displayName}</p>
-                                    <p className="text-xs text-slate-400 dark:text-slate-500 font-bold truncate">{user?.email}</p>
+                                    <p className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight break-words">{displayName}</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 font-bold break-all">{user?.email}</p>
                                 </div>
                                 
                                 <div className="px-2 py-1">

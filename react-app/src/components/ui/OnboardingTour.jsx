@@ -255,23 +255,31 @@ export default function OnboardingTour({
   // first thing the user sees.
 
   useEffect(() => {
+    let resetTimer = 0;
+
     if (open && !prevOpenRef.current) {
       prevOpenRef.current = true;
-      setCardUnlocked(false);
+      resetTimer = window.setTimeout(() => setCardUnlocked(false), 0);
       unlockTimerRef.current = window.setTimeout(() => setCardUnlocked(true), 3500);
     }
     if (!open && prevOpenRef.current) {
       prevOpenRef.current = false;
-      setCardUnlocked(false);
+      resetTimer = window.setTimeout(() => setCardUnlocked(false), 0);
       window.clearTimeout(unlockTimerRef.current);
     }
+
+    return () => {
+      window.clearTimeout(resetTimer);
+      window.clearTimeout(unlockTimerRef.current);
+    };
   }, [open]);
 
   useEffect(() => {
-    if (open && stepIndex === 0 && isInViewport && !cardUnlocked) {
-      window.clearTimeout(unlockTimerRef.current);
-      setCardUnlocked(true);
-    }
+    if (!(open && stepIndex === 0 && isInViewport && !cardUnlocked)) return undefined;
+
+    window.clearTimeout(unlockTimerRef.current);
+    const unlockNowTimer = window.setTimeout(() => setCardUnlocked(true), 0);
+    return () => window.clearTimeout(unlockNowTimer);
   }, [open, stepIndex, isInViewport, cardUnlocked]);
 
   const waitingMessage = activeStep?.missingTargetHint
@@ -350,47 +358,33 @@ export default function OnboardingTour({
 
   // ── Effects ─────────────────────────────────────────────────────────────────
 
-  useLayoutEffect(() => {
-    setMeasuredStepKey('');
-    setCardH(0);
-  }, [stepKey, open]);
-
-  // Resolve each step's target before paint so the card does not flash in its
-  // detached fallback position and then jump into place.
-  useLayoutEffect(() => {
-    if (!open || !activeStep) {
-      setStepResolved(false);
-      return;
-    }
-
-    const { element, rect } = resolveTargetSnapshot(activeStep.target);
-    setTargetElement(element);
-    setTargetRect((prev) => (areRectsEqual(prev, rect) ? prev : rect));
-    setStepResolved(true);
-  }, [activeStep, open, stepKey]);
-
   useEffect(() => {
+    let syncTimer = 0;
+
     if (!open || !activeStep || !stepResolved) {
-      setShowDetachedFallback(false);
-      return undefined;
+      syncTimer = window.setTimeout(() => setShowDetachedFallback(false), 0);
+      return () => window.clearTimeout(syncTimer);
     }
 
     if (!hasResolvedTarget) {
-      setShowDetachedFallback(true);
-      return undefined;
+      syncTimer = window.setTimeout(() => setShowDetachedFallback(true), 0);
+      return () => window.clearTimeout(syncTimer);
     }
 
     if (isInViewport) {
-      setShowDetachedFallback(false);
-      return undefined;
+      syncTimer = window.setTimeout(() => setShowDetachedFallback(false), 0);
+      return () => window.clearTimeout(syncTimer);
     }
 
-    setShowDetachedFallback(false);
+    syncTimer = window.setTimeout(() => setShowDetachedFallback(false), 0);
     const fallbackTimer = window.setTimeout(() => {
       setShowDetachedFallback(true);
     }, 1200);
 
-    return () => window.clearTimeout(fallbackTimer);
+    return () => {
+      window.clearTimeout(syncTimer);
+      window.clearTimeout(fallbackTimer);
+    };
   }, [open, activeStep, stepResolved, hasResolvedTarget, isInViewport, stepKey]);
 
   // Keyboard navigation
@@ -402,16 +396,43 @@ export default function OnboardingTour({
       if (['input', 'textarea', 'select'].includes(tag)) return;
 
       if (e.key === 'Escape') finishTour('skipped');
-      else if (e.key === 'ArrowRight') handleNext();
+      else if (e.key === 'ArrowRight' || e.key === 'Enter') handleNext();
       else if (e.key === 'ArrowLeft') handleBack();
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [open, activeStep, finishTour, handleNext, handleBack]);
 
+  // Body scroll lock — prevent the page from scrolling behind the tour overlay
   useEffect(() => {
-    if (!shouldShowCard || !cardRef.current) return;
-    cardRef.current.focus();
+    if (!open) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  // Focus trap — cycle Tab within the card; focus primary button on mount
+  useEffect(() => {
+    if (!shouldShowCard || !cardRef.current) return undefined;
+    const FOCUSABLE = 'button, [href], [tabindex]:not([tabindex="-1"])';
+    const elements = [...cardRef.current.querySelectorAll(FOCUSABLE)];
+    if (!elements.length) return undefined;
+
+    elements[elements.length - 1]?.focus();
+
+    const trap = (e) => {
+      if (e.key !== 'Tab') return;
+      e.preventDefault();
+      const idx = elements.indexOf(document.activeElement);
+      elements[
+        e.shiftKey
+          ? (idx - 1 + elements.length) % elements.length
+          : (idx + 1) % elements.length
+      ]?.focus();
+    };
+    cardRef.current.addEventListener('keydown', trap);
+    const el = cardRef.current;
+    return () => el.removeEventListener('keydown', trap);
   }, [shouldShowCard, stepIndex]);
 
   useEffect(() => {
@@ -651,6 +672,15 @@ export default function OnboardingTour({
   // ── Early exit ──────────────────────────────────────────────────────────────
 
   if (!open || !activeStep || !cardUnlocked || !stepResolved) return null;
+
+  // If the step declares a prerequisiteTarget, the tour card is fully suppressed
+  // until that element is visible in the DOM. This prevents tours from bleeding
+  // into sub-states of the same route where the target cannot yet exist
+  // (e.g. the AIP program-selector stage before a form is loaded).
+  if (activeStep.prerequisiteTarget) {
+    const prereqEl = getTargetElement(activeStep.prerequisiteTarget);
+    if (!isElementVisible(prereqEl)) return null;
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
 

@@ -15,6 +15,7 @@ import { THEMES, resolveRouteThemeName } from '../../lib/routeTheme.js';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { useOnboarding } from '../../hooks/useOnboarding.jsx';
 import { usePracticeMode } from '../../context/PracticeModeContext.jsx';
+import { isChecklistLandingPage } from '../../lib/onboardingUtils.js';
 
 const FONT_SIZES = [
   { value: 'sm',     label: 'A', size: 'text-[10px]' },
@@ -86,7 +87,9 @@ export default function HelpLauncher() {
   const { canPractice, active: practiceActive, enterPracticeMode } = usePracticeMode();
   const themeName = resolveRouteThemeName(location.pathname);
   const t = THEMES[themeName];
-  const showChecklistActions = hasChecklist && !['observer', 'pending'].includes(roleKey);
+  const showChecklistActions = hasChecklist &&
+    isChecklistLandingPage(roleKey, location.pathname) &&
+    !['observer', 'pending'].includes(roleKey);
 
   // Close panel on navigation
   useEffect(() => {
@@ -403,7 +406,7 @@ export default function HelpLauncher() {
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.92 }}
           transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-          className={`flex h-14 w-14 items-center justify-center rounded-full transition-[background-image,box-shadow,transform] ${t.fab} ${t.fabHover}`}
+          className={`flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full transition-[background-image,box-shadow,transform] ${t.fab} ${t.fabHover}`}
           aria-label="Open help and accessibility options"
           aria-expanded={isOpen}
         >

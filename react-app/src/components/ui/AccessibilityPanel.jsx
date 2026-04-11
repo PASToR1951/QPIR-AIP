@@ -10,9 +10,12 @@ import {
     TextAlignLeft as AlignLeft,
     TextT as Type,
     ArrowCounterClockwise as RotateCcw,
+    ListChecks,
 } from '@phosphor-icons/react';
 import { useAccessibility } from '../../context/AccessibilityContext';
 import { THEMES, resolveRouteThemeName } from '../../lib/routeTheme.js';
+import { useOnboarding } from '../../hooks/useOnboarding.jsx';
+import { isChecklistLandingPage } from '../../lib/onboardingUtils.js';
 
 /* ── Sub-components ────────────────────────────────────────────────────── */
 function ToggleSwitch({ value, onChange, theme }) {
@@ -70,9 +73,11 @@ export default function AccessibilityPanel() {
     const [isOpen, setIsOpen] = useState(false);
     const { settings, update, reset } = useAccessibility();
     const { pathname } = useLocation();
+    const { hasChecklist, onboarding, openChecklist, dismissChecklist, roleKey } = useOnboarding();
 
     const themeName = resolveRouteThemeName(pathname);
     const t = THEMES[themeName];
+    const showChecklistToggle = hasChecklist && isChecklistLandingPage(roleKey, pathname);
 
     const segmentActive = (active) =>
         active
@@ -202,6 +207,23 @@ export default function AccessibilityPanel() {
                             </div>
                         </div>
 
+                        {showChecklistToggle && (
+                            <>
+                                <div className="border-t border-slate-100 dark:border-dark-border" />
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Onboarding</p>
+                                    <ToggleRow
+                                        label="Show Checklist"
+                                        description="Display the onboarding progress panel"
+                                        icon={<ListChecks className="w-5 h-5" />}
+                                        value={!onboarding.checklist_progress.panel_hidden}
+                                        onChange={v => v ? openChecklist() : dismissChecklist()}
+                                        theme={themeName}
+                                    />
+                                </div>
+                            </>
+                        )}
+
                         <div className="border-t border-slate-100 dark:border-dark-border" />
 
                         <button
@@ -218,7 +240,7 @@ export default function AccessibilityPanel() {
             {/* Trigger button */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-12 h-12 rounded-2xl shadow-lg border transition-all duration-200 flex items-center justify-center ${
+                className={`w-9 h-9 sm:w-12 sm:h-12 rounded-2xl shadow-lg border transition-all duration-200 flex items-center justify-center ${
                     isOpen
                         ? `bg-gradient-to-br ${t.btnOpen} text-white`
                         : `bg-slate-50 dark:bg-dark-surface border-slate-200 dark:border-dark-border text-slate-500 dark:text-slate-400 ${t.btnClosed}`

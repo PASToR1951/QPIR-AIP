@@ -33,8 +33,8 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
 
     return (
         <nav className="bg-white/80 dark:bg-dark-base/80 backdrop-blur-md border-b border-slate-200 dark:border-dark-border sticky top-0 z-50 shadow-sm print:hidden">
-            <div className="container mx-auto px-4 flex justify-between items-center h-16 max-w-6xl">
-                <div className="flex items-center gap-2 md:gap-4 min-w-0">
+            <div className="container mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 sm:px-4 sm:py-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-4">
                     <button
                         onClick={onBack}
                         className="p-2 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 shrink-0"
@@ -55,23 +55,23 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                     )}
 
                     <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-sm md:text-base font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none truncate max-w-[160px] md:max-w-[300px] lg:max-w-none">{displayTitle}</h2>
+                        <div className="flex items-center gap-2 min-w-0">
                             {formLabel && (
                                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wide shrink-0 ${pillClasses[theme]}`}>
                                     {formLabel}
                                 </span>
                             )}
+                            <h2 className="min-w-0 truncate text-xs font-black leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-sm md:text-base">{displayTitle}</h2>
                         </div>
                         {schoolName && (
-                            <span className="text-[11px] md:text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-[160px] md:max-w-[300px] lg:max-w-none">
+                            <span className="mt-0.5 hidden truncate text-[11px] font-bold text-slate-500 dark:text-slate-400 sm:block md:text-xs">
                                 {schoolName}
                             </span>
                         )}
                     </div>
                 </div>
 
-                <div data-tour="form-autosave" className="flex items-center gap-3">
+                <div data-tour="form-autosave" className="ml-auto flex flex-wrap items-center justify-end gap-2 sm:gap-3">
                     <ViewModeToggle appMode={appMode} toggleAppMode={toggleAppMode} theme={theme} />
 
                     <AnimatePresence>
@@ -104,7 +104,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 border border-emerald-100 dark:border-emerald-900/50`}
+                                className={`flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-600 dark:border-emerald-900/50 dark:bg-emerald-950/30`}
                             >
                                 <CheckCircle size={18} />
                                 <span className="hidden sm:inline">Saved {lastSavedTime}</span>
@@ -115,7 +115,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                                 key="save-btn"
                                 onClick={onSave}
                                 disabled={isSaving}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white text-xs font-bold transition-all active:scale-95 shadow-lg disabled:opacity-70 disabled:cursor-wait ${btnClasses[theme]}`}
+                                className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-white shadow-lg transition-all active:scale-95 disabled:cursor-wait disabled:opacity-70 sm:px-4 ${btnClasses[theme]}`}
                             >
                                 {isSaving ? (
                                     <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

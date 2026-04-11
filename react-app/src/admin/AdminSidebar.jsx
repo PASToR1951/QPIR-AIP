@@ -10,6 +10,8 @@ import {
   CaretDown, ChartBar, Wallet, TrendUp, ListChecks, FunnelSimple, Coins,
   Database,
 } from '@phosphor-icons/react';
+import { useOnboarding } from '../hooks/useOnboarding.jsx';
+import { isChecklistLandingPage } from '../lib/onboardingUtils.js';
 
 const NAV_GROUPS = [
   {
@@ -42,7 +44,6 @@ const NAV_GROUPS = [
       { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Beta', adminOnly: true },
       { to: '/admin/backups',  label: 'Backups',     icon: Database, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminBackups.jsx') },
       { to: '/admin/settings', label: 'Settings',    icon: Gear, adminOnly: true, preload: () => import('./pages/AdminSettings.jsx') },
-      { to: '/getting-started', label: 'Getting Started', icon: BookOpenUserIcon, adminOnly: true, preload: () => import('../components/GettingStarted.jsx') },
     ],
   },
 ];
@@ -236,6 +237,52 @@ function CollapsibleReports({ onNavigate }) {
   );
 }
 
+function AdminOnboardingTrigger({ onNavigate }) {
+  const location = useLocation();
+  const { hasChecklist, isHydrated, tasks, completedCount, isComplete, toggleChecklist } = useOnboarding();
+
+  if (!hasChecklist || !isHydrated || !isChecklistLandingPage('admin', location.pathname)) return null;
+
+  const segments = tasks.length;
+  const done = completedCount;
+
+  return (
+    <button
+      type="button"
+      onClick={() => { toggleChecklist(); onNavigate?.(); }}
+      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group select-none border text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.07] dark:hover:bg-white/[0.10] hover:text-slate-800 dark:hover:text-slate-100 font-medium border-transparent hover:border-slate-900/[0.06] dark:hover:border-white/[0.08]"
+    >
+      <BookOpenUserIcon
+        size={20}
+        weight={isComplete ? 'fill' : 'regular'}
+        className={`shrink-0 transition-all duration-200 ${isComplete ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}
+      />
+      <div className="flex-1 min-w-0 text-left">
+        <p className="truncate leading-tight">Getting Started</p>
+        {segments > 0 && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <div className="flex gap-0.5">
+              {Array.from({ length: segments }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1 w-3 rounded-full transition-colors duration-300 ${
+                    i < done
+                      ? 'bg-emerald-400 dark:bg-emerald-500'
+                      : 'bg-slate-200 dark:bg-slate-600'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 leading-none">
+              {isComplete ? 'Done' : `${done}/${segments}`}
+            </span>
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
 export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose }) => {
   const appLogo = useAppLogo();
   const glassClasses = 'bg-white/40 dark:bg-dark-base/40 backdrop-blur-2xl backdrop-saturate-[1.8] border-r border-white/50 dark:border-white/[0.06]';
@@ -285,6 +332,9 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
               )}
               {!isObserver && group.label === 'Analytics' && (
                 <CollapsibleReports onNavigate={onMobileClose} />
+              )}
+              {!isObserver && group.label === 'System' && (
+                <AdminOnboardingTrigger onNavigate={onMobileClose} />
               )}
             </div>
           </div>
