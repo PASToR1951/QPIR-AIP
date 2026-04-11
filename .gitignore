@@ -3,6 +3,7 @@ start.sh
 tunnel.sh
 sync_to_notion.py
 update-docs.sh
+commit-batch.sh
 
 # ── Internal planning & developer notes ──────────────────────────────────────
 TODO.md

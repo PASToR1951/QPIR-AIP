@@ -147,13 +147,19 @@ next_batch_number() {
   local file base number
 
   while IFS= read -r file; do
+    [ -n "$file" ] || continue
     base="$(basename "$file")"
     number="${base##*-}"
     number="${number%.md}"
     if [[ "$number" =~ ^[0-9][0-9]$ ]] && [ "$((10#$number))" -gt "$max_batch" ]; then
       max_batch="$((10#$number))"
     fi
-  done < <(find "$NOTE_DIR" -maxdepth 1 -type f -name "${CURRENT_VERSION}-${MANILA_STAMP}-[0-9][0-9].md" 2>/dev/null | sort)
+  done < <(
+    {
+      find "$NOTE_DIR" -maxdepth 1 -type f -name "${CURRENT_VERSION}-${MANILA_STAMP}-[0-9][0-9].md" 2>/dev/null
+      git -C "$REPO_ROOT" ls-files --cached --deleted -- "docs/commit-batches" 2>/dev/null
+    } | sort -u
+  )
 
   printf '%02d' "$((max_batch + 1))"
 }
