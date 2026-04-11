@@ -3,6 +3,8 @@ import SectionHeader from '../../ui/SectionHeader';
 import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { SchoolAvatar } from '../../ui/SchoolAvatar.jsx';
+import { useFormShellContext } from '../../../forms/shared/formShellContext.jsx';
+import { selectBudget, selectProfile, usePirDispatch, usePirSelector } from '../../../forms/pir/pirContext.jsx';
 
 function LockedField({ label, value }) {
     return (
@@ -18,18 +20,15 @@ function LockedField({ label, value }) {
 }
 
 export default React.memo(function PIRProfileSection({
-    appMode,
-    currentStep,
-    program,
     isDivisionPersonnel,
-    school,
     user,
     quarterString,
-    owner, setOwner, ownerLocked,
-    budgetFromDivision, setBudgetFromDivision,
-    budgetFromCoPSF, setBudgetFromCoPSF,
-    functionalDivision, setFunctionalDivision,
 }) {
+    const { appMode, currentStep } = useFormShellContext();
+    const dispatch = usePirDispatch();
+    const profile = usePirSelector(selectProfile);
+    const budget = usePirSelector(selectBudget);
+
     return (
         <div className={`${(appMode === 'full' || currentStep === 1) ? 'block' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
             <SectionHeader
@@ -44,7 +43,7 @@ export default React.memo(function PIRProfileSection({
                     <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">Program Name</label>
                     <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 rounded-xl">
                         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500 shrink-0"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
-                        <span className="text-sm font-semibold text-blue-800 dark:text-blue-300 truncate">{program || '—'}</span>
+                        <span className="text-sm font-semibold text-blue-800 dark:text-blue-300 truncate">{profile.program || '—'}</span>
                     </div>
                 </div>
 
@@ -59,8 +58,8 @@ export default React.memo(function PIRProfileSection({
                             { value: "OSDS", label: "OSDS" },
                             { value: "CID", label: "CID" },
                         ]}
-                        value={functionalDivision}
-                        onChange={(e) => setFunctionalDivision(e.target.value)}
+                        value={profile.functionalDivision}
+                        onChange={(e) => dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'functionalDivision', value: e.target.value } })}
                     />
                 ) : (
                     <div className="flex flex-col gap-1.5">
@@ -70,12 +69,12 @@ export default React.memo(function PIRProfileSection({
                                 clusterNumber={user?.cluster_number}
                                 schoolLogo={user?.school_logo ?? null}
                                 clusterLogo={user?.cluster_logo ?? null}
-                                name={school || user?.school_name}
+                                name={profile.school || user?.school_name}
                                 size={28}
                                 rounded="rounded-full"
                                 className="shrink-0"
                             />
-                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{school || user?.school_name || '—'}</span>
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{profile.school || user?.school_name || '—'}</span>
                         </div>
                     </div>
                 )}
@@ -89,14 +88,14 @@ export default React.memo(function PIRProfileSection({
                     </div>
                 </div>
 
-                <Input theme="blue" label="Budget — From Division" placeholder="₱ 0.00" inputMode="decimal" value={budgetFromDivision} onChange={(e) => setBudgetFromDivision(e.target.value.replace(/[^0-9.]/g, ''))} />
+                <Input theme="blue" label="Budget — From Division" placeholder="₱ 0.00" inputMode="decimal" value={budget.fromDivision} onChange={(e) => dispatch({ type: 'SET_BUDGET_FIELD', payload: { field: 'fromDivision', value: e.target.value.replace(/[^0-9.]/g, '') } })} />
 
-                {ownerLocked
-                    ? <LockedField label={isDivisionPersonnel ? "Program Owner" : "Coordinator"} value={owner} />
-                    : <Input theme="blue" label={isDivisionPersonnel ? "Program Owner" : "Coordinator"} placeholder={isDivisionPersonnel ? "Name of owner" : "Name of coordinator"} value={owner} onChange={(e) => setOwner(e.target.value)} />
+                {profile.ownerLocked
+                    ? <LockedField label={isDivisionPersonnel ? "Program Owner" : "Coordinator"} value={profile.owner} />
+                    : <Input theme="blue" label={isDivisionPersonnel ? "Program Owner" : "Coordinator"} placeholder={isDivisionPersonnel ? "Name of owner" : "Name of coordinator"} value={profile.owner} onChange={(e) => dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'owner', value: e.target.value } })} />
                 }
 
-                <Input theme="blue" label="Budget — From CO-PSF" placeholder="₱ 0.00" inputMode="decimal" value={budgetFromCoPSF} onChange={(e) => setBudgetFromCoPSF(e.target.value.replace(/[^0-9.]/g, ''))} />
+                <Input theme="blue" label="Budget — From CO-PSF" placeholder="₱ 0.00" inputMode="decimal" value={budget.fromCoPSF} onChange={(e) => dispatch({ type: 'SET_BUDGET_FIELD', payload: { field: 'fromCoPSF', value: e.target.value.replace(/[^0-9.]/g, '') } })} />
             </div>
         </div>
     );

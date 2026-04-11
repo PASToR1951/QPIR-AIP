@@ -1,19 +1,18 @@
 import React from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
+import { useFormShellContext } from '../../../forms/shared/formShellContext.jsx';
+import { selectIndicatorTargets, usePirDispatch, usePirSelector } from '../../../forms/pir/pirContext.jsx';
 
-export default React.memo(function PIRIndicatorsSection({
-    appMode,
-    currentStep,
-    indicatorTargets,
-    setIndicatorTargets,
-}) {
+export default React.memo(function PIRIndicatorsSection() {
+    const { appMode, currentStep } = useFormShellContext();
+    const dispatch = usePirDispatch();
+    const indicatorTargets = usePirSelector(selectIndicatorTargets);
+
     if (appMode !== 'full' && currentStep !== 2) return null;
 
     const handleChange = (index, value) => {
-        setIndicatorTargets(prev => prev.map((item, i) =>
-            i === index ? { ...item, quarterly_target: value } : item
-        ));
+        dispatch({ type: 'UPDATE_INDICATOR_TARGET', payload: { index, value } });
     };
 
     return (

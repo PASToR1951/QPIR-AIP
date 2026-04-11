@@ -1,15 +1,17 @@
 import React from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
+import { useFormShellContext } from '../../../forms/shared/formShellContext.jsx';
+import { selectFactors, usePirDispatch, usePirSelector } from '../../../forms/pir/pirContext.jsx';
+import { FACTOR_TYPES } from '../../../forms/pir/usePirFormState.js';
 
 export default React.memo(function PIRFactorsSection({
-    appMode,
-    currentStep,
-    FACTOR_TYPES,
-    factors,
-    handleFactorChange,
     showRecommendations = false,
 }) {
+    const { appMode, currentStep } = useFormShellContext();
+    const dispatch = usePirDispatch();
+    const factors = usePirSelector(selectFactors);
+
     if (appMode !== 'full' && currentStep !== 4) return null;
 
     return (
@@ -36,26 +38,26 @@ export default React.memo(function PIRFactorsSection({
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest px-1">Facilitating</label>
                                         <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 transition-all">
-                                            <TextareaAuto
-                                                className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[80px]"
-                                                placeholder={`What helped in ${type.toLowerCase()} aspect?`}
-                                                value={factors[type].facilitating}
-                                                onChange={(e) => handleFactorChange(type, 'facilitating', e.target.value)}
-                                            />
+                                                <TextareaAuto
+                                                    className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[80px]"
+                                                    placeholder={`What helped in ${type.toLowerCase()} aspect?`}
+                                                    value={factors[type].facilitating}
+                                                    onChange={(e) => dispatch({ type: 'SET_FACTOR', payload: { type, category: 'facilitating', value: e.target.value } })}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
 
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-bold text-rose-600 uppercase tracking-widest px-1">Hindering</label>
                                         <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-4 shadow-sm focus-within:ring-2 focus-within:ring-rose-500/20 focus-within:border-rose-500 transition-all">
-                                            <TextareaAuto
-                                                className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[80px]"
-                                                placeholder={`What were the challenges in ${type.toLowerCase()}?`}
-                                                value={factors[type].hindering}
-                                                onChange={(e) => handleFactorChange(type, 'hindering', e.target.value)}
-                                            />
+                                                <TextareaAuto
+                                                    className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[80px]"
+                                                    placeholder={`What were the challenges in ${type.toLowerCase()}?`}
+                                                    value={factors[type].hindering}
+                                                    onChange={(e) => dispatch({ type: 'SET_FACTOR', payload: { type, category: 'hindering', value: e.target.value } })}
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
 
                                     {showRecommendations && (
                                         <div className="space-y-2">
@@ -65,7 +67,7 @@ export default React.memo(function PIRFactorsSection({
                                                     className="w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent outline-none min-h-[80px]"
                                                     placeholder={`Recommendations for ${type.toLowerCase()}...`}
                                                     value={factors[type].recommendations ?? ''}
-                                                    onChange={(e) => handleFactorChange(type, 'recommendations', e.target.value)}
+                                                    onChange={(e) => dispatch({ type: 'SET_FACTOR', payload: { type, category: 'recommendations', value: e.target.value } })}
                                                 />
                                             </div>
                                         </div>
@@ -100,7 +102,7 @@ export default React.memo(function PIRFactorsSection({
                                             <TextareaAuto
                                                 className="min-h-[70px] w-full bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
                                                 value={factors[type].facilitating}
-                                                onChange={(e) => handleFactorChange(type, 'facilitating', e.target.value)}
+                                                onChange={(e) => dispatch({ type: 'SET_FACTOR', payload: { type, category: 'facilitating', value: e.target.value } })}
                                             />
                                         </div>
                                     </div>
@@ -111,7 +113,7 @@ export default React.memo(function PIRFactorsSection({
                                             <TextareaAuto
                                                 className="min-h-[70px] w-full bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
                                                 value={factors[type].hindering}
-                                                onChange={(e) => handleFactorChange(type, 'hindering', e.target.value)}
+                                                onChange={(e) => dispatch({ type: 'SET_FACTOR', payload: { type, category: 'hindering', value: e.target.value } })}
                                             />
                                         </div>
                                     </div>
@@ -123,7 +125,7 @@ export default React.memo(function PIRFactorsSection({
                                                 <TextareaAuto
                                                     className="min-h-[70px] w-full bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
                                                     value={factors[type].recommendations ?? ''}
-                                                    onChange={(e) => handleFactorChange(type, 'recommendations', e.target.value)}
+                                                    onChange={(e) => dispatch({ type: 'SET_FACTOR', payload: { type, category: 'recommendations', value: e.target.value } })}
                                                 />
                                             </div>
                                         </div>
@@ -148,7 +150,7 @@ export default React.memo(function PIRFactorsSection({
                                         <TextareaAuto
                                             className="mt-5 w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent p-1 focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded min-h-[40px]"
                                             value={factors[type].facilitating}
-                                            onChange={(e) => handleFactorChange(type, 'facilitating', e.target.value)}
+                                            onChange={(e) => dispatch({ type: 'SET_FACTOR', payload: { type, category: 'facilitating', value: e.target.value } })}
                                         />
                                     </div>
                                     <div className={`p-4 ${showRecommendations ? 'border-r border-slate-200 dark:border-dark-border' : ''} relative group hover:bg-slate-50/50 dark:hover:bg-dark-base/50 transition-colors`}>
@@ -156,7 +158,7 @@ export default React.memo(function PIRFactorsSection({
                                         <TextareaAuto
                                             className="mt-5 w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent p-1 focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded min-h-[40px]"
                                             value={factors[type].hindering}
-                                            onChange={(e) => handleFactorChange(type, 'hindering', e.target.value)}
+                                            onChange={(e) => dispatch({ type: 'SET_FACTOR', payload: { type, category: 'hindering', value: e.target.value } })}
                                         />
                                     </div>
                                     {showRecommendations && (
@@ -165,7 +167,7 @@ export default React.memo(function PIRFactorsSection({
                                             <TextareaAuto
                                                 className="mt-5 w-full text-sm font-medium text-slate-700 dark:text-slate-200 bg-transparent p-1 focus:bg-white dark:focus:bg-dark-surface border border-transparent focus:border-slate-300 dark:focus:border-dark-border rounded min-h-[40px]"
                                                 value={factors[type].recommendations ?? ''}
-                                                onChange={(e) => handleFactorChange(type, 'recommendations', e.target.value)}
+                                                onChange={(e) => dispatch({ type: 'SET_FACTOR', payload: { type, category: 'recommendations', value: e.target.value } })}
                                             />
                                         </div>
                                     )}

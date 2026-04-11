@@ -1,26 +1,27 @@
 import React from 'react';
 import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
+import { useFormShellContext } from '../../../forms/shared/formShellContext.jsx';
+import { selectActionItems, usePirDispatch, usePirSelector } from '../../../forms/pir/pirContext.jsx';
 
-export default React.memo(function PIRActionItemsSection({
-    appMode,
-    currentStep,
-    actionItems,
-    setActionItems,
-}) {
+export default React.memo(function PIRActionItemsSection() {
+    const { appMode, currentStep } = useFormShellContext();
+    const dispatch = usePirDispatch();
+    const actionItems = usePirSelector(selectActionItems);
+
     if (appMode !== 'full' && currentStep !== 5) return null;
 
     const handleChange = (index, value) => {
-        setActionItems(prev => prev.map((item, i) =>
-            i === index ? { ...item, action: value } : item
-        ));
+        dispatch({ type: 'SET_ACTION_ITEM', payload: { index, field: 'action', value } });
     };
 
-    const addItem = () =>
-        setActionItems(prev => [...prev, { action: '', response_asds: '', response_sds: '' }]);
+    const addItem = () => {
+        dispatch({ type: 'ADD_ACTION_ITEM' });
+    };
 
-    const removeItem = (index) =>
-        setActionItems(prev => prev.filter((_, i) => i !== index));
+    const removeItem = (index) => {
+        dispatch({ type: 'REMOVE_ACTION_ITEM', payload: { index } });
+    };
 
     const handleKeyDown = (e, index) => {
         if (e.key === 'Enter' && !e.shiftKey && index === actionItems.length - 1) {
