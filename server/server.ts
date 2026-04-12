@@ -132,10 +132,34 @@ app.get('/api/health', (c) => {
 // Public: division config (supervisor name/title for PIR documents, app branding)
 app.get('/api/config', async (c) => {
   const config = await _prisma.divisionConfig.findFirst();
+
+  // Optional cluster head lookup for School users
+  const clusterId = c.req.query('cluster_id');
+  let cluster_head_name = '';
+  let cluster_head_title = 'Cluster Coordinator';
+  if (clusterId) {
+    const cluster = await _prisma.cluster.findUnique({
+      where: { id: Number(clusterId) },
+      include: { cluster_head: { select: { name: true, first_name: true, last_name: true } } },
+    });
+    if (cluster?.cluster_head) {
+      const h = cluster.cluster_head;
+      cluster_head_name = h.name || [h.first_name, h.last_name].filter(Boolean).join(' ');
+    }
+  }
+
   return c.json({
-    supervisor_name:  config?.supervisor_name  ?? "",
-    supervisor_title: config?.supervisor_title ?? "",
-    app_logo:         config?.app_logo         ?? null,
+    supervisor_name:      config?.supervisor_name      ?? "",
+    supervisor_title:     config?.supervisor_title     ?? "",
+    app_logo:             config?.app_logo             ?? null,
+    sgod_noted_by_name:   config?.sgod_noted_by_name   ?? "",
+    sgod_noted_by_title:  config?.sgod_noted_by_title  ?? "",
+    cid_noted_by_name:    config?.cid_noted_by_name    ?? "",
+    cid_noted_by_title:   config?.cid_noted_by_title   ?? "",
+    osds_noted_by_name:   config?.osds_noted_by_name   ?? "",
+    osds_noted_by_title:  config?.osds_noted_by_title  ?? "",
+    cluster_head_name,
+    cluster_head_title,
   });
 });
 

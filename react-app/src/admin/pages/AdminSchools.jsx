@@ -118,6 +118,11 @@ export default function AdminSchools() {
   const [fetchError, setFetchError] = useState(null);
   const [toast, setToast] = useState(null);
 
+  /* ── Cluster Head assignment state ─────────────────────────────── */
+  const [headAssignCluster, setHeadAssignCluster] = useState(null);
+  const [headAssignUserId, setHeadAssignUserId]   = useState(null);
+  const [headAssignLoading, setHeadAssignLoading] = useState(false);
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -486,6 +491,22 @@ export default function AdminSchools() {
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                         <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-bold">{schoolCount} schools</span>
                         <span className="text-[11px] sm:text-xs font-bold text-indigo-600 dark:text-indigo-400">{userCount} user{userCount !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Head:</span>
+                        {cl.cluster_head ? (
+                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                            {cl.cluster_head.name || [cl.cluster_head.first_name, cl.cluster_head.last_name].filter(Boolean).join(' ')}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-bold text-amber-500 dark:text-amber-400 italic">Not assigned</span>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setHeadAssignCluster(cl); setHeadAssignUserId(cl.cluster_head?.id ?? null); }}
+                          className="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 underline"
+                        >
+                          {cl.cluster_head ? 'Change' : 'Assign'}
+                        </button>
                       </div>
                     </div>
                     <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
@@ -930,6 +951,52 @@ export default function AdminSchools() {
             );
           })}
         </div>
+      </FormModal>
+
+      {/* Cluster Head Assignment */}
+      <FormModal
+        open={!!headAssignCluster}
+        title={`Assign Cluster Head — Cluster ${headAssignCluster?.cluster_number ?? ''}`}
+        onSave={async () => {
+          try {
+            setHeadAssignLoading(true);
+            await api.patch(`/api/admin/clusters/${headAssignCluster.id}/head`, { user_id: headAssignUserId });
+            showToast(headAssignUserId ? 'Cluster head assigned.' : 'Cluster head unassigned.');
+            setHeadAssignCluster(null);
+            fetchAll();
+          } catch (err) {
+            showToast(err?.friendlyMessage || 'Failed to assign cluster head.', 'error');
+          } finally {
+            setHeadAssignLoading(false);
+          }
+        }}
+        onCancel={() => { setHeadAssignCluster(null); setHeadAssignUserId(null); }}
+        loading={headAssignLoading}
+        saveLabel="Save"
+      >
+        {headAssignCluster?.coordinator_users?.length > 0 ? (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Select a Cluster Coordinator to designate as head of this cluster.
+            </p>
+            <SearchableSelect
+              options={[
+                { value: null, label: '— Unassign —' },
+                ...headAssignCluster.coordinator_users.map(u => ({
+                  value: u.id,
+                  label: u.name || [u.first_name, u.last_name].filter(Boolean).join(' '),
+                })),
+              ]}
+              value={headAssignUserId}
+              onChange={v => setHeadAssignUserId(v === null || v === '' ? null : Number(v))}
+            />
+          </div>
+        ) : (
+          <div className="py-4 text-center">
+            <p className="text-sm font-bold text-amber-600 dark:text-amber-400">No coordinators in this cluster.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Assign a Cluster Coordinator in the Users tab first.</p>
+          </div>
+        )}
       </FormModal>
 
       {/* Toast */}

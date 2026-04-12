@@ -29,32 +29,46 @@ settingsRoutes.get("/settings/division-config", async (c) => {
     supervisor_name: "",
     supervisor_title: "",
     app_logo: null,
+    sgod_noted_by_name: "",
+    sgod_noted_by_title: "",
+    cid_noted_by_name: "",
+    cid_noted_by_title: "",
+    osds_noted_by_name: "",
+    osds_noted_by_title: "",
   });
 });
 
 settingsRoutes.post("/settings/division-config", async (c) => {
   const admin = getUserFromToken(c)!;
-  const { supervisor_name, supervisor_title } = sanitizeObject(
-    await c.req.json(),
-  );
+  const body = sanitizeObject(await c.req.json());
+  const {
+    supervisor_name, supervisor_title,
+    sgod_noted_by_name, sgod_noted_by_title,
+    cid_noted_by_name, cid_noted_by_title,
+    osds_noted_by_name, osds_noted_by_title,
+  } = body;
+
+  // Build update data — only include fields that were sent
+  const data: Record<string, string> = {};
+  if (supervisor_name !== undefined) data.supervisor_name = supervisor_name;
+  if (supervisor_title !== undefined) data.supervisor_title = supervisor_title;
+  if (sgod_noted_by_name !== undefined) data.sgod_noted_by_name = sgod_noted_by_name;
+  if (sgod_noted_by_title !== undefined) data.sgod_noted_by_title = sgod_noted_by_title;
+  if (cid_noted_by_name !== undefined) data.cid_noted_by_name = cid_noted_by_name;
+  if (cid_noted_by_title !== undefined) data.cid_noted_by_title = cid_noted_by_title;
+  if (osds_noted_by_name !== undefined) data.osds_noted_by_name = osds_noted_by_name;
+  if (osds_noted_by_title !== undefined) data.osds_noted_by_title = osds_noted_by_title;
+
   const existing = await prisma.divisionConfig.findFirst();
 
   let config;
   if (existing) {
     config = await prisma.divisionConfig.update({
       where: { id: existing.id },
-      data: {
-        supervisor_name: supervisor_name ?? "",
-        supervisor_title: supervisor_title ?? "",
-      },
+      data,
     });
   } else {
-    config = await prisma.divisionConfig.create({
-      data: {
-        supervisor_name: supervisor_name ?? "",
-        supervisor_title: supervisor_title ?? "",
-      },
-    });
+    config = await prisma.divisionConfig.create({ data });
   }
 
   await writeAuditLog(
@@ -62,7 +76,7 @@ settingsRoutes.post("/settings/division-config", async (c) => {
     "updated_division_config",
     "DivisionConfig",
     config.id,
-    { supervisor_name, supervisor_title },
+    body,
   );
   return c.json(config);
 });

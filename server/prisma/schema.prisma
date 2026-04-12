@@ -27,6 +27,10 @@ model Cluster {
   schools           School[]
   coordinator_users User[]   @relation("UserCluster")
 
+  // Admin-designated cluster head (one-to-one)
+  cluster_head_id   Int?     @unique
+  cluster_head      User?    @relation("ClusterHead", fields: [cluster_head_id], references: [id], onDelete: SetNull)
+
   @@map("clusters")
 }
 
@@ -106,6 +110,9 @@ model User {
 
   // PIRs this user is currently actively reviewing
   active_pir_reviews PIR[] @relation("PIRActiveReviewer")
+
+  // Cluster this user heads (one-to-one inverse)
+  headed_cluster Cluster? @relation("ClusterHead")
 
   // Admin audit logs
   audit_logs    AuditLog[]
@@ -344,6 +351,15 @@ model DivisionConfig {
   supervisor_name  String   @default("")
   supervisor_title String   @default("")
   app_logo         String?  // null = use default; "/app-logo/logo.{ext}?v=..." when set by Admin
+
+  // Division-specific "Noted by" signatories (admin-configured)
+  sgod_noted_by_name   String @default("")
+  sgod_noted_by_title  String @default("")
+  cid_noted_by_name    String @default("")
+  cid_noted_by_title   String @default("")
+  osds_noted_by_name   String @default("")
+  osds_noted_by_title  String @default("")
+
   updated_at       DateTime @updatedAt
 
   @@map("division_config")

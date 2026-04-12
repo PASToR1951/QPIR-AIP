@@ -29,6 +29,7 @@ observerRoutes.use("/clusters", adminOrObserverOnly);
 observerRoutes.use("/schools", adminOrObserverOnly);
 
 adminRoutes.use("/clusters/:id", adminOnly);
+adminRoutes.use("/clusters/:id/head", adminOnly);
 adminRoutes.use("/clusters/:id/logo", adminOnly);
 adminRoutes.use("/schools/:id", adminOnly);
 adminRoutes.use("/schools/:id/restrictions", adminOnly);
@@ -48,6 +49,11 @@ observerRoutes.get("/clusters", async (c) => {
 
   const clusters = await prisma.cluster.findMany({
     include: {
+      cluster_head: { select: { id: true, name: true, first_name: true, last_name: true } },
+      coordinator_users: {
+        where: { role: "Cluster Coordinator", is_active: true },
+        select: { id: true, name: true, first_name: true, last_name: true },
+      },
       schools: {
         orderBy: { name: "asc" },
         include: {
@@ -117,6 +123,30 @@ adminRoutes.patch("/clusters/:id", async (c) => {
     }
     throw error;
   }
+});
+
+adminRoutes.patch("/clusters/:id/head", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+  const clusterId = safeParseInt(c.req.param("id"), 0);
+  const { user_id } = sanitizeObject(await c.req.json());
+
+  // user_id = null means "unassign"
+  if (user_id === null) {
+    await prisma.cluster.update({ where: { id: clusterId }, data: { cluster_head_id: null } });
+    await writeAuditLog(admin.id, "unassigned_cluster_head", "Cluster", clusterId, {});
+    return c.json({ success: true });
+  }
+
+  // Validate user exists and is a Cluster Coordinator assigned to this cluster
+  const user = await prisma.user.findFirst({
+    where: { id: Number(user_id), cluster_id: clusterId, role: "Cluster Coordinator", is_active: true },
+  });
+  if (!user) return c.json({ error: "User must be an active Cluster Coordinator in this cluster" }, 400);
+
+  await prisma.cluster.update({ where: { id: clusterId }, data: { cluster_head_id: user.id } });
+  await writeAuditLog(admin.id, "assigned_cluster_head", "Cluster", clusterId, { user_id: user.id });
+  return c.json({ success: true });
 });
 
 adminRoutes.delete("/clusters/:id", async (c) => {

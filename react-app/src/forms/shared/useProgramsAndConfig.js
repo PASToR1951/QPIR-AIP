@@ -12,6 +12,12 @@ const EMPTY_STATE = {
     personsTerms: [],
     supervisorName: '',
     supervisorTitle: '',
+    notedBy: {
+        SGOD: { name: '', title: '' },
+        CID:  { name: '', title: '' },
+        OSDS: { name: '', title: '' },
+    },
+    clusterHead: { name: '', title: '' },
     draft: null,
     isLoading: true,
     error: null,
@@ -21,6 +27,7 @@ export default function useProgramsAndConfig({
     kind,
     quarter,
     schoolOrUserId,
+    clusterId,
 }) {
     const [state, setState] = useState(EMPTY_STATE);
 
@@ -33,7 +40,7 @@ export default function useProgramsAndConfig({
                     const results = await Promise.allSettled([
                         api.get('/api/programs/with-aips'),
                         api.get('/api/programs/with-pirs', { params: { quarter } }),
-                        api.get('/api/config'),
+                        api.get('/api/config', clusterId ? { params: { cluster_id: clusterId } } : undefined),
                         api.get('/api/pirs/draft'),
                     ]);
 
@@ -62,8 +69,18 @@ export default function useProgramsAndConfig({
                     }
 
                     if (configRes.status === 'fulfilled') {
-                        nextState.supervisorName = configRes.value.data.supervisor_name ?? '';
-                        nextState.supervisorTitle = configRes.value.data.supervisor_title ?? '';
+                        const cfg = configRes.value.data;
+                        nextState.supervisorName = cfg.supervisor_name ?? '';
+                        nextState.supervisorTitle = cfg.supervisor_title ?? '';
+                        nextState.notedBy = {
+                            SGOD: { name: cfg.sgod_noted_by_name ?? '', title: cfg.sgod_noted_by_title ?? '' },
+                            CID:  { name: cfg.cid_noted_by_name  ?? '', title: cfg.cid_noted_by_title  ?? '' },
+                            OSDS: { name: cfg.osds_noted_by_name ?? '', title: cfg.osds_noted_by_title ?? '' },
+                        };
+                        nextState.clusterHead = {
+                            name: cfg.cluster_head_name ?? '',
+                            title: cfg.cluster_head_title ?? 'Cluster Coordinator',
+                        };
                     }
 
                     if (draftRes.status === 'fulfilled' && draftRes.value.data.hasDraft) {
@@ -155,7 +172,7 @@ export default function useProgramsAndConfig({
         return () => {
             isActive = false;
         };
-    }, [kind, quarter, schoolOrUserId]);
+    }, [kind, quarter, schoolOrUserId, clusterId]);
 
     return state;
 }

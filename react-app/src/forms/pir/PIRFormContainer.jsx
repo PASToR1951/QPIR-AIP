@@ -64,6 +64,7 @@ export default function PIRFormContainer() {
     const data = useProgramsAndConfig({
         kind: 'pir',
         quarter: quarterString,
+        clusterId: user?.cluster_id,
     });
     const [state, dispatch] = usePirFormState({
         isDivisionPersonnel,
@@ -82,6 +83,8 @@ export default function PIRFormContainer() {
     const [completedPrograms, setCompletedPrograms] = useState([]);
     const [supervisorName, setSupervisorName] = useState('');
     const [supervisorTitle, setSupervisorTitle] = useState('');
+    const [notedBy, setNotedBy] = useState(null);
+    const [clusterHead, setClusterHead] = useState(null);
     const [serverDraft, setServerDraft] = useState(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [isAIPPreviewOpen, setIsAIPPreviewOpen] = useState(false);
@@ -94,6 +97,8 @@ export default function PIRFormContainer() {
         setCompletedPrograms(data.completedPrograms);
         setSupervisorName(data.supervisorName);
         setSupervisorTitle(data.supervisorTitle);
+        setNotedBy(data.notedBy);
+        setClusterHead(data.clusterHead);
         setServerDraft(data.draft);
     }, [
         data.completedPrograms,
@@ -102,7 +107,20 @@ export default function PIRFormContainer() {
         data.programsWithAIPs,
         data.supervisorName,
         data.supervisorTitle,
+        data.notedBy,
+        data.clusterHead,
     ]);
+
+    // Auto-fill Program Owner for Division Personnel
+    useEffect(() => {
+        if (!isDivisionPersonnel || !user) return;
+        if (profile.owner || profile.ownerLocked) return;
+        const fullName = user.name
+            || [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+        if (fullName) {
+            dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'owner', value: fullName } });
+        }
+    }, [isDivisionPersonnel, user, profile.owner, profile.ownerLocked, dispatch]);
 
     const draft = usePirDraft({
         appMode: shell.appMode,
@@ -445,6 +463,8 @@ export default function PIRFormContainer() {
                             quarterString={quarterString}
                             supervisorName={supervisorName}
                             supervisorTitle={supervisorTitle}
+                            notedBy={notedBy}
+                            clusterHead={clusterHead}
                             user={user}
                             isDivisionPersonnel={isDivisionPersonnel}
                             aipActivitiesLoading={aipActivities.isLoading}
@@ -478,6 +498,8 @@ export default function PIRFormContainer() {
                             quarterString={quarterString}
                             supervisorName={supervisorName}
                             supervisorTitle={supervisorTitle}
+                            notedBy={notedBy}
+                            clusterHead={clusterHead}
                             user={user}
                             isDivisionPersonnel={isDivisionPersonnel}
                             aipActivitiesLoading={aipActivities.isLoading}

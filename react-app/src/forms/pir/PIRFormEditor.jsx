@@ -44,10 +44,29 @@ function PreviewFallback() {
     );
 }
 
+function resolveNotedBy({ user, isDivisionPersonnel, functionalDivision, notedBy, clusterHead, supervisorName, supervisorTitle }) {
+    // Division Personnel -> division-specific chief
+    if (isDivisionPersonnel && functionalDivision && notedBy?.[functionalDivision]?.name) {
+        return notedBy[functionalDivision];
+    }
+    // Cluster Coordinator -> CID chief
+    if (user?.role === 'Cluster Coordinator' && notedBy?.CID?.name) {
+        return notedBy.CID;
+    }
+    // School user -> their admin-designated Cluster Head
+    if (user?.role === 'School' && clusterHead?.name) {
+        return clusterHead;
+    }
+    // Fallback -> legacy supervisor from DivisionConfig
+    return { name: supervisorName, title: supervisorTitle };
+}
+
 export default function PIRFormEditor({
     quarterString,
     supervisorName,
     supervisorTitle,
+    notedBy,
+    clusterHead,
     user,
     isDivisionPersonnel,
     aipActivitiesLoading,
@@ -92,6 +111,16 @@ export default function PIRFormEditor({
     const actionItems = usePirSelector(selectActionItems);
     const ui = usePirSelector(selectPirUi);
     const submission = usePirSelector(selectPirSubmission);
+
+    const resolvedNotedBy = resolveNotedBy({
+        user,
+        isDivisionPersonnel,
+        functionalDivision: profile.functionalDivision,
+        notedBy,
+        clusterHead,
+        supervisorName,
+        supervisorTitle,
+    });
 
     if (appMode === 'readonly') {
         return (
@@ -155,8 +184,8 @@ export default function PIRFormEditor({
                             <Suspense fallback={<PreviewFallback />}>
                                 <LazyPIRDocument
                                     quarter={quarterString}
-                                    supervisorName={supervisorName}
-                                    supervisorTitle={supervisorTitle}
+                                    supervisorName={resolvedNotedBy.name}
+                                    supervisorTitle={resolvedNotedBy.title}
                                     program={profile.program}
                                     school={profile.school}
                                     owner={profile.owner}
@@ -361,8 +390,8 @@ export default function PIRFormEditor({
                                                 />
                                                 <SignatureBlock
                                                     label="Noted"
-                                                    name="DR. ENRIQUE Q. RETES, EdD"
-                                                    title="Chief Education Supervisor"
+                                                    name={resolvedNotedBy.name}
+                                                    title={resolvedNotedBy.title}
                                                     readOnly
                                                     theme="blue"
                                                 />
