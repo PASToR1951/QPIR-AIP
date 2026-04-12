@@ -107,6 +107,13 @@ html.dark-transition *::after {
 
   body {
     background: white !important;
+    color: black !important;
+  }
+
+  .print-reset {
+    background: transparent !important;
+    color: black !important;
+    border-color: black !important;
   }
 }
 
