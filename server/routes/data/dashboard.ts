@@ -82,6 +82,7 @@ dashboardRoutes.get(
         if (!yearMap.has(aip.year)) yearMap.set(aip.year, []);
         yearMap.get(aip.year)!.push({
           id: aip.id,
+          programId: aip.program_id,
           program: aip.program.title,
           abbreviation: aip.program.abbreviation ?? null,
           status: aip.status,

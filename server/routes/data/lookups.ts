@@ -3,13 +3,31 @@ import { prisma } from "../../db/client.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
-import { fetchAIPForUser, fetchProgramByTitle } from "./shared/lookups.ts";
+import {
+  fetchAIPForUser,
+  fetchProgramByReference,
+  fetchProgramByTitle,
+} from "./shared/lookups.ts";
+import { serializeIndicators } from "./shared/normalize.ts";
 import type {
   AIPWithActivities,
   DataRouteEnv,
 } from "./shared/types.ts";
 
 const lookupsRoutes = new Hono<{ Variables: DataRouteEnv }>();
+
+function serializeTemplateIndicators(
+  indicators: Array<{ description?: unknown }> | null | undefined,
+) {
+  const source = Array.isArray(indicators) ? indicators : [];
+  return source
+    .map((indicator) => ({
+      description: typeof indicator?.description === "string"
+        ? indicator.description.trim()
+        : "",
+    }))
+    .filter((indicator) => indicator.description.length > 0);
+}
 
 lookupsRoutes.use("/schools", requireAuth());
 lookupsRoutes.use("/schools/*", requireAuth());
@@ -97,6 +115,43 @@ lookupsRoutes.get(
         orderBy: { title: "asc" },
       });
       return c.json(programs);
+    },
+  ),
+);
+
+lookupsRoutes.get(
+  "/programs/:id/template",
+  asyncHandler(
+    "Unhandled route error",
+    "Failed to fetch program template",
+    async (c) => {
+      const programId = safeParseInt(c.req.param("id"), 0);
+      if (programId === 0) {
+        return c.json({ error: "Invalid program id" }, 400);
+      }
+
+      const program = await prisma.program.findUnique({
+        where: { id: programId },
+        select: { id: true },
+      });
+      if (!program) {
+        return c.json({ error: "Program not found" }, 404);
+      }
+
+      const template = await prisma.programTemplate.findUnique({
+        where: { program_id: programId },
+      });
+      if (!template) {
+        return c.json(null);
+      }
+
+      return c.json({
+        program_id: template.program_id,
+        outcome: template.outcome,
+        target_code: template.target_code,
+        target_description: template.target_description,
+        indicators: serializeTemplateIndicators(template.indicators as any[] ?? []),
+      });
     },
   ),
 );
@@ -340,6 +395,7 @@ lookupsRoutes.get(
     async (c) => {
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title") || "";
+      const programId = safeParseInt(c.req.query("program_id"), 0);
       const year = safeParseInt(
         c.req.query("year"),
         new Date().getFullYear(),
@@ -347,11 +403,11 @@ lookupsRoutes.get(
         2100,
       );
 
-      if (!programTitle) {
-        return c.json({ error: "program_title is required" }, 400);
+      if (!programTitle && !programId) {
+        return c.json({ error: "program_title or program_id is required" }, 400);
       }
 
-      const program = await fetchProgramByTitle(programTitle);
+      const program = await fetchProgramByReference(programId, programTitle);
       if (!program) return c.json({ error: "Resource not found" }, 404);
 
       const aip = await fetchAIPForUser(tokenUser, program.id, year, {
@@ -372,10 +428,11 @@ lookupsRoutes.get(
 
       return c.json({
         aip_id: aip.id,
+        program_id: program.id,
         project_coordinator: aip.project_coordinator || "",
         total_budget: totalBudget,
         fund_source: fundSources,
-        indicators: aip.indicators as any[] ?? [],
+        indicators: serializeIndicators(aip.indicators as any[] ?? []),
         activities: aip.activities.map((activity) => ({
           id: activity.id,
           activity_name: activity.activity_name,

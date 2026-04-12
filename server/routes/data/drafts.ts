@@ -4,9 +4,15 @@ import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
-import { fetchAIPForUser, fetchPIRForUser, fetchProgramByTitle } from "./shared/lookups.ts";
+import {
+  fetchAIPForUser,
+  fetchPIRForUser,
+  fetchProgramByReference,
+  fetchProgramByTitle,
+} from "./shared/lookups.ts";
 import {
   normalizeIndicators,
+  serializeIndicators,
   transformActivityReviews,
   transformAIPActivities,
   transformFactors,
@@ -21,6 +27,26 @@ import type {
 
 const draftsRoutes = new Hono<{ Variables: DataRouteEnv }>();
 
+function resolveTargetDescription(
+  targetDescription: unknown,
+  indicators: Array<{ description?: unknown }> | null | undefined,
+): string {
+  const explicitTarget = typeof targetDescription === "string"
+    ? targetDescription.trim()
+    : "";
+  if (explicitTarget) {
+    return explicitTarget;
+  }
+
+  const firstIndicator = indicators?.find((indicator) =>
+    typeof indicator?.description === "string" &&
+    indicator.description.trim().length > 0
+  );
+  return typeof firstIndicator?.description === "string"
+    ? firstIndicator.description.trim()
+    : "";
+}
+
 draftsRoutes.use("/aips/draft", requireAuth());
 draftsRoutes.use("/pirs/draft", requireAuth());
 
@@ -33,9 +59,11 @@ draftsRoutes.post(
       const tokenUser = getAuthedUser(c);
       const body = sanitizeObject(await c.req.json());
       const {
+        program_id,
         program_title,
         year: rawYear,
         outcome,
+        target_description,
         sip_title,
         project_coordinator,
         objectives,
@@ -47,12 +75,12 @@ draftsRoutes.post(
         activities,
       } = body;
 
-      if (!program_title) {
-        return c.json({ error: "program_title is required" }, 400);
+      if (!program_title && safeParseInt(program_id, 0) === 0) {
+        return c.json({ error: "program_id or program_title is required" }, 400);
       }
 
       const cleanProgramTitle = sanitizeString(program_title);
-      const program = await fetchProgramByTitle(cleanProgramTitle);
+      const program = await fetchProgramByReference(program_id, cleanProgramTitle);
       if (!program) return c.json({ error: "Resource not found" }, 404);
 
       const year = safeParseInt(rawYear, new Date().getFullYear(), 2020, 2100);
@@ -77,6 +105,7 @@ draftsRoutes.post(
 
       const aipData = {
         outcome: outcome || "",
+        target_description: resolveTargetDescription(target_description, indicators),
         sip_title: sip_title || "",
         project_coordinator: project_coordinator || "",
         objectives: objectives || [],
@@ -138,6 +167,7 @@ draftsRoutes.get(
     "Failed to load draft",
     async (c) => {
       const tokenUser = getAuthedUser(c);
+      const programId = c.req.query("program_id");
       const year = safeParseInt(
         c.req.query("year"),
         new Date().getFullYear(),
@@ -145,32 +175,54 @@ draftsRoutes.get(
         2100,
       );
 
-      const drafts = tokenUser.role === "School" && tokenUser.school_id
-        ? await prisma.aIP.findMany({
-          where: { school_id: tokenUser.school_id, year, status: "Draft" },
-          include: { activities: true, program: true },
-        })
-        : await prisma.aIP.findMany({
-          where: {
-            created_by_user_id: tokenUser.id,
-            school_id: null,
-            year,
-            status: "Draft",
-          },
-          include: { activities: true, program: true },
+      const programTitle = c.req.query("program_title");
+      if (!programTitle && safeParseInt(programId, 0) === 0) {
+        const drafts = tokenUser.role === "School" && tokenUser.school_id
+          ? await prisma.aIP.findMany({
+            where: { school_id: tokenUser.school_id, year, status: "Draft" },
+            include: { activities: true, program: true },
+          })
+          : await prisma.aIP.findMany({
+            where: {
+              created_by_user_id: tokenUser.id,
+              school_id: null,
+              year,
+              status: "Draft",
+            },
+            include: { activities: true, program: true },
+          });
+
+        if (drafts.length === 0) return c.json({ hasDraft: false });
+
+        const aip = drafts[0] as AIPWithProgramActivities;
+        return c.json({
+          hasDraft: true,
+          draftProgram: aip.program.title,
+          lastSaved: aip.created_at,
         });
+      }
 
-      if (drafts.length === 0) return c.json({ hasDraft: false });
+      const program = await fetchProgramByReference(programId, programTitle);
+      if (!program) return c.json({ hasDraft: false });
 
-      const aip = drafts[0] as AIPWithProgramActivities;
+      const aip = await fetchAIPForUser(tokenUser, program.id, year, {
+        activities: true,
+        program: true,
+      }) as AIPWithProgramActivities | null;
+
+      if (!aip || aip.status !== "Draft") return c.json({ hasDraft: false });
+
+      const indicators = serializeIndicators(aip.indicators as any[] ?? []);
       const draftData = {
+        programId: aip.program_id,
         outcome: aip.outcome,
+        targetDescription: aip.target_description || indicators[0]?.description || "",
         year: String(aip.year),
         depedProgram: aip.program.title,
         sipTitle: aip.sip_title,
         projectCoord: aip.project_coordinator,
         objectives: aip.objectives,
-        indicators: aip.indicators,
+        indicators,
         preparedByName: aip.prepared_by_name,
         preparedByTitle: aip.prepared_by_title,
         approvedByName: aip.approved_by_name,
@@ -202,6 +254,7 @@ draftsRoutes.delete(
     async (c) => {
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title");
+      const programId = c.req.query("program_id");
       const year = safeParseInt(
         c.req.query("year"),
         new Date().getFullYear(),
@@ -217,8 +270,8 @@ draftsRoutes.delete(
         where.school_id = null;
       }
 
-      if (programTitle) {
-        const program = await fetchProgramByTitle(programTitle);
+      if (programTitle || safeParseInt(programId, 0) > 0) {
+        const program = await fetchProgramByReference(programId, programTitle);
         if (program) where.program_id = program.id;
       }
 

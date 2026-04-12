@@ -22,6 +22,7 @@ import {
     useAipSelector,
 } from './aipContext.jsx';
 import { createEmptyAipActivity } from './useAipFormState.js';
+import { generateAIPPdf } from '../../lib/formPdfExport.js';
 import AIPDocumentPreview from './editor/AIPDocumentPreview.jsx';
 import AIPFinalizeActions from './editor/AIPFinalizeActions.jsx';
 import AIPReadonlyView from './editor/AIPReadonlyView.jsx';
@@ -112,6 +113,7 @@ export default React.memo(function AIPFormEditor({
     const aipDocumentData = useMemo(() => ({
         year: profile.year,
         outcome: profile.outcome,
+        targetDescription: profile.selectedTarget,
         depedProgram: profile.depedProgram,
         sipTitle: profile.sipTitle,
         projectCoord: profile.projectCoord,
@@ -129,6 +131,7 @@ export default React.memo(function AIPFormEditor({
         profile.depedProgram,
         profile.outcome,
         profile.projectCoord,
+        profile.selectedTarget,
         profile.sipTitle,
         profile.year,
         signatories.approvedByName,
@@ -136,6 +139,10 @@ export default React.memo(function AIPFormEditor({
         signatories.preparedByName,
         signatories.preparedByTitle,
     ]);
+
+    const handleDownloadPdf = useCallback(() => {
+        generateAIPPdf(aipDocumentData);
+    }, [aipDocumentData]);
 
     if (appMode === 'readonly') {
         return (
@@ -180,6 +187,8 @@ export default React.memo(function AIPFormEditor({
                     title="AIP Document Preview"
                     subtitle={`Annual Implementation Plan Cycle ${profile.year}`}
                     filename={previewFilename}
+                    landscape
+                    onDownloadPdf={handleDownloadPdf}
                 >
                     <AIPDocumentPreview aipData={aipDocumentData} />
                 </DocumentPreviewModal>

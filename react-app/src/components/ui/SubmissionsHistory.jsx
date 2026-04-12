@@ -86,11 +86,15 @@ export default function SubmissionsHistory() {
 
   const toggleYear = (year) => setExpanded(prev => ({ ...prev, [year]: !prev[year] }));
 
-  const handlePreviewAIP = useCallback(async (programTitle, year) => {
+  const handlePreviewAIP = useCallback(async (programTitle, year, programId = null) => {
     setPreviewLoading(true);
     try {
       const { data: d } = await api.get('/api/aips', {
-        params: { program_title: programTitle, year },
+        params: {
+          program_title: programTitle,
+          year,
+          ...(programId ? { program_id: programId } : {}),
+        },
       });
       setPreviewTitle('Annual Implementation Plan');
       setPreviewSubtitle(`${programTitle} — FY ${year}`);
@@ -99,6 +103,7 @@ export default function SubmissionsHistory() {
         <AIPDocument
           year={String(d.year)}
           outcome={d.outcome}
+          targetDescription={d.targetDescription}
           depedProgram={d.depedProgram}
           sipTitle={d.sipTitle}
           projectCoord={d.projectCoord}
@@ -244,7 +249,7 @@ export default function SubmissionsHistory() {
                       <div key={aip.id} className="px-8 py-5" style={{ minHeight: `${rowHeights[aip.id] ?? 0}px` }}>
                         <div className="flex items-center justify-between gap-4">
                           <button
-                            onClick={() => handlePreviewAIP(aip.program, year)}
+                            onClick={() => handlePreviewAIP(aip.program, year, aip.programId)}
                             disabled={previewLoading}
                             className="flex items-center gap-2 group min-w-0"
                           >

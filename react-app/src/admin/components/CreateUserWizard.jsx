@@ -161,7 +161,7 @@ const STRENGTH_CONFIG = {
 
 function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
   const [showPassword, setShowPassword] = useState(false);
-  const isDepedEmail = form.role === 'School' || form.role === 'Division Personnel';
+  const isDepedEmail = true;
   const strength = getPasswordStrength(form.password);
 
   const emailLocal = isDepedEmail ? form.email.replace(/@deped\.gov\.ph$/, '') : form.email;

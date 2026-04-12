@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { motion as Motion } from 'framer-motion';
-import { LockKey, PencilSimple, Printer, Trash } from '@phosphor-icons/react';
+import { LockKey, PencilSimple, Printer, Trash, DownloadSimple } from '@phosphor-icons/react';
 import { FormHeader } from '../../../components/ui/FormHeader';
 import AIPDocumentPreview from './AIPDocumentPreview.jsx';
+import { generateAIPPdf } from '../../../lib/formPdfExport.js';
 
 export default React.memo(function AIPReadonlyView({
     motionProps,
@@ -18,6 +19,27 @@ export default React.memo(function AIPReadonlyView({
     lastSavedTime,
     lastAutoSavedTime,
 }) {
+    const handlePrint = useCallback(() => {
+        const prev = document.title;
+        const safeSipTitle = aipData.sipTitle ? `_${aipData.sipTitle.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')}` : '';
+        document.title = `AIP_${aipData.year}${safeSipTitle}`;
+
+        const style = document.createElement('style');
+        style.id = '__aip-landscape-print__';
+        style.textContent = '@media print { @page { size: A4 landscape; margin: 1cm; } }';
+        document.head.appendChild(style);
+
+        window.print();
+
+        window.addEventListener('afterprint', () => {
+            document.title = prev;
+            style.remove();
+        }, { once: true });
+    }, [aipData.year, aipData.sipTitle]);
+
+    const handleDownloadPdf = useCallback(() => {
+        generateAIPPdf(aipData);
+    }, [aipData]);
     return (
         <Motion.div {...motionProps}>
             <FormHeader
@@ -58,11 +80,19 @@ export default React.memo(function AIPReadonlyView({
                             </button>
                             <button
                                 type="button"
-                                onClick={onPrint}
+                                onClick={handleDownloadPdf}
+                                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-dark-border dark:bg-dark-surface dark:text-slate-200 dark:hover:bg-dark-base"
+                            >
+                                <DownloadSimple size={13} weight="bold" />
+                                Download PDF
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handlePrint}
                                 className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-700"
                             >
                                 <Printer size={13} weight="bold" />
-                                Print / Save PDF
+                                Print
                             </button>
                         </div>
                     </div>

@@ -1,9 +1,34 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../db/client.ts";
 import type { TokenPayload } from "../../../lib/auth.ts";
+import { safeParseInt } from "../../../lib/safeParseInt.ts";
 
 export async function fetchProgramByTitle(title: string) {
-  return prisma.program.findFirst({ where: { title } });
+  return prisma.program.findFirst({
+    where: { title },
+    orderBy: { id: "asc" },
+  });
+}
+
+export async function fetchProgramByReference(
+  programId: string | number | null | undefined,
+  title: string | null | undefined,
+) {
+  const parsedId = safeParseInt(programId, 0);
+  if (parsedId > 0) {
+    const programById = await prisma.program.findUnique({
+      where: { id: parsedId },
+    });
+    if (programById) {
+      return programById;
+    }
+  }
+
+  if (!title) {
+    return null;
+  }
+
+  return fetchProgramByTitle(title);
 }
 
 export async function fetchAIPForUser(

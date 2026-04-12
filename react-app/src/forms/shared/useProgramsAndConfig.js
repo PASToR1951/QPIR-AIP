@@ -3,6 +3,7 @@ import api from '../../lib/api.js';
 
 const EMPTY_STATE = {
     programsWithAIPs: [],
+    rawPrograms: [],
     programList: [],
     programAbbreviations: {},
     completedPrograms: [],
@@ -56,6 +57,7 @@ export default function useProgramsAndConfig({
 
                     if (withAipsRes.status === 'fulfilled') {
                         const programs = withAipsRes.value.data;
+                        nextState.rawPrograms = programs;
                         nextState.programsWithAIPs = programs.map((program) => program.title);
                         nextState.programAbbreviations = Object.fromEntries(
                             programs
@@ -115,6 +117,7 @@ export default function useProgramsAndConfig({
 
                 if (programsRes.status === 'fulfilled') {
                     const programs = programsRes.value.data;
+                    nextState.rawPrograms = programs;
                     nextState.programList = programs.map((program) => program.title).sort();
                     nextState.programAbbreviations = Object.fromEntries(
                         programs
@@ -176,4 +179,3 @@ export default function useProgramsAndConfig({
 
     return state;
 }
-

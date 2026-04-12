@@ -6,6 +6,7 @@ import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as E
 import { Input } from './components/ui/Input';
 import { auth } from './lib/auth';
 import { getOAuthErrorMessage, LOGIN_COPY, SIGN_IN_FAILED_TITLE } from './lib/authCopy.js';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 const GOOGLE_VIEW = 'google';
 const MANUAL_VIEW = 'manual';
@@ -62,6 +63,7 @@ export default function Login() {
   const [loginView, setLoginView] = useState(googleOAuthAvailable ? GOOGLE_VIEW : MANUAL_VIEW);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { executeRecaptcha } = useGoogleReCaptcha();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -169,10 +171,23 @@ export default function Login() {
 
     const finalEmail = email.includes('@') ? email : `${email}@deped.gov.ph`;
 
+    let token = null;
+    if (executeRecaptcha) {
+      try {
+        token = await executeRecaptcha('login');
+      } catch (err) {
+        shakeCard();
+        setError('reCAPTCHA verification failed. Please check your connection.');
+        setIsLoading(false);
+        return;
+      }
+    }
+
     try {
       await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         email: finalEmail,
         password,
+        recaptchaToken: token,
       }, { withCredentials: true });
 
       const user = await auth.refreshSession();

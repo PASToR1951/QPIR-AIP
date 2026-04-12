@@ -509,7 +509,7 @@ usersRoutes.post("/users/:id/reset-password", async (c) => {
   const salt = await bcrypt.genSalt(10);
   const hashed = await bcrypt.hash(tempPassword, salt);
 
-  await prisma.user.update({ where: { id }, data: { password: hashed } });
+  await prisma.user.update({ where: { id }, data: { password: hashed, must_change_password: true } });
   await writeAuditLog(admin.id, "reset_password", "User", id, {});
 
   return c.json({

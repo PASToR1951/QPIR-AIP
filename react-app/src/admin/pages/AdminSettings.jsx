@@ -499,14 +499,6 @@ export default function AdminSettings() {
   const [logoResetting, setLogoResetting] = useState(false);
   const logoFileRef = useRef(null);
 
-  /* ── Division signatories state ────────────────────────────────── */
-  const [divSignatories, setDivSignatories] = useState({
-    sgod_noted_by_name: '', sgod_noted_by_title: '',
-    cid_noted_by_name: '',  cid_noted_by_title: '',
-    osds_noted_by_name: '', osds_noted_by_title: '',
-  });
-  const [savingSignatories, setSavingSignatories] = useState(false);
-
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -571,22 +563,11 @@ export default function AdminSettings() {
     Promise.all([
       api.get('/api/admin/announcements'),
       api.get('/api/admin/settings/system-info'),
-      api.get('/api/admin/settings/division-config'),
-    ]).then(([ar, sr, dcr]) => {
+    ]).then(([ar, sr]) => {
       const loadedAnnouncement = announcementFromApi(ar.data);
       setAnnouncement(loadedAnnouncement);
       setSavedAnnouncement(loadedAnnouncement);
       setSysInfo(sr.data);
-      if (dcr.data) {
-        setDivSignatories({
-          sgod_noted_by_name: dcr.data.sgod_noted_by_name ?? '',
-          sgod_noted_by_title: dcr.data.sgod_noted_by_title ?? '',
-          cid_noted_by_name: dcr.data.cid_noted_by_name ?? '',
-          cid_noted_by_title: dcr.data.cid_noted_by_title ?? '',
-          osds_noted_by_name: dcr.data.osds_noted_by_name ?? '',
-          osds_noted_by_title: dcr.data.osds_noted_by_title ?? '',
-        });
-      }
     }).catch(e => { console.error(e); setFetchError('Failed to load settings. Please refresh and try again.'); })
       .finally(() => setLoading(false));
 
@@ -1146,77 +1127,6 @@ export default function AdminSettings() {
                   </div>
                 </div>
               </div>
-            </div>
-          </SettingsCard>
-
-          {/* ── Division Signatories ──────────────────────── */}
-          <SettingsCard
-            icon={User}
-            iconBg="bg-indigo-100 dark:bg-indigo-900/40"
-            iconColor="text-indigo-600 dark:text-indigo-400"
-            title="Division Signatories"
-            description="Set the 'Noted by' name and title shown on PIR forms for each functional division (SGOD, CID, OSDS)."
-          >
-            <div className="space-y-5">
-              {[
-                { key: 'sgod', label: 'SGOD' },
-                { key: 'cid',  label: 'CID' },
-                { key: 'osds', label: 'OSDS' },
-              ].map(({ key, label }) => (
-                <div key={key}>
-                  <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">{label}</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 mb-1">Name</label>
-                      <input
-                        type="text"
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-dark-border dark:bg-dark-base dark:text-slate-200 dark:focus:border-indigo-500 dark:focus:ring-indigo-900/30"
-                        placeholder={`e.g. DR. JUAN DELA CRUZ`}
-                        value={divSignatories[`${key}_noted_by_name`]}
-                        onChange={e => setDivSignatories(prev => ({ ...prev, [`${key}_noted_by_name`]: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-400 dark:text-slate-500 mb-1">Title</label>
-                      <input
-                        type="text"
-                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-dark-border dark:bg-dark-base dark:text-slate-200 dark:focus:border-indigo-500 dark:focus:ring-indigo-900/30"
-                        placeholder={`e.g. Chief Education Supervisor`}
-                        value={divSignatories[`${key}_noted_by_title`]}
-                        onChange={e => setDivSignatories(prev => ({ ...prev, [`${key}_noted_by_title`]: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={async () => {
-                  try {
-                    setSavingSignatories(true);
-                    const { data } = await api.post('/api/admin/settings/division-config', divSignatories);
-                    setDivSignatories({
-                      sgod_noted_by_name: data.sgod_noted_by_name ?? '',
-                      sgod_noted_by_title: data.sgod_noted_by_title ?? '',
-                      cid_noted_by_name: data.cid_noted_by_name ?? '',
-                      cid_noted_by_title: data.cid_noted_by_title ?? '',
-                      osds_noted_by_name: data.osds_noted_by_name ?? '',
-                      osds_noted_by_title: data.osds_noted_by_title ?? '',
-                    });
-                    showToast('Division signatories saved.');
-                  } catch (err) {
-                    showToast(err?.friendlyMessage || 'Failed to save signatories.', 'error');
-                  } finally {
-                    setSavingSignatories(false);
-                  }
-                }}
-                disabled={savingSignatories}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
-              >
-                <FloppyDisk size={15} weight="bold" />
-                {savingSignatories ? 'Saving...' : 'Save Signatories'}
-              </button>
             </div>
           </SettingsCard>
 

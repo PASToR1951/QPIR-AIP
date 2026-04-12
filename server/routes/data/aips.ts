@@ -6,9 +6,10 @@ import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth, verifySchoolCluster } from "./shared/guards.ts";
-import { fetchAIPForUser, fetchProgramByTitle } from "./shared/lookups.ts";
+import { fetchAIPForUser, fetchProgramByReference } from "./shared/lookups.ts";
 import {
   normalizeIndicators,
+  serializeIndicators,
   transformAIPActivities,
   validateBudgetAmount,
 } from "./shared/normalize.ts";
@@ -19,6 +20,26 @@ import type {
 } from "./shared/types.ts";
 
 const aipRoutes = new Hono<{ Variables: DataRouteEnv }>();
+
+function resolveTargetDescription(
+  targetDescription: unknown,
+  indicators: Array<{ description?: unknown }> | null | undefined,
+): string {
+  const explicitTarget = typeof targetDescription === "string"
+    ? targetDescription.trim()
+    : "";
+  if (explicitTarget) {
+    return explicitTarget;
+  }
+
+  const firstIndicator = indicators?.find((indicator) =>
+    typeof indicator?.description === "string" &&
+    indicator.description.trim().length > 0
+  );
+  return typeof firstIndicator?.description === "string"
+    ? firstIndicator.description.trim()
+    : "";
+}
 
 function hasInvalidActivityBudget(
   activities: Array<{ budgetAmount?: unknown }> = [],
@@ -44,6 +65,7 @@ aipRoutes.get(
     async (c) => {
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title") || "";
+      const programId = c.req.query("program_id");
       const year = safeParseInt(
         c.req.query("year"),
         new Date().getFullYear(),
@@ -51,13 +73,13 @@ aipRoutes.get(
         2100,
       );
 
-      if (!programTitle) {
-        return c.json({ error: "program_title is required" }, 400);
+      if (!programTitle && safeParseInt(programId, 0) === 0) {
+        return c.json({ error: "program_id or program_title is required" }, 400);
       }
 
-      const program = await fetchProgramByTitle(programTitle);
+      const program = await fetchProgramByReference(programId, programTitle);
       if (!program) {
-        return c.json({ error: `Program '${programTitle}' not found` }, 404);
+        return c.json({ error: "Program not found" }, 404);
       }
 
       const aip = await fetchAIPForUser(tokenUser, program.id, year, {
@@ -67,16 +89,20 @@ aipRoutes.get(
 
       if (!aip) return c.json({ error: "No submitted AIP found" }, 404);
 
+      const indicators = serializeIndicators(aip.indicators as any[] ?? []);
+
       return c.json({
         id: aip.id,
+        programId: aip.program_id,
         year: aip.year,
         status: aip.status,
         depedProgram: aip.program.title,
         outcome: aip.outcome,
+        targetDescription: aip.target_description || indicators[0]?.description || "",
         sipTitle: aip.sip_title,
         projectCoord: aip.project_coordinator,
         objectives: aip.objectives,
-        indicators: aip.indicators,
+        indicators,
         preparedByName: aip.prepared_by_name,
         preparedByTitle: aip.prepared_by_title,
         approvedByName: aip.approved_by_name,
@@ -106,6 +132,7 @@ aipRoutes.delete(
     async (c) => {
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title");
+      const programId = c.req.query("program_id");
       const year = safeParseInt(
         c.req.query("year"),
         new Date().getFullYear(),
@@ -113,13 +140,13 @@ aipRoutes.delete(
         2100,
       );
 
-      if (!programTitle) {
-        return c.json({ error: "program_title is required" }, 400);
+      if (!programTitle && safeParseInt(programId, 0) === 0) {
+        return c.json({ error: "program_id or program_title is required" }, 400);
       }
 
-      const program = await fetchProgramByTitle(programTitle);
+      const program = await fetchProgramByReference(programId, programTitle);
       if (!program) {
-        return c.json({ error: `Program '${programTitle}' not found` }, 404);
+        return c.json({ error: "Program not found" }, 404);
       }
 
       const aip = await fetchAIPForUser(tokenUser, program.id, year);
@@ -156,9 +183,11 @@ aipRoutes.post(
 
       const body = sanitizeObject(await c.req.json());
       const {
+        program_id,
         program_title,
         year,
         outcome,
+        target_description,
         sip_title,
         project_coordinator,
         objectives,
@@ -170,7 +199,11 @@ aipRoutes.post(
         activities,
       } = body;
 
-      const program = await fetchProgramByTitle(program_title);
+      if (!program_title && safeParseInt(program_id, 0) === 0) {
+        return c.json({ error: "program_id or program_title is required" }, 400);
+      }
+
+      const program = await fetchProgramByReference(program_id, program_title);
       if (!program) return c.json({ error: "Resource not found" }, 404);
 
       if (tokenUser.role === "Division Personnel") {
@@ -193,6 +226,7 @@ aipRoutes.post(
 
       const aipFields = {
         outcome,
+        target_description: resolveTargetDescription(target_description, indicators),
         sip_title,
         project_coordinator,
         objectives,
@@ -283,7 +317,7 @@ aipRoutes.post(
             user_id: admin.id,
             title: "New AIP Received for Review",
             message:
-              `${schoolLabel} submitted an AIP for ${program_title} (FY ${year}) awaiting your review.`,
+              `${schoolLabel} submitted an AIP for ${program.title} (FY ${parsedYear}) awaiting your review.`,
             type: "aip_submitted",
             entity_id: aip.id,
             entity_type: "aip",
@@ -297,7 +331,7 @@ aipRoutes.post(
           user_id: tokenUser.id,
           title: "AIP Submitted",
           message:
-            `Your AIP for ${program_title} (FY ${year}) has been submitted and is awaiting review.`,
+            `Your AIP for ${program.title} (FY ${parsedYear}) has been submitted and is awaiting review.`,
           type: "aip_submitted",
           entity_id: aip.id,
           entity_type: "aip",
@@ -340,6 +374,7 @@ aipRoutes.put(
       const body = sanitizeObject(await c.req.json());
       const {
         outcome,
+        target_description,
         sip_title,
         project_coordinator,
         objectives,
@@ -365,6 +400,7 @@ aipRoutes.put(
         where: { id: aipId },
         data: {
           outcome,
+          target_description: resolveTargetDescription(target_description, indicators),
           sip_title,
           project_coordinator,
           objectives,

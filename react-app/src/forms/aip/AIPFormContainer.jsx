@@ -47,6 +47,7 @@ export default function AIPFormContainer() {
     const [state, dispatch] = useAipFormState({ year: String(new Date().getFullYear()) });
     const profile = selectAipProfile(state);
     const submission = selectAipSubmission(state);
+    const rawPrograms = data.rawPrograms ?? [];
 
     const [programList, setProgramList] = useState([]);
     const [programAbbreviations, setProgramAbbreviations] = useState({});
@@ -182,9 +183,24 @@ export default function AIPFormContainer() {
         setToast({ message, programs });
     }, []);
 
+    const findProgramByTitle = useCallback((programTitle) => (
+        rawPrograms.find((program) => program.title === programTitle) ?? null
+    ), [rawPrograms]);
+
+    const buildProgramParams = useCallback((programTitle, extraParams = {}) => {
+        const program = findProgramByTitle(programTitle);
+        return {
+            ...extraParams,
+            program_title: programTitle,
+            ...(program?.id ? { program_id: program.id } : {}),
+        };
+    }, [findProgramByTitle]);
+
     const resetFormState = useCallback((selectedProgram = '') => {
+        const selectedProgramRecord = findProgramByTitle(selectedProgram);
         dispatch({ type: 'RESET', payload: { year: String(new Date().getFullYear()) } });
         dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'depedProgram', value: selectedProgram } });
+        dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'programId', value: selectedProgramRecord?.id ?? null } });
         dispatch({
             type: 'SET_SUGGESTIONS',
             payload: {
@@ -193,14 +209,13 @@ export default function AIPFormContainer() {
             },
         });
         shell.setCurrentStep(1);
-    }, [data.coordinatorSuggestions, data.personsTerms, dispatch, shell]);
+    }, [data.coordinatorSuggestions, data.personsTerms, dispatch, findProgramByTitle, shell]);
 
     const loadServerDraft = useCallback(async (selectedProgram, yearValue) => {
         const draftResponse = await api.get('/api/aips/draft', {
-            params: {
-                program_title: selectedProgram,
+            params: buildProgramParams(selectedProgram, {
                 year: parseInt(yearValue, 10),
-            },
+            }),
         });
 
         if (draftResponse.data.hasDraft) {
@@ -209,7 +224,30 @@ export default function AIPFormContainer() {
         }
 
         return false;
-    }, [draft]);
+    }, [buildProgramParams, draft]);
+
+    const applyTemplateForProgram = useCallback(async (selectedProgram) => {
+        const selectedProgramRecord = findProgramByTitle(selectedProgram);
+        if (!selectedProgramRecord?.id) {
+            return false;
+        }
+
+        const templateResponse = await api.get(`/api/programs/${selectedProgramRecord.id}/template`);
+        const template = templateResponse.data;
+        if (!template) {
+            return false;
+        }
+
+        dispatch({
+            type: 'APPLY_TEMPLATE',
+            payload: {
+                outcome: template.outcome,
+                targetDescription: template.target_description,
+                indicators: template.indicators ?? [],
+            },
+        });
+        return true;
+    }, [dispatch, findProgramByTitle]);
 
     const hasInputtedData = useCallback(() => (
         profile.outcome
@@ -251,10 +289,11 @@ export default function AIPFormContainer() {
         },
         clearProgramField: () => {
             dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'depedProgram', value: '' } });
+            dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'programId', value: null } });
         },
         loadReadonlyRecord: async (selectedProgram) => {
             const response = await api.get('/api/aips', {
-                params: { program_title: selectedProgram, year: new Date().getFullYear() },
+                params: buildProgramParams(selectedProgram, { year: new Date().getFullYear() }),
             });
             dispatch({ type: 'HYDRATE_SUBMITTED', payload: { aip: response.data } });
         },
@@ -262,27 +301,25 @@ export default function AIPFormContainer() {
             draft.hydrate(draftData);
         },
         getLocalDraftKey: (selectedProgram) => `aip_draft_${selectedProgram}_${String(new Date().getFullYear())}`,
-        getLocalDraftModal: ({ localDraft, selectedProgram }) => {
-            const hasServerDraft = draftPrograms.includes(selectedProgram);
-
-            return {
-                type: 'warning',
-                title: 'Continue your saved draft?',
-                message: `We found an auto-saved draft from ${new Date(localDraft.savedAt).toLocaleString()}. Continue from that draft?${hasServerDraft ? ' You can also skip it and open your last saved draft instead.' : ''}`,
-                confirmText: 'Continue draft',
-                cancelText: hasServerDraft ? 'Open saved draft' : 'Start fresh',
-            };
-        },
+        getLocalDraftModal: ({ localDraft }) => ({
+            type: 'warning',
+            title: 'Continue your saved draft?',
+            message: `We found an auto-saved draft from ${new Date(localDraft.savedAt).toLocaleString()}. Continue from that draft?`,
+            confirmText: 'Continue draft',
+            cancelText: 'Continue without local draft',
+        }),
         loadInitialDraft: async (selectedProgram) => {
             const currentYear = String(new Date().getFullYear());
-            if (draftPrograms.includes(selectedProgram)) {
-                await loadServerDraft(selectedProgram, currentYear);
+            const hasServerDraft = await loadServerDraft(selectedProgram, currentYear);
+            if (!hasServerDraft) {
+                await applyTemplateForProgram(selectedProgram);
             }
         },
         loadDiscardedLocalDraftFallback: async (selectedProgram) => {
             const currentYear = String(new Date().getFullYear());
-            if (draftPrograms.includes(selectedProgram)) {
-                await loadServerDraft(selectedProgram, currentYear);
+            const hasServerDraft = await loadServerDraft(selectedProgram, currentYear);
+            if (!hasServerDraft) {
+                await applyTemplateForProgram(selectedProgram);
             }
         },
         onBeforeStart: ({ mode, selectedProgram }) => {
@@ -307,7 +344,7 @@ export default function AIPFormContainer() {
                 const currentYear = parseInt(profile.year, 10);
                 const results = await Promise.allSettled(
                     programsToDelete.map((program) => (
-                        api.delete('/api/aips', { params: { program_title: program, year: currentYear } })
+                        api.delete('/api/aips', { params: buildProgramParams(program, { year: currentYear }) })
                     )),
                 );
                 const deletedPrograms = programsToDelete.filter((_, index) => results[index].status === 'fulfilled');
@@ -320,7 +357,7 @@ export default function AIPFormContainer() {
                 }
             },
         });
-    }, [profile.year, shell, showToast]);
+    }, [buildProgramParams, profile.year, shell, showToast]);
 
     const handleEditAIP = useCallback(() => {
         dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'isEditing', value: true } });
@@ -338,7 +375,7 @@ export default function AIPFormContainer() {
             onConfirm: async () => {
                 shell.closeModal();
                 try {
-                    await api.delete('/api/aips', { params: { program_title: profile.depedProgram, year: profile.year } });
+                    await api.delete('/api/aips', { params: buildProgramParams(profile.depedProgram, { year: profile.year }) });
                     setCompletedPrograms((currentPrograms) => currentPrograms.filter((program) => program !== profile.depedProgram));
                     setReturnedPrograms((currentPrograms) => currentPrograms.filter((program) => program !== profile.depedProgram));
                     setDraftPrograms((currentPrograms) => currentPrograms.filter((program) => program !== profile.depedProgram));
@@ -356,7 +393,7 @@ export default function AIPFormContainer() {
                 }
             },
         });
-    }, [profile.depedProgram, profile.year, setSearchParams, shell, showToast]);
+    }, [buildProgramParams, profile.depedProgram, profile.year, setSearchParams, shell, showToast]);
 
     const handleRequestRemoveActivity = useCallback((activityId) => {
         const activity = state.activities.find((currentActivity) => currentActivity.id === activityId);

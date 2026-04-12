@@ -4,6 +4,7 @@ import { GovDocHeader } from './GovDocHeader';
 export const AIPDocument = ({
     year = new Date().getFullYear(),
     outcome,
+    targetDescription,
     depedProgram,
     sipTitle,
     projectCoord,
@@ -33,6 +34,11 @@ export const AIPDocument = ({
                 <div className="flex py-1 border-b border-dotted border-slate-400">
                     <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0">Outcome #:</span>
                     <span className="font-medium flex-1">{outcome || "\u00A0"}</span>
+                </div>
+
+                <div className="flex py-1 border-b border-dotted border-slate-400">
+                    <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0">Outcome Target:</span>
+                    <span className="font-medium flex-1">{targetDescription || "\u00A0"}</span>
                 </div>
 
                 {/* DepEd Program */}

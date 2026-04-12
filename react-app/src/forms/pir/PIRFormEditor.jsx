@@ -1,5 +1,6 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { generatePIRPdf } from '../../lib/formPdfExport.js';
 
 import { FormHeader } from '../../components/ui/FormHeader';
 import { FormBoxHeader } from '../../components/ui/FormBoxHeader';
@@ -122,6 +123,43 @@ export default function PIRFormEditor({
         supervisorTitle,
     });
 
+    const handleReadonlyPrint = useCallback(() => {
+        const prev = document.title;
+        const safeProgram = profile.program ? `_${profile.program.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')}` : '';
+        const safeQuarter = quarterString ? `_${quarterString.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')}` : '';
+        document.title = `PIR${safeQuarter}${safeProgram}`;
+
+        const style = document.createElement('style');
+        style.id = '__pir-landscape-print__';
+        style.textContent = '@media print { @page { size: A4 landscape; margin: 1cm; } }';
+        document.head.appendChild(style);
+
+        window.print();
+
+        window.addEventListener('afterprint', () => {
+            document.title = prev;
+            style.remove();
+        }, { once: true });
+    }, [profile.program, quarterString]);
+
+    const handleDownloadPirPdf = useCallback(() => {
+        generatePIRPdf({
+            quarter: quarterString,
+            supervisorName: resolvedNotedBy.name,
+            supervisorTitle: resolvedNotedBy.title,
+            program: profile.program,
+            school: profile.school,
+            owner: profile.owner,
+            budgetFromDivision: budget.fromDivision,
+            budgetFromCoPSF: budget.fromCoPSF,
+            functionalDivision: profile.functionalDivision,
+            indicatorTargets,
+            activities,
+            factors,
+            actionItems,
+        });
+    }, [quarterString, resolvedNotedBy, profile, budget, indicatorTargets, activities, factors, actionItems]);
+
     if (appMode === 'readonly') {
         return (
             <>
@@ -165,8 +203,20 @@ export default function PIRFormEditor({
                                     </>
                                 )}
                                 <button
+                                    aria-label="Download PIR PDF"
+                                    onClick={handleDownloadPirPdf}
+                                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-dark-border dark:bg-dark-surface dark:text-slate-200 dark:hover:bg-dark-base"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="7 10 12 15 17 10" />
+                                        <line x1="12" y1="15" x2="12" y2="3" />
+                                    </svg>
+                                    Download PDF
+                                </button>
+                                <button
                                     aria-label="Print PIR"
-                                    onClick={() => window.print()}
+                                    onClick={handleReadonlyPrint}
                                     className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-700"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -174,7 +224,7 @@ export default function PIRFormEditor({
                                         <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
                                         <rect x="6" y="14" width="12" height="8" />
                                     </svg>
-                                    Print / Save PDF
+                                    Print
                                 </button>
                             </div>
                         </div>
@@ -229,6 +279,7 @@ export default function PIRFormEditor({
                 subtitle="Quarterly Program Implementation Review"
                 filename={`PIR_${quarterString.replace(/\s+/g, '_')}${profile.program ? `_${profile.program.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')}` : ''}`}
                 landscape
+                onDownloadPdf={handleDownloadPirPdf}
             >
                 <Suspense fallback={<PreviewFallback />}>
                     <LazyPIRDocument
@@ -255,12 +306,14 @@ export default function PIRFormEditor({
                 title="Annual Implementation Plan"
                 subtitle={`AIP Reference — ${profile.program}`}
                 filename={`AIP_${aipDocumentData?.year ?? ''}${aipDocumentData?.sipTitle ? `_${aipDocumentData.sipTitle.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')}` : ''}`}
+                landscape
             >
                 {aipDocumentData && (
                     <Suspense fallback={<PreviewFallback />}>
                         <LazyAIPDocument
                             year={String(aipDocumentData.year)}
                             outcome={aipDocumentData.outcome}
+                            targetDescription={aipDocumentData.targetDescription}
                             depedProgram={aipDocumentData.depedProgram}
                             sipTitle={aipDocumentData.sipTitle}
                             projectCoord={aipDocumentData.projectCoord}

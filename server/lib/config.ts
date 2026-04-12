@@ -8,3 +8,5 @@ if (!_secret) {
   Deno.exit(1);
 }
 export const JWT_SECRET: string = _secret;
+
+export const RECAPTCHA_SECRET_KEY = Deno.env.get("RECAPTCHA_SECRET_KEY") || "";

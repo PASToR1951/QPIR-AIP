@@ -8,6 +8,7 @@ import FormBackground from './components/ui/FormBackground';
 import HelpLauncher from './components/ui/HelpLauncher.jsx';
 import OnboardingController from './components/ui/OnboardingController.jsx';
 import PracticeModeController from './components/ui/PracticeModeController.jsx';
+import ForceChangePasswordModal from './components/ui/ForceChangePasswordModal.jsx';
 import { auth } from './lib/auth';
 import Login from './Login';
 
@@ -242,6 +243,7 @@ export default function AnimatedContent() {
         <OnboardingController />
         <PracticeModeController />
         <HelpLauncher />
+        <ForceChangePasswordModal />
       </MotionConfig>
     );
   }
@@ -308,6 +310,7 @@ export default function AnimatedContent() {
       <OnboardingController />
       <PracticeModeController />
       <HelpLauncher />
+      <ForceChangePasswordModal />
     </MotionConfig>
   );
 }

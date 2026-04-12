@@ -5,12 +5,13 @@ import { Buildings, BookOpen, PencilSimple, Trash, Plus, CheckCircle, X } from '
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
+import ProgramTemplatesModal from '../components/ProgramTemplatesModal.jsx';
 import { EndOfListCue } from '../../components/ui/EndOfListCue.jsx';
 
 const MotionButton = motion.button;
 const MotionDiv = motion.div;
 
-const SCHOOL_LEVELS = ['Elementary', 'Secondary', 'Both', 'Select Schools'];
+const SCHOOL_LEVELS = ['Elementary', 'Secondary', 'Both', 'Select Schools', 'Division'];
 const DIVISIONS = ['SGOD', 'OSDS', 'CID'];
 const LEVEL_LABELS = {
   'Elementary': 'Elementary',
@@ -97,6 +98,7 @@ export default function AdminPrograms() {
   const [actionLoading, setActionLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [toast, setToast] = useState(null);
+  const [templateProgram, setTemplateProgram] = useState(null);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -206,7 +208,7 @@ export default function AdminPrograms() {
   };
 
   // ── Filtered lists ─────────────────────────────────────────────────────────
-  const schoolPrograms = programs.filter(p => p.school_level_requirement !== 'Division');
+  const programRows = programs;
   const legacyDivisionProgramByKey = new Map();
   programs
     .filter(p => p.school_level_requirement === 'Division')
@@ -221,7 +223,7 @@ export default function AdminPrograms() {
       .map(key => legacyDivisionProgramByKey.get(key)?.personnel)
       .find(personnel => personnel?.length) ?? [];
   const effectiveLevelFilter = SCHOOL_LEVELS.includes(levelFilter) ? levelFilter : 'All';
-  const filteredPrograms = schoolPrograms.filter(p =>
+  const filteredPrograms = programRows.filter(p =>
     (effectiveLevelFilter === 'All' || p.school_level_requirement === effectiveLevelFilter) &&
     (p.title.toLowerCase().includes(search.toLowerCase()) ||
       (p.abbreviation && p.abbreviation.toLowerCase().includes(search.toLowerCase())))
@@ -250,9 +252,9 @@ export default function AdminPrograms() {
   const programViewTabs = [
     {
       key: 'programs',
-      label: 'School Programs',
-      description: 'For school AIP filing',
-      count: schoolPrograms.length,
+      label: 'AIP Programs',
+      description: 'Used for AIP filing and templates',
+      count: programRows.length,
       Icon: BookOpen,
       activeClasses: 'border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-950/20 text-emerald-950 dark:text-emerald-50 shadow-[0_10px_24px_rgba(16,185,129,0.18)] ring-2 ring-emerald-100 dark:ring-emerald-900/40',
       hoverClasses: 'hover:border-emerald-200 dark:hover:border-emerald-800',
@@ -337,7 +339,7 @@ export default function AdminPrograms() {
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {LEVEL_PILLS.map(l => {
-                  const count = l === 'All' ? schoolPrograms.length : schoolPrograms.filter(p => p.school_level_requirement === l).length;
+                  const count = l === 'All' ? programRows.length : programRows.filter(p => p.school_level_requirement === l).length;
                   return (
                     <button key={l} onClick={() => setLevelFilter(l)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${effectiveLevelFilter === l ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}>
@@ -367,6 +369,13 @@ export default function AdminPrograms() {
                         </ProgramTitleBlock>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => setTemplateProgram(prog)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
+                          title="Manage template"
+                        >
+                          <BookOpen size={16} />
+                        </button>
                         <button onClick={() => { setEditProgram(prog); setProgramForm({ title: prog.title, abbreviation: prog.abbreviation ?? '', division: prog.division ?? '', school_level_requirement: prog.school_level_requirement }); }} className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={16} /></button>
                         <button onClick={() => setDeleteProgram(prog)} className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><Trash size={16} /></button>
                       </div>
@@ -379,7 +388,7 @@ export default function AdminPrograms() {
                 ))}
                 <EndOfListCue
                   count={filteredPrograms.length}
-                  message={search || effectiveLevelFilter !== 'All' ? 'All matching school programs shown' : 'End of school program list'}
+                  message={search || effectiveLevelFilter !== 'All' ? 'All matching programs shown' : 'End of program list'}
                   countLabel="program"
                   showCount
                   className="col-span-full pt-1"
@@ -556,6 +565,13 @@ export default function AdminPrograms() {
 
       <ConfirmModal open={!!deleteDivProgram} title="Delete Division Program" message={`Delete "${deleteDivProgram?.title}"? This cannot be undone.`}
         variant="danger" confirmLabel="Delete" onConfirm={handleDeleteDivProgram} onCancel={() => setDeleteDivProgram(null)} loading={actionLoading} />
+
+      <ProgramTemplatesModal
+        open={!!templateProgram}
+        program={templateProgram}
+        onClose={() => setTemplateProgram(null)}
+        onSaved={(message) => showToast(message)}
+      />
 
       {/* Toast */}
       {toast && (

@@ -133,6 +133,18 @@ app.get('/api/health', (c) => {
 app.get('/api/config', async (c) => {
   const config = await _prisma.divisionConfig.findFirst();
 
+  // Auto-resolve CES signatories from user accounts by role
+  const cesUsers = await _prisma.user.findMany({
+    where: { role: { in: ['CES-SGOD', 'CES-CID', 'CES-ASDS'] }, is_active: true },
+    select: { role: true, name: true },
+  });
+  const CES_TITLES: Record<string, string> = {
+    'CES-SGOD': 'Chief Education Supervisor, SGOD',
+    'CES-CID':  'Chief Education Supervisor, CID',
+    'CES-ASDS': 'Assistant Schools Division Superintendent',
+  };
+  const ces = Object.fromEntries(cesUsers.map(u => [u.role, u.name ?? '']));
+
   // Optional cluster head lookup for School users
   const clusterId = c.req.query('cluster_id');
   let cluster_head_name = '';
@@ -149,15 +161,15 @@ app.get('/api/config', async (c) => {
   }
 
   return c.json({
-    supervisor_name:      config?.supervisor_name      ?? "",
-    supervisor_title:     config?.supervisor_title     ?? "",
-    app_logo:             config?.app_logo             ?? null,
-    sgod_noted_by_name:   config?.sgod_noted_by_name   ?? "",
-    sgod_noted_by_title:  config?.sgod_noted_by_title  ?? "",
-    cid_noted_by_name:    config?.cid_noted_by_name    ?? "",
-    cid_noted_by_title:   config?.cid_noted_by_title   ?? "",
-    osds_noted_by_name:   config?.osds_noted_by_name   ?? "",
-    osds_noted_by_title:  config?.osds_noted_by_title  ?? "",
+    supervisor_name:      config?.supervisor_name ?? "",
+    supervisor_title:     config?.supervisor_title ?? "",
+    app_logo:             config?.app_logo ?? null,
+    sgod_noted_by_name:   ces['CES-SGOD'] ?? "",
+    sgod_noted_by_title:  ces['CES-SGOD'] ? CES_TITLES['CES-SGOD'] : "",
+    cid_noted_by_name:    ces['CES-CID']  ?? "",
+    cid_noted_by_title:   ces['CES-CID']  ? CES_TITLES['CES-CID']  : "",
+    osds_noted_by_name:   ces['CES-ASDS'] ?? "",
+    osds_noted_by_title:  ces['CES-ASDS'] ? CES_TITLES['CES-ASDS'] : "",
     cluster_head_name,
     cluster_head_title,
   });

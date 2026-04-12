@@ -15,9 +15,41 @@ import {
 export const observerRoutes = new Hono();
 export const adminRoutes = new Hono();
 
+function serializeTemplateIndicators(
+  indicators: Array<{ description?: unknown }> | null | undefined,
+) {
+  const source = Array.isArray(indicators) ? indicators : [];
+  return source
+    .map((indicator) => ({
+      description: typeof indicator?.description === "string"
+        ? indicator.description.trim()
+        : "",
+    }))
+    .filter((indicator) => indicator.description.length > 0);
+}
+
+function serializeProgramTemplate(
+  template: {
+    program_id: number;
+    outcome: string;
+    target_code: string;
+    target_description: string;
+    indicators: unknown;
+  },
+) {
+  return {
+    program_id: template.program_id,
+    outcome: template.outcome,
+    target_code: template.target_code,
+    target_description: template.target_description,
+    indicators: serializeTemplateIndicators(template.indicators as any[] ?? []),
+  };
+}
+
 observerRoutes.use("/programs", adminOrObserverOnly);
 
 adminRoutes.use("/programs/:id", adminOnly);
+adminRoutes.use("/programs/:id/template", adminOnly);
 adminRoutes.use("/programs/:id/personnel", adminOnly);
 adminRoutes.use("/division-programs", adminOnly);
 adminRoutes.use("/division-programs/:id", adminOnly);
@@ -143,6 +175,121 @@ adminRoutes.patch("/programs/:id/personnel", async (c) => {
   await writeAuditLog(admin.id, "updated_program_personnel", "Program", id, {
     user_ids,
   });
+  return c.json({ success: true });
+});
+
+adminRoutes.get("/programs/:id/template", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (id === 0) return c.json({ error: "Invalid program id" }, 400);
+
+  const program = await prisma.program.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!program) return c.json({ error: "Program not found" }, 404);
+
+  const template = await prisma.programTemplate.findUnique({
+    where: { program_id: id },
+  });
+  return c.json(template ? serializeProgramTemplate(template) : null);
+});
+
+adminRoutes.put("/programs/:id/template", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (id === 0) return c.json({ error: "Invalid program id" }, 400);
+
+  const program = await prisma.program.findUnique({
+    where: { id },
+    select: { id: true, title: true },
+  });
+  if (!program) return c.json({ error: "Program not found" }, 404);
+
+  const body = sanitizeObject(await c.req.json()) as Record<string, unknown>;
+  const outcome = String(body.outcome ?? "").trim();
+  const targetCode = String(body.target_code ?? "").trim();
+  const targetDescription = String(body.target_description ?? "").trim();
+  const indicators = serializeTemplateIndicators(
+    Array.isArray(body.indicators) ? body.indicators as any[] : [],
+  );
+
+  if (!outcome || !targetCode || !targetDescription) {
+    return c.json({
+      error: "outcome, target_code, and target_description are required",
+    }, 400);
+  }
+
+  const existing = await prisma.programTemplate.findUnique({
+    where: { program_id: id },
+  });
+
+  const saved = existing
+    ? await prisma.programTemplate.update({
+      where: { program_id: id },
+      data: {
+        outcome,
+        target_code: targetCode,
+        target_description: targetDescription,
+        indicators,
+      },
+    })
+    : await prisma.programTemplate.create({
+      data: {
+        program_id: id,
+        outcome,
+        target_code: targetCode,
+        target_description: targetDescription,
+        indicators,
+      },
+    });
+
+  await writeAuditLog(
+    admin.id,
+    existing ? "updated_program_template" : "created_program_template",
+    "ProgramTemplate",
+    saved.id,
+    {
+      program_id: id,
+      program_title: program.title,
+      outcome,
+      target_code: targetCode,
+      indicator_count: indicators.length,
+    },
+  );
+
+  return c.json(serializeProgramTemplate(saved));
+});
+
+adminRoutes.delete("/programs/:id/template", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (id === 0) return c.json({ error: "Invalid program id" }, 400);
+
+  const existing = await prisma.programTemplate.findUnique({
+    where: { program_id: id },
+  });
+  if (!existing) return c.json({ error: "Template not found" }, 404);
+
+  await prisma.programTemplate.delete({
+    where: { program_id: id },
+  });
+  await writeAuditLog(
+    admin.id,
+    "deleted_program_template",
+    "ProgramTemplate",
+    existing.id,
+    {
+      program_id: id,
+      target_code: existing.target_code,
+    },
+  );
   return c.json({ success: true });
 });
 

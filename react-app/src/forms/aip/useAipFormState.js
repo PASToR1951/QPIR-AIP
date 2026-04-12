@@ -62,6 +62,7 @@ export function createInitialAipState({
 } = {}) {
     return {
         profile: {
+            programId: null,
             year,
             outcome: '',
             selectedTarget: '',
@@ -126,10 +127,26 @@ function aipReducer(state, action) {
                     ...state.profile,
                     selectedTarget: action.payload,
                 },
-                indicators: state.indicators.length > 0
-                    ? [{ ...state.indicators[0], description: action.payload }, ...state.indicators.slice(1)]
-                    : [{ description: action.payload, target: '' }],
             };
+
+        case 'APPLY_TEMPLATE': {
+            const indicators = action.payload.indicators?.length > 0
+                ? action.payload.indicators.map((indicator) => ({
+                    description: indicator.description,
+                    target: '',
+                }))
+                : [{ description: action.payload.targetDescription, target: '' }];
+
+            return {
+                ...state,
+                profile: {
+                    ...state.profile,
+                    outcome: action.payload.outcome,
+                    selectedTarget: action.payload.targetDescription,
+                },
+                indicators,
+            };
+        }
 
         case 'SET_OBJECTIVE':
             return {
@@ -276,9 +293,11 @@ function aipReducer(state, action) {
                 ...state,
                 profile: {
                     ...state.profile,
+                    programId: draft.programId ?? state.profile.programId,
                     year: draft.year || state.profile.year,
                     outcome: draft.outcome || '',
-                    selectedTarget: draft.indicators?.[0]?.description || '',
+                    selectedTarget: draft.targetDescription || draft.indicators?.[0]?.description || '',
+                    depedProgram: draft.depedProgram || state.profile.depedProgram,
                     sipTitle: draft.sipTitle || '',
                     projectCoord: draft.projectCoord || '',
                 },
@@ -309,9 +328,11 @@ function aipReducer(state, action) {
                 ...state,
                 profile: {
                     ...state.profile,
+                    programId: aip.programId ?? state.profile.programId,
                     year: String(aip.year || state.profile.year),
                     outcome: aip.outcome || '',
-                    selectedTarget: aip.indicators?.[0]?.description || '',
+                    selectedTarget: aip.targetDescription || aip.indicators?.[0]?.description || '',
+                    depedProgram: aip.depedProgram || state.profile.depedProgram,
                     sipTitle: aip.sipTitle || '',
                     projectCoord: aip.projectCoord || '',
                 },

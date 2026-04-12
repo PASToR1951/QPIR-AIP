@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { ArrowClockwise as RefreshCcw, ArrowLeft, Warning } from '@phosphor-icons/react';
 import Login from './Login';
 import { BrandingContext } from './context/BrandingContext.jsx';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 
 // Framer-motion + all authenticated routes live in this lazy module.
 // This keeps framer-motion (124KB) off the Login critical path.
@@ -123,10 +124,18 @@ class ErrorBoundary extends Component {
 }
 
 function App() {
+  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
   return (
     <Router>
       <ErrorBoundary>
-        <AppRoutes />
+        {recaptchaSiteKey ? (
+          <GoogleReCaptchaProvider reCaptchaKey={recaptchaSiteKey} useRecaptchaNet>
+            <AppRoutes />
+          </GoogleReCaptchaProvider>
+        ) : (
+          <AppRoutes />
+        )}
       </ErrorBoundary>
     </Router>
   );

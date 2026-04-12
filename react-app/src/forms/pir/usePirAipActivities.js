@@ -4,6 +4,7 @@ import { createEmptyPirActivity } from './usePirFormState.js';
 
 export default function usePirAipActivities({
     program,
+    programId,
     quarterString,
     currentQuarterNum,
     isDivisionPersonnel,
@@ -42,8 +43,8 @@ export default function usePirAipActivities({
             setIsLoading(true);
             try {
                 const params = isDivisionPersonnel
-                    ? { user_id: user?.id, program_title: program, year }
-                    : { school_id: schoolId, program_title: program, year };
+                    ? { user_id: user?.id, program_title: program, year, ...(programId ? { program_id: programId } : {}) }
+                    : { school_id: schoolId, program_title: program, year, ...(programId ? { program_id: programId } : {}) };
 
                 const response = await api.get('/api/aips/activities', { params });
                 if (!isActive) {
@@ -115,6 +116,7 @@ export default function usePirAipActivities({
         onIndicatorsLoaded,
         onOwnerLoaded,
         program,
+        programId,
         quarterString,
         user?.id,
         user?.school_id,

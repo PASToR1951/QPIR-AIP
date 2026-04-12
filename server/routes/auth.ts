@@ -3,7 +3,7 @@ import { setCookie, deleteCookie, getCookie } from "hono/cookie";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { prisma } from "../db/client.ts";
-import { JWT_SECRET } from "../lib/config.ts";
+import { JWT_SECRET, RECAPTCHA_SECRET_KEY } from "../lib/config.ts";
 import { logger } from "../lib/logger.ts";
 import { getUserFromToken } from "../lib/auth.ts";
 import { clearTokenCookieOptions, tokenCookieOptions } from "../lib/sessionCookie.ts";
@@ -72,7 +72,32 @@ authRoutes.post('/register', (c) => c.json({ error: 'Registration is disabled. C
 
 authRoutes.post('/login', async (c) => {
   const body = await c.req.json();
-  const { email, password } = body;
+  const { email, password, recaptchaToken } = body;
+
+  if (RECAPTCHA_SECRET_KEY) {
+    if (!recaptchaToken) {
+      return c.json({ error: 'Please complete the reCAPTCHA challenge.' }, 400);
+    }
+    try {
+      const response = await fetch(`https://www.google.com/recaptcha/api/siteverify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          secret: RECAPTCHA_SECRET_KEY,
+          response: recaptchaToken,
+        }),
+      });
+      const data = await response.json();
+      if (!data.success || (data.score !== undefined && data.score < 0.5)) {
+        return c.json({ error: 'reCAPTCHA verification failed. Please try again.' }, 400);
+      }
+    } catch (error) {
+      logger.error('reCAPTCHA verification error', error);
+      return c.json({ error: 'Service temporarily unavailable. Please try again later.' }, 500);
+    }
+  }
 
   // ── Rate-limit check ─────────────────────────────────────────────────
   const key = (email ?? '').toLowerCase().trim();
@@ -149,6 +174,7 @@ authRoutes.post('/login', async (c) => {
         first_name: user.first_name,
         middle_initial: user.middle_initial,
         last_name: user.last_name,
+        must_change_password: user.must_change_password,
         ...buildOnboardingPayload(user as Record<string, unknown>),
       }
     });
@@ -200,6 +226,7 @@ authRoutes.get('/me', async (c) => {
       cluster_number: user.cluster?.cluster_number ?? user.school?.cluster?.cluster_number ?? null,
       cluster_logo: user.cluster?.logo ?? user.school?.cluster?.logo ?? null,
       school_logo: user.school?.logo ?? null,
+      must_change_password: user.must_change_password,
       ...buildOnboardingPayload(user as Record<string, unknown>),
       expiresAt,
     });
@@ -301,6 +328,54 @@ authRoutes.patch('/me/onboarding', async (c) => {
     return c.json(buildOnboardingPayload(user as Record<string, unknown>));
   } catch (error) {
     logger.error('PATCH /me/onboarding failed', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+});
+
+authRoutes.post('/change-password', async (c) => {
+  const tokenUser = getUserFromToken(c);
+  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
+
+  const body = await c.req.json().catch(() => ({}));
+  const { currentPassword, newPassword, skipCurrentPasswordCheck } = body ?? {};
+
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 8) {
+    return c.json({ error: 'New password must be at least 8 characters' }, 400);
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: tokenUser.id },
+      select: { id: true, password: true, is_active: true, must_change_password: true },
+    });
+    if (!user || !user.is_active || !user.password) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    // Allow skipping the current-password check only when the account is flagged
+    // as must_change_password — the valid JWT already proves the user authenticated.
+    const needsCurrentPassword = !skipCurrentPasswordCheck || !user.must_change_password;
+    if (needsCurrentPassword) {
+      if (!currentPassword) {
+        return c.json({ error: 'currentPassword is required' }, 400);
+      }
+      const isValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isValid) {
+        return c.json({ error: 'Current password is incorrect' }, 400);
+      }
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashed, must_change_password: false },
+    });
+
+    return c.json({ success: true });
+  } catch (error) {
+    logger.error('POST /change-password failed', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 });

@@ -62,11 +62,27 @@ model Program {
 
   // Relations
   aips                     AIP[]
+  template                 ProgramTemplate?
   personnel                User[] @relation("UserPrograms")
   restricted_schools       School[] @relation("RestrictedPrograms")
 
   @@unique([title, school_level_requirement])
   @@map("programs")
+}
+
+model ProgramTemplate {
+  id                 Int      @id @default(autoincrement())
+  program_id         Int      @unique
+  outcome            String
+  target_code        String
+  target_description String
+  indicators         Json     @default("[]")
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  program            Program  @relation(fields: [program_id], references: [id], onDelete: Cascade)
+
+  @@map("program_templates")
 }
 
 model User {
@@ -82,7 +98,8 @@ model User {
   first_name      String?
   middle_initial  String?
   last_name       String?
-  is_active       Boolean   @default(true)
+  is_active             Boolean   @default(true)
+  must_change_password  Boolean   @default(false) // Set to true when admin resets password — forces change on next login
   deleted_at      DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
   onboarding_version_seen  Int       @default(0)
   onboarding_show_on_login Boolean   @default(true)
@@ -146,6 +163,7 @@ model AIP {
   created_by_user_id  Int?     // Nullable for backward-compat; set on all new records
   year                Int      // e.g., 2026
   outcome             String   // DepEd Outcome Category
+  target_description  String   @default("")
   sip_title           String   // School Improvement Project title
   project_coordinator String
   objectives          Json     // Array of objective strings

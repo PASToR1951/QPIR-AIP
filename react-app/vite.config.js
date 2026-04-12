@@ -63,6 +63,7 @@ export default defineConfig(({ mode }) => {
         'react-router-dom',
         'framer-motion',
         'axios',
+        'react-google-recaptcha-v3',
       ],
     },
     build: {

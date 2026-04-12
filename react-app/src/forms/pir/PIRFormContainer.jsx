@@ -77,6 +77,7 @@ export default function PIRFormContainer() {
     const factors = state.factors;
     const actionItems = state.actionItems;
     const submission = state.submission;
+    const rawPrograms = data.rawPrograms ?? [];
 
     const [programsWithAIPs, setProgramsWithAIPs] = useState([]);
     const [programAbbreviations, setProgramAbbreviations] = useState({});
@@ -111,6 +112,14 @@ export default function PIRFormContainer() {
         data.clusterHead,
     ]);
 
+    const findProgramByTitle = useCallback((programTitle) => (
+        rawPrograms.find((program) => program.title === programTitle) ?? null
+    ), [rawPrograms]);
+
+    const selectedProgramRecord = profile.program
+        ? findProgramByTitle(profile.program)
+        : null;
+
     // Auto-fill Program Owner for Division Personnel
     useEffect(() => {
         if (!isDivisionPersonnel || !user) return;
@@ -132,22 +141,29 @@ export default function PIRFormContainer() {
         },
     });
 
+    const handleActivitiesLoaded = useCallback((nextActivities) => {
+        dispatch({ type: 'REPLACE_ACTIVITIES_FROM_AIP', payload: { activities: nextActivities } });
+    }, [dispatch]);
+
+    const handleIndicatorsLoaded = useCallback((nextIndicators) => {
+        dispatch({ type: 'SET_INDICATOR_TARGETS', payload: nextIndicators });
+    }, [dispatch]);
+
+    const handleOwnerLoaded = useCallback((ownerName) => {
+        dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'owner', value: ownerName } });
+        dispatch({ type: 'SET_OWNER_LOCKED', payload: true });
+    }, [dispatch]);
+
     const aipActivities = usePirAipActivities({
         program: profile.program,
+        programId: selectedProgramRecord?.id ?? null,
         quarterString,
         currentQuarterNum,
         isDivisionPersonnel,
         user,
-        onActivitiesLoaded: (nextActivities) => {
-            dispatch({ type: 'REPLACE_ACTIVITIES_FROM_AIP', payload: { activities: nextActivities } });
-        },
-        onIndicatorsLoaded: (nextIndicators) => {
-            dispatch({ type: 'SET_INDICATOR_TARGETS', payload: nextIndicators });
-        },
-        onOwnerLoaded: (ownerName) => {
-            dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'owner', value: ownerName } });
-            dispatch({ type: 'SET_OWNER_LOCKED', payload: true });
-        },
+        onActivitiesLoaded: handleActivitiesLoaded,
+        onIndicatorsLoaded: handleIndicatorsLoaded,
+        onOwnerLoaded: handleOwnerLoaded,
     });
 
     useEffect(() => {
@@ -294,14 +310,20 @@ export default function PIRFormContainer() {
             try {
                 const yearMatch = quarterString.match(/CY (\d{4})/);
                 const year = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
-                const response = await api.get('/api/aips', { params: { program_title: profile.program, year } });
+                const response = await api.get('/api/aips', {
+                    params: {
+                        program_title: profile.program,
+                        year,
+                        ...(selectedProgramRecord?.id ? { program_id: selectedProgramRecord.id } : {}),
+                    },
+                });
                 setAipDocumentData(response.data);
             } catch {
                 // Ignore preview load failures.
             }
         }
         setIsAIPPreviewOpen(true);
-    }, [aipDocumentData, profile.program, quarterString]);
+    }, [aipDocumentData, profile.program, quarterString, selectedProgramRecord?.id]);
 
     const handleAddActivity = useCallback(() => {
         dispatch({ type: 'ADD_ACTIVITY', payload: { activity: createEmptyPirActivity(), showAddedFlash: true } });

@@ -348,11 +348,8 @@ function PirClusterPanel({ cluster: cl, navigate }) {
 export default function AdminOverview() {
   const appLogo = useAppLogo();
   const [data, setData] = useState(null);
-  const [onboardingData, setOnboardingData] = useState(null);
-  const [onboardingDays, setOnboardingDays] = useState('30');
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
-  const [onboardingError, setOnboardingError] = useState(null);
   const [clusterSort, setClusterSort] = useState('desc'); // 'asc' | 'desc'
   const navigate = useNavigate();
   const isDark = useIsDark();
@@ -364,18 +361,6 @@ export default function AdminOverview() {
       .catch(e => { console.error(e); setFetchError('Failed to load dashboard data. Please refresh and try again.'); })
       .finally(() => setLoading(false));
   }, []);
-
-  useEffect(() => {
-    api.get(`/api/admin/onboarding-overview?days=${onboardingDays}`)
-      .then(r => {
-        setOnboardingData(r.data);
-        setOnboardingError(null);
-      })
-      .catch((e) => {
-        console.error(e);
-        setOnboardingError('Failed to load onboarding analytics.');
-      });
-  }, [onboardingDays]);
 
   const s = data?.stats;
 
@@ -406,13 +391,6 @@ export default function AdminOverview() {
   const user = (() => {
     try { return JSON.parse(sessionStorage.getItem('user') || 'null'); } catch { return null; }
   })();
-  const onboardingSummary = onboardingData?.summary;
-  const onboardingCards = [
-    { key: 'completed', label: 'Onboarded', value: onboardingSummary?.completed ?? 0, tone: 'emerald' },
-    { key: 'in_progress', label: 'In Progress', value: onboardingSummary?.in_progress ?? 0, tone: 'indigo' },
-    { key: 'dismissed', label: 'Dismissed', value: onboardingSummary?.dismissed ?? 0, tone: 'amber' },
-    { key: 'not_started', label: 'Not Started', value: onboardingSummary?.not_started ?? 0, tone: 'slate' },
-  ];
 
   return (
     <>
@@ -636,84 +614,6 @@ export default function AdminOverview() {
           <Motion.div variants={fadeUp} className="flex items-center gap-4 px-1">
             <h2 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">Analytics</h2>
             <span className="flex-1 h-px bg-slate-200 dark:bg-dark-border/60" />
-          </Motion.div>
-
-          <Motion.div variants={fadeUp} className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
-                  Onboarding
-                </p>
-                <h3 className="mt-1 text-lg font-black text-slate-900 dark:text-slate-100">
-                  Completion snapshot
-                </h3>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Tracks completed, in-progress, dismissed, and not-started onboarding states by role.
-                </p>
-              </div>
-
-              <label className="flex flex-col gap-1 text-xs font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
-                Date Range
-                <select
-                  value={onboardingDays}
-                  onChange={(event) => setOnboardingDays(event.target.value)}
-                  className="rounded-xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-base px-3 py-2 text-sm font-bold normal-case tracking-normal text-slate-700 dark:text-slate-200"
-                >
-                  <option value="7">Last 7 days</option>
-                  <option value="30">Last 30 days</option>
-                  <option value="90">Last 90 days</option>
-                  <option value="all">All users</option>
-                </select>
-              </label>
-            </div>
-
-            {onboardingError ? (
-              <div className="mt-4 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-sm font-semibold text-amber-800 dark:text-amber-300">
-                {onboardingError}
-              </div>
-            ) : (
-              <>
-                <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  {onboardingCards.map((card) => (
-                    <div key={card.key} className="rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50/80 dark:bg-dark-base/70 p-4">
-                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
-                        {card.label}
-                      </p>
-                      <p className="mt-2 text-2xl font-black text-slate-900 dark:text-slate-100">
-                        {card.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-5 overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-100 dark:border-dark-border">
-                        <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Role</th>
-                        <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Completed</th>
-                        <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">In Progress</th>
-                        <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Dismissed</th>
-                        <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Not Started</th>
-                        <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50 dark:divide-dark-border/70">
-                      {(onboardingData?.byRole ?? []).map((row) => (
-                        <tr key={row.role}>
-                          <td className="px-3 py-2.5 font-bold text-slate-800 dark:text-slate-100">{row.role}</td>
-                          <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.completed}</td>
-                          <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.in_progress}</td>
-                          <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.dismissed}</td>
-                          <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.not_started}</td>
-                          <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.total}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
           </Motion.div>
 
           {/* Charts Row */}

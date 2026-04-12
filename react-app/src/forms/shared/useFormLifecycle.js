@@ -32,6 +32,11 @@ export default function useFormLifecycle({
         autoStartedRef,
     } = shell;
     const appModeRef = useRef(appMode);
+    // Tracks whether a handleStart call is in-flight (including while a local-draft
+    // confirmation modal is open). Without this, the URL-params effect would keep
+    // re-invoking handleStart on every render because handleStart's identity changes
+    // every render (its deps include shell/draft/etc.) while appMode stays 'splash'.
+    const startPendingRef = useRef(false);
 
     useEffect(() => {
         appModeRef.current = appMode;
@@ -43,9 +48,11 @@ export default function useFormLifecycle({
     }, [setAppMode, setSearchParams]);
 
     const handleStart = useCallback(async (mode, selectedProgram) => {
-        if (!selectedProgram) {
+        if (!selectedProgram || startPendingRef.current) {
             return false;
         }
+
+        startPendingRef.current = true;
 
         resetFormState(selectedProgram);
         resetSubmissionState?.();
@@ -55,11 +62,13 @@ export default function useFormLifecycle({
             try {
                 await loadReadonlyRecord(selectedProgram);
             } catch (error) {
+                startPendingRef.current = false;
                 onReadonlyError?.(error);
                 return false;
             }
 
             moveToMode('readonly', selectedProgram);
+            startPendingRef.current = false;
             return true;
         }
 
@@ -81,6 +90,7 @@ export default function useFormLifecycle({
                     hydrateDraft(localDraft);
                     closeModal();
                     moveToMode(mode, selectedProgram);
+                    startPendingRef.current = false;
                 },
                 onClose: async () => {
                     closeModal();
@@ -93,6 +103,7 @@ export default function useFormLifecycle({
                     }
 
                     moveToMode(mode, selectedProgram);
+                    startPendingRef.current = false;
                 },
             });
 
@@ -106,6 +117,7 @@ export default function useFormLifecycle({
         }
 
         moveToMode(mode, selectedProgram);
+        startPendingRef.current = false;
         return true;
     }, [
         draft,
@@ -214,7 +226,7 @@ export default function useFormLifecycle({
             return;
         }
 
-        if (appModeRef.current === 'splash') {
+        if (appModeRef.current === 'splash' && !startPendingRef.current) {
             handleStart(paramMode, paramProgram);
         }
     }, [clearProgramField, handleStart, searchParams, setAppMode, setSplashSelectedProgram]);

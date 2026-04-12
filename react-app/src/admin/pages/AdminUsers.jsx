@@ -18,6 +18,12 @@ const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'
 const inputCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 
 function UserForm({ form, setForm, schools, programs, clusters = [] }) {
+  const emailLocal = form.email.replace(/@deped\.gov\.ph$/, '');
+  const handleEmailChange = (e) => {
+    const val = e.target.value.replace(/@.*$/, '');
+    setForm(f => ({ ...f, email: val + '@deped.gov.ph' }));
+  };
+
   return (
     <div className="space-y-4">
       {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Observer'].includes(form.role)) && (
@@ -50,8 +56,17 @@ function UserForm({ form, setForm, schools, programs, clusters = [] }) {
       )}
       <div>
         <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Email</label>
-        <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-          className={inputCls} placeholder="juan@deped.gov.ph" />
+        <div className="flex items-center border border-slate-200 dark:border-dark-border rounded-xl overflow-hidden bg-white dark:bg-dark-base focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all">
+          <input
+            value={emailLocal}
+            onChange={handleEmailChange}
+            className="flex-1 min-w-0 px-3 py-2 text-sm bg-transparent text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none"
+            placeholder="username"
+          />
+          <span className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-dark-surface border-l border-slate-200 dark:border-dark-border whitespace-nowrap select-none">
+            @deped.gov.ph
+          </span>
+        </div>
       </div>
       {!form.id && (
         <div>
@@ -133,6 +148,9 @@ export default function AdminUsers() {
   const [toast, setToast] = useState(null); // { msg, type: 'success'|'error' }
   const [progTooltip, setProgTooltip] = useState(null); // { x, y, items }
   const tooltipHideTimer = useRef(null);
+  const [onboardingData, setOnboardingData] = useState(null);
+  const [onboardingDays, setOnboardingDays] = useState('30');
+  const [onboardingError, setOnboardingError] = useState(null);
 
   const showProgTooltip = (e, items) => {
     clearTimeout(tooltipHideTimer.current);
@@ -163,6 +181,11 @@ export default function AdminUsers() {
   }, [search, roleFilter]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    api.get(`/api/admin/onboarding-overview?days=${onboardingDays}`)
+      .then(r => { setOnboardingData(r.data); setOnboardingError(null); })
+      .catch((e) => { console.error(e); setOnboardingError('Failed to load onboarding analytics.'); });
+  }, [onboardingDays]);
   useEffect(() => {
     api.get('/api/admin/schools').then(r => setSchools(r.data)).catch(() => {});
     api.get('/api/admin/programs').then(r => setPrograms(r.data)).catch(() => {});
@@ -352,6 +375,80 @@ export default function AdminUsers() {
               showEndCount
             />
           </div>
+        )}
+
+      </div>
+
+      {/* Onboarding Completion Snapshot */}
+      <div className="mt-6 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Onboarding</p>
+            <h3 className="mt-1 text-lg font-black text-slate-900 dark:text-slate-100">Completion snapshot</h3>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Tracks completed, in-progress, dismissed, and not-started onboarding states by role.
+            </p>
+          </div>
+          <label className="flex flex-col gap-1 text-xs font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            Date Range
+            <select
+              value={onboardingDays}
+              onChange={(e) => setOnboardingDays(e.target.value)}
+              className="rounded-xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-base px-3 py-2 text-sm font-bold normal-case tracking-normal text-slate-700 dark:text-slate-200"
+            >
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="all">All users</option>
+            </select>
+          </label>
+        </div>
+        {onboardingError ? (
+          <div className="mt-4 rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 px-4 py-3 text-sm font-semibold text-amber-800 dark:text-amber-300">
+            {onboardingError}
+          </div>
+        ) : (
+          <>
+            <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {[
+                { key: 'completed', label: 'Onboarded', value: onboardingData?.summary?.completed ?? 0 },
+                { key: 'in_progress', label: 'In Progress', value: onboardingData?.summary?.in_progress ?? 0 },
+                { key: 'dismissed', label: 'Dismissed', value: onboardingData?.summary?.dismissed ?? 0 },
+                { key: 'not_started', label: 'Not Started', value: onboardingData?.summary?.not_started ?? 0 },
+              ].map((card) => (
+                <div key={card.key} className="rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50/80 dark:bg-dark-base/70 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{card.label}</p>
+                  <p className="mt-2 text-2xl font-black text-slate-900 dark:text-slate-100">{card.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-dark-border">
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Role</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Completed</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">In Progress</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Dismissed</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Not Started</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-dark-border/70">
+                  {(onboardingData?.byRole ?? []).map((row) => (
+                    <tr key={row.role}>
+                      <td className="px-3 py-2.5 font-bold text-slate-800 dark:text-slate-100">{row.role}</td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.completed}</td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.in_progress}</td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.dismissed}</td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.not_started}</td>
+                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300">{row.total}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

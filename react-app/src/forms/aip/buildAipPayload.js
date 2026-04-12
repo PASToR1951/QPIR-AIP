@@ -1,8 +1,10 @@
 export function buildAipPayload(state) {
     return {
+        program_id: state.profile.programId,
         program_title: state.profile.depedProgram,
         year: parseInt(state.profile.year, 10),
         outcome: state.profile.outcome,
+        target_description: state.profile.selectedTarget,
         sip_title: state.profile.sipTitle,
         project_coordinator: state.profile.projectCoord,
         objectives: state.objectives.filter((objective) => objective.trim() !== ''),
@@ -18,7 +20,9 @@ export function buildAipPayload(state) {
 export function buildAipLocalSnapshot(state) {
     return {
         outcome: state.profile.outcome,
+        programId: state.profile.programId,
         depedProgram: state.profile.depedProgram,
+        targetDescription: state.profile.selectedTarget,
         sipTitle: state.profile.sipTitle,
         projectCoord: state.profile.projectCoord,
         objectives: state.objectives.filter((objective) => objective.trim() !== ''),
@@ -31,4 +35,3 @@ export function buildAipLocalSnapshot(state) {
         year: state.profile.year,
     };
 }
-

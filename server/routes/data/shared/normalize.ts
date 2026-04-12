@@ -18,9 +18,22 @@ export function normalizeBudgetSource(
 export function normalizeIndicators(
   indicators: IndicatorInput[] | null | undefined,
 ): Array<{ description: string; target: string }> {
-  return (indicators || []).map((ind) => ({
+  const source = Array.isArray(indicators) ? indicators : [];
+  return source.map((ind) => ({
     description: ind.description || "",
-    target: ind.target?.toString().trim() || "NONE",
+    target: ind.target?.toString().trim() || "",
+  }));
+}
+
+export function serializeIndicators(
+  indicators: IndicatorInput[] | null | undefined,
+): Array<{ description: string; target: string }> {
+  const source = Array.isArray(indicators) ? indicators : [];
+  return source.map((ind) => ({
+    description: ind.description || "",
+    target: ind.target?.toString().trim() === "NONE"
+      ? ""
+      : (ind.target?.toString().trim() || ""),
   }));
 }
 
