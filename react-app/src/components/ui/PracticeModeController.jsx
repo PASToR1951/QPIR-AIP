@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePracticeMode } from '../../context/PracticeModeContext.jsx';
 import { useAccessibility } from '../../context/AccessibilityContext.jsx';
+import PracticeIntroCard from './PracticeIntroCard.jsx';
 import PracticeModeBanner from './PracticeModeBanner.jsx';
 import PracticeInteractionModal from './PracticeInteractionModal.jsx';
 import OnboardingChecklist from './OnboardingChecklist.jsx';
@@ -8,31 +9,44 @@ import OnboardingChecklist from './OnboardingChecklist.jsx';
 export default function PracticeModeController() {
   const {
     active,
+    introOpen,
     tasks,
     completedIds,
     completedCount,
     isComplete,
     activeTaskId,
+    closeIntro,
+    enterPracticeMode,
     exitPracticeMode,
     openPracticeTask,
     closePracticeTask,
     completePracticeAction,
   } = usePracticeMode();
 
-  if (!active) return null;
+  if (!active && !introOpen) return null;
 
   return (
-    <ActivePracticeModeView
-      tasks={tasks}
-      completedIds={completedIds}
-      completedCount={completedCount}
-      isComplete={isComplete}
-      activeTaskId={activeTaskId}
-      exitPracticeMode={exitPracticeMode}
-      openPracticeTask={openPracticeTask}
-      closePracticeTask={closePracticeTask}
-      completePracticeAction={completePracticeAction}
-    />
+    <>
+      <PracticeIntroCard
+        open={introOpen && !active}
+        tasks={tasks}
+        onEnter={enterPracticeMode}
+        onDismiss={closeIntro}
+      />
+      {active && (
+        <ActivePracticeModeView
+          tasks={tasks}
+          completedIds={completedIds}
+          completedCount={completedCount}
+          isComplete={isComplete}
+          activeTaskId={activeTaskId}
+          exitPracticeMode={exitPracticeMode}
+          openPracticeTask={openPracticeTask}
+          closePracticeTask={closePracticeTask}
+          completePracticeAction={completePracticeAction}
+        />
+      )}
+    </>
   );
 }
 

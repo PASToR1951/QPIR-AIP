@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { usePracticeMode } from '../../context/PracticeModeContext.jsx';
 import { useOnboarding } from '../../hooks/useOnboarding.jsx';
 import { auth } from '../../lib/auth.js';
 import {
@@ -7,6 +8,7 @@ import {
   isChecklistRole,
   isChecklistLandingPage,
 } from '../../lib/onboardingUtils.js';
+import OnboardingCompletionCard from './OnboardingCompletionCard.jsx';
 import WelcomeCard from './WelcomeCard.jsx';
 import OnboardingChecklist from './OnboardingChecklist.jsx';
 import OnboardingTour from './OnboardingTour.jsx';
@@ -121,6 +123,7 @@ function OnboardingHints() {
 
 export default function OnboardingController() {
   const location = useLocation();
+  const { canPractice, openIntro } = usePracticeMode();
   const {
     user,
     roleKey,
@@ -144,8 +147,14 @@ export default function OnboardingController() {
     recordSignal,
   } = useOnboarding();
   const hasAutoOpenedRef = useRef('');
+  const completionShownRef = useRef(false);
+  const completionPendingRef = useRef(false);
+  const completionReadyRef = useRef(false);
+  const completionPrevCompleteRef = useRef(false);
   const [activeTaskTour, setActiveTaskTour] = useState(null);
+  const [completionOpen, setCompletionOpen] = useState(false);
   const showChecklistOnPage = isChecklistLandingPage(roleKey, location.pathname);
+  const completionStorageKey = user?.id ? `onboarding:completion:${user.id}` : null;
   // Holds tour data for a task whose target route hasn't been reached yet.
   // Activated by the route effect once the user navigates to the correct page.
   const pendingTourRef = useRef(null);
@@ -216,6 +225,58 @@ export default function OnboardingController() {
     user?.id,
   ]);
 
+  useEffect(() => {
+    completionShownRef.current = false;
+    completionPendingRef.current = false;
+    completionReadyRef.current = false;
+    completionPrevCompleteRef.current = false;
+    setCompletionOpen(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!isHydrated || !user?.id) return undefined;
+
+    if (!completionReadyRef.current) {
+      completionReadyRef.current = true;
+      completionPrevCompleteRef.current = isComplete;
+      return undefined;
+    }
+
+    const justCompleted = !completionPrevCompleteRef.current && isComplete;
+    const justReset = completionPrevCompleteRef.current && !isComplete;
+    completionPrevCompleteRef.current = isComplete;
+
+    if (justReset) {
+      completionPendingRef.current = false;
+      return undefined;
+    }
+
+    if (justCompleted) {
+      completionPendingRef.current = true;
+    }
+
+    if (!isComplete) return undefined;
+    if (!completionPendingRef.current) return undefined;
+    if (!showChecklistOnPage) return undefined;
+    if (completionShownRef.current) {
+      completionPendingRef.current = false;
+      return undefined;
+    }
+    if (!completionStorageKey || sessionStorage.getItem(completionStorageKey)) {
+      completionPendingRef.current = false;
+      return undefined;
+    }
+
+    const timer = window.setTimeout(() => {
+      sessionStorage.setItem(completionStorageKey, '1');
+      completionShownRef.current = true;
+      completionPendingRef.current = false;
+      setCompletionOpen(true);
+    }, 800);
+
+    return () => window.clearTimeout(timer);
+  }, [completionStorageKey, isComplete, isHydrated, showChecklistOnPage, user?.id]);
+
   if (!user?.id) return null;
   if (!isChecklistRole(roleKey) && roleKey !== 'pending') return null;
 
@@ -239,6 +300,16 @@ export default function OnboardingController() {
         }}
         onSkip={skipWelcome}
         onDismissPending={acknowledgePending}
+      />
+
+      <OnboardingCompletionCard
+        open={completionOpen}
+        canPractice={canPractice}
+        onGetStarted={() => setCompletionOpen(false)}
+        onTryPractice={() => {
+          setCompletionOpen(false);
+          openIntro();
+        }}
       />
 
       {hasChecklist && isHydrated && (

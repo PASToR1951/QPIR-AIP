@@ -84,7 +84,7 @@ export default function HelpLauncher() {
     roleKey,
     showUpdatedContentBadge,
   } = useOnboarding();
-  const { canPractice, active: practiceActive, enterPracticeMode } = usePracticeMode();
+  const { canPractice, active: practiceActive, openIntro } = usePracticeMode();
   const themeName = resolveRouteThemeName(location.pathname);
   const t = THEMES[themeName];
   const showChecklistActions = hasChecklist &&
@@ -242,7 +242,7 @@ export default function HelpLauncher() {
                           as: 'button',
                           icon: <Flask size={18} />,
                           label: 'Try practice mode',
-                          onClick: () => { enterPracticeMode(); setIsOpen(false); },
+                          onClick: () => { openIntro(); setIsOpen(false); },
                         }] : []),
                         ...(helpConfig.steps?.length > 0 ? [{
                           as: 'button',

@@ -30,6 +30,7 @@ function PracticeModeProviderState({ children, roleKey }) {
   const canPractice = hasPracticeMode(roleKey);
 
   const [active, setActive] = useState(false);
+  const [introOpen, setIntroOpen] = useState(false);
   const [completedIds, setCompletedIds] = useState([]);
   const [activeTaskId, setActiveTaskId] = useState(null);
 
@@ -50,13 +51,23 @@ function PracticeModeProviderState({ children, roleKey }) {
     return () => window.removeEventListener(ONBOARDING_SIGNAL_EVENT, handler);
   }, [active, tasks]);
 
+  const openIntro = useCallback(() => {
+    setIntroOpen(true);
+  }, []);
+
+  const closeIntro = useCallback(() => {
+    setIntroOpen(false);
+  }, []);
+
   const enterPracticeMode = useCallback(() => {
+    setIntroOpen(false);
     setCompletedIds([]);
     setActiveTaskId(null);
     setActive(true);
   }, []);
 
   const exitPracticeMode = useCallback(() => {
+    setIntroOpen(false);
     setActive(false);
     setCompletedIds([]);
     setActiveTaskId(null);
@@ -90,6 +101,7 @@ function PracticeModeProviderState({ children, roleKey }) {
   const value = useMemo(
     () => ({
       active,
+      introOpen,
       roleKey,
       canPractice,
       tasks,
@@ -97,6 +109,8 @@ function PracticeModeProviderState({ children, roleKey }) {
       completedCount,
       isComplete,
       activeTaskId,
+      openIntro,
+      closeIntro,
       enterPracticeMode,
       exitPracticeMode,
       openPracticeTask,
@@ -107,13 +121,16 @@ function PracticeModeProviderState({ children, roleKey }) {
       active,
       activeTaskId,
       canPractice,
+      closeIntro,
       closePracticeTask,
       completePracticeAction,
       completedCount,
       completedIds,
       enterPracticeMode,
       exitPracticeMode,
+      introOpen,
       isComplete,
+      openIntro,
       openPracticeTask,
       roleKey,
       tasks,
