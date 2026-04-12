@@ -1,4 +1,5 @@
 import React from 'react';
+import ActivityFieldGrid from './ActivityFieldGrid.jsx';
 
 function resolveValue(value, context) {
     return typeof value === 'function' ? value(context) : value;
@@ -6,6 +7,12 @@ function resolveValue(value, context) {
 
 function defaultCanRemove() {
     return true;
+}
+
+function flattenDesktopColumnGroups(columnGroups = []) {
+    return columnGroups.flatMap((group) => (
+        group.columns?.length ? group.columns : [group]
+    ));
 }
 
 export default function PhaseActivityEditor({
@@ -18,7 +25,9 @@ export default function PhaseActivityEditor({
     canRemove = defaultCanRemove,
     renderCollapsedTitle,
     renderExpandedFields,
+    wizardCard = null,
     renderMobileCard,
+    mobileCard = null,
     desktopTable = null,
     renderFooter = null,
     renderTray = null,
@@ -27,6 +36,9 @@ export default function PhaseActivityEditor({
     const visibleDesktopGroups = (desktopGroups ?? groups).filter((group) => group.activities.length > 0 || group.emptyMessage || group.onAdd);
     const allActivities = visibleGroups.flatMap((group) => group.activities);
     const allDesktopActivities = visibleDesktopGroups.flatMap((group) => group.activities);
+    const desktopLeafColumns = desktopTable?.columnGroups
+        ? flattenDesktopColumnGroups(desktopTable.columnGroups)
+        : [];
 
     const buildContext = (group, groupIndex, activity, index) => {
         const isExpanded = expandedActivityId === activity.id;
@@ -68,6 +80,29 @@ export default function PhaseActivityEditor({
                 </svg>
                 {group.addLabel}
             </button>
+        );
+    };
+
+    const renderDescriptorExpandedFields = (activity, context) => {
+        if (!wizardCard) {
+            return null;
+        }
+
+        const fieldContext = { activity, context, appMode };
+        const fields = resolveValue(wizardCard.fields, fieldContext);
+
+        return (
+            <>
+                {wizardCard.beforeFields?.(activity, context)}
+                <ActivityFieldGrid
+                    fields={fields}
+                    activity={activity}
+                    context={context}
+                    variant="wizard"
+                    className={resolveValue(wizardCard.gridClassName, fieldContext)}
+                />
+                {wizardCard.afterFields?.(activity, context)}
+            </>
         );
     };
 
@@ -129,9 +164,11 @@ export default function PhaseActivityEditor({
                         </button>
                     </div>
                 </div>
-                {context.isExpanded && renderExpandedFields && (
+                {context.isExpanded && (renderExpandedFields || wizardCard) && (
                     <div className="px-5 py-5 md:px-6">
-                        {renderExpandedFields(context.activity, context)}
+                        {renderExpandedFields
+                            ? renderExpandedFields(context.activity, context)
+                            : renderDescriptorExpandedFields(context.activity, context)}
                     </div>
                 )}
             </div>
@@ -169,6 +206,32 @@ export default function PhaseActivityEditor({
         </div>
     );
 
+    const renderDescriptorMobileCard = (activity, context) => {
+        if (!mobileCard) {
+            return null;
+        }
+
+        const fieldContext = { activity, context, appMode };
+        const fields = resolveValue(mobileCard.fields, fieldContext);
+
+        return (
+            <div className={resolveValue(mobileCard.cardClassName, fieldContext) ?? 'rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-dark-border dark:bg-dark-surface'}>
+                {mobileCard.renderHeader?.(activity, context)}
+                <div className={resolveValue(mobileCard.bodyClassName, fieldContext) ?? 'space-y-4'}>
+                    {mobileCard.beforeFields?.(activity, context)}
+                    <ActivityFieldGrid
+                        fields={fields}
+                        activity={activity}
+                        context={context}
+                        variant="mobile"
+                        className={resolveValue(mobileCard.gridClassName, fieldContext)}
+                    />
+                    {mobileCard.afterFields?.(activity, context)}
+                </div>
+            </div>
+        );
+    };
+
     const renderMobileGroup = (group, groupIndex) => (
         <div key={group.key} className={group.mobileContainerClassName ?? 'rounded-3xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-dark-border dark:bg-dark-base'}>
             {(group.title || group.subtitle) && (
@@ -199,7 +262,9 @@ export default function PhaseActivityEditor({
                             <React.Fragment key={activity.id}>
                                 {renderMobileCard
                                     ? renderMobileCard(activity, context)
-                                    : renderWizardCard(group, groupIndex, activity, index)}
+                                    : mobileCard
+                                        ? renderDescriptorMobileCard(activity, context)
+                                        : renderWizardCard(group, groupIndex, activity, index)}
                             </React.Fragment>
                         );
                     })}
@@ -208,6 +273,90 @@ export default function PhaseActivityEditor({
             {renderGroupAddButton(group)}
         </div>
     );
+
+    const renderDesktopHeader = () => {
+        if (!desktopTable?.columnGroups) {
+            return desktopTable?.header ?? null;
+        }
+
+        const hasNestedColumns = desktopTable.columnGroups.some((group) => group.columns?.length);
+
+        if (!hasNestedColumns) {
+            return (
+                <thead>
+                    <tr className={desktopTable.headerRowClassName ?? 'select-none border-b border-slate-200 bg-slate-50 text-left dark:border-dark-border dark:bg-dark-base'}>
+                        {desktopTable.columnGroups.map((column, index) => (
+                            <th
+                                key={column.key ?? `header-${index}`}
+                                className={resolveValue(column.headerClassName, { column, index })}
+                            >
+                                {column.header}
+                            </th>
+                        ))}
+                    </tr>
+                </thead>
+            );
+        }
+
+        return (
+            <thead>
+                <tr className={desktopTable.headerTopRowClassName ?? 'select-none border-b border-slate-200 bg-slate-50 text-left dark:border-dark-border dark:bg-dark-base'}>
+                    {desktopTable.columnGroups.map((columnGroup, index) => {
+                        const childCount = columnGroup.columns?.length ?? 0;
+
+                        return (
+                            <th
+                                key={columnGroup.key ?? `header-group-${index}`}
+                                rowSpan={childCount > 0 ? undefined : 2}
+                                colSpan={childCount > 0 ? childCount : undefined}
+                                className={resolveValue(columnGroup.headerClassName, { columnGroup, index })}
+                            >
+                                {columnGroup.header}
+                            </th>
+                        );
+                    })}
+                </tr>
+                <tr className={desktopTable.headerBottomRowClassName ?? 'select-none border-b border-slate-200 bg-white text-center dark:border-dark-border dark:bg-dark-surface'}>
+                    {desktopTable.columnGroups.flatMap((columnGroup, groupIndex) => (
+                        (columnGroup.columns ?? []).map((column, columnIndex) => (
+                            <th
+                                key={column.key ?? `header-column-${groupIndex}-${columnIndex}`}
+                                className={resolveValue(column.headerClassName, { column, columnGroup, groupIndex, columnIndex })}
+                            >
+                                {column.header}
+                            </th>
+                        ))
+                    ))}
+                </tr>
+            </thead>
+        );
+    };
+
+    const renderDesktopRow = (activity, context) => {
+        if (desktopTable?.renderRow) {
+            return desktopTable.renderRow(activity, context);
+        }
+
+        if (!desktopLeafColumns.length) {
+            return null;
+        }
+
+        return (
+            <tr
+                key={activity.id}
+                className={resolveValue(desktopTable?.rowClassName, { activity, context }) ?? 'group border-b border-slate-200 transition-colors hover:bg-slate-50 dark:border-dark-border dark:hover:bg-dark-base'}
+            >
+                {desktopLeafColumns.map((column, index) => (
+                    <td
+                        key={column.key ?? `cell-${activity.id}-${index}`}
+                        className={resolveValue(column.cellClassName, { activity, context, column, index })}
+                    >
+                        {column.renderCell?.(activity, context)}
+                    </td>
+                ))}
+            </tr>
+        );
+    };
 
     return (
         <>
@@ -230,21 +379,39 @@ export default function PhaseActivityEditor({
                         <div className={desktopTable.wrapperClassName ?? 'hidden md:block overflow-x-auto pb-4'}>
                             <div className={desktopTable.innerClassName ?? 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-dark-border dark:bg-dark-surface'}>
                                 <table className={desktopTable.tableClassName ?? 'w-full border-collapse text-sm'}>
-                                    {desktopTable.header}
+                                    {renderDesktopHeader()}
                                     <tbody className={desktopTable.bodyClassName ?? 'bg-white dark:bg-dark-surface'}>
                                         {visibleDesktopGroups.map((group, groupIndex) => (
                                             <React.Fragment key={group.key}>
-                                                {desktopTable.renderGroupHeader?.(group, { appMode, group, groupIndex })}
+                                                {desktopTable.renderGroupHeader?.(group, {
+                                                    appMode,
+                                                    group,
+                                                    groupIndex,
+                                                    columnCount: desktopLeafColumns.length,
+                                                    columns: desktopLeafColumns,
+                                                })}
                                                 {group.activities.map((activity, index) => (
                                                     <React.Fragment key={activity.id}>
-                                                        {desktopTable.renderRow(activity, buildContext(group, groupIndex, activity, index))}
+                                                        {renderDesktopRow(activity, buildContext(group, groupIndex, activity, index))}
                                                     </React.Fragment>
                                                 ))}
-                                                {desktopTable.renderGroupFooter?.(group, { appMode, group, groupIndex })}
+                                                {desktopTable.renderGroupFooter?.(group, {
+                                                    appMode,
+                                                    group,
+                                                    groupIndex,
+                                                    columnCount: desktopLeafColumns.length,
+                                                    columns: desktopLeafColumns,
+                                                })}
                                             </React.Fragment>
                                         ))}
                                     </tbody>
-                                    {desktopTable.footer?.({ appMode, groups: visibleDesktopGroups, activities: allDesktopActivities })}
+                                    {desktopTable.footer?.({
+                                        appMode,
+                                        groups: visibleDesktopGroups,
+                                        activities: allDesktopActivities,
+                                        columnCount: desktopLeafColumns.length,
+                                        columns: desktopLeafColumns,
+                                    })}
                                 </table>
                             </div>
                         </div>

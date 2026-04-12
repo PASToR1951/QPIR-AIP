@@ -6,6 +6,14 @@ import { AIP_PHASES } from '../../../forms/aip/useAipFormState.js';
 import MonthRangePicker from '../../../forms/shared/components/MonthRangePicker.jsx';
 import PhaseActivityEditor from '../../../forms/shared/components/PhaseActivityEditor.jsx';
 
+const SURFACE_INPUT_CLASSNAME = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-100';
+const SURFACE_TEXTAREA_CLASSNAME = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-200';
+const CARD_DELETE_BUTTON_CLASSNAME = 'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:border-dark-border dark:text-slate-500 dark:hover:bg-red-950/30';
+const TABLE_CELL_CLASSNAME = 'border-r border-slate-200 p-2 align-top dark:border-dark-border';
+const TABLE_INPUT_CLASSNAME = 'w-full rounded border border-transparent bg-transparent p-1 text-center text-sm font-medium text-slate-700 outline-none focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface';
+const TABLE_TEXTAREA_CLASSNAME = 'w-full rounded border border-transparent bg-transparent p-1 font-medium text-slate-700 focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface';
+const TABLE_SHADED_CELL_CLASSNAME = 'border-r border-slate-200 bg-slate-50/30 p-2 align-top dark:border-dark-border dark:bg-dark-base/30';
+
 function renderBudgetTotal(total) {
     return (
         <span className="inline-flex items-center gap-2 rounded-xl border border-pink-200 bg-pink-50 px-4 py-2 text-sm font-bold text-pink-800 dark:border-pink-900/50 dark:bg-pink-950/30 dark:text-pink-300">
@@ -16,6 +24,84 @@ function renderBudgetTotal(total) {
             Total: ₱ {total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
     );
+}
+
+function sanitizeDecimalInput(value) {
+    return value.replace(/[^0-9.]/g, '');
+}
+
+function createSharedFields({ handleActivityChange, personsTerms }) {
+    return [
+        {
+            key: 'implementation-period',
+            label: 'Implementation Period',
+            render: ({ activity }) => (
+                <MonthRangePicker
+                    startMonth={activity.periodStartMonth}
+                    endMonth={activity.periodEndMonth}
+                    onStartChange={(value) => handleActivityChange(activity.id, 'periodStartMonth', value)}
+                    onEndChange={(value) => handleActivityChange(activity.id, 'periodEndMonth', value)}
+                />
+            ),
+        },
+        {
+            key: 'persons',
+            hideLabel: true,
+            render: ({ activity }) => (
+                <FuzzyAutocomplete
+                    label="Persons Involved"
+                    placeholder="e.g. Teachers"
+                    className={SURFACE_INPUT_CLASSNAME}
+                    terms={personsTerms}
+                    value={activity.persons}
+                    onChange={(value) => handleActivityChange(activity.id, 'persons', value)}
+                />
+            ),
+        },
+        {
+            key: 'outputs',
+            label: 'Outputs',
+            wrapperClassName: 'md:col-span-2',
+            render: ({ activity }) => (
+                <TextareaAuto
+                    placeholder="Expected output"
+                    className={SURFACE_TEXTAREA_CLASSNAME}
+                    value={activity.outputs}
+                    onChange={(event) => handleActivityChange(activity.id, 'outputs', event.target.value)}
+                />
+            ),
+        },
+        {
+            key: 'budget-amount',
+            label: 'Amount',
+            render: ({ activity }) => (
+                <div className="relative">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500">₱</span>
+                    <input
+                        type="text"
+                        inputMode="decimal"
+                        className={`${SURFACE_INPUT_CLASSNAME} py-2 pl-7 pr-3 font-mono`}
+                        placeholder="0.00"
+                        value={activity.budgetAmount}
+                        onChange={(event) => handleActivityChange(activity.id, 'budgetAmount', sanitizeDecimalInput(event.target.value))}
+                    />
+                </div>
+            ),
+        },
+        {
+            key: 'budget-source',
+            label: 'Source',
+            render: ({ activity }) => (
+                <input
+                    type="text"
+                    className={SURFACE_INPUT_CLASSNAME}
+                    placeholder="NONE"
+                    value={activity.budgetSource}
+                    onChange={(event) => handleActivityChange(activity.id, 'budgetSource', event.target.value)}
+                />
+            ),
+        },
+    ];
 }
 
 export default React.memo(function AIPActionPlanSection({
@@ -33,6 +119,7 @@ export default React.memo(function AIPActionPlanSection({
     const visiblePhases = appMode === 'wizard'
         ? (currentStep === 3 ? AIP_PHASES.slice(0, 2) : AIP_PHASES.slice(2))
         : AIP_PHASES;
+    const sharedFields = createSharedFields({ handleActivityChange, personsTerms });
 
     const groups = visiblePhases.map((phase) => {
         const phaseIndex = AIP_PHASES.indexOf(phase);
@@ -53,161 +140,22 @@ export default React.memo(function AIPActionPlanSection({
         };
     });
 
-    const renderCommonFields = (activity) => (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div>
-                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                    Implementation Period
-                </label>
-                <MonthRangePicker
-                    startMonth={activity.periodStartMonth}
-                    endMonth={activity.periodEndMonth}
-                    onStartChange={(value) => handleActivityChange(activity.id, 'periodStartMonth', value)}
-                    onEndChange={(value) => handleActivityChange(activity.id, 'periodEndMonth', value)}
-                />
-            </div>
-
-            <div>
-                <FuzzyAutocomplete
-                    label="Persons Involved"
-                    placeholder="e.g. Teachers"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-100"
-                    terms={personsTerms}
-                    value={activity.persons}
-                    onChange={(value) => handleActivityChange(activity.id, 'persons', value)}
-                />
-            </div>
-
-            <div className="md:col-span-2">
-                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                    Outputs
-                </label>
+    const mobileFields = [
+        {
+            key: 'activity-name',
+            label: 'Activity',
+            wrapperClassName: 'md:col-span-2',
+            render: ({ activity }) => (
                 <TextareaAuto
-                    placeholder="Expected output"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-100"
-                    value={activity.outputs}
-                    onChange={(event) => handleActivityChange(activity.id, 'outputs', event.target.value)}
+                    placeholder="Describe activity..."
+                    className={SURFACE_TEXTAREA_CLASSNAME}
+                    value={activity.name}
+                    onChange={(event) => handleActivityChange(activity.id, 'name', event.target.value)}
                 />
-            </div>
-
-            <div>
-                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                    Amount
-                </label>
-                <div className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400 dark:text-slate-500">₱</span>
-                    <input
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-7 pr-3 text-sm font-mono text-slate-800 transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-100"
-                        placeholder="0.00"
-                        value={activity.budgetAmount}
-                        onChange={(event) => handleActivityChange(activity.id, 'budgetAmount', event.target.value.replace(/[^0-9.]/g, ''))}
-                    />
-                </div>
-            </div>
-
-            <div>
-                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                    Source
-                </label>
-                <input
-                    type="text"
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-100"
-                    placeholder="NONE"
-                    value={activity.budgetSource}
-                    onChange={(event) => handleActivityChange(activity.id, 'budgetSource', event.target.value)}
-                />
-            </div>
-        </div>
-    );
-
-    const renderDesktopRow = (activity, context) => (
-        <tr key={activity.id} className="group border-b border-slate-100 transition-colors hover:bg-slate-50 dark:border-dark-border dark:hover:bg-dark-base">
-            <td className="border-r border-slate-200 p-2 align-top dark:border-dark-border">
-                <div className="flex w-full items-start gap-2">
-                    <span className="mt-1.5 shrink-0 select-none text-xs font-bold text-slate-400 dark:text-slate-500">
-                        {context.sequenceLabel}
-                    </span>
-                    <TextareaAuto
-                        placeholder="Describe activity..."
-                        className="w-full rounded border border-transparent bg-transparent p-1 font-medium text-slate-700 focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface"
-                        value={activity.name}
-                        onChange={(event) => handleActivityChange(activity.id, 'name', event.target.value)}
-                    />
-                </div>
-            </td>
-            <td className="border-r border-slate-200 p-2 align-top dark:border-dark-border">
-                <MonthRangePicker
-                    startMonth={activity.periodStartMonth}
-                    endMonth={activity.periodEndMonth}
-                    onStartChange={(value) => handleActivityChange(activity.id, 'periodStartMonth', value)}
-                    onEndChange={(value) => handleActivityChange(activity.id, 'periodEndMonth', value)}
-                    compact
-                />
-            </td>
-            <td className="border-r border-slate-200 p-2 align-top dark:border-dark-border">
-                <FuzzyAutocomplete
-                    placeholder="e.g. Teachers"
-                    className="w-full rounded border border-transparent bg-transparent p-1 text-center text-sm font-medium text-slate-700 outline-none focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface"
-                    terms={personsTerms}
-                    value={activity.persons}
-                    onChange={(value) => handleActivityChange(activity.id, 'persons', value)}
-                />
-            </td>
-            <td className="border-r border-slate-200 p-2 align-top dark:border-dark-border">
-                <TextareaAuto
-                    placeholder="Expected output"
-                    className="w-full rounded border border-transparent bg-transparent p-1 text-center font-medium text-slate-700 focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface"
-                    value={activity.outputs}
-                    onChange={(event) => handleActivityChange(activity.id, 'outputs', event.target.value)}
-                />
-            </td>
-            <td className="border-r border-slate-200 bg-slate-50/30 p-2 align-top dark:border-dark-border dark:bg-dark-base/30">
-                <div className="relative">
-                    <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 select-none text-sm text-slate-400 dark:text-slate-500">₱</span>
-                    <input
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full rounded border border-transparent bg-transparent py-1 pl-5 pr-1 text-center font-mono text-sm font-semibold text-slate-700 outline-none focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface"
-                        placeholder="0.00"
-                        value={activity.budgetAmount}
-                        onChange={(event) => handleActivityChange(activity.id, 'budgetAmount', event.target.value.replace(/[^0-9.]/g, ''))}
-                    />
-                </div>
-            </td>
-            <td className="border-r border-slate-200 bg-slate-50/30 p-2 align-top dark:border-dark-border dark:bg-dark-base/30">
-                <input
-                    type="text"
-                    className="w-full rounded border border-transparent bg-transparent p-1 text-center text-sm font-medium text-slate-700 outline-none focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface"
-                    placeholder="NONE"
-                    value={activity.budgetSource}
-                    onChange={(event) => handleActivityChange(activity.id, 'budgetSource', event.target.value)}
-                    onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                            event.preventDefault();
-                            handleAddActivityPhase(activity.phase);
-                        }
-                    }}
-                />
-            </td>
-            <td className="w-10 border-none bg-white p-1 align-middle dark:bg-dark-surface">
-                {context.canRemove && (
-                    <button
-                        type="button"
-                        onClick={() => handleRemoveActivity(activity.id)}
-                        className="mx-auto flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 opacity-40 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 dark:border-dark-border dark:bg-dark-surface dark:text-slate-500 dark:hover:bg-red-950/30"
-                        title="Delete Row"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M18 6 6 18"></path>
-                            <path d="m6 6 12 12"></path>
-                        </svg>
-                    </button>
-                )}
-            </td>
-        </tr>
-    );
+            ),
+        },
+        ...sharedFields,
+    ];
 
     return (
         <>
@@ -245,9 +193,11 @@ export default React.memo(function AIPActionPlanSection({
                         </div>
                     )
                 )}
-                renderExpandedFields={(activity) => renderCommonFields(activity)}
-                renderMobileCard={(activity, context) => (
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-dark-border dark:bg-dark-surface">
+                wizardCard={{
+                    fields: sharedFields,
+                }}
+                mobileCard={{
+                    renderHeader: (activity, context) => (
                         <div className="mb-3 flex items-start justify-between gap-3">
                             <div>
                                 <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -258,8 +208,8 @@ export default React.memo(function AIPActionPlanSection({
                             {context.canRemove && (
                                 <button
                                     type="button"
-                                    onClick={() => handleRemoveActivity(activity.id)}
-                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:border-dark-border dark:text-slate-500 dark:hover:bg-red-950/30"
+                                    onClick={() => context.remove()}
+                                    className={CARD_DELETE_BUTTON_CLASSNAME}
                                     title="Delete Activity"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -269,53 +219,157 @@ export default React.memo(function AIPActionPlanSection({
                                 </button>
                             )}
                         </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                                    Activity
-                                </label>
-                                <TextareaAuto
-                                    placeholder="Describe activity..."
-                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-all focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 dark:border-dark-border dark:bg-dark-surface dark:text-slate-200"
-                                    value={activity.name}
-                                    onChange={(event) => handleActivityChange(activity.id, 'name', event.target.value)}
-                                />
-                            </div>
-                            {renderCommonFields(activity)}
-                        </div>
-                    </div>
-                )}
+                    ),
+                    fields: mobileFields,
+                    cardClassName: 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-dark-border dark:bg-dark-surface',
+                }}
                 desktopTable={{
                     wrapperClassName: 'hidden md:block overflow-x-auto pb-4',
                     innerClassName: 'min-w-[1000px] overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-dark-border dark:bg-dark-surface',
-                    header: (
-                        <thead>
-                            <tr className="select-none border-b border-slate-200 bg-slate-50 text-left dark:border-dark-border dark:bg-dark-base">
-                                <th rowSpan="2" className="w-[30%] border-r border-slate-200 p-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300">Activities to be Conducted</th>
-                                <th rowSpan="2" className="w-[15%] border-r border-slate-200 p-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300">Implementation Period</th>
-                                <th rowSpan="2" className="w-[15%] border-r border-slate-200 p-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300">Persons Involved</th>
-                                <th rowSpan="2" className="w-[15%] border-r border-slate-200 p-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300">Outputs</th>
-                                <th colSpan="2" className="w-[20%] border-r border-slate-200 p-3 text-center text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300">Budgetary Requirement</th>
-                                <th rowSpan="2" className="w-10 border-none"></th>
-                            </tr>
-                            <tr className="select-none border-b border-slate-200 bg-white text-center dark:border-dark-border dark:bg-dark-surface">
-                                <th className="border-r border-slate-200 bg-slate-50/50 p-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:border-dark-border dark:bg-dark-base/50 dark:text-slate-500">Amount</th>
-                                <th className="border-r border-slate-200 bg-slate-50/50 p-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:border-dark-border dark:bg-dark-base/50 dark:text-slate-500">Source</th>
-                            </tr>
-                        </thead>
-                    ),
+                    rowClassName: 'group border-b border-slate-100 transition-colors hover:bg-slate-50 dark:border-dark-border dark:hover:bg-dark-base',
+                    columnGroups: [
+                        {
+                            key: 'activity-name',
+                            header: 'Activities to be Conducted',
+                            headerClassName: 'w-[30%] border-r border-slate-200 p-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300',
+                            cellClassName: TABLE_CELL_CLASSNAME,
+                            renderCell: (activity, context) => (
+                                <div className="flex w-full items-start gap-2">
+                                    <span className="mt-1.5 shrink-0 select-none text-xs font-bold text-slate-400 dark:text-slate-500">
+                                        {context.sequenceLabel}
+                                    </span>
+                                    <TextareaAuto
+                                        placeholder="Describe activity..."
+                                        className={TABLE_TEXTAREA_CLASSNAME}
+                                        value={activity.name}
+                                        onChange={(event) => handleActivityChange(activity.id, 'name', event.target.value)}
+                                    />
+                                </div>
+                            ),
+                        },
+                        {
+                            key: 'implementation-period',
+                            header: 'Implementation Period',
+                            headerClassName: 'w-[15%] border-r border-slate-200 p-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300',
+                            cellClassName: TABLE_CELL_CLASSNAME,
+                            renderCell: (activity) => (
+                                <MonthRangePicker
+                                    startMonth={activity.periodStartMonth}
+                                    endMonth={activity.periodEndMonth}
+                                    onStartChange={(value) => handleActivityChange(activity.id, 'periodStartMonth', value)}
+                                    onEndChange={(value) => handleActivityChange(activity.id, 'periodEndMonth', value)}
+                                    compact
+                                />
+                            ),
+                        },
+                        {
+                            key: 'persons',
+                            header: 'Persons Involved',
+                            headerClassName: 'w-[15%] border-r border-slate-200 p-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300',
+                            cellClassName: TABLE_CELL_CLASSNAME,
+                            renderCell: (activity) => (
+                                <FuzzyAutocomplete
+                                    placeholder="e.g. Teachers"
+                                    className={TABLE_INPUT_CLASSNAME}
+                                    terms={personsTerms}
+                                    value={activity.persons}
+                                    onChange={(value) => handleActivityChange(activity.id, 'persons', value)}
+                                />
+                            ),
+                        },
+                        {
+                            key: 'outputs',
+                            header: 'Outputs',
+                            headerClassName: 'w-[15%] border-r border-slate-200 p-3 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300',
+                            cellClassName: TABLE_CELL_CLASSNAME,
+                            renderCell: (activity) => (
+                                <TextareaAuto
+                                    placeholder="Expected output"
+                                    className={`${TABLE_TEXTAREA_CLASSNAME} text-center`}
+                                    value={activity.outputs}
+                                    onChange={(event) => handleActivityChange(activity.id, 'outputs', event.target.value)}
+                                />
+                            ),
+                        },
+                        {
+                            key: 'budget',
+                            header: 'Budgetary Requirement',
+                            headerClassName: 'w-[20%] border-r border-slate-200 p-3 text-center text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300',
+                            columns: [
+                                {
+                                    key: 'budget-amount',
+                                    header: 'Amount',
+                                    headerClassName: 'border-r border-slate-200 bg-slate-50/50 p-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:border-dark-border dark:bg-dark-base/50 dark:text-slate-500',
+                                    cellClassName: TABLE_SHADED_CELL_CLASSNAME,
+                                    renderCell: (activity) => (
+                                        <div className="relative">
+                                            <span className="pointer-events-none absolute left-1.5 top-1/2 -translate-y-1/2 select-none text-sm text-slate-400 dark:text-slate-500">₱</span>
+                                            <input
+                                                type="text"
+                                                inputMode="decimal"
+                                                className="w-full rounded border border-transparent bg-transparent py-1 pl-5 pr-1 text-center font-mono text-sm font-semibold text-slate-700 outline-none focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface"
+                                                placeholder="0.00"
+                                                value={activity.budgetAmount}
+                                                onChange={(event) => handleActivityChange(activity.id, 'budgetAmount', sanitizeDecimalInput(event.target.value))}
+                                            />
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    key: 'budget-source',
+                                    header: 'Source',
+                                    headerClassName: 'border-r border-slate-200 bg-slate-50/50 p-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:border-dark-border dark:bg-dark-base/50 dark:text-slate-500',
+                                    cellClassName: TABLE_SHADED_CELL_CLASSNAME,
+                                    renderCell: (activity) => (
+                                        <input
+                                            type="text"
+                                            className={TABLE_INPUT_CLASSNAME}
+                                            placeholder="NONE"
+                                            value={activity.budgetSource}
+                                            onChange={(event) => handleActivityChange(activity.id, 'budgetSource', event.target.value)}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter') {
+                                                    event.preventDefault();
+                                                    handleAddActivityPhase(activity.phase);
+                                                }
+                                            }}
+                                        />
+                                    ),
+                                },
+                            ],
+                        },
+                        {
+                            key: 'actions',
+                            header: '',
+                            headerClassName: 'w-10 border-none',
+                            cellClassName: 'w-10 border-none bg-white p-1 align-middle dark:bg-dark-surface',
+                            renderCell: (activity, context) => (
+                                context.canRemove ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => context.remove()}
+                                        className="mx-auto flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 opacity-40 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 dark:border-dark-border dark:bg-dark-surface dark:text-slate-500 dark:hover:bg-red-950/30"
+                                        title="Delete Row"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M18 6 6 18"></path>
+                                            <path d="m6 6 12 12"></path>
+                                        </svg>
+                                    </button>
+                                ) : null
+                            ),
+                        },
+                    ],
                     renderGroupHeader: (group, context) => (
                         <tr key={`${group.key}-header`} className="border-b border-slate-200 bg-pink-50/50 dark:border-dark-border dark:bg-pink-950/30">
-                            <td colSpan="7" className="p-3 text-xs font-bold uppercase tracking-wider text-pink-800 dark:text-pink-300">
+                            <td colSpan={context.columnCount} className="p-3 text-xs font-bold uppercase tracking-wider text-pink-800 dark:text-pink-300">
                                 {context.groupIndex + 1}. {group.title}
                             </td>
                         </tr>
                     ),
-                    renderRow: renderDesktopRow,
-                    renderGroupFooter: (group) => (
+                    renderGroupFooter: (group, context) => (
                         <tr key={`${group.key}-footer`} className="border-b-2 border-slate-200 bg-white transition-colors dark:border-dark-border dark:bg-dark-surface">
-                            <td colSpan="7" className="p-2">
+                            <td colSpan={context.columnCount} className="p-2">
                                 <button
                                     type="button"
                                     onClick={group.onAdd}
