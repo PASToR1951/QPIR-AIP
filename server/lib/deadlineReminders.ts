@@ -1,4 +1,5 @@
 import { prisma } from "../db/client.ts";
+import { sendDeadlineReminderNotification } from "./accountEmails.ts";
 import { logger } from "./logger.ts";
 import { pushNotifications } from "./notifStream.ts";
 
@@ -7,6 +8,10 @@ const REMINDER_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const TARGET_ROLES = ["School", "Division Personnel"] as const;
 
 let reminderIntervalId: ReturnType<typeof setInterval> | null = null;
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function startOfDay(date: Date): Date {
   const next = new Date(date);
@@ -95,6 +100,12 @@ export async function runDeadlineReminderSweep(now = new Date()) {
     type: string;
     entity_type: string;
   }> = [];
+  const emailRemindersToSend: Array<{
+    user_id: number;
+    quarterLabel: string;
+    deadline: Date;
+    daysLeft: number;
+  }> = [];
 
   for (const year of years) {
     for (const quarter of [1, 2, 3, 4]) {
@@ -125,6 +136,12 @@ export async function runDeadlineReminderSweep(now = new Date()) {
           type: "deadline_reminder",
           entity_type: "deadline",
         });
+        emailRemindersToSend.push({
+          user_id: user.id,
+          quarterLabel,
+          deadline,
+          daysLeft: daysUntil,
+        });
       }
     }
   }
@@ -147,6 +164,25 @@ export async function runDeadlineReminderSweep(now = new Date()) {
   logger.info("Created deadline reminder notifications", {
     count: created.length,
   });
+
+  for (const [index, reminder] of emailRemindersToSend.entries()) {
+    try {
+      await sendDeadlineReminderNotification(reminder.user_id, {
+        quarterLabel: reminder.quarterLabel,
+        deadline: reminder.deadline,
+        daysLeft: reminder.daysLeft,
+      });
+    } catch (error) {
+      logger.error("Deadline reminder email failed", {
+        user_id: reminder.user_id,
+        error,
+      });
+    }
+
+    if (index < emailRemindersToSend.length - 1) {
+      await delay(1000);
+    }
+  }
 }
 
 export function startDeadlineReminderScheduler() {

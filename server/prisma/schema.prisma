@@ -137,6 +137,8 @@ model User {
   // Notifications
   notifications         Notification[]
   announcement_mentions AnnouncementMentionUser[]
+  magic_link_tokens     MagicLinkToken[]
+  email_blast_logs      EmailBlastLog[]
 
   created_at DateTime @default(now())
 
@@ -312,6 +314,53 @@ model Deadline {
 
   @@unique([year, quarter])
   @@map("deadlines")
+}
+
+model EmailConfig {
+  id                     Int      @id @default(autoincrement())
+  smtp_host              String   @default("smtp.gmail.com")
+  smtp_port              Int      @default(587)
+  smtp_user              String   @default("")
+  smtp_pass_enc          String   @default("")
+  from_name              String   @default("AIP-PIR System")
+  is_enabled             Boolean  @default(false)
+  magic_link_ttl_login   Int      @default(15)
+  magic_link_ttl_welcome Int      @default(10080)
+  magic_link_ttl_reminder Int     @default(1440)
+  updated_at             DateTime @updatedAt
+
+  @@map("email_config")
+}
+
+model MagicLinkToken {
+  id         String   @id @default(cuid())
+  user_id    Int
+  token_hash String   @unique
+  purpose    String   @default("login")
+  expires_at DateTime
+  used_at    DateTime?
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([expires_at])
+  @@index([user_id, purpose])
+  @@map("magic_link_tokens")
+}
+
+model EmailBlastLog {
+  id         Int      @id @default(autoincrement())
+  blast_key  String
+  blast_type String
+  blast_label String
+  user_id    Int
+  sent_at    DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([blast_key, user_id])
+  @@index([sent_at])
+  @@map("email_blast_logs")
 }
 
 model Announcement {

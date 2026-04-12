@@ -607,3 +607,62 @@ html:not(.dark).a11y-high-contrast .border-slate-200 {
 .a11y-letter-wide select {
   letter-spacing: 0.06em !important;
 }
+
+/* ── reCAPTCHA v3 badge ──────────────────────────────────────────────────────
+   Google permits hiding the floating badge as long as the required attribution
+   text is shown on the page (Privacy Policy + Terms links). That text lives in
+   the privacy notice at the bottom of the login card.                         */
+.grecaptcha-badge {
+  visibility: hidden !important;
+}
+
+/* --- Help FAB sheen sweep on hover --- */
+/*
+ * Inspired by the dual-layer background-position gradient technique:
+ * a wide gradient (220%) shifts position on hover for a colour sweep,
+ * while a ::after pseudo-element sweeps a white highlight across.
+ */
+.fab-sheen {
+  position: relative;
+  overflow: hidden;       /* clips the ::after sheen to the circular button */
+  background-size: 220% 100%;
+  background-position: 20% 50%;
+  transition: background-position 0.8s ease-out, box-shadow 0.25s ease;
+}
+
+.fab-sheen:hover {
+  background-position: 80% 50%;   /* sweeps the gradient across on hover */
+}
+
+/* White sheen highlight sweeps left → right on hover */
+.fab-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0)    15%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0)    85%
+  );
+  background-size: 300% 100%;
+  background-position: 0% 50%;
+  opacity: 0;
+  transition: background-position 0.75s ease-out, opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.fab-sheen:hover::after {
+  background-position: 100% 50%;
+  opacity: 1;
+}
+
+.a11y-reduce-motion .fab-sheen,
+.a11y-reduce-motion .fab-sheen::after {
+  transition: none !important;
+}
+.a11y-reduce-motion .fab-sheen:hover::after {
+  opacity: 0;
+}
+

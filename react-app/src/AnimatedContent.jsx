@@ -24,6 +24,7 @@ const GettingStarted = lazy(() => import('./components/GettingStarted.jsx'));
 const FAQ            = lazy(() => import('./components/FAQ'));
 const PrivacyPolicy  = lazy(() => import('./components/PrivacyPolicy'));
 const OAuthCallback  = lazy(() => import('./OAuthCallback'));
+const MagicLinkCallback = lazy(() => import('./MagicLinkCallback.jsx'));
 
 // CES pages
 const CESLayout      = lazy(() => import('./ces/CESLayout.jsx'));
@@ -258,6 +259,7 @@ export default function AnimatedContent() {
           <Routes location={location} key={location.pathname}>
             <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
+            <Route path="/auth/magic-link" element={<MagicLinkCallback />} />
             <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
             <Route path="/docs" element={<PageTransition><SystemDocs /></PageTransition>} />
             <Route path="/getting-started" element={<PageTransition><GettingStarted /></PageTransition>} />

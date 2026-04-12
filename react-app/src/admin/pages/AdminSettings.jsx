@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import api from '../../lib/api.js';
+import api, { API } from '../../lib/api.js';
 import {
   FloppyDisk, Buildings, Users, BookOpen, Database,
   Megaphone, XCircle, LockSimple,
   Gear, CheckCircle, At, User, Trash, CalendarBlank,
   CaretLeft, CaretRight, Clock, CaretUp, CaretDown,
   Palette, UploadSimple,
+  EnvelopeSimple, PaperPlaneTilt,
+  IdentificationCard,
 } from '@phosphor-icons/react';
 import { CURRENT_VERSION } from '../../version.js';
 import { useAppLogo, useReloadBranding } from '../../context/BrandingContext.jsx';
+import { readSSEJsonStream } from '../../lib/readSSEStream.js';
+import { StatusBadge } from '../components/StatusBadge.jsx';
 
 const MAX_CHARS = 280;
 const EMPTY_ANNOUNCEMENT = {
@@ -19,6 +23,65 @@ const EMPTY_ANNOUNCEMENT = {
   dismissible: true,
   expires_at: '',
 };
+
+const EMPTY_EMAIL_CONFIG = {
+  smtp_host: 'smtp.gmail.com',
+  smtp_port: 587,
+  smtp_user: '',
+  smtp_pass: '',
+  has_password: false,
+  from_name: 'AIP-PIR System',
+  is_enabled: false,
+  magic_link_ttl_login: 15,
+  magic_link_ttl_welcome: 10080,
+  magic_link_ttl_reminder: 1440,
+};
+
+const DEFAULT_BLAST_FORM = {
+  type: 'aip',
+  label: '',
+  target_roles: ['School', 'Division Personnel'],
+};
+
+const DURATION_UNITS = [
+  { value: 'minutes', label: 'Minutes', multiplier: 1 },
+  { value: 'hours', label: 'Hours', multiplier: 60 },
+  { value: 'days', label: 'Days', multiplier: 1440 },
+];
+
+function minutesToDurationInput(minutes) {
+  if (minutes % 1440 === 0) return { value: String(minutes / 1440), unit: 'days' };
+  if (minutes % 60 === 0) return { value: String(minutes / 60), unit: 'hours' };
+  return { value: String(minutes), unit: 'minutes' };
+}
+
+function durationInputToMinutes(duration) {
+  const quantity = Number(duration?.value);
+  const multiplier = DURATION_UNITS.find((unit) => unit.value === duration?.unit)?.multiplier ?? 1;
+  if (!Number.isFinite(quantity) || quantity <= 0) return null;
+  return Math.round(quantity * multiplier);
+}
+
+function formatMinutes(minutes) {
+  if (!minutes && minutes !== 0) return '—';
+  if (minutes % 1440 === 0) return `${minutes / 1440} day${minutes / 1440 === 1 ? '' : 's'}`;
+  if (minutes % 60 === 0) return `${minutes / 60} hour${minutes / 60 === 1 ? '' : 's'}`;
+  return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+}
+
+function formatDateTime(value) {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  return parsed.toLocaleString('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
 
 function toDateTimeInput(value) {
   if (!value) return '';
@@ -479,6 +542,112 @@ function DateTimePicker({ value, onChange }) {
   );
 }
 
+function DurationField({ label, description, value, onChange }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50/70 dark:bg-dark-base/70 p-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-black text-slate-900 dark:text-slate-100">{label}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{description}</p>
+        </div>
+        <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">{formatMinutes(durationInputToMinutes(value) ?? 0)}</p>
+      </div>
+      <div className="mt-4 grid grid-cols-[1fr_120px] gap-3">
+        <input
+          type="number"
+          min="1"
+          value={value.value}
+          onChange={(e) => onChange({ ...value, value: e.target.value })}
+          className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+        />
+        <select
+          value={value.unit}
+          onChange={(e) => onChange({ ...value, unit: e.target.value })}
+          className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+        >
+          {DURATION_UNITS.map((unit) => (
+            <option key={unit.value} value={unit.value}>{unit.label}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function StreamProgressCard({ title, progress }) {
+  const completed = progress.sent + progress.failed + progress.skipped;
+  const percent = progress.total > 0 ? Math.round((completed / progress.total) * 100) : 0;
+
+  return (
+    <div className="rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/70 dark:bg-indigo-950/15 p-4 space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-500 dark:text-indigo-400">{title}</p>
+          <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+            {progress.running ? 'Sending emails…' : 'Latest email batch'}
+          </p>
+        </div>
+        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          {completed} / {progress.total || 0}
+        </span>
+      </div>
+
+      <div className="h-2 rounded-full bg-white/80 dark:bg-dark-base border border-indigo-100 dark:border-indigo-900/30 overflow-hidden">
+        <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${percent}%` }} />
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Sent', value: progress.sent, tone: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'Skipped', value: progress.skipped, tone: 'text-amber-600 dark:text-amber-400' },
+          { label: 'Failed', value: progress.failed, tone: 'text-rose-600 dark:text-rose-400' },
+        ].map((card) => (
+          <div key={card.label} className="rounded-xl border border-white/80 dark:border-dark-border bg-white/80 dark:bg-dark-base px-3 py-2.5">
+            <p className="text-[10px] font-black uppercase tracking-wide text-slate-400 dark:text-slate-500">{card.label}</p>
+            <p className={`mt-1 text-lg font-black ${card.tone}`}>{card.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {progress.error && (
+        <div className="rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/20 px-3 py-2 text-xs font-bold text-rose-700 dark:text-rose-400">
+          {progress.error}
+        </div>
+      )}
+
+      {progress.items.length > 0 && (
+        <div className="max-h-56 overflow-y-auto rounded-xl border border-white/80 dark:border-dark-border bg-white/80 dark:bg-dark-base">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-slate-50 dark:bg-dark-base border-b border-slate-100 dark:border-dark-border">
+              <tr className="text-left text-[10px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                <th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Detail</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
+              {progress.items.map((item) => {
+                const tone = item.status === 'sent'
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : item.status === 'failed'
+                    ? 'text-rose-600 dark:text-rose-400'
+                    : 'text-amber-600 dark:text-amber-400';
+                return (
+                  <tr key={`${item.user_id}-${item.email}`}>
+                    <td className="px-3 py-2 font-mono text-slate-700 dark:text-slate-300">{item.email || `User #${item.user_id}`}</td>
+                    <td className={`px-3 py-2 font-black capitalize ${tone}`}>{item.status}</td>
+                    <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{item.error || '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Main component ─────────────────────────────────────────────── */
 export default function AdminSettings() {
   const appLogo        = useAppLogo();
@@ -498,10 +667,88 @@ export default function AdminSettings() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoResetting, setLogoResetting] = useState(false);
   const logoFileRef = useRef(null);
+  const [emailConfig, setEmailConfig] = useState(EMPTY_EMAIL_CONFIG);
+  const [ttlInputs, setTtlInputs] = useState({
+    login: minutesToDurationInput(EMPTY_EMAIL_CONFIG.magic_link_ttl_login),
+    welcome: minutesToDurationInput(EMPTY_EMAIL_CONFIG.magic_link_ttl_welcome),
+    reminder: minutesToDurationInput(EMPTY_EMAIL_CONFIG.magic_link_ttl_reminder),
+  });
+  const [emailLoading, setEmailLoading] = useState(true);
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [emailTesting, setEmailTesting] = useState(false);
+  const [recipientsData, setRecipientsData] = useState({ total: 0, groups: [], recipients: [] });
+  const [recipientRoleFilter, setRecipientRoleFilter] = useState('All');
+  const [blastForm, setBlastForm] = useState(DEFAULT_BLAST_FORM);
+  const [blastHistory, setBlastHistory] = useState([]);
+  const [blastSending, setBlastSending] = useState(false);
+  const [blastProgress, setBlastProgress] = useState({
+    running: false,
+    total: 0,
+    sent: 0,
+    failed: 0,
+    skipped: 0,
+    items: [],
+    error: '',
+  });
+
+  /* ── Division Signatories state ─────────────────────────────────── */
+  const [divisionSignatories, setDivisionSignatories] = useState({
+    sgod_noted_by_name: '', sgod_noted_by_title: '',
+    cid_noted_by_name:  '', cid_noted_by_title:  '',
+    osds_noted_by_name: '', osds_noted_by_title: '',
+  });
+  const [savingSignatories, setSavingSignatories] = useState(false);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const applyEmailConfig = (config) => {
+    const nextConfig = {
+      ...EMPTY_EMAIL_CONFIG,
+      ...config,
+      smtp_pass: config?.smtp_pass ?? '',
+      has_password: Boolean(config?.has_password),
+    };
+    setEmailConfig(nextConfig);
+    setTtlInputs({
+      login: minutesToDurationInput(nextConfig.magic_link_ttl_login),
+      welcome: minutesToDurationInput(nextConfig.magic_link_ttl_welcome),
+      reminder: minutesToDurationInput(nextConfig.magic_link_ttl_reminder),
+    });
+  };
+
+  const loadEmailAdminData = async () => {
+    setEmailLoading(true);
+    try {
+      const [configRes, recipientsRes, historyRes] = await Promise.all([
+        api.get('/api/admin/settings/email-config'),
+        api.get('/api/admin/email-recipients'),
+        api.get('/api/admin/email-blast/history'),
+      ]);
+      applyEmailConfig(configRes.data);
+      setRecipientsData(recipientsRes.data ?? { total: 0, groups: [], recipients: [] });
+      setBlastHistory(Array.isArray(historyRes.data) ? historyRes.data : []);
+    } catch (error) {
+      console.error(error);
+      showToast(error.friendlyMessage ?? 'Failed to load email settings.', 'error');
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const saveDivisionSignatories = async () => {
+    setSavingSignatories(true);
+    try {
+      const { data } = await api.post('/api/admin/settings/division-config', divisionSignatories);
+      setDivisionSignatories(prev => ({ ...prev, ...data }));
+      showToast('Division signatories saved.');
+    } catch (err) {
+      showToast(err?.friendlyMessage || 'Failed to save signatories.', 'error');
+    } finally {
+      setSavingSignatories(false);
+    }
   };
 
   const handleLogoUpload = async (file) => {
@@ -517,6 +764,150 @@ export default function AdminSettings() {
     } finally {
       setLogoUploading(false);
       if (logoFileRef.current) logoFileRef.current.value = '';
+    }
+  };
+
+  const handleSaveEmailConfig = async () => {
+    const loginMinutes = durationInputToMinutes(ttlInputs.login);
+    const welcomeMinutes = durationInputToMinutes(ttlInputs.welcome);
+    const reminderMinutes = durationInputToMinutes(ttlInputs.reminder);
+
+    if (!loginMinutes || !welcomeMinutes || !reminderMinutes) {
+      showToast('Magic-link durations must be valid positive numbers.', 'error');
+      return;
+    }
+
+    setEmailSaving(true);
+    try {
+      const { data } = await api.put('/api/admin/settings/email-config', {
+        smtp_host: emailConfig.smtp_host,
+        smtp_port: Number(emailConfig.smtp_port),
+        smtp_user: emailConfig.smtp_user,
+        smtp_pass: emailConfig.smtp_pass,
+        from_name: emailConfig.from_name,
+        is_enabled: emailConfig.is_enabled,
+        magic_link_ttl_login: loginMinutes,
+        magic_link_ttl_welcome: welcomeMinutes,
+        magic_link_ttl_reminder: reminderMinutes,
+      });
+      applyEmailConfig(data);
+      showToast('Email settings saved.');
+    } catch (error) {
+      showToast(error.friendlyMessage ?? 'Failed to save email settings.', 'error');
+    } finally {
+      setEmailSaving(false);
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    setEmailTesting(true);
+    try {
+      const { data } = await api.post('/api/admin/settings/email-config/test');
+      showToast(`Test email sent to ${data.target}.`);
+    } catch (error) {
+      showToast(error.friendlyMessage ?? 'Test email failed.', 'error');
+    } finally {
+      setEmailTesting(false);
+    }
+  };
+
+  const handleToggleBlastRole = (role) => {
+    setBlastForm((prev) => ({
+      ...prev,
+      target_roles: prev.target_roles.includes(role)
+        ? prev.target_roles.filter((entry) => entry !== role)
+        : [...prev.target_roles, role],
+    }));
+  };
+
+  const handleSendPortalBlast = async () => {
+    if (!blastForm.label.trim()) {
+      showToast('Enter a period label before sending the blast.', 'error');
+      return;
+    }
+
+    setBlastSending(true);
+    setBlastProgress({
+      running: true,
+      total: 0,
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      items: [],
+      error: '',
+    });
+
+    try {
+      const response = await fetch(`${API}/api/admin/email-blast`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Accept': 'text/event-stream',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: blastForm.type,
+          label: blastForm.label,
+          target_roles: blastForm.target_roles,
+        }),
+      });
+
+      await readSSEJsonStream(response, (payload) => {
+        if (payload.type === 'started') {
+          setBlastProgress((prev) => ({
+            ...prev,
+            running: true,
+            total: payload.total ?? prev.total,
+          }));
+          return;
+        }
+
+        if (payload.type === 'item') {
+          setBlastProgress((prev) => {
+            const existingIndex = prev.items.findIndex((item) => item.user_id === payload.user_id);
+            const nextItems = existingIndex === -1
+              ? [...prev.items, payload]
+              : prev.items.map((item, index) => index === existingIndex ? payload : item);
+            const counts = nextItems.reduce((acc, item) => {
+              if (item.status === 'sent') acc.sent += 1;
+              else if (item.status === 'failed') acc.failed += 1;
+              else acc.skipped += 1;
+              return acc;
+            }, { sent: 0, failed: 0, skipped: 0 });
+
+            return {
+              ...prev,
+              items: nextItems,
+              ...counts,
+            };
+          });
+          return;
+        }
+
+        if (payload.type === 'complete') {
+          setBlastProgress((prev) => ({
+            ...prev,
+            running: false,
+            total: payload.total ?? prev.total,
+            sent: payload.sent ?? prev.sent,
+            failed: payload.failed ?? prev.failed,
+            skipped: payload.skipped ?? prev.skipped,
+          }));
+        }
+      });
+
+      const historyRes = await api.get('/api/admin/email-blast/history');
+      setBlastHistory(Array.isArray(historyRes.data) ? historyRes.data : []);
+      showToast('Portal-open email batch finished.');
+    } catch (error) {
+      setBlastProgress((prev) => ({
+        ...prev,
+        running: false,
+        error: error.message || 'Portal-open email batch failed.',
+      }));
+      showToast(error.message || 'Portal-open email batch failed.', 'error');
+    } finally {
+      setBlastSending(false);
     }
   };
 
@@ -563,11 +954,20 @@ export default function AdminSettings() {
     Promise.all([
       api.get('/api/admin/announcements'),
       api.get('/api/admin/settings/system-info'),
-    ]).then(([ar, sr]) => {
+      api.get('/api/admin/settings/division-config'),
+    ]).then(([ar, sr, dcr]) => {
       const loadedAnnouncement = announcementFromApi(ar.data);
       setAnnouncement(loadedAnnouncement);
       setSavedAnnouncement(loadedAnnouncement);
       setSysInfo(sr.data);
+      setDivisionSignatories({
+        sgod_noted_by_name:  dcr.data.sgod_noted_by_name  ?? '',
+        sgod_noted_by_title: dcr.data.sgod_noted_by_title ?? '',
+        cid_noted_by_name:   dcr.data.cid_noted_by_name   ?? '',
+        cid_noted_by_title:  dcr.data.cid_noted_by_title  ?? '',
+        osds_noted_by_name:  dcr.data.osds_noted_by_name  ?? '',
+        osds_noted_by_title: dcr.data.osds_noted_by_title ?? '',
+      });
     }).catch(e => { console.error(e); setFetchError('Failed to load settings. Please refresh and try again.'); })
       .finally(() => setLoading(false));
 
@@ -593,6 +993,11 @@ export default function AdminSettings() {
         );
       })
       .catch(err => console.warn('[mention] users load failed:', err?.response?.status, err?.message));
+  }, []);
+
+  useEffect(() => {
+    loadEmailAdminData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ── Announce save (Publish button) ──────────────────────────────── */
@@ -812,6 +1217,18 @@ export default function AdminSettings() {
     : hasSavedMessage && !hasUnpublishedChanges && savedAnnouncement.is_active && !savedExpired
       ? 'bg-emerald-500 text-white'
       : 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400';
+  const filteredRecipients = recipientRoleFilter === 'All'
+    ? recipientsData.recipients
+    : recipientsData.recipients.filter((recipient) => recipient.role === recipientRoleFilter);
+  const estimatedBlastRecipients = recipientsData.recipients.filter((recipient) =>
+    blastForm.target_roles.includes(recipient.role)
+  ).length;
+  const emailStatusLabel = emailConfig.is_enabled && emailConfig.smtp_user && emailConfig.has_password
+    ? 'Configured'
+    : 'Not configured';
+  const emailStatusTone = emailConfig.is_enabled && emailConfig.smtp_user && emailConfig.has_password
+    ? 'emerald'
+    : 'amber';
 
   return (
     <>
@@ -834,7 +1251,7 @@ export default function AdminSettings() {
               <h1 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">Settings</h1>
             </div>
             <p className="text-sm text-slate-400 dark:text-slate-500">
-              Manage system-wide announcements and review deployment information.
+              Manage branding, announcements, email delivery, and deployment information.
             </p>
           </div>
 
@@ -891,6 +1308,361 @@ export default function AdminSettings() {
                 </div>
               </div>
             </div>
+          </SettingsCard>
+
+          <SettingsCard
+            icon={EnvelopeSimple}
+            iconBg="bg-blue-100 dark:bg-blue-950/50"
+            iconColor="text-blue-600 dark:text-blue-400"
+            title="Email Configuration"
+            description="Configure Gmail SMTP delivery for welcome emails, reminders, and portal-open notifications."
+          >
+            {emailLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-blue-500 animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-slate-100">SMTP Settings</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Use a Gmail or Google Workspace sender with an app password. Email delivery will no-op safely when disabled.
+                    </p>
+                  </div>
+                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-black ${STATUS_TONE_CLASSES[emailStatusTone].badge}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${STATUS_TONE_CLASSES[emailStatusTone].dot}`} />
+                    {emailStatusLabel}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">SMTP Host</label>
+                    <input
+                      value={emailConfig.smtp_host}
+                      onChange={(e) => setEmailConfig((prev) => ({ ...prev, smtp_host: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                      placeholder="smtp.gmail.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">SMTP Port</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="65535"
+                      value={emailConfig.smtp_port}
+                      onChange={(e) => setEmailConfig((prev) => ({ ...prev, smtp_port: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Sender Email</label>
+                    <input
+                      value={emailConfig.smtp_user}
+                      onChange={(e) => setEmailConfig((prev) => ({ ...prev, smtp_user: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                      placeholder="aip-pir@deped.gov.ph"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">App Password</label>
+                    <input
+                      type="password"
+                      value={emailConfig.smtp_pass}
+                      onChange={(e) => setEmailConfig((prev) => ({ ...prev, smtp_pass: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                      placeholder={emailConfig.has_password ? 'Saved password will be kept unless replaced' : 'Gmail app password'}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Sender Display Name</label>
+                    <input
+                      value={emailConfig.from_name}
+                      onChange={(e) => setEmailConfig((prev) => ({ ...prev, from_name: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                      placeholder="AIP-PIR System"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50/70 dark:bg-dark-base/70 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-slate-100">Email sending</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Enable or disable all outbound email delivery without removing the saved SMTP credentials.</p>
+                  </div>
+                  <button
+                    onClick={() => setEmailConfig((prev) => ({ ...prev, is_enabled: !prev.is_enabled }))}
+                    className="flex items-center gap-3"
+                  >
+                    <div className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${emailConfig.is_enabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200 ${emailConfig.is_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </div>
+                    <span className="text-xs font-black text-slate-700 dark:text-slate-200">
+                      {emailConfig.is_enabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleSaveEmailConfig}
+                    disabled={emailSaving}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-colors"
+                  >
+                    {emailSaving
+                      ? <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                      : <FloppyDisk size={15} weight="bold" />}
+                    {emailSaving ? 'Saving…' : 'Save Email Settings'}
+                  </button>
+                  <button
+                    onClick={handleSendTestEmail}
+                    disabled={emailTesting}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-dark-base dark:hover:bg-white/[0.06] text-slate-700 dark:text-slate-200 disabled:opacity-50 transition-colors"
+                  >
+                    {emailTesting
+                      ? <span className="w-4 h-4 rounded-full border-2 border-slate-400/40 border-t-slate-500 animate-spin" />
+                      : <PaperPlaneTilt size={15} weight="bold" />}
+                    {emailTesting ? 'Sending Test…' : 'Send Test Email'}
+                  </button>
+                </div>
+              </>
+            )}
+          </SettingsCard>
+
+          <SettingsCard
+            icon={Clock}
+            iconBg="bg-amber-100 dark:bg-amber-950/50"
+            iconColor="text-amber-600 dark:text-amber-400"
+            title="Magic Link Settings"
+            description="Set how long each type of magic link remains valid."
+          >
+            {emailLoading ? (
+              <div className="flex items-center justify-center h-28">
+                <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-amber-500 animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 gap-4">
+                  <DurationField
+                    label="Login"
+                    description="Standard magic link for email-based sign-in."
+                    value={ttlInputs.login}
+                    onChange={(next) => setTtlInputs((prev) => ({ ...prev, login: next }))}
+                  />
+                  <DurationField
+                    label="Welcome"
+                    description="Magic link included in welcome emails for newly created accounts."
+                    value={ttlInputs.welcome}
+                    onChange={(next) => setTtlInputs((prev) => ({ ...prev, welcome: next }))}
+                  />
+                  <DurationField
+                    label="Deadline Reminder"
+                    description="Magic link included in deadline reminder emails."
+                    value={ttlInputs.reminder}
+                    onChange={(next) => setTtlInputs((prev) => ({ ...prev, reminder: next }))}
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSaveEmailConfig}
+                    disabled={emailSaving}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-colors"
+                  >
+                    <FloppyDisk size={15} weight="bold" />
+                    Save TTLs
+                  </button>
+                </div>
+              </>
+            )}
+          </SettingsCard>
+
+          <SettingsCard
+            icon={Users}
+            iconBg="bg-emerald-100 dark:bg-emerald-950/50"
+            iconColor="text-emerald-600 dark:text-emerald-400"
+            title="Recipients Directory"
+            description="Review the active users who can receive broadcast or reminder emails."
+          >
+            {emailLoading ? (
+              <div className="flex items-center justify-center h-28">
+                <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-emerald-500 animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatTile icon={Users} label="Recipients" value={recipientsData.total ?? 0} />
+                  {recipientsData.groups.slice(0, 3).map((group) => (
+                    <StatTile key={group.role} icon={Buildings} label={group.role} value={group.count} />
+                  ))}
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    onClick={() => setRecipientRoleFilter('All')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${recipientRoleFilter === 'All' ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-border/80'}`}
+                  >
+                    All ({recipientsData.total ?? 0})
+                  </button>
+                  {recipientsData.groups.map((group) => (
+                    <button
+                      key={group.role}
+                      onClick={() => setRecipientRoleFilter(group.role)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${recipientRoleFilter === group.role ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-dark-border/80'}`}
+                    >
+                      {group.role} ({group.count})
+                    </button>
+                  ))}
+                </div>
+
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-dark-border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-dark-base">
+                      <tr className="text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                        <th className="px-4 py-3">Name</th>
+                        <th className="px-4 py-3">Email</th>
+                        <th className="px-4 py-3">Role</th>
+                        <th className="px-4 py-3">Affiliation</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
+                      {filteredRecipients.map((recipient) => (
+                        <tr key={recipient.id}>
+                          <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">{recipient.name}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">{recipient.email}</td>
+                          <td className="px-4 py-3"><StatusBadge status={recipient.role} size="xs" /></td>
+                          <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{recipient.affiliation}</td>
+                        </tr>
+                      ))}
+                      {filteredRecipients.length === 0 && (
+                        <tr>
+                          <td colSpan="4" className="px-4 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                            No recipients match the selected role filter.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </SettingsCard>
+
+          <SettingsCard
+            icon={PaperPlaneTilt}
+            iconBg="bg-violet-100 dark:bg-violet-950/50"
+            iconColor="text-violet-600 dark:text-violet-400"
+            title="Portal Open Notification"
+            description="Send a seasonal announcement that the AIP or PIR portal is now open."
+          >
+            {emailLoading ? (
+              <div className="flex items-center justify-center h-28">
+                <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-violet-500 animate-spin" />
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Notification Type</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['aip', 'pir'].map((type) => (
+                        <button
+                          key={type}
+                          onClick={() => setBlastForm((prev) => ({ ...prev, type }))}
+                          className={`px-4 py-2 rounded-xl text-sm font-black border transition-colors ${blastForm.type === type ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-dark-base text-slate-700 dark:text-slate-300 border-slate-200 dark:border-dark-border hover:border-indigo-300'}`}
+                        >
+                          {type.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Period Label</label>
+                    <input
+                      value={blastForm.label}
+                      onChange={(e) => setBlastForm((prev) => ({ ...prev, label: e.target.value }))}
+                      className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                      placeholder={blastForm.type === 'aip' ? '2027' : '2nd Quarter CY 2026'}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Target Roles</p>
+                  <div className="flex flex-wrap gap-2">
+                    {recipientsData.groups.map((group) => {
+                      const checked = blastForm.target_roles.includes(group.role);
+                      return (
+                        <button
+                          key={group.role}
+                          onClick={() => handleToggleBlastRole(group.role)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${checked ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-dark-base text-slate-700 dark:text-slate-300 border-slate-200 dark:border-dark-border hover:border-indigo-300'}`}
+                        >
+                          {group.role} ({group.count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50/70 dark:bg-dark-base/70 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-slate-100">Estimated recipients</p>
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Current selection will send to {estimatedBlastRecipients} active user{estimatedBlastRecipients === 1 ? '' : 's'}.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleSendPortalBlast}
+                    disabled={blastSending || blastForm.target_roles.length === 0}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-colors"
+                  >
+                    {blastSending
+                      ? <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                      : <PaperPlaneTilt size={15} weight="bold" />}
+                    {blastSending ? 'Sending…' : `Send to ${estimatedBlastRecipients} users`}
+                  </button>
+                </div>
+
+                {(blastProgress.running || blastProgress.items.length > 0 || blastProgress.error) && (
+                  <StreamProgressCard title="Portal Open Email Batch" progress={blastProgress} />
+                )}
+
+                <div>
+                  <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Recent Blasts</p>
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-dark-border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 dark:bg-dark-base">
+                        <tr className="text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                          <th className="px-4 py-3">Type</th>
+                          <th className="px-4 py-3">Label</th>
+                          <th className="px-4 py-3">Recipients</th>
+                          <th className="px-4 py-3">Sent At</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
+                        {blastHistory.map((entry) => (
+                          <tr key={entry.blast_key}>
+                            <td className="px-4 py-3"><StatusBadge status={entry.blast_type?.toUpperCase?.() || entry.blast_type} size="xs" /></td>
+                            <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">{entry.blast_label}</td>
+                            <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{entry.recipient_count}</td>
+                            <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{formatDateTime(entry.sent_at)}</td>
+                          </tr>
+                        ))}
+                        {blastHistory.length === 0 && (
+                          <tr>
+                            <td colSpan="4" className="px-4 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                              No portal-open email blasts have been sent yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </SettingsCard>
 
           {/* ── System Announcement ─────────────────────── */}
@@ -1126,6 +1898,61 @@ export default function AdminSettings() {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          </SettingsCard>
+
+          {/* ── Division Signatories ────────────────────── */}
+          <SettingsCard
+            icon={IdentificationCard}
+            iconBg="bg-violet-100 dark:bg-violet-950/50"
+            iconColor="text-violet-600 dark:text-violet-400"
+            title="Division Signatories"
+            description="Set the 'Noted by' name and title shown on PIR forms for each functional division (SGOD, CID, OSDS)."
+          >
+            <div className="space-y-4">
+              {[
+                { key: 'sgod', label: 'SGOD' },
+                { key: 'cid',  label: 'CID'  },
+                { key: 'osds', label: 'OSDS' },
+              ].map(({ key, label }) => (
+                <div key={key} className="rounded-2xl border border-slate-200 dark:border-dark-border bg-slate-50/70 dark:bg-dark-base/70 p-4">
+                  <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{label}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={divisionSignatories[`${key}_noted_by_name`]}
+                        onChange={e => setDivisionSignatories(prev => ({ ...prev, [`${key}_noted_by_name`]: e.target.value }))}
+                        placeholder={`${label} signatory name`}
+                        className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Title</label>
+                      <input
+                        type="text"
+                        value={divisionSignatories[`${key}_noted_by_title`]}
+                        onChange={e => setDivisionSignatories(prev => ({ ...prev, [`${key}_noted_by_title`]: e.target.value }))}
+                        placeholder={`${label} signatory title`}
+                        className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="flex justify-end">
+                <button
+                  onClick={saveDivisionSignatories}
+                  disabled={savingSignatories}
+                  className="flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-colors"
+                >
+                  {savingSignatories
+                    ? <span className="w-3.5 h-3.5 rounded-full border-2 border-white/50 border-t-white animate-spin" />
+                    : <FloppyDisk size={15} weight="bold" />}
+                  {savingSignatories ? 'Saving…' : 'Save Signatories'}
+                </button>
               </div>
             </div>
           </SettingsCard>

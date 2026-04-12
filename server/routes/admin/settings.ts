@@ -5,6 +5,15 @@ import { sanitizeObject } from "../../lib/sanitize.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { adminOnly } from "./shared/guards.ts";
 import {
+  EMAIL_PASSWORD_MASK,
+  getOrCreateEmailConfig,
+  isEmailConfigured,
+  toPublicEmailConfig,
+  validateMagicLinkTtlMinutes,
+} from "../../lib/emailConfig.ts";
+import { encryptText } from "../../lib/emailCrypto.ts";
+import { sendMail } from "../../lib/mailer.ts";
+import {
   APP_LOGO_DIR,
   LOGO_MIME_EXTENSIONS,
   removeExistingAppLogos,
@@ -21,6 +30,146 @@ settingsRoutes.get("/settings/system-info", async (c) => {
     prisma.program.count(),
   ]);
   return c.json({ userCount, schoolCount, programCount });
+});
+
+settingsRoutes.get("/settings/email-config", async (c) => {
+  const config = await getOrCreateEmailConfig();
+  return c.json(toPublicEmailConfig(config));
+});
+
+settingsRoutes.put("/settings/email-config", async (c) => {
+  const admin = getUserFromToken(c)!;
+  const body = sanitizeObject(await c.req.json());
+  const current = await getOrCreateEmailConfig();
+
+  const smtpHost = typeof body.smtp_host === "string" && body.smtp_host.trim()
+    ? body.smtp_host.trim()
+    : current.smtp_host;
+  const smtpPort = body.smtp_port !== undefined ? Number(body.smtp_port) : current.smtp_port;
+  const smtpUser = typeof body.smtp_user === "string"
+    ? body.smtp_user.trim()
+    : current.smtp_user;
+  const fromName = typeof body.from_name === "string" && body.from_name.trim()
+    ? body.from_name.trim()
+    : current.from_name;
+  const isEnabled = body.is_enabled !== undefined
+    ? Boolean(body.is_enabled)
+    : current.is_enabled;
+
+  if (!Number.isInteger(smtpPort) || smtpPort <= 0 || smtpPort > 65535) {
+    return c.json({ error: "SMTP port must be a whole number between 1 and 65535." }, 400);
+  }
+
+  let smtpPassEnc = current.smtp_pass_enc;
+  if (body.smtp_pass !== undefined) {
+    const incomingPassword = typeof body.smtp_pass === "string"
+      ? body.smtp_pass.trim()
+      : "";
+    if (incomingPassword && incomingPassword !== EMAIL_PASSWORD_MASK) {
+      smtpPassEnc = await encryptText(incomingPassword);
+    }
+  }
+
+  let magicLinkTtlLogin = current.magic_link_ttl_login;
+  let magicLinkTtlWelcome = current.magic_link_ttl_welcome;
+  let magicLinkTtlReminder = current.magic_link_ttl_reminder;
+
+  try {
+    if (body.magic_link_ttl_login !== undefined) {
+      magicLinkTtlLogin = validateMagicLinkTtlMinutes(
+        body.magic_link_ttl_login,
+        "Login magic link",
+      );
+    }
+    if (body.magic_link_ttl_welcome !== undefined) {
+      magicLinkTtlWelcome = validateMagicLinkTtlMinutes(
+        body.magic_link_ttl_welcome,
+        "Welcome magic link",
+      );
+    }
+    if (body.magic_link_ttl_reminder !== undefined) {
+      magicLinkTtlReminder = validateMagicLinkTtlMinutes(
+        body.magic_link_ttl_reminder,
+        "Reminder magic link",
+      );
+    }
+  } catch (error) {
+    return c.json({
+      error: error instanceof Error ? error.message : "Invalid email settings.",
+    }, 400);
+  }
+
+  const updated = await prisma.emailConfig.update({
+    where: { id: current.id },
+    data: {
+      smtp_host: smtpHost,
+      smtp_port: smtpPort,
+      smtp_user: smtpUser,
+      smtp_pass_enc: smtpPassEnc,
+      from_name: fromName,
+      is_enabled: isEnabled,
+      magic_link_ttl_login: magicLinkTtlLogin,
+      magic_link_ttl_welcome: magicLinkTtlWelcome,
+      magic_link_ttl_reminder: magicLinkTtlReminder,
+    },
+  });
+
+  await writeAuditLog(admin.id, "updated_email_config", "EmailConfig", updated.id, {
+    smtp_host: updated.smtp_host,
+    smtp_port: updated.smtp_port,
+    smtp_user: updated.smtp_user,
+    has_password: Boolean(updated.smtp_pass_enc),
+    from_name: updated.from_name,
+    is_enabled: updated.is_enabled,
+    magic_link_ttl_login: updated.magic_link_ttl_login,
+    magic_link_ttl_welcome: updated.magic_link_ttl_welcome,
+    magic_link_ttl_reminder: updated.magic_link_ttl_reminder,
+  });
+
+  return c.json(toPublicEmailConfig(updated));
+});
+
+settingsRoutes.post("/settings/email-config/test", async (c) => {
+  const admin = getUserFromToken(c)!;
+  const [config, adminUser] = await Promise.all([
+    getOrCreateEmailConfig(),
+    prisma.user.findUnique({
+      where: { id: admin.id },
+      select: { email: true, name: true },
+    }),
+  ]);
+
+  if (!adminUser?.email) {
+    return c.json({ error: "Admin account does not have an email address." }, 400);
+  }
+
+  if (!isEmailConfigured(config, { ignoreDisabled: true })) {
+    return c.json({ error: "SMTP is incomplete. Save a valid sender email and app password first." }, 400);
+  }
+
+  const result = await sendMail({
+    to: adminUser.email,
+    subject: "AIP-PIR email configuration test",
+    html: `
+      <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.7;color:#0f172a;">
+        <p>Hello ${adminUser.name ?? adminUser.email},</p>
+        <p>This is a successful test message from the AIP-PIR email configuration screen.</p>
+        <p>If you received this, the configured SMTP credentials are working.</p>
+      </div>
+    `,
+  }, { ignoreDisabled: true });
+
+  if (result.status !== "sent") {
+    return c.json({
+      error: result.error ?? "Test email could not be sent.",
+    }, 400);
+  }
+
+  await writeAuditLog(admin.id, "sent_email_config_test", "EmailConfig", config.id, {
+    target_email: adminUser.email,
+  });
+
+  return c.json({ success: true, target: adminUser.email });
 });
 
 settingsRoutes.get("/settings/division-config", async (c) => {

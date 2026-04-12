@@ -284,8 +284,8 @@ export default function PIRFormEditor({
                 <Suspense fallback={<PreviewFallback />}>
                     <LazyPIRDocument
                         quarter={quarterString}
-                        supervisorName={supervisorName}
-                        supervisorTitle={supervisorTitle}
+                        supervisorName={resolvedNotedBy.name}
+                        supervisorTitle={resolvedNotedBy.title}
                         program={profile.program}
                         school={profile.school}
                         owner={profile.owner}

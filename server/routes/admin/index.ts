@@ -19,6 +19,7 @@ import reportsRoutes from "./reports.ts";
 import announcementsRoutes from "./announcements.ts";
 import settingsRoutes from "./settings.ts";
 import auditRoutes from "./audit.ts";
+import emailRoutes from "./emailBlast.ts";
 
 const adminRoutes = new Hono();
 
@@ -37,6 +38,7 @@ adminRoutes.route("/", deadlinesRoutes);
 adminRoutes.route("/", reportsRoutes);
 adminRoutes.route("/", announcementsRoutes);
 adminRoutes.route("/", settingsRoutes);
+adminRoutes.route("/", emailRoutes);
 adminRoutes.route("/", auditRoutes);
 
 export default adminRoutes;

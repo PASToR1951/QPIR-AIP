@@ -406,7 +406,7 @@ export default function HelpLauncher() {
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.92 }}
           transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-          className={`flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full transition-[background-image,box-shadow,transform] ${t.fab} ${t.fabHover}`}
+          className={`flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full transition-[box-shadow] fab-sheen ${t.fab} ${t.fabHover}`}
           aria-label="Open help and accessibility options"
           aria-expanded={isOpen}
         >

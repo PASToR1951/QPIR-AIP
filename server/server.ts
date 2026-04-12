@@ -10,8 +10,10 @@ import adminRoutes from "./routes/admin.ts";
 import backupRoutes from "./routes/backup.ts";
 import { prisma as _prisma } from "./db/client.ts";
 import { getUserFromToken } from "./lib/auth.ts";
+import { ALLOWED_ORIGIN } from "./lib/config.ts";
 import { logger } from "./lib/logger.ts";
 import { startDeadlineReminderScheduler } from "./lib/deadlineReminders.ts";
+import { startMagicLinkCleanupScheduler } from "./lib/magicLink.ts";
 
 const app = new Hono();
 
@@ -76,7 +78,7 @@ app.use('*', secureHeaders({
 }));
 
 app.use('*', cors({
-  origin: Deno.env.get("ALLOWED_ORIGIN") || "http://localhost:5173",
+  origin: ALLOWED_ORIGIN,
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -220,5 +222,6 @@ app.route('/api/admin/backup', backupRoutes);
 const PORT = parseInt(Deno.env.get("PORT") || "3001");
 logger.info(`AIP-PIR backend running on http://localhost:${PORT}`);
 startDeadlineReminderScheduler();
+startMagicLinkCleanupScheduler();
 
 Deno.serve({ port: PORT }, app.fetch);

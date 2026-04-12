@@ -184,14 +184,15 @@ export default function Login() {
     }
 
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+      const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         email: finalEmail,
         password,
         recaptchaToken: token,
       }, { withCredentials: true });
 
-      const user = await auth.refreshSession();
-      navigate(roleToDashboard(user.role), { replace: true });
+      // Use the user data returned by /login directly — no need for a second /me round trip.
+      auth.setSession(data.user, data.expiresAt);
+      navigate(roleToDashboard(data.user.role), { replace: true });
     } catch (err) {
       shakeCard();
       setError(
@@ -212,13 +213,22 @@ export default function Login() {
 
   // Shared privacy notice below both login views
   const privacyNotice = (
-    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed text-center px-2">
-      By signing in, you agree to the portal&apos;s{' '}
-      <Link to="/privacy" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
-        Privacy Notice
-      </Link>
-      {' '}under the Data Privacy Act of 2012.
-    </p>
+    <div className="space-y-1 text-center px-2">
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+        By signing in, you agree to the portal&apos;s{' '}
+        <Link to="/privacy" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+          Privacy Notice
+        </Link>
+        {' '}under the Data Privacy Act of 2012.
+      </p>
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed">
+        Protected by reCAPTCHA &mdash; Google{' '}
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="hover:underline">Privacy Policy</a>
+        {' '}&amp;{' '}
+        <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer" className="hover:underline">Terms of Service</a>
+        {' '}apply.
+      </p>
+    </div>
   );
 
   return (

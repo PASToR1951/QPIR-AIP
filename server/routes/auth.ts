@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 import { setCookie, deleteCookie, getCookie } from "hono/cookie";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
@@ -7,6 +8,7 @@ import { JWT_SECRET, RECAPTCHA_SECRET_KEY } from "../lib/config.ts";
 import { logger } from "../lib/logger.ts";
 import { getUserFromToken } from "../lib/auth.ts";
 import { clearTokenCookieOptions, tokenCookieOptions } from "../lib/sessionCookie.ts";
+import { consumeMagicLink } from "../lib/magicLink.ts";
 
 const authRoutes = new Hono();
 const DEFAULT_CHECKLIST_PROGRESS = {
@@ -50,6 +52,64 @@ function buildOnboardingPayload(user: Record<string, unknown>) {
       user.checklist_progress ?? DEFAULT_CHECKLIST_PROGRESS,
     ),
   };
+}
+
+function buildSessionUserPayload(user: Record<string, unknown>) {
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    school_id: user.school_id,
+    school_name: (user.school as { name?: string } | null)?.name,
+    cluster_id: user.cluster_id ?? (user.school as { cluster_id?: number | null } | null)?.cluster_id ?? null,
+    cluster_number:
+      (user.cluster as { cluster_number?: number | null } | null)?.cluster_number ??
+      ((user.school as { cluster?: { cluster_number?: number | null } } | null)?.cluster?.cluster_number ?? null),
+    cluster_logo:
+      (user.cluster as { logo?: string | null } | null)?.logo ??
+      ((user.school as { cluster?: { logo?: string | null } } | null)?.cluster?.logo ?? null),
+    school_logo: (user.school as { logo?: string | null } | null)?.logo ?? null,
+    name: user.name,
+    first_name: user.first_name,
+    middle_initial: user.middle_initial,
+    last_name: user.last_name,
+    must_change_password: user.must_change_password,
+    ...buildOnboardingPayload(user),
+  };
+}
+
+function issueSessionCookie(c: Context, user: Record<string, unknown>) {
+  const token = jwt.sign(
+    {
+      id: user.id,
+      role: user.role,
+      school_id: user.school_id,
+      cluster_id: user.cluster_id ??
+        (user.school as { cluster_id?: number | null } | null)?.cluster_id ??
+        null,
+    },
+    JWT_SECRET,
+    { expiresIn: "24h" },
+  );
+
+  setCookie(c, "token", token, tokenCookieOptions(c));
+  return {
+    token,
+    expiresAt: Math.floor(Date.now() / 1000) + 86400,
+  };
+}
+
+function completeSessionLogin(
+  c: Context,
+  user: Record<string, unknown>,
+  message = "Login successful",
+) {
+  const { expiresAt } = issueSessionCookie(c, user);
+  return c.json({
+    message,
+    expiresAt,
+    user: buildSessionUserPayload(user),
+  });
 }
 
 // ── In-memory login rate limiter ─────────────────────────────────────────────
@@ -141,46 +201,35 @@ authRoutes.post('/login', async (c) => {
     // Successful login — clear rate-limit counter
     loginAttempts.delete(key);
 
-    // Issue JWT — payload contains only non-PII identifiers needed for authorization.
-    // Names, email, and school_name are NOT embedded; fetch from DB when needed.
-    const token = jwt.sign(
-      {
-        id: user.id,
-        role: user.role,
-        school_id: user.school_id,
-        cluster_id: user.cluster_id ?? user.school?.cluster_id ?? null,
-      },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    // Set HttpOnly cookie
-    setCookie(c, 'token', token, tokenCookieOptions(c));
-
-    return c.json({
-      message: 'Login successful',
-      expiresAt: Math.floor(Date.now() / 1000) + 86400,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        school_id: user.school_id,
-        school_name: user.school?.name,
-        cluster_id: user.cluster_id ?? user.school?.cluster_id ?? null,
-        cluster_number: user.cluster?.cluster_number ?? user.school?.cluster?.cluster_number ?? null,
-        cluster_logo: user.cluster?.logo ?? user.school?.cluster?.logo ?? null,
-        school_logo: user.school?.logo ?? null,
-        name: user.name,
-        first_name: user.first_name,
-        middle_initial: user.middle_initial,
-        last_name: user.last_name,
-        must_change_password: user.must_change_password,
-        ...buildOnboardingPayload(user as Record<string, unknown>),
-      }
-    });
+    return completeSessionLogin(c, user as Record<string, unknown>);
   } catch (error) {
     logger.error('Login failed', error);
     return c.json({ error: 'Login failed' }, 500);
+  }
+});
+
+authRoutes.post('/magic-link/verify', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const token = typeof body?.token === 'string' ? body.token.trim() : '';
+
+  if (!token) {
+    return c.json({ error: 'Magic link token is required.' }, 400);
+  }
+
+  try {
+    const result = await consumeMagicLink(token);
+    if (!result.ok) {
+      return c.json({ error: result.error }, 400);
+    }
+
+    return completeSessionLogin(
+      c,
+      result.user as Record<string, unknown>,
+      'Magic link verified',
+    );
+  } catch (error) {
+    logger.error('Magic link verification failed', error);
+    return c.json({ error: 'Magic link verification failed.' }, 500);
   }
 });
 

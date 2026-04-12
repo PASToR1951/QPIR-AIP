@@ -5,6 +5,7 @@ import { getUserFromToken } from "../../lib/auth.ts";
 import { logger } from "../../lib/logger.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { sanitizeObject } from "../../lib/sanitize.ts";
+import { sendWelcomeEmail } from "../../lib/accountEmails.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { adminOnly, OBSERVER_ROLE } from "./shared/guards.ts";
 import { parsePositiveInt } from "./shared/params.ts";
@@ -206,6 +207,13 @@ usersRoutes.post("/users", async (c) => {
       return created;
     });
 
+    void sendWelcomeEmail(user.id).catch((error) => {
+      logger.error("Welcome email failed after user creation", {
+        user_id: user.id,
+        error,
+      });
+    });
+
     return c.json({ id: user.id, email: user.email, role: user.role });
   } catch (error: unknown) {
     const code = (error as { code?: string })?.code;
@@ -334,6 +342,7 @@ usersRoutes.post("/users/import", async (c) => {
   let imported = 0;
   let skipped = 0;
   const rolesImported: Record<string, number> = {};
+  const createdUserIds: number[] = [];
 
   for (const row of validRows) {
     if (existingEmailSet.has(row.email)) {
@@ -341,7 +350,7 @@ usersRoutes.post("/users/import", async (c) => {
       continue;
     }
     try {
-      await prisma.user.create({
+      const created = await prisma.user.create({
         data: {
           email: row.email,
           password: null,
@@ -358,6 +367,7 @@ usersRoutes.post("/users/import", async (c) => {
           }),
         },
       });
+      createdUserIds.push(created.id);
       imported++;
       rolesImported[row.role] = (rolesImported[row.role] ?? 0) + 1;
     } catch (error: unknown) {
@@ -382,7 +392,7 @@ usersRoutes.post("/users/import", async (c) => {
     logger.error("Failed to write audit log for bulk import", error);
   }
 
-  return c.json({ imported, skipped, errors });
+  return c.json({ imported, skipped, errors, created_user_ids: createdUserIds });
 });
 
 usersRoutes.patch("/users/:id", async (c) => {
