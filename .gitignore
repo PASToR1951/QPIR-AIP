@@ -24,6 +24,7 @@ docs-update-prompt.txt
 # ── Local LLM / AI assistant artifacts ───────────────────────────────────────
 /.claude/
 /.codex
+CLAUDE.md
 
 # ── Audit scripts & ephemeral token cache ────────────────────────────────────
 server/scripts/.audit_tokens.json

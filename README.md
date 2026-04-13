@@ -2,7 +2,7 @@
 
 Web-based system for managing **Annual Implementation Plans (AIP)** and **Program Implementation Reviews (PIR)** for the DepEd Division of Guihulngan City.
 
-> **Version:** 1.0.0-beta — Beta Build
+> **Version:** 1.1.0-beta — Beta 2
 
 ---
 
@@ -15,7 +15,8 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 - **Division Personnel** — manages programs they are assigned to; maintains independent AIP/PIR records
 - **CES-SGOD / CES-ASDS / CES-CID** — reviews division-level PIRs within their functional division
 - **Cluster Coordinator** — reviews school PIRs for all schools within their assigned cluster
-- **Admin** — full system access; manages users, schools, programs, deadlines, and submissions
+- **Admin** — full system access; manages users, schools, programs, deadlines, email, and submissions
+- **Observer** — read-only access to submitted AIPs and PIRs across the division
 - **Pending** — newly created accounts awaiting role assignment by an Admin
 
 ---
@@ -201,11 +202,19 @@ If you serve the frontend from a non-Vite origin such as `http://localhost` on p
 ## Key Features
 
 - **Gated Workflow** — PIR submission is locked until the school's AIP for that program and year is approved.
-- **Full Admin Panel** — manage users, schools, clusters, programs, deadlines, announcements, and system settings from a single interface.
+- **Full Admin Panel** — manage users, schools, clusters, programs, deadlines, announcements, email config, and system settings.
 - **PIR Review Pipeline** — structured multi-stage review: CES notation → Cluster Head review → Admin approval/return, with per-activity evaluation notes.
-- **OAuth SSO** — Google sign-in with PKCE; local password login also supported.
+- **OAuth SSO** — Google sign-in with PKCE and DepEd domain enforcement; email/password login also supported.
+- **SMTP Email** — configurable division SMTP for transactional email, magic link sign-in, and admin email blasts.
+- **Magic Link Login** — admin-generated one-time sign-in URLs for account provisioning; single-use with expiry.
+- **Must Change Password** — accounts with temporary passwords are gated until a permanent password is set.
+- **reCAPTCHA v3** — silent bot protection on the login form.
+- **Program Templates** — admins pre-configure activity phase sets per program; new AIPs are pre-filled automatically.
+- **Division Signatories** — six configurable signatory fields on the division config; printed in AIP/PIR document footers.
+- **Onboarding Tour** — role-specific guided tour for first-time users with checklist, spotlight overlay, and keyboard navigation.
+- **Practice Mode** — sandbox for exploring AIP/PIR forms without creating real database records.
 - **Notifications** — in-app notification bell with deep-linking to the relevant PIR or AIP on click.
-- **Announcements** — admin-authored system-wide or targeted announcements with @mention support for schools and personnel.
+- **Announcements** — admin-authored system-wide or targeted announcements with @mention support.
 - **Audit Log** — every admin action is recorded with entity reference; preserved on account deletion (RA 10173 §20).
 - **Privacy Compliance** — right-to-erasure via PII anonymization (RA 10173 §23); soft-delete timestamps on users, AIPs, and PIRs.
 - **Database Backups** — admin-triggered backups with status tracking via the Backups panel.
@@ -213,7 +222,7 @@ If you serve the frontend from a non-Vite origin such as `http://localhost` on p
 - **Import Users** — bulk user creation via CSV import in the Users admin panel.
 - **Timeline-Aware PIR** — AIP activities are filtered by scheduled month range so only activities due in the selected quarter appear in the PIR form.
 - **Interactive Dashboard** — real-time progress with a `QuarterTimeline` stepper, urgency-aware deadline tiers, and submission history.
-- **Print-ready Documents** — generates formatted AIP and PIR documents with institutional branding.
+- **Print-ready Documents** — generates formatted AIP and PIR documents with institutional branding and division signatories.
 - **Accessibility Engine** — high contrast, reduced motion, and dyslexia-friendly font (OpenDyslexic) options.
 - **Performance** — React 19 memoization, stable callbacks, CSS animations, and code-split lazy routes.
 
@@ -230,8 +239,10 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `GET` | `/api/health` | Health check |
 | `GET` | `/api/config` | Public division config used in generated documents |
 | `GET` | `/api/announcement` | Current broadcast or targeted announcement |
-| `POST` | `/api/auth/login` | Password login; sets JWT cookie |
+| `POST` | `/api/auth/login` | Password login with reCAPTCHA; sets JWT cookie |
 | `POST` | `/api/auth/logout` | Clears session cookie |
+| `POST` | `/api/auth/change-password` | Change password; clears must_change_password flag |
+| `POST` | `/api/auth/magic-link/verify` | Verify a one-time magic link token; sets session |
 | `GET` | `/api/auth/me` | Current user profile and session expiry metadata |
 | `GET` | `/api/auth/oauth/google` | Initiate Google OAuth flow |
 | `GET` | `/api/auth/oauth/google/callback` | Google OAuth callback |
@@ -272,6 +283,7 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `GET/POST/PATCH/DELETE` | `/api/admin/users` | User management |
 | `POST` | `/api/admin/users/import` | Bulk user import (CSV) |
 | `POST` | `/api/admin/users/:id/reset-password` | Generate a temporary password |
+| `POST` | `/api/admin/users/:id/magic-link` | Generate a magic link token for this user |
 | `POST` | `/api/admin/users/:id/anonymize` | PII erasure (RA 10173 §23) |
 | `GET/POST/PATCH/DELETE` | `/api/admin/clusters` | Cluster management |
 | `POST/DELETE` | `/api/admin/clusters/:id/logo` | Cluster logo upload/removal |
@@ -280,6 +292,7 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `POST/DELETE` | `/api/admin/schools/:id/logo` | School logo upload/removal |
 | `GET/POST/PATCH/DELETE` | `/api/admin/programs` | Program management |
 | `PATCH` | `/api/admin/programs/:id/personnel` | Assign personnel to a program |
+| `GET/PUT` | `/api/admin/programs/:id/template` | Get or set the activity template for a program |
 | `GET/POST/PATCH/DELETE` | `/api/admin/division-programs` | Division-level program management |
 | `GET/POST/DELETE` | `/api/admin/deadlines` | Deadline management |
 | `GET` | `/api/admin/deadlines/history` | Deadline audit/history view |
@@ -307,7 +320,10 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `GET` | `/api/admin/reports/:type/export` | CSV/XLSX report export |
 | `GET/POST/DELETE` | `/api/admin/announcements` | Announcement management |
 | `GET` | `/api/admin/settings/system-info` | Runtime system info for settings |
-| `GET/POST` | `/api/admin/settings/division-config` | Division config (supervisor name/title) |
+| `GET/POST` | `/api/admin/settings/division-config` | Division config (supervisor name/title/signatories) |
+| `GET/PUT` | `/api/admin/settings/email-config` | SMTP email configuration |
+| `POST` | `/api/admin/settings/email-config/test` | Test SMTP connection |
+| `GET/POST` | `/api/admin/email-blast` | Email blast management |
 | `GET` | `/api/admin/audit-logs` | Audit log viewer |
 | `GET` | `/api/admin/backup/status` | Backup health and file listing |
 | `POST` | `/api/admin/backup/trigger` | Trigger a background hourly backup |
@@ -316,12 +332,13 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 
 ## Status
 
-Active beta build.
+Active beta — **Beta 2** (`v1.1.0-beta`, 2026-04-13).
 
-- Core workflows (AIP, PIR, dashboard) are complete and ready for beta validation.
-- Admin panel is feature-complete — users, schools, clusters, programs, deadlines, submissions, reports, backups, settings, announcements, and logs.
+- Core workflows (AIP, PIR, dashboard) are complete and validated.
+- Admin panel is feature-complete — users, schools, clusters, programs, deadlines, submissions, reports, backups, settings, announcements, email config, email blasts, and logs.
 - PIR review queues are complete: school PIRs route to Cluster Coordinators; division-level and Cluster Coordinator-owned PIRs route to CES; Admin retains oversight and override tools.
-- OAuth SSO, HttpOnly cookie sessions, real-time notifications, announcements, audit logs, and privacy compliance are implemented.
-- School/cluster logo uploads, bundled cluster-logo fallbacks, CSV user import, and report/export workflows are included in the Beta Build.
-- API client centralization through `react-app/src/lib/api.js` is in progress; several frontend callers still use direct `axios` calls while the migration is being completed.
+- Beta 2 additions: SMTP email system, magic link tokens, Must Change Password flow, reCAPTCHA v3, program templates, division signatories, onboarding tour, practice mode, Observer role, cluster head assignment.
+- Admin and form codebases refactored into focused subdirectory modules.
+- OAuth SSO (Google only — Microsoft OAuth removed), HttpOnly cookie sessions, real-time notifications, announcements, audit logs, and privacy compliance are implemented.
+- School/cluster logo uploads, bundled cluster-logo fallbacks, CSV user import, and report/export workflows are complete.
 - See internal `ROADMAP.md` and `TODO.md` for full milestone tracking.
