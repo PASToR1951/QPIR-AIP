@@ -5,16 +5,18 @@ import { Input } from '../../ui/Input';
 import AutocompleteInput from '../../ui/AutocompleteInput';
 import { useFormShellContext } from '../../../forms/shared/formShellContext.jsx';
 import { selectAipProfile, selectAipSuggestions, useAipDispatch, useAipSelector } from '../../../forms/aip/aipContext.jsx';
+import { getProjectTerminology } from '../../../lib/projectTerminology.js';
 import {
     OUTCOME_OPTIONS,
     getTargetOptionsForOutcome,
 } from '../../../forms/aip/strategicAlignmentCatalog.js';
 
-export default React.memo(function AIPProfileSection() {
+export default React.memo(function AIPProfileSection({ usesSchoolTerminology = true }) {
     const { appMode } = useFormShellContext();
     const dispatch = useAipDispatch();
     const profile = useAipSelector(selectAipProfile);
     const suggestions = useAipSelector(selectAipSuggestions);
+    const projectTerminology = getProjectTerminology(usesSchoolTerminology);
 
     const targetOptions = getTargetOptionsForOutcome(profile.outcome);
 
@@ -44,7 +46,13 @@ export default React.memo(function AIPProfileSection() {
                         <span className="text-sm font-semibold text-pink-800 dark:text-pink-300 truncate">{profile.depedProgram || '—'}</span>
                     </div>
                 </div>
-                <Input theme="pink" label="School Improvement Project / Title" placeholder="Enter SIP Title..." value={profile.sipTitle} onChange={(e) => dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'sipTitle', value: e.target.value } })} />
+                <Input
+                    theme="pink"
+                    label={projectTerminology.projectTitleLabel}
+                    placeholder={projectTerminology.projectTitlePlaceholder}
+                    value={profile.sipTitle}
+                    onChange={(e) => dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'sipTitle', value: e.target.value } })}
+                />
                 <AutocompleteInput theme="pink" label="Project Coordinator" placeholder="Name of Coordinator..." value={profile.projectCoord} onChange={(value) => dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'projectCoord', value } })} suggestions={suggestions.coordinatorSuggestions} />
             </div>
         </>

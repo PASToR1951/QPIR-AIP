@@ -103,13 +103,14 @@ export default function useProgramsAndConfig({
                     api.get('/api/programs/with-aips'),
                     schoolOrUserId ? api.get(`/api/schools/${schoolOrUserId}/coordinators`) : Promise.resolve(null),
                     schoolOrUserId ? api.get(`/api/schools/${schoolOrUserId}/persons-terms`) : Promise.resolve(null),
+                    api.get('/api/config', clusterId ? { params: { cluster_id: clusterId } } : undefined),
                 ]);
 
                 if (!isActive) {
                     return;
                 }
 
-                const [programsRes, completedRes, coordsRes, termsRes] = results;
+                const [programsRes, completedRes, coordsRes, termsRes, configRes] = results;
                 const nextState = {
                     ...EMPTY_STATE,
                     isLoading: false,
@@ -154,6 +155,21 @@ export default function useProgramsAndConfig({
 
                 if (termsRes.status === 'fulfilled' && termsRes.value?.data) {
                     nextState.personsTerms = termsRes.value.data;
+                }
+
+                if (configRes.status === 'fulfilled') {
+                    const cfg = configRes.value.data;
+                    nextState.supervisorName  = cfg.supervisor_name  ?? '';
+                    nextState.supervisorTitle = cfg.supervisor_title ?? '';
+                    nextState.notedBy = {
+                        SGOD: { name: cfg.sgod_noted_by_name ?? '', title: cfg.sgod_noted_by_title ?? '' },
+                        CID:  { name: cfg.cid_noted_by_name  ?? '', title: cfg.cid_noted_by_title  ?? '' },
+                        OSDS: { name: cfg.osds_noted_by_name ?? '', title: cfg.osds_noted_by_title ?? '' },
+                    };
+                    nextState.clusterHead = {
+                        name:  cfg.cluster_head_name  ?? '',
+                        title: cfg.cluster_head_title ?? 'Cluster Coordinator',
+                    };
                 }
 
                 setState(nextState);

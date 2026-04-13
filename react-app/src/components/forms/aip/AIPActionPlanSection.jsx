@@ -17,10 +17,6 @@ const TABLE_SHADED_CELL_CLASSNAME = 'border-r border-slate-200 bg-slate-50/30 p-
 function renderBudgetTotal(total) {
     return (
         <span className="inline-flex items-center gap-2 rounded-xl border border-pink-200 bg-pink-50 px-4 py-2 text-sm font-bold text-pink-800 dark:border-pink-900/50 dark:bg-pink-950/30 dark:text-pink-300">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="1" x2="12" y2="23"></line>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-            </svg>
             Total: ₱ {total.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
     );

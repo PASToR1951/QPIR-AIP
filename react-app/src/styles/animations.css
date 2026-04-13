@@ -1,0 +1,263 @@
+/* ============================================================
+   ANIMATIONS — @keyframes and animation utility classes
+   ============================================================ */
+
+/* --- Form Background Fade-in --- */
+@keyframes form-bg-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.form-bg-fade {
+  animation: form-bg-fade 0.4s ease-out both;
+}
+
+/* --- Login page animations --- */
+@keyframes login-card-entrance {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.login-card-entrance {
+  animation: login-card-entrance 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes login-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.login-stagger-child {
+  animation: login-fade-up 0.5s ease-out both;
+  animation-delay: calc(0.25s + var(--stagger-i, 0) * 0.09s);
+}
+
+@keyframes login-orb-float-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(20px, -30px) scale(1.1); }
+}
+.login-orb-float-1 { animation: login-orb-float-1 6s ease-in-out infinite; }
+
+@keyframes login-orb-float-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-20px, 40px) scale(1.2); }
+}
+.login-orb-float-2 { animation: login-orb-float-2 7s ease-in-out 1s infinite; }
+
+@keyframes login-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-10px); }
+  40%      { transform: translateX(10px); }
+  60%      { transform: translateX(-10px); }
+  80%      { transform: translateX(10px); }
+}
+.login-shake { animation: login-shake 0.3s ease-in-out; }
+
+.login-panel-shell {
+  overflow: hidden;
+  will-change: height;
+  transition: height 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-panel-track {
+  display: flex;
+  width: 200%;
+  align-items: flex-start;
+  transform: translateX(0);
+  will-change: transform;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-panel-track--manual {
+  transform: translateX(-50%);
+}
+
+.login-panel {
+  flex: 0 0 50%;
+  max-width: 50%;
+}
+
+.login-panel-content {
+  opacity: 0.2;
+  transform: translateY(12px);
+  will-change: opacity, transform;
+  transition:
+    opacity 0.24s ease,
+    transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-panel[data-active='true'] .login-panel-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.08s;
+}
+
+.login-panel[data-active='false'] .login-panel-content {
+  pointer-events: none;
+}
+
+@keyframes login-footer-up {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.login-footer-entrance {
+  animation: login-footer-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
+}
+.footer-item {
+  animation: login-fade-up 0.45s ease-out both;
+  animation-delay: calc(0.85s + var(--footer-i, 0) * 0.1s);
+}
+
+/* --- No-Connection Screen (CSS-only, no framer-motion) --- */
+@keyframes nc-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes nc-slide-down {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes nc-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes nc-stroke-draw {
+  from { stroke-dashoffset: 163; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes nc-check-draw {
+  from { stroke-dashoffset: 40; }
+  to   { stroke-dashoffset: 0; }
+}
+.nc-overlay    { animation: nc-fade-in 0.35s ease-in-out both; }
+.nc-slide-down { animation: nc-slide-down 0.5s ease-out both; }
+.nc-slide-up   { animation: nc-slide-up 0.5s ease-out both; }
+.nc-check-circle { animation: nc-stroke-draw 0.6s ease-out both; }
+.nc-check-path   { animation: nc-check-draw 0.4s ease-out 0.3s both; stroke-dashoffset: 40; }
+
+/* --- Row deep-link highlight flash --- */
+@keyframes row-highlight-flash {
+  0%   { background-color: #fef9c3; }
+  40%  { background-color: #fde68a; }
+  100% { background-color: transparent; }
+}
+@keyframes row-highlight-flash-dark {
+  0%   { background-color: rgba(120, 100, 20, 0.50); }
+  40%  { background-color: rgba(99, 82, 15, 0.35); }
+  100% { background-color: transparent; }
+}
+.row-highlight {
+  animation: row-highlight-flash 1.8s ease-out both;
+}
+.dark .row-highlight {
+  animation: row-highlight-flash-dark 1.8s ease-out both;
+}
+
+/* --- School card watermark --- */
+@keyframes school-card-watermark-drift {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(-2deg) scale(1);
+  }
+  50% {
+    transform: translate3d(-5px, -4px, 0) rotate(1deg) scale(1.045);
+  }
+  100% {
+    transform: translate3d(-2px, -7px, 0) rotate(2deg) scale(1.08);
+  }
+}
+.school-card-watermark {
+  filter: grayscale(1) contrast(1.25);
+  transform: translate3d(0, 0, 0) rotate(-2deg) scale(1);
+  transition: opacity 300ms ease, filter 300ms ease, transform 500ms ease;
+}
+.school-card-watermark--active {
+  animation: school-card-watermark-drift 2.8s ease-in-out infinite alternate;
+  filter: grayscale(0) saturate(1.3) contrast(1.05);
+}
+
+/* --- School card marquee --- */
+@keyframes school-name-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.school-name-marquee {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  outline: none;
+  white-space: nowrap;
+}
+.school-name-marquee__track {
+  display: inline-flex;
+  min-width: max-content;
+  vertical-align: top;
+}
+.school-name-marquee__text {
+  flex: 0 0 auto;
+  padding-right: 1.5rem;
+  white-space: nowrap;
+}
+.school-name-marquee:hover .school-name-marquee__track,
+.school-name-marquee:focus-visible .school-name-marquee__track {
+  animation: school-name-marquee 8s linear infinite;
+}
+.school-name-marquee:focus-visible {
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 2px rgb(99 102 241 / 0.25);
+}
+
+/* --- Bell ring animation --- */
+@keyframes bell-ring {
+  0%,  45%, 100% { transform: rotate(0deg)   scale(1);    }
+  5%             { transform: rotate(25deg)  scale(1.15); }
+  10%            { transform: rotate(-22deg) scale(1.15); }
+  15%            { transform: rotate(18deg)  scale(1.1);  }
+  20%            { transform: rotate(-16deg) scale(1.1);  }
+  25%            { transform: rotate(12deg)  scale(1.05); }
+  30%            { transform: rotate(-10deg) scale(1.05); }
+  35%            { transform: rotate(6deg)   scale(1);    }
+  40%            { transform: rotate(-4deg)  scale(1);    }
+}
+.bell-ring {
+  transform-origin: top center;
+  animation: bell-ring 2.4s ease-in-out infinite;
+}
+
+/* --- Help FAB sheen sweep on hover --- */
+/*
+ * Inspired by the dual-layer background-position gradient technique:
+ * a wide gradient (220%) shifts position on hover for a colour sweep,
+ * while a ::after pseudo-element sweeps a white highlight across.
+ */
+.fab-sheen {
+  position: relative;
+  overflow: hidden;       /* clips the ::after sheen to the circular button */
+  background-size: 220% 100%;
+  background-position: 20% 50%;
+  transition: background-position 0.8s ease-out, box-shadow 0.25s ease;
+}
+
+.fab-sheen:hover {
+  background-position: 80% 50%;   /* sweeps the gradient across on hover */
+}
+
+/* White sheen highlight sweeps left → right on hover */
+.fab-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0)    15%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0)    85%
+  );
+  background-size: 300% 100%;
+  background-position: 0% 50%;
+  opacity: 0;
+  transition: background-position 0.75s ease-out, opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.fab-sheen:hover::after {
+  background-position: 100% 50%;
+  opacity: 1;
+}

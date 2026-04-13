@@ -148,7 +148,7 @@ export default function useFormLifecycle({
             return;
         }
 
-        if (hasInputtedData()) {
+        if (appMode !== 'readonly' && hasInputtedData()) {
             draft?.saveNow?.();
         }
 
@@ -200,6 +200,17 @@ export default function useFormLifecycle({
         }
     }, [handleStart, isLoading, searchParams, setSplashSelectedProgram]);
 
+    // Keep a ref so the URL-params effect below can always call the latest
+    // handleStart without listing it as a dependency. handleStart changes
+    // identity on every render (its dep chain includes the un-memoised shell
+    // object), so putting it in the deps array causes the effect to re-fire
+    // while appMode is already 'splash' but the URL still has ?mode=readonly —
+    // which re-triggers handleStart and bounces the user back into readonly.
+    const handleStartRef = useRef(handleStart);
+    useEffect(() => {
+        handleStartRef.current = handleStart;
+    }, [handleStart]);
+
     useEffect(() => {
         if (!autoStartedRef.current) {
             return;
@@ -227,9 +238,9 @@ export default function useFormLifecycle({
         }
 
         if (appModeRef.current === 'splash' && !startPendingRef.current) {
-            handleStart(paramMode, paramProgram);
+            handleStartRef.current(paramMode, paramProgram);
         }
-    }, [clearProgramField, handleStart, searchParams, setAppMode, setSplashSelectedProgram]);
+    }, [clearProgramField, searchParams, setAppMode, setSplashSelectedProgram]);
 
     return {
         handleStart,

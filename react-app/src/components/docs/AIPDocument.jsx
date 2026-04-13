@@ -1,11 +1,13 @@
 import React from 'react';
 import { GovDocHeader } from './GovDocHeader';
+import { getProjectTerminology } from '../../lib/projectTerminology.js';
 
 export const AIPDocument = ({
     year = new Date().getFullYear(),
     outcome,
     targetDescription,
     depedProgram,
+    usesSchoolTerminology = true,
     sipTitle,
     projectCoord,
     objectives = [],
@@ -20,6 +22,7 @@ export const AIPDocument = ({
         if (!val) return "";
         return `₱ ${parseFloat(val).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
+    const projectTerminology = getProjectTerminology(usesSchoolTerminology);
 
     return (
         <div className="aip-printable text-black font-sans print:p-0 print:m-0 print:bg-white">
@@ -47,9 +50,9 @@ export const AIPDocument = ({
                     <span className="font-medium flex-1">{depedProgram || "\u00A0"}</span>
                 </div>
 
-                {/* SIP Title */}
+                {/* Project Title */}
                 <div className="flex py-1 border-b border-dotted border-slate-400">
-                    <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0">School Improvement Project/Title:</span>
+                    <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0">{projectTerminology.projectTitleDocumentLabel}</span>
                     <span className="font-medium flex-1">{sipTitle || "\u00A0"}</span>
                 </div>
 

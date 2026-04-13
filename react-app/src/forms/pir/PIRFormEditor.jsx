@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { generatePIRPdf } from '../../lib/formPdfExport.js';
 
 import { FormHeader } from '../../components/ui/FormHeader';
@@ -112,6 +112,7 @@ export default function PIRFormEditor({
     const actionItems = usePirSelector(selectActionItems);
     const ui = usePirSelector(selectPirUi);
     const submission = usePirSelector(selectPirSubmission);
+    const usesSchoolTerminology = user?.role === 'School';
 
     const resolvedNotedBy = resolveNotedBy({
         user,
@@ -131,7 +132,7 @@ export default function PIRFormEditor({
 
         const style = document.createElement('style');
         style.id = '__pir-landscape-print__';
-        style.textContent = '@media print { @page { size: A4 landscape; margin: 1cm; } }';
+        style.textContent = '@media print { @page { size: 13in 8.5in; margin: 1cm; } }';
         document.head.appendChild(style);
 
         window.print();
@@ -153,12 +154,13 @@ export default function PIRFormEditor({
             budgetFromDivision: budget.fromDivision,
             budgetFromCoPSF: budget.fromCoPSF,
             functionalDivision: profile.functionalDivision,
+            usesSchoolTerminology,
             indicatorTargets,
             activities,
             factors,
             actionItems,
         });
-    }, [quarterString, resolvedNotedBy, profile, budget, indicatorTargets, activities, factors, actionItems]);
+    }, [quarterString, resolvedNotedBy, profile, budget, usesSchoolTerminology, indicatorTargets, activities, factors, actionItems]);
 
     if (appMode === 'readonly') {
         return (
@@ -242,6 +244,7 @@ export default function PIRFormEditor({
                                     budgetFromDivision={budget.fromDivision}
                                     budgetFromCoPSF={budget.fromCoPSF}
                                     functionalDivision={profile.functionalDivision}
+                                    usesSchoolTerminology={usesSchoolTerminology}
                                     indicatorTargets={indicatorTargets}
                                     activities={activities}
                                     factors={factors}
@@ -292,6 +295,7 @@ export default function PIRFormEditor({
                         budgetFromDivision={budget.fromDivision}
                         budgetFromCoPSF={budget.fromCoPSF}
                         functionalDivision={profile.functionalDivision}
+                        usesSchoolTerminology={usesSchoolTerminology}
                         indicatorTargets={indicatorTargets}
                         activities={activities}
                         factors={factors}
@@ -315,6 +319,7 @@ export default function PIRFormEditor({
                             outcome={aipDocumentData.outcome}
                             targetDescription={aipDocumentData.targetDescription}
                             depedProgram={aipDocumentData.depedProgram}
+                            usesSchoolTerminology={aipDocumentData.isSchoolOwned ?? usesSchoolTerminology}
                             sipTitle={aipDocumentData.sipTitle}
                             projectCoord={aipDocumentData.projectCoord}
                             objectives={aipDocumentData.objectives}
@@ -384,7 +389,7 @@ export default function PIRFormEditor({
 
                     <form onSubmit={(event) => event.preventDefault()}>
                         <AnimatePresence mode="wait">
-                            <motion.div
+                            <Motion.div
                                 key={appMode}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -398,7 +403,7 @@ export default function PIRFormEditor({
                                         quarterString={quarterString}
                                     />
 
-                                    <PIRIndicatorsSection />
+                                    <PIRIndicatorsSection usesSchoolTerminology={usesSchoolTerminology} />
 
                                     <PIRMonitoringEvaluationSection
                                         appMode={appMode}
@@ -516,7 +521,7 @@ export default function PIRFormEditor({
                                         </div>
                                     </div>
                                 )}
-                            </motion.div>
+                            </Motion.div>
                         </AnimatePresence>
                     </form>
                 </div>

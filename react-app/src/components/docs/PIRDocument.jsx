@@ -1,5 +1,6 @@
 import React from 'react';
 import { GovDocHeader } from './GovDocHeader';
+import { getProjectTerminology } from '../../lib/projectTerminology.js';
 
 const DEFAULT_FACTOR_TYPES = ["Institutional", "Technical", "Infrastructure", "Learning Resources", "Environmental", "Others"];
 
@@ -20,6 +21,7 @@ export const PIRDocument = ({
     budgetFromDivision,
     budgetFromCoPSF,
     functionalDivision = "",
+    usesSchoolTerminology = true,
     indicatorTargets = [],
     activities = [],
     factors = {},
@@ -48,6 +50,7 @@ export const PIRDocument = ({
 
     const aipActivities = activities.filter(a => !a.isUnplanned);
     const unplannedActivities = activities.filter(a => a.isUnplanned);
+    const projectTerminology = getProjectTerminology(usesSchoolTerminology);
 
     return (
         <div className="pir-printable text-black font-sans print:p-0 print:m-0 print:bg-white min-h-screen">
@@ -97,7 +100,7 @@ export const PIRDocument = ({
                 <table className="w-full border-collapse text-[9px] border border-black">
                     <thead>
                         <tr className="font-black bg-slate-50 uppercase text-center print:bg-transparent">
-                            <th className="border border-black p-2 w-[50%]">Annual Performance Indicator (refer to the SIP/AIP)</th>
+                            <th className="border border-black p-2 w-[50%]">{`Annual Performance Indicator (refer to the ${projectTerminology.aipReferenceLabel})`}</th>
                             <th className="border border-black p-2 w-[25%]">Annual Target</th>
                             <th className="border border-black p-2 w-[25%]">This Quarter's Target</th>
                         </tr>

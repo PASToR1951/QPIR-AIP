@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+/* ============================================================
+   DARK MODE — class-based (Tailwind v4)
+   ============================================================ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-surface: #f8fafc;          /* slate-50 */
+  --color-surface-card: #fafaf9;     /* off-white */
+  --color-border: #e2e8f0;           /* slate-200 */
+  --color-border-subtle: #f1f5f9;    /* slate-100 */
+  --color-grid-line: #dde3ec;
+  --segment-empty: #e2e8f0;          /* slate-200 — unfilled bar/pip segments */
+}
+
+.dark {
+  --color-surface: #1A1917;
+  --color-surface-card: #262421;
+  --color-border: #413D37;
+  --color-border-subtle: rgba(65, 61, 55, 0.5);
+  --color-grid-line: rgba(0, 0, 0, 0.35);
+  --segment-empty: rgba(65, 61, 55, 0.6);  /* dark-border at 60% — unfilled bar/pip segments */
+  color-scheme: dark;
+
+  /* Neutralize light-colored shadows — they glow white against dark backgrounds */
+  [class*="shadow-slate-"],
+  [class*="shadow-pink-"],
+  [class*="shadow-blue-"],
+  [class*="shadow-indigo-"],
+  [class*="shadow-amber-"],
+  [class*="shadow-emerald-"],
+  [class*="shadow-violet-"],
+  [class*="shadow-purple-"] {
+    --tw-shadow-color: rgb(0 0 0 / 0.3);
+  }
+}
+
+/* Smooth transition when toggling dark mode */
+html.dark-transition,
+html.dark-transition *,
+html.dark-transition *::before,
+html.dark-transition *::after {
+  transition: background-color 300ms ease, color 200ms ease, border-color 200ms ease, box-shadow 200ms ease !important;
+}
+
+/* Reusable grid background using CSS variable */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, var(--color-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-grid-line) 1px, transparent 1px);
+  background-size: 4rem 4rem;
+}
+
+/* OpenDyslexic — self-hosted from public/fonts */
+@font-face {
+  font-family: "Open Dyslexic";
+  src: url('/fonts/OpenDyslexic-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Open Dyslexic";
+  src: url('/fonts/OpenDyslexic-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Open Dyslexic";
+  src: url('/fonts/OpenDyslexic-Italic.otf') format('opentype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Open Dyslexic";
+  src: url('/fonts/OpenDyslexic-BoldItalic.otf') format('opentype');
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* Brand accent */
+  --color-accent: #E94560;
+
+  /* Dark mode palette */
+  --color-dark-base:      #1A1917;
+  --color-dark-surface:   #262421;
+  --color-dark-border:    #413D37;
+  --color-dark-highlight: #E94560;
+}
+
+@layer base {
+  body {
+    @apply font-sans antialiased text-slate-900;
+  }
+
+  button, a, select, [role="button"], input[type="button"], input[type="submit"], input[type="reset"] {
+    @apply cursor-pointer;
+  }
+
+  /* Keyboard navigation — visible focus rings for all interactive elements */
+  :focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+}

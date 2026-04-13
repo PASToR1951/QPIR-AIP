@@ -3,11 +3,13 @@ import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
 import { useFormShellContext } from '../../../forms/shared/formShellContext.jsx';
 import { selectIndicatorTargets, usePirDispatch, usePirSelector } from '../../../forms/pir/pirContext.jsx';
+import { getProjectTerminology } from '../../../lib/projectTerminology.js';
 
-export default React.memo(function PIRIndicatorsSection() {
+export default React.memo(function PIRIndicatorsSection({ usesSchoolTerminology = true }) {
     const { appMode, currentStep } = useFormShellContext();
     const dispatch = usePirDispatch();
     const indicatorTargets = usePirSelector(selectIndicatorTargets);
+    const projectTerminology = getProjectTerminology(usesSchoolTerminology);
 
     if (appMode !== 'full' && currentStep !== 2) return null;
 
@@ -78,7 +80,9 @@ export default React.memo(function PIRIndicatorsSection() {
                         <div className="grid grid-cols-[1fr_140px_180px] bg-slate-50 dark:bg-dark-base border-b border-slate-200 dark:border-dark-border">
                             <div className="p-3 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider border-r border-slate-200 dark:border-dark-border">
                                 Annual Performance Indicator
-                                <span className="block text-[10px] font-normal normal-case tracking-normal text-slate-400 mt-0.5">Refer to the SIP/AIP</span>
+                                <span className="block text-[10px] font-normal normal-case tracking-normal text-slate-400 mt-0.5">
+                                    Refer to the {projectTerminology.aipReferenceLabel}
+                                </span>
                             </div>
                             <div className="p-3 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider text-center border-r border-slate-200 dark:border-dark-border">Annual Target</div>
                             <div className="p-3 text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider text-center">

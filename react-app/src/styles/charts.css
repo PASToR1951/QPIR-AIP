@@ -1,0 +1,64 @@
+/* ============================================================
+   RECHARTS — dark mode overrides
+   Recharts renders SVG/HTML outside Tailwind's scope, so we
+   target its internal class names directly.
+   ============================================================ */
+
+/* Axis tick labels */
+.dark .recharts-cartesian-axis-tick-value {
+  fill: #94a3b8; /* slate-400 */
+}
+
+/* Polar axis (radar charts) */
+.dark .recharts-polar-angle-axis-tick-value,
+.dark .recharts-polar-radius-axis-tick-value {
+  fill: #94a3b8;
+}
+
+/* Legend text */
+.dark .recharts-legend-item-text {
+  color: #94a3b8 !important;
+}
+
+/* Default tooltip box */
+.dark .recharts-default-tooltip {
+  background-color: #262421 !important;  /* dark-surface */
+  border-color: #413D37 !important;      /* dark-border */
+}
+.dark .recharts-tooltip-label {
+  color: #f1f5f9 !important;             /* slate-100 */
+}
+.dark .recharts-tooltip-item {
+  color: #cbd5e1 !important;             /* slate-300 */
+}
+
+/* Cursor overlay on bar/line charts */
+.dark .recharts-rectangle.recharts-tooltip-cursor {
+  fill: rgba(255, 255, 255, 0.04);
+}
+.dark .recharts-sector.recharts-tooltip-cursor {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+/* Print always uses light mode */
+@media print {
+  @page {
+    margin: 1.5cm;
+    size: A4 portrait;
+  }
+
+  .dark {
+    color-scheme: light;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .print-reset {
+    background: transparent !important;
+    color: black !important;
+    border-color: black !important;
+  }
+}

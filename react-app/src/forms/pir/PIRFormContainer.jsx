@@ -124,10 +124,14 @@ export default function PIRFormContainer() {
     useEffect(() => {
         if (!isDivisionPersonnel || !user) return;
         if (profile.owner || profile.ownerLocked) return;
-        const fullName = user.name
-            || [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
-        if (fullName) {
-            dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'owner', value: fullName } });
+        const baseName = user.name || [
+            user.first_name,
+            user.middle_initial ? `${user.middle_initial}.` : null,
+            user.last_name,
+        ].filter(Boolean).join(' ').trim();
+        const fullName = user.salutation ? `${user.salutation} ${baseName}` : baseName;
+        if (fullName.trim()) {
+            dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'owner', value: fullName.trim() } });
         }
     }, [isDivisionPersonnel, user, profile.owner, profile.ownerLocked, dispatch]);
 

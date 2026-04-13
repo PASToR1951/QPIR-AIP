@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from 'react';
-import { motion as Motion } from 'framer-motion';
 
 import { FormHeader } from '../../components/ui/FormHeader';
 import { FormBoxHeader } from '../../components/ui/FormBoxHeader';
@@ -36,7 +35,7 @@ function sanitizeFilenameSegment(value) {
 }
 
 export default React.memo(function AIPFormEditor({
-    motionProps,
+    usesSchoolTerminology,
     toggleAppMode,
     reviewAreaRef,
     isPreviewOpen,
@@ -46,6 +45,11 @@ export default React.memo(function AIPFormEditor({
     onBack,
     onHome,
     onEditAIP,
+    onRequestEdit,
+    onCancelEditRequest,
+    isRequestingEdit,
+    hasRequestedEdit,
+    editRequestCount,
     onDeleteSubmission,
     onRequestRemoveActivity,
     isSaving,
@@ -115,6 +119,7 @@ export default React.memo(function AIPFormEditor({
         outcome: profile.outcome,
         targetDescription: profile.selectedTarget,
         depedProgram: profile.depedProgram,
+        usesSchoolTerminology,
         sipTitle: profile.sipTitle,
         projectCoord: profile.projectCoord,
         objectives,
@@ -134,6 +139,7 @@ export default React.memo(function AIPFormEditor({
         profile.selectedTarget,
         profile.sipTitle,
         profile.year,
+        usesSchoolTerminology,
         signatories.approvedByName,
         signatories.approvedByTitle,
         signatories.preparedByName,
@@ -147,12 +153,16 @@ export default React.memo(function AIPFormEditor({
     if (appMode === 'readonly') {
         return (
             <AIPReadonlyView
-                motionProps={motionProps}
                 profile={profile}
                 submission={submission}
                 aipData={aipDocumentData}
                 onBack={onBack}
                 onEdit={onEditAIP}
+                onRequestEdit={onRequestEdit}
+                onCancelEditRequest={onCancelEditRequest}
+                isRequestingEdit={isRequestingEdit}
+                hasRequestedEdit={hasRequestedEdit}
+                editRequestCount={editRequestCount}
                 onDelete={onDeleteSubmission}
                 onPrint={handlePrint}
                 isSaving={isSaving}
@@ -164,8 +174,7 @@ export default React.memo(function AIPFormEditor({
     }
 
     return (
-        <Motion.div data-tour="aip-form-active" {...motionProps}>
-            <div className="relative flex min-h-screen flex-col bg-slate-50 font-sans text-slate-800 print:bg-white print:text-black dark:bg-dark-base dark:text-slate-100">
+        <div data-tour="aip-form-active" className="relative flex min-h-screen flex-col bg-slate-50 font-sans text-slate-800 print:bg-white print:text-black dark:bg-dark-base dark:text-slate-100">
                 <FormHeader
                     title={submission.isEditing ? 'Edit Annual Implementation Plan' : 'Annual Implementation Plan'}
                     programName={profile.depedProgram}
@@ -230,7 +239,7 @@ export default React.memo(function AIPFormEditor({
                                     steps={1}
                                     animated={false}
                                 >
-                                    <AIPProfileSection />
+                                    <AIPProfileSection usesSchoolTerminology={usesSchoolTerminology} />
                                 </AIPStepContainer>
 
                                 <AIPStepContainer
@@ -301,6 +310,5 @@ export default React.memo(function AIPFormEditor({
                     </div>
                 </div>
             </div>
-        </Motion.div>
     );
 });

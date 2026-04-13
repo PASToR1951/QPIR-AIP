@@ -1,0 +1,34 @@
+/* ============================================================
+   FOOTER PATTERN — responsive diamond grid with subtle color
+   ============================================================ */
+.footer-pattern {
+  /* Tile size scales up with viewport */
+  --fp-s:  30px;   /* mobile  */
+  --fp-c1: #eff3ff;  /* indigo-50  — faint cool blue   */
+  --fp-c2: #eef2ff;  /* indigo-100 — slightly deeper   */
+  --fp-c: #0000 71%, var(--fp-c1) 0 79%, #0000 0;
+
+  background:
+    /* Subtle color blobs for dynamism */
+    radial-gradient(ellipse 70% 50% at 15% 70%, rgba(99,102,241,0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 55% 60% at 85% 20%, rgba(148,163,184,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 50% 90%, rgba(99,102,241,0.03)  0%, transparent 60%),
+    /* Diamond lattice */
+    linear-gradient(45deg,  var(--fp-c))
+      calc(var(--fp-s) / -2) calc(var(--fp-s) / 2) / calc(2 * var(--fp-s)) calc(2 * var(--fp-s)),
+    linear-gradient(135deg, var(--fp-c))
+      calc(var(--fp-s) / 2)  calc(var(--fp-s) / 2) / calc(2 * var(--fp-s)) calc(2 * var(--fp-s)),
+    radial-gradient(var(--fp-c1) 35%, var(--fp-c2) 37%)
+      0 0 / var(--fp-s) var(--fp-s);
+}
+.dark .footer-pattern {
+  --fp-c1: #121418;  /* dark with faint blue   */
+  --fp-c2: #141620;  /* slightly deeper indigo */
+}
+
+@media (min-width: 768px) {
+  .footer-pattern { --fp-s: 55px; }
+}
+@media (min-width: 1024px) {
+  .footer-pattern { --fp-s: 80px; }
+}

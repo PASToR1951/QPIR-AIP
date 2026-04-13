@@ -1,0 +1,171 @@
+/* ============================================================
+   ACCESSIBILITY OVERRIDES
+   Applied as classes on <html> by AccessibilityContext
+   ============================================================ */
+
+/* --- High Contrast (light) — only when NOT in dark mode --- */
+html:not(.dark).a11y-high-contrast body {
+  background-color: #fafaf9 !important;
+  color: #0f172a !important;
+}
+html:not(.dark).a11y-high-contrast input,
+html:not(.dark).a11y-high-contrast textarea,
+html:not(.dark).a11y-high-contrast select {
+  border-color: #0f172a !important;
+  color: #0f172a !important;
+  background-color: #fafaf9 !important;
+}
+html:not(.dark).a11y-high-contrast label {
+  color: #0f172a !important;
+}
+html:not(.dark).a11y-high-contrast .bg-white,
+html:not(.dark).a11y-high-contrast .bg-slate-50 {
+  background-color: #fafaf9 !important;
+}
+html:not(.dark).a11y-high-contrast .text-slate-400,
+html:not(.dark).a11y-high-contrast .text-slate-500 {
+  color: #374151 !important;
+}
+html:not(.dark).a11y-high-contrast .border-slate-200 {
+  border-color: #6b7280 !important;
+}
+
+/* --- High Contrast (dark) --- */
+.a11y-high-contrast.dark body {
+  background-color: #0d0b09 !important;
+  color: #f1f5f9 !important;
+}
+.a11y-high-contrast.dark input,
+.a11y-high-contrast.dark textarea,
+.a11y-high-contrast.dark select {
+  border-color: #f1f5f9 !important;
+  color: #f1f5f9 !important;
+  background-color: #0d0b09 !important;
+}
+.a11y-high-contrast.dark label {
+  color: #f1f5f9 !important;
+}
+.a11y-high-contrast.dark .bg-white,
+.a11y-high-contrast.dark .bg-slate-50 {
+  background-color: #1e1b18 !important;
+}
+.a11y-high-contrast.dark .text-slate-400,
+.a11y-high-contrast.dark .text-slate-500 {
+  color: #cbd5e1 !important;
+}
+.a11y-high-contrast.dark .border-slate-200 {
+  border-color: #94a3b8 !important;
+}
+
+/* --- Font Size --- */
+.a11y-font-sm  { font-size: 14px; }
+.a11y-font-lg  { font-size: 18px; }
+.a11y-font-xl  { font-size: 20px; }
+.a11y-font-xxl { font-size: 24px; }
+
+/* --- Reduce Motion --- */
+.a11y-reduce-motion .animate-pulse,
+.a11y-reduce-motion .animate-spin,
+.a11y-reduce-motion .animate-bounce,
+.a11y-reduce-motion .bell-ring,
+.a11y-reduce-motion .login-card-entrance,
+.a11y-reduce-motion .login-stagger-child,
+.a11y-reduce-motion .login-orb-float-1,
+.a11y-reduce-motion .login-orb-float-2,
+.a11y-reduce-motion .login-shake,
+.a11y-reduce-motion .login-panel-shell,
+.a11y-reduce-motion .login-panel-track,
+.a11y-reduce-motion .login-panel-content,
+.a11y-reduce-motion .login-footer-entrance,
+.a11y-reduce-motion .footer-item,
+.a11y-reduce-motion .nc-overlay,
+.a11y-reduce-motion .nc-slide-down,
+.a11y-reduce-motion .nc-slide-up,
+.a11y-reduce-motion .nc-check-circle,
+.a11y-reduce-motion .nc-check-path,
+.a11y-reduce-motion .school-card-watermark--active,
+.a11y-reduce-motion .school-name-marquee__track,
+.a11y-reduce-motion .row-highlight,
+.a11y-reduce-motion [data-motion] {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}
+.a11y-reduce-motion .school-card-watermark--active {
+  animation: none !important;
+}
+.a11y-reduce-motion .login-panel-shell,
+.a11y-reduce-motion .login-panel-track,
+.a11y-reduce-motion .login-panel-content {
+  transition: none !important;
+}
+.a11y-reduce-motion .school-name-marquee__track {
+  animation: none !important;
+  transform: none !important;
+}
+.a11y-reduce-motion {
+  scroll-behavior: auto !important;
+}
+.a11y-reduce-motion .fab-sheen,
+.a11y-reduce-motion .fab-sheen::after {
+  transition: none !important;
+}
+.a11y-reduce-motion .fab-sheen:hover::after {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-panel-shell,
+  .login-panel-track,
+  .login-panel-content {
+    transition: none !important;
+  }
+}
+
+/* --- Dyslexia-Friendly Font --- */
+/* Override the Tailwind CSS variable so every font-sans utility picks it up */
+.a11y-dyslexic {
+  --font-sans: "Open Dyslexic", ui-sans-serif, system-ui, sans-serif;
+}
+/* Also force directly on every element for anything not using var(--font-sans) */
+.a11y-dyslexic * {
+  font-family: "Open Dyslexic", ui-sans-serif, system-ui, sans-serif !important;
+  letter-spacing: 0.01em;
+}
+
+/* --- Line Spacing --- */
+.a11y-spacing-relaxed body,
+.a11y-spacing-relaxed p,
+.a11y-spacing-relaxed li,
+.a11y-spacing-relaxed label,
+.a11y-spacing-relaxed input,
+.a11y-spacing-relaxed textarea {
+  line-height: 1.75 !important;
+}
+
+.a11y-spacing-loose body,
+.a11y-spacing-loose p,
+.a11y-spacing-loose li,
+.a11y-spacing-loose label,
+.a11y-spacing-loose input,
+.a11y-spacing-loose textarea {
+  line-height: 2.1 !important;
+}
+
+/* --- Letter Spacing --- */
+.a11y-letter-wide body,
+.a11y-letter-wide p,
+.a11y-letter-wide label,
+.a11y-letter-wide input,
+.a11y-letter-wide textarea,
+.a11y-letter-wide button,
+.a11y-letter-wide select {
+  letter-spacing: 0.06em !important;
+}
+
+/* ── reCAPTCHA v3 badge ──────────────────────────────────────────────────────
+   Google permits hiding the floating badge as long as the required attribution
+   text is shown on the page (Privacy Policy + Terms links). That text lives in
+   the privacy notice at the bottom of the login card.                         */
+.grecaptcha-badge {
+  visibility: hidden !important;
+}

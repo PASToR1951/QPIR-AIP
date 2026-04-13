@@ -349,6 +349,9 @@ function aipReducer(state, action) {
                     ...state.submission,
                     aipId: aip.id ?? null,
                     aipStatus: aip.status ?? null,
+                    editRequested: aip.editRequested ?? false,
+                    editRequestedAt: aip.editRequestedAt ?? null,
+                    editRequestCount: aip.editRequestCount ?? 0,
                 },
                 ui: hydratedActivities.ui,
             };
