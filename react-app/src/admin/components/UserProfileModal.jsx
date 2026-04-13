@@ -5,7 +5,7 @@ import { StatusBadge } from './StatusBadge.jsx';
 
 function displayName(user) {
   if (!user) return '';
-  if (user.role === 'Division Personnel' && user.first_name && user.last_name) {
+  if ((user.role === 'Division Personnel' || user.role === 'School') && user.first_name && user.last_name) {
     const mi = user.middle_initial ? ` ${user.middle_initial}.` : '';
     return `${user.first_name}${mi} ${user.last_name}`;
   }
@@ -34,6 +34,15 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
 
   const name = user ? displayName(user) : '';
   const programs = user?.programs ?? [];
+  const isCES = user?.role?.startsWith('CES-');
+  const isDivPersonnel = user?.role === 'Division Personnel';
+  let functionalDivision = null;
+  if (isCES) {
+    functionalDivision = user.role.split('-')[1];
+  } else if (isDivPersonnel && programs.length > 0) {
+    const divs = [...new Set(programs.map(p => p.division).filter(Boolean))];
+    if (divs.length > 0) functionalDivision = divs.join(', ');
+  }
 
   const handleGeneratePassword = async () => {
     setResetStep('loading');
@@ -87,6 +96,11 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
             <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5">{user.email}</p>
             <div className="flex items-center gap-2 mt-2.5 flex-wrap">
               <StatusBadge status={user.role} size="xs" />
+              {functionalDivision && (
+                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide rounded-lg bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400">
+                  {functionalDivision}
+                </span>
+              )}
               <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${user.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-600'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
                 {user.is_active ? 'Active' : 'Disabled'}
@@ -111,10 +125,17 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
                 <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Role</dt>
                 <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">{user.role}</dd>
               </div>
-              <div>
-                <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">School</dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">{user.school?.name ?? '—'}</dd>
-              </div>
+              {isCES || isDivPersonnel ? (
+                <div>
+                  <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Position</dt>
+                  <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">{user.position ?? '—'}</dd>
+                </div>
+              ) : (
+                <div>
+                  <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">School</dt>
+                  <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">{user.school?.name ?? '—'}</dd>
+                </div>
+              )}
               <div>
                 <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Programs</dt>
                 <dd>

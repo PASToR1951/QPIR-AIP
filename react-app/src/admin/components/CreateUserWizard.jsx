@@ -8,6 +8,10 @@ import { MultiSelect } from './MultiSelect.jsx';
 
 const inputCls =
   'w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all';
+const selectCls =
+  'w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all';
+
+const SALUTATIONS = ['Mr.', 'Ms.', 'Mrs.', 'Dr.'];
 
 /* ─────────────────────────────────────────────────────────── *
  *  Step 1 — Role picker
@@ -174,22 +178,43 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
   return (
     <div className="space-y-4">
       {(['Admin', 'Cluster Coordinator', 'Observer'].includes(form.role)) && (
-        <div>
-          <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-            Full Name
-          </label>
-          <input
-            value={form.name}
-            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-            className={inputCls}
-            placeholder={form.role === 'Cluster Coordinator' ? 'Cluster Coordinator Name' : form.role === 'Observer' ? 'Observer Name' : 'Administrator Name'}
-          />
+        <div className="grid grid-cols-[100px_1fr] gap-3">
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+              Title
+            </label>
+            <select value={form.salutation} onChange={e => setForm(f => ({ ...f, salutation: e.target.value }))} className={selectCls}>
+              <option value="">—</option>
+              {SALUTATIONS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+              Full Name
+            </label>
+            <input
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              className={inputCls}
+              placeholder={form.role === 'Cluster Coordinator' ? 'Cluster Coordinator Name' : form.role === 'Observer' ? 'Observer Name' : 'Administrator Name'}
+            />
+          </div>
         </div>
       )}
 
-      {form.role === 'Division Personnel' && (
+      {form.role === 'School' && (
         <>
-          <div className="grid grid-cols-[1fr_80px] gap-3">
+          <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest -mb-1">School Head</p>
+          <div className="grid grid-cols-[100px_1fr_80px] gap-3">
+            <div>
+              <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                Title
+              </label>
+              <select value={form.salutation} onChange={e => setForm(f => ({ ...f, salutation: e.target.value }))} className={selectCls}>
+                <option value="">—</option>
+                {SALUTATIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
             <div>
               <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
                 First Name <span className="text-rose-500">*</span>
@@ -227,6 +252,68 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
           </div>
         </>
       )}
+
+      {form.role === 'Division Personnel' && (
+        <>
+          <div className="grid grid-cols-[100px_1fr_80px] gap-3">
+            <div>
+              <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                Title
+              </label>
+              <select value={form.salutation} onChange={e => setForm(f => ({ ...f, salutation: e.target.value }))} className={selectCls}>
+                <option value="">—</option>
+                {SALUTATIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                First Name <span className="text-rose-500">*</span>
+              </label>
+              <input
+                value={form.first_name}
+                onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))}
+                className={inputCls}
+                placeholder="Juan"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                M.I.
+              </label>
+              <input
+                value={form.middle_initial}
+                onChange={e => setForm(f => ({ ...f, middle_initial: e.target.value }))}
+                className={inputCls}
+                placeholder="D"
+                maxLength={1}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+              Surname <span className="text-rose-500">*</span>
+            </label>
+            <input
+              value={form.last_name}
+              onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))}
+              className={inputCls}
+              placeholder="Dela Cruz"
+            />
+          </div>
+        </>
+      )}
+
+      <div>
+        <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+          Position / Designation
+        </label>
+        <input
+          value={form.position}
+          onChange={e => setForm(f => ({ ...f, position: e.target.value }))}
+          className={inputCls}
+          placeholder="e.g. Education Program Supervisor I"
+        />
+      </div>
 
       <div>
         <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
@@ -352,7 +439,7 @@ const ROLE_META = Object.fromEntries(ROLES.map(r => [r.value, r]));
 
 export function CreateUserWizard({ open, onClose, onSave, schools, programs, clusters = [], loading, error }) {
   const emptyForm = {
-    name: '', first_name: '', middle_initial: '', last_name: '',
+    salutation: '', name: '', first_name: '', middle_initial: '', last_name: '', position: '',
     email: '', password: '', role: null, school_id: null, cluster_id: null, program_ids: [],
   };
   const [step, setStep] = useState(1);

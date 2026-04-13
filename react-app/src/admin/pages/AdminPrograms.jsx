@@ -1,24 +1,25 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../lib/api.js';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Buildings, BookOpen, PencilSimple, Trash, Plus, CheckCircle, X } from '@phosphor-icons/react';
+import { Buildings, BookOpen, PencilSimple, Trash, Plus, CheckCircle, X, UsersThree, ArrowsDownUp, User } from '@phosphor-icons/react';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import ProgramTemplatesModal from '../components/ProgramTemplatesModal.jsx';
+import ProgramMembersModal from '../components/ProgramMembersModal.jsx';
+import { UserProfileModal } from '../components/UserProfileModal.jsx';
 import { EndOfListCue } from '../../components/ui/EndOfListCue.jsx';
 
 const MotionButton = motion.button;
 const MotionDiv = motion.div;
 
-const SCHOOL_LEVELS = ['Elementary', 'Secondary', 'Both', 'Select Schools', 'Division'];
+const SCHOOL_LEVELS = ['Elementary', 'Secondary', 'Both', 'Select Schools'];
 const DIVISIONS = ['SGOD', 'OSDS', 'CID'];
 const LEVEL_LABELS = {
   'Elementary': 'Elementary',
   'Secondary': 'Secondary',
   'Both': 'Elementary & Secondary',
   'Select Schools': 'Selected Schools',
-  'Division': 'Division',
 };
 
 const DIVISION_COLORS = {
@@ -35,20 +36,6 @@ const personnelDisplayName = (p) => {
   }
   return p.name || p.email || '';
 };
-
-const divisionProgramLookupKey = (title, division = '') =>
-  `${(title || '').trim().toLowerCase()}::${division || ''}`;
-
-const divisionProgramLookupKeys = (program) => [
-  divisionProgramLookupKey(program.title, program.division),
-  divisionProgramLookupKey(program.title),
-  ...(program.abbreviation
-    ? [
-        divisionProgramLookupKey(`${program.title} (${program.abbreviation})`, program.division),
-        divisionProgramLookupKey(`${program.title} (${program.abbreviation})`),
-      ]
-    : []),
-];
 
 function ProgramTitleBlock({ title, abbreviation, children }) {
   return (
@@ -83,22 +70,21 @@ export default function AdminPrograms() {
   const [deleteProgram, setDeleteProgram] = useState(null);
   const [addProgramOpen, setAddProgramOpen] = useState(false);
 
-  // ── Division Programs state ────────────────────────────────────────────────
-  const [divPrograms, setDivPrograms] = useState([]);
-  const [loadingDivPrograms, setLoadingDivPrograms] = useState(true);
+  const [sort, setSort] = useState('az'); // 'az' | 'za' | 'most-aips' | 'fewest-aips'
+
+  // ── Division Programs tab state ───────────────────────────────────────────
   const [divSearch, setDivSearch] = useState('');
   const [divisionFilter, setDivisionFilter] = useState('All');
-
-  const [divForm, setDivForm] = useState({ title: '', abbreviation: '', division: 'CID' });
-  const [editDivProgram, setEditDivProgram] = useState(null);
-  const [deleteDivProgram, setDeleteDivProgram] = useState(null);
-  const [addDivOpen, setAddDivOpen] = useState(false);
+  const [divSort, setDivSort] = useState('az'); // 'az' | 'za' | 'most-personnel' | 'fewest-personnel'
 
   // ── Shared state ───────────────────────────────────────────────────────────
   const [actionLoading, setActionLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [toast, setToast] = useState(null);
   const [templateProgram, setTemplateProgram] = useState(null);
+  const [membersProgram, setMembersProgram] = useState(null);
+  const [viewUser, setViewUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(false);
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -114,16 +100,7 @@ export default function AdminPrograms() {
       .finally(() => setLoadingPrograms(false));
   }, []);
 
-  const fetchDivPrograms = useCallback(() => {
-    setLoadingDivPrograms(true);
-    api.get('/api/admin/division-programs')
-      .then(r => setDivPrograms(r.data))
-      .catch(e => { console.error(e); showToast('Failed to load division programs. Please refresh.', 'error'); })
-      .finally(() => setLoadingDivPrograms(false));
-  }, []);
-
   useEffect(() => { fetchPrograms(); }, [fetchPrograms]);
-  useEffect(() => { fetchDivPrograms(); }, [fetchDivPrograms]);
 
   // ── School Programs handlers ───────────────────────────────────────────────
   const handleAddProgram = async () => {
@@ -166,93 +143,71 @@ export default function AdminPrograms() {
     } finally { setActionLoading(false); }
   };
 
-  // ── Division Programs handlers ─────────────────────────────────────────────
-  const handleAddDivProgram = async () => {
-    setActionLoading(true);
+  const handleViewUser = async (p) => {
     try {
-      setFormError('');
-      await api.post('/api/admin/division-programs', divForm);
-      setAddDivOpen(false);
-      setDivForm({ title: '', abbreviation: '', division: 'CID' });
-      fetchDivPrograms();
-      showToast('Division program added.');
-    } catch (e) {
-      setFormError(e.friendlyMessage ?? 'Operation failed');
-    } finally { setActionLoading(false); }
-  };
-
-  const handleEditDivProgram = async () => {
-    setActionLoading(true);
-    try {
-      setFormError('');
-      await api.patch(`/api/admin/division-programs/${editDivProgram.id}`, divForm);
-      setEditDivProgram(null);
-      fetchDivPrograms();
-      showToast('Division program updated.');
-    } catch (e) {
-      setFormError(e.friendlyMessage ?? 'Operation failed');
-    } finally { setActionLoading(false); }
-  };
-
-  const handleDeleteDivProgram = async () => {
-    setActionLoading(true);
-    try {
-      setFormError('');
-      await api.delete(`/api/admin/division-programs/${deleteDivProgram.id}`);
-      setDeleteDivProgram(null);
-      fetchDivPrograms();
-      showToast('Division program deleted.');
-    } catch (e) {
-      setFormError(e.friendlyMessage ?? 'Operation failed');
-    } finally { setActionLoading(false); }
-  };
-
-  // ── Filtered lists ─────────────────────────────────────────────────────────
-  const programRows = programs;
-  const legacyDivisionProgramByKey = new Map();
-  programs
-    .filter(p => p.school_level_requirement === 'Division')
-    .forEach(p => {
-      legacyDivisionProgramByKey.set(divisionProgramLookupKey(p.title, p.division), p);
-      if (!legacyDivisionProgramByKey.has(divisionProgramLookupKey(p.title))) {
-        legacyDivisionProgramByKey.set(divisionProgramLookupKey(p.title), p);
+      setLoadingUser(true);
+      const res = await api.get(`/api/admin/users?search=${encodeURIComponent(p.email)}`);
+      const user = res.data.find(u => u.id === p.id);
+      if (user) {
+        setViewUser(user);
+      } else {
+        showToast('User details not found.', 'error');
       }
-    });
-  const getAssignedPersonnelForDivisionProgram = (prog) =>
-    divisionProgramLookupKeys(prog)
-      .map(key => legacyDivisionProgramByKey.get(key)?.personnel)
-      .find(personnel => personnel?.length) ?? [];
+    } catch {
+      showToast('Failed to load user.', 'error');
+    } finally {
+      setLoadingUser(false);
+    }
+  };
+
+  // ── Filtered + sorted lists ────────────────────────────────────────────────
+  const programRows = programs.filter(p => p.school_level_requirement !== 'Division');
   const effectiveLevelFilter = SCHOOL_LEVELS.includes(levelFilter) ? levelFilter : 'All';
-  const filteredPrograms = programRows.filter(p =>
-    (effectiveLevelFilter === 'All' || p.school_level_requirement === effectiveLevelFilter) &&
-    (p.title.toLowerCase().includes(search.toLowerCase()) ||
-      (p.abbreviation && p.abbreviation.toLowerCase().includes(search.toLowerCase())))
+
+  const sortPrograms = (list, s) => {
+    const copy = [...list];
+    if (s === 'za') return copy.sort((a, b) => b.title.localeCompare(a.title));
+    if (s === 'most-aips') return copy.sort((a, b) => (b._count?.aips ?? 0) - (a._count?.aips ?? 0));
+    if (s === 'fewest-aips') return copy.sort((a, b) => (a._count?.aips ?? 0) - (b._count?.aips ?? 0));
+    return copy.sort((a, b) => a.title.localeCompare(b.title)); // az default
+  };
+
+  const sortDivPrograms = (list, s) => {
+    const copy = [...list];
+    if (s === 'za') return copy.sort((a, b) => b.title.localeCompare(a.title));
+    if (s === 'most-personnel') return copy.sort((a, b) => (b.personnel?.length ?? 0) - (a.personnel?.length ?? 0));
+    if (s === 'fewest-personnel') return copy.sort((a, b) => (a.personnel?.length ?? 0) - (b.personnel?.length ?? 0));
+    return copy.sort((a, b) => a.title.localeCompare(b.title)); // az default
+  };
+
+  const filteredPrograms = sortPrograms(
+    programRows.filter(p =>
+      (effectiveLevelFilter === 'All' || p.school_level_requirement === effectiveLevelFilter) &&
+      (p.title.toLowerCase().includes(search.toLowerCase()) ||
+        (p.abbreviation && p.abbreviation.toLowerCase().includes(search.toLowerCase())))
+    ),
+    sort,
   );
 
-  const filteredDivPrograms = divPrograms.filter(p =>
+  const divisionPrograms = programs.filter(p => p.school_level_requirement === 'Division');
+  const filteredDivisionPrograms = divisionPrograms.filter(p =>
     (divisionFilter === 'All' || p.division === divisionFilter) &&
     (p.title.toLowerCase().includes(divSearch.toLowerCase()) ||
       (p.abbreviation && p.abbreviation.toLowerCase().includes(divSearch.toLowerCase())))
   );
-  const filteredDivProgramGroups = [
-    ...(divisionFilter === 'All' ? DIVISIONS : [divisionFilter]).map(division => ({
+  const divisionProgramGroups = DIVISIONS
+    .filter(d => divisionFilter === 'All' || d === divisionFilter)
+    .map(division => ({
       division,
-      programs: filteredDivPrograms.filter(p => p.division === division),
-    })),
-    ...(divisionFilter === 'All'
-      ? [{
-          division: 'Uncategorized',
-          programs: filteredDivPrograms.filter(p => !DIVISIONS.includes(p.division)),
-        }]
-      : []),
-  ].filter(group => group.programs.length > 0);
+      programs: sortDivPrograms(filteredDivisionPrograms.filter(p => p.division === division), divSort),
+    }))
+    .filter(g => g.programs.length > 0);
 
   const LEVEL_PILLS = ['All', ...SCHOOL_LEVELS];
-  const DIV_PILLS = ['All', ...DIVISIONS];
   const programViewTabs = [
     {
       key: 'programs',
-      label: 'AIP Programs',
+      label: 'School Programs',
       description: 'Used for AIP filing and templates',
       count: programRows.length,
       Icon: BookOpen,
@@ -266,7 +221,7 @@ export default function AdminPrograms() {
       key: 'division-programs',
       label: 'Division Programs',
       description: 'For division personnel assignments',
-      count: divPrograms.length,
+      count: divisionPrograms.length,
       Icon: Buildings,
       activeClasses: 'border-amber-300 dark:border-amber-700 bg-amber-50/80 dark:bg-amber-950/20 text-amber-950 dark:text-amber-50 shadow-[0_10px_24px_rgba(245,158,11,0.18)] ring-2 ring-amber-100 dark:ring-amber-900/40',
       hoverClasses: 'hover:border-amber-200 dark:hover:border-amber-800',
@@ -332,6 +287,16 @@ export default function AdminPrograms() {
                     </button>
                   )}
                 </div>
+                <div className="relative shrink-0">
+                  <ArrowsDownUp size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <select value={sort} onChange={e => setSort(e.target.value)}
+                    className="pl-7 pr-3 py-2 text-xs font-bold bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-600 dark:text-slate-400 focus:outline-none focus:border-indigo-400 appearance-none cursor-pointer">
+                    <option value="az">A → Z</option>
+                    <option value="za">Z → A</option>
+                    <option value="most-aips">Most AIPs</option>
+                    <option value="fewest-aips">Fewest AIPs</option>
+                  </select>
+                </div>
                 <button onClick={() => { setAddProgramOpen(true); setProgramForm({ title: '', abbreviation: '', division: '', school_level_requirement: 'Both' }); }}
                   className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shrink-0">
                   <Plus size={17} /> <span className="hidden sm:inline">Add Program</span><span className="sm:hidden">Add</span>
@@ -369,6 +334,13 @@ export default function AdminPrograms() {
                         </ProgramTitleBlock>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => setMembersProgram(prog)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                          title="View schools & personnel"
+                        >
+                          <UsersThree size={16} />
+                        </button>
                         <button
                           onClick={() => setTemplateProgram(prog)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
@@ -419,14 +391,24 @@ export default function AdminPrograms() {
                     </button>
                   )}
                 </div>
-                <button onClick={() => { setAddDivOpen(true); setDivForm({ title: '', abbreviation: '', division: 'CID' }); }}
+                <div className="relative shrink-0">
+                  <ArrowsDownUp size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <select value={divSort} onChange={e => setDivSort(e.target.value)}
+                    className="pl-7 pr-3 py-2 text-xs font-bold bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-600 dark:text-slate-400 focus:outline-none focus:border-indigo-400 appearance-none cursor-pointer">
+                    <option value="az">A → Z</option>
+                    <option value="za">Z → A</option>
+                    <option value="most-personnel">Most Assigned</option>
+                    <option value="fewest-personnel">Fewest Assigned</option>
+                  </select>
+                </div>
+                <button onClick={() => { setAddProgramOpen(true); setProgramForm({ title: '', abbreviation: '', division: divisionFilter !== 'All' ? divisionFilter : 'CID', school_level_requirement: 'Division' }); }}
                   className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shrink-0">
                   <Plus size={17} /> <span className="hidden sm:inline">Add Program</span><span className="sm:hidden">Add</span>
                 </button>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                {DIV_PILLS.map(d => {
-                  const count = d === 'All' ? divPrograms.length : divPrograms.filter(p => p.division === d).length;
+                {['All', ...DIVISIONS].map(d => {
+                  const count = d === 'All' ? divisionPrograms.length : divisionPrograms.filter(p => p.division === d).length;
                   return (
                     <button key={d} onClick={() => setDivisionFilter(d)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-colors ${divisionFilter === d ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-dark-border text-slate-600 dark:text-slate-400 hover:bg-slate-200'}`}>
@@ -438,13 +420,13 @@ export default function AdminPrograms() {
               </div>
             </div>
 
-            {loadingDivPrograms || loadingPrograms ? (
+            {loadingPrograms ? (
               <div className="flex items-center justify-center h-48">
                 <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />
               </div>
-            ) : filteredDivProgramGroups.length ? (
+            ) : divisionProgramGroups.length ? (
               <div className="space-y-5">
-                {filteredDivProgramGroups.map(({ division, programs: groupedPrograms }) => (
+                {divisionProgramGroups.map(({ division, programs: groupedPrograms }) => (
                   <section key={division} className="space-y-3">
                     <div className="flex items-center gap-2">
                       <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wide rounded-lg ${DIVISION_COLORS[division] ?? 'bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400'}`}>
@@ -457,8 +439,7 @@ export default function AdminPrograms() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {groupedPrograms.map(prog => {
-                        const assignedPersonnel = getAssignedPersonnelForDivisionProgram(prog);
-
+                        const assignedPersonnel = prog.personnel ?? [];
                         return (
                         <div key={prog.id} className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5 space-y-3">
                           <div className="flex items-start justify-between gap-3">
@@ -466,9 +447,16 @@ export default function AdminPrograms() {
                               <ProgramTitleBlock title={prog.title} abbreviation={prog.abbreviation} />
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
-                              <button onClick={() => { setEditDivProgram(prog); setDivForm({ title: prog.title, abbreviation: prog.abbreviation ?? '', division: prog.division }); }}
+                              <button
+                                onClick={() => setTemplateProgram(prog)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
+                                title="Manage template"
+                              >
+                                <BookOpen size={16} />
+                              </button>
+                              <button onClick={() => { setEditProgram(prog); setProgramForm({ title: prog.title, abbreviation: prog.abbreviation ?? '', division: prog.division ?? '', school_level_requirement: prog.school_level_requirement }); }}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"><PencilSimple size={16} /></button>
-                              <button onClick={() => setDeleteDivProgram(prog)}
+                              <button onClick={() => setDeleteProgram(prog)}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"><Trash size={16} /></button>
                             </div>
                           </div>
@@ -477,7 +465,7 @@ export default function AdminPrograms() {
                             {assignedPersonnel.length > 0 ? (
                               <div className="space-y-1">
                                 {assignedPersonnel.slice(0, 3).map(p => (
-                                  <p key={p.id} className="text-xs font-bold text-slate-600 dark:text-slate-400">• {personnelDisplayName(p)}</p>
+                                  <p key={p.id} onClick={() => handleViewUser(p)} className={`text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${loadingUser ? 'opacity-50 pointer-events-none text-slate-400' : 'text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400'}`}><User size={12} weight="bold" /> {personnelDisplayName(p)}</p>
                                 ))}
                                 {assignedPersonnel.length > 3 && <p className="text-xs text-slate-400">+{assignedPersonnel.length - 3} more</p>}
                               </div>
@@ -539,38 +527,27 @@ export default function AdminPrograms() {
       <ConfirmModal open={!!deleteProgram} title="Delete Program" message={`Delete "${deleteProgram?.title}"? Existing AIP submissions referencing this program will remain but orphaned.`}
         variant="danger" confirmLabel="Delete" onConfirm={handleDeleteProgram} onCancel={() => setDeleteProgram(null)} loading={actionLoading} />
 
-      {/* ── Division Program Modals ── */}
-      <FormModal open={addDivOpen || !!editDivProgram} title={editDivProgram ? 'Edit Division Program' : 'Add Division Program'}
-        onSave={editDivProgram ? handleEditDivProgram : handleAddDivProgram}
-        onCancel={() => { setAddDivOpen(false); setEditDivProgram(null); setFormError(''); }} loading={actionLoading}>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Program Title</label>
-            <input value={divForm.title} onChange={e => setDivForm(f => ({ ...f, title: e.target.value }))}
-              className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-400" />
-          </div>
-          <div>
-            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Abbreviation <span className="font-normal normal-case text-slate-400">(optional)</span></label>
-            <input value={divForm.abbreviation} onChange={e => setDivForm(f => ({ ...f, abbreviation: e.target.value }))}
-              placeholder="e.g. LRMDS"
-              className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:border-indigo-400" />
-          </div>
-          <div>
-            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Division</label>
-            <SearchableSelect options={DIVISIONS.map(d => ({ value: d, label: d }))} value={divForm.division} onChange={v => setDivForm(f => ({ ...f, division: v }))} />
-          </div>
-          {formError && <p className="text-xs text-red-500 font-bold">{formError}</p>}
-        </div>
-      </FormModal>
-
-      <ConfirmModal open={!!deleteDivProgram} title="Delete Division Program" message={`Delete "${deleteDivProgram?.title}"? This cannot be undone.`}
-        variant="danger" confirmLabel="Delete" onConfirm={handleDeleteDivProgram} onCancel={() => setDeleteDivProgram(null)} loading={actionLoading} />
-
       <ProgramTemplatesModal
         open={!!templateProgram}
         program={templateProgram}
         onClose={() => setTemplateProgram(null)}
         onSaved={(message) => showToast(message)}
+      />
+
+      <ProgramMembersModal
+        open={!!membersProgram}
+        program={membersProgram}
+        onClose={() => setMembersProgram(null)}
+      />
+
+      <UserProfileModal
+        open={!!viewUser}
+        user={viewUser}
+        onClose={() => setViewUser(null)}
+        onEdit={() => { setViewUser(null); showToast('Please go to the Users tab to edit users.', 'error'); }}
+        onResetPassword={() => { setViewUser(null); showToast('Please go to the Users tab to reset passwords.', 'error'); return Promise.reject(); }}
+        onToggle={() => { setViewUser(null); showToast('Please go to the Users tab to toggle account status.', 'error'); }}
+        onDelete={() => { setViewUser(null); showToast('Please go to the Users tab to delete users.', 'error'); }}
       />
 
       {/* Toast */}
