@@ -96,6 +96,10 @@ aipRoutes.get(
         programId: aip.program_id,
         year: aip.year,
         status: aip.status,
+        editRequested: aip.edit_requested,
+        editRequestedAt: aip.edit_requested_at ?? null,
+        editRequestCount: (aip as any).edit_request_count ?? 0,
+        isSchoolOwned: aip.school_id !== null,
         depedProgram: aip.program.title,
         outcome: aip.outcome,
         targetDescription: aip.target_description || indicators[0]?.description || "",
@@ -235,7 +239,7 @@ aipRoutes.post(
         prepared_by_title: prepared_by_title || "",
         approved_by_name: approved_by_name || "",
         approved_by_title: approved_by_title || "",
-        status: "Submitted",
+        status: "Approved",
       };
 
       if (hasInvalidActivityBudget(activities)) {
@@ -364,9 +368,9 @@ aipRoutes.put(
         (tokenUser.school_id != null && aip.school_id === tokenUser.school_id);
       if (!isOwner) return c.json({ error: "Forbidden" }, 403);
 
-      if (aip.status !== "Submitted" && aip.status !== "Returned") {
+      if (aip.status !== "Returned") {
         return c.json(
-          { error: "This AIP can no longer be edited in its current state." },
+          { error: "This AIP can no longer be edited in its current state. Please request edit permission." },
           409,
         );
       }
@@ -409,7 +413,7 @@ aipRoutes.put(
           prepared_by_title: prepared_by_title || "",
           approved_by_name: approved_by_name || "",
           approved_by_title: approved_by_title || "",
-          status: "Submitted",
+          status: "Approved",
           activities: { create: activityFields },
         },
         include: { activities: true },
@@ -451,6 +455,14 @@ aipRoutes.post(
         );
       }
 
+      const MAX_EDIT_REQUESTS = 3;
+      if (((aip as any).edit_request_count ?? 0) >= MAX_EDIT_REQUESTS) {
+        return c.json(
+          { error: "You have reached the maximum number of edit requests (3) for this AIP." },
+          409,
+        );
+      }
+
       let requesterLabel: string;
       if (aip.school) {
         requesterLabel = aip.school.name;
@@ -462,9 +474,13 @@ aipRoutes.post(
         requesterLabel = requester?.name ?? requester?.email ?? "Division Personnel";
       }
 
-      await prisma.aIP.update({
+      await (prisma.aIP as any).update({
         where: { id: aipId },
-        data: { edit_requested: true },
+        data: {
+          edit_requested: true,
+          edit_requested_at: new Date(),
+          edit_request_count: { increment: 1 },
+        },
       });
 
       const admins = await prisma.user.findMany({
@@ -487,6 +503,43 @@ aipRoutes.post(
       }
 
       return c.json({ message: "Edit request sent to admin" });
+    },
+  ),
+);
+
+aipRoutes.post(
+  "/aips/:id/cancel-edit-request",
+  asyncHandler(
+    "Unhandled route error",
+    "Failed to cancel edit request",
+    async (c) => {
+      const tokenUser = getAuthedUser(c);
+      const aipId = safeParseInt(c.req.param("id"), 0);
+      const aip = await prisma.aIP.findUnique({
+        where: { id: aipId },
+      });
+
+      if (!aip) return c.json({ error: "AIP not found" }, 404);
+
+      const isOwner = aip.created_by_user_id === tokenUser.id ||
+        (tokenUser.school_id != null && aip.school_id === tokenUser.school_id);
+      if (!isOwner) {
+        return c.json(
+          { error: "Not authorized to cancel this edit request" },
+          403,
+        );
+      }
+
+      if (!aip.edit_requested) {
+        return c.json({ error: "No pending edit request" }, 409);
+      }
+
+      await prisma.aIP.update({
+        where: { id: aipId },
+        data: { edit_requested: false, edit_requested_at: null },
+      });
+
+      return c.json({ message: "Edit request cancelled" });
     },
   ),
 );

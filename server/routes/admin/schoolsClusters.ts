@@ -62,9 +62,12 @@ observerRoutes.get("/clusters", async (c) => {
             select: {
               id: true,
               email: true,
+              salutation: true,
               name: true,
               first_name: true,
+              middle_initial: true,
               last_name: true,
+              position: true,
             },
           },
           restricted_programs: { select: { id: true, title: true } },

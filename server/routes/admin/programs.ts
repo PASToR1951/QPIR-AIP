@@ -51,8 +51,7 @@ observerRoutes.use("/programs", adminOrObserverOnly);
 adminRoutes.use("/programs/:id", adminOnly);
 adminRoutes.use("/programs/:id/template", adminOnly);
 adminRoutes.use("/programs/:id/personnel", adminOnly);
-adminRoutes.use("/division-programs", adminOnly);
-adminRoutes.use("/division-programs/:id", adminOnly);
+adminRoutes.use("/programs/:id/members", adminOnly);
 
 observerRoutes.get("/programs", async (c) => {
   const actor = requireAdminOrObserver(c);
@@ -178,6 +177,47 @@ adminRoutes.patch("/programs/:id/personnel", async (c) => {
   return c.json({ success: true });
 });
 
+adminRoutes.get("/programs/:id/members", async (c) => {
+  const admin = requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (id === 0) return c.json({ error: "Invalid program id" }, 400);
+
+  const program = await prisma.program.findUnique({
+    where: { id },
+    include: {
+      restricted_schools: { select: { id: true } },
+    },
+  });
+  if (!program) return c.json({ error: "Program not found" }, 404);
+
+  const restrictedIds = program.restricted_schools.map((s) => s.id);
+
+  let schools: Array<{ id: number; name: string; abbreviation: string | null; level: string }> = [];
+  if (program.school_level_requirement !== "Division") {
+    const levelWhere = program.school_level_requirement === "Elementary"
+      ? { level: "Elementary" }
+      : program.school_level_requirement === "Secondary"
+      ? { level: "Secondary" }
+      : {};
+
+    schools = await prisma.school.findMany({
+      where: {
+        ...levelWhere,
+        ...(restrictedIds.length > 0 ? { id: { notIn: restrictedIds } } : {}),
+      },
+      select: { id: true, name: true, abbreviation: true, level: true },
+      orderBy: { name: "asc" },
+    });
+  }
+
+  return c.json({
+    schools,
+    restricted_count: restrictedIds.length,
+  });
+});
+
 adminRoutes.get("/programs/:id/template", async (c) => {
   const admin = requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
@@ -293,76 +333,3 @@ adminRoutes.delete("/programs/:id/template", async (c) => {
   return c.json({ success: true });
 });
 
-adminRoutes.get("/division-programs", async (c) => {
-  const admin = getUserFromToken(c)!;
-  const programs = await prisma.divisionProgram.findMany({
-    orderBy: [{ division: "asc" }, { title: "asc" }],
-  });
-  return c.json(programs);
-});
-
-adminRoutes.post("/division-programs", async (c) => {
-  const admin = getUserFromToken(c)!;
-  const { title, abbreviation, division } = sanitizeObject(await c.req.json());
-  try {
-    const program = await prisma.divisionProgram.create({
-      data: { title, abbreviation: abbreviation || null, division },
-    });
-    await writeAuditLog(
-      admin.id,
-      "created_division_program",
-      "DivisionProgram",
-      program.id,
-      { title, division },
-    );
-    return c.json(program);
-  } catch (error: any) {
-    if (error?.code === "P2002") {
-      return c.json({
-        error: "A program with that title already exists in that division.",
-      }, 409);
-    }
-    throw error;
-  }
-});
-
-adminRoutes.patch("/division-programs/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
-  const id = safeParseInt(c.req.param("id"), 0);
-  const { title, abbreviation, division } = sanitizeObject(await c.req.json());
-  try {
-    const program = await prisma.divisionProgram.update({
-      where: { id },
-      data: { title, abbreviation: abbreviation || null, division },
-    });
-    await writeAuditLog(
-      admin.id,
-      "updated_division_program",
-      "DivisionProgram",
-      id,
-      { title, division },
-    );
-    return c.json(program);
-  } catch (error: any) {
-    if (error?.code === "P2002") {
-      return c.json({
-        error: "A program with that title already exists in that division.",
-      }, 409);
-    }
-    throw error;
-  }
-});
-
-adminRoutes.delete("/division-programs/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
-  const id = safeParseInt(c.req.param("id"), 0);
-  await prisma.divisionProgram.delete({ where: { id } });
-  await writeAuditLog(
-    admin.id,
-    "deleted_division_program",
-    "DivisionProgram",
-    id,
-    {},
-  );
-  return c.json({ success: true });
-});

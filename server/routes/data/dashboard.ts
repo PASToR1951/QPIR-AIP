@@ -87,6 +87,7 @@ dashboardRoutes.get(
           abbreviation: aip.program.abbreviation ?? null,
           status: aip.status,
           editRequested: aip.edit_requested ?? false,
+          editRequestCount: (aip as any).edit_request_count ?? 0,
           archived: aip.archived ?? false,
           created_at: aip.created_at,
           pirs: aip.pirs.map((pir: any) => ({

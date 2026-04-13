@@ -121,9 +121,26 @@ app.get('/cluster-logos/:filename', async (c) => {
   return serveUploadedLogo(c, './public/cluster-logos');
 });
 
-// Serve the admin-uploaded app logo.
+// Serve the admin-uploaded app logo. Filename is "logo.{ext}", not a numeric ID,
+// so it cannot reuse serveUploadedLogo which expects a numeric prefix.
 app.get('/app-logo/:filename', async (c) => {
-  return serveUploadedLogo(c, './public/app-logo');
+  const filename = c.req.param('filename');
+  const match = filename.match(/^logo\.(webp|png|jpe?g|gif)$/);
+  if (!match) return c.json({ error: 'Not found' }, 404);
+
+  const extension = match[1];
+  const contentType = UPLOADED_LOGO_CONTENT_TYPES[extension] ?? 'application/octet-stream';
+  try {
+    const file = await Deno.readFile(`./public/app-logo/${filename}`);
+    return new Response(file, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=86400',
+      },
+    });
+  } catch {
+    return c.json({ error: 'Not found' }, 404);
+  }
 });
 
 // Health check

@@ -44,6 +44,7 @@ usersRoutes.get("/users", async (c) => {
         id: true,
         title: true,
         school_level_requirement: true,
+        division: true,
         restricted_schools: { select: { id: true } },
       },
       orderBy: { title: "asc" },
@@ -73,20 +74,23 @@ usersRoutes.get("/users", async (c) => {
           }
           return true;
         })
-        .map((program) => ({ id: program.id, title: program.title }));
+        .map((program) => ({ id: program.id, title: program.title, division: program.division }));
     } else {
       programs = user.programs.map((program) => ({
         id: program.id,
         title: program.title,
+        division: program.division,
       }));
     }
 
     return {
       id: user.id,
+      salutation: user.salutation,
       name: user.name,
       first_name: user.first_name,
       middle_initial: user.middle_initial,
       last_name: user.last_name,
+      position: user.position,
       email: user.email,
       role: user.role,
       is_active: user.is_active,
@@ -100,10 +104,12 @@ usersRoutes.get("/users", async (c) => {
 usersRoutes.post("/users", async (c) => {
   const admin = getUserFromToken(c)!;
   const {
+    salutation,
     name,
     first_name,
     middle_initial,
     last_name,
+    position,
     email,
     password,
     role,
@@ -177,10 +183,12 @@ usersRoutes.post("/users", async (c) => {
     const user = await prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
         data: {
+          ...(salutation !== undefined && { salutation }),
           ...(name !== undefined && { name }),
           ...(first_name !== undefined && { first_name }),
           ...(middle_initial !== undefined && { middle_initial }),
           ...(last_name !== undefined && { last_name }),
+          ...(position !== undefined && { position }),
           email,
           password: hashed,
           role,
@@ -400,10 +408,12 @@ usersRoutes.patch("/users/:id", async (c) => {
   const id = safeParseInt(c.req.param("id"), 0);
   const body = sanitizeObject(await c.req.json());
   const {
+    salutation,
     name,
     first_name,
     middle_initial,
     last_name,
+    position,
     role,
     school_id,
     cluster_id,
@@ -437,10 +447,12 @@ usersRoutes.patch("/users/:id", async (c) => {
   }
 
   const updateData: Record<string, unknown> = {};
+  if (salutation !== undefined) updateData.salutation = salutation;
   if (name !== undefined) updateData.name = name;
   if (first_name !== undefined) updateData.first_name = first_name;
   if (middle_initial !== undefined) updateData.middle_initial = middle_initial;
   if (last_name !== undefined) updateData.last_name = last_name;
+  if (position !== undefined) updateData.position = position;
   if (role !== undefined) updateData.role = role;
   if (is_active !== undefined) updateData.is_active = is_active;
 

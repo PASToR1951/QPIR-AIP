@@ -265,7 +265,12 @@ settingsRoutes.post("/settings/app-logo", async (c) => {
     new Uint8Array(buffer),
   );
 
-  await prisma.divisionConfig.updateMany({ data: { app_logo: logoPath } });
+  const existingConfig = await prisma.divisionConfig.findFirst();
+  if (existingConfig) {
+    await prisma.divisionConfig.update({ where: { id: existingConfig.id }, data: { app_logo: logoPath } });
+  } else {
+    await prisma.divisionConfig.create({ data: { app_logo: logoPath } });
+  }
   await writeAuditLog(admin.id, "uploaded_app_logo", "DivisionConfig", 1, {
     app_logo: logoPath,
   });
