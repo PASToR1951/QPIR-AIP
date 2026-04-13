@@ -94,10 +94,12 @@ model User {
   // OAuth SSO fields — populated on first OAuth login
   oauth_provider  String?   // "google" | null
   oauth_subject   String?   // Immutable IdP user ID (sub for Google)
+  salutation      String?   // "Mr." | "Ms." | "Mrs." | "Dr."
   name            String?
   first_name      String?
   middle_initial  String?
   last_name       String?
+  position        String?   // Job title / position e.g. "Education Program Supervisor I"
   is_active             Boolean   @default(true)
   must_change_password  Boolean   @default(false) // Set to true when admin resets password — forces change on next login
   deleted_at      DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
@@ -176,6 +178,8 @@ model AIP {
   approved_by_title   String   @default("")
   status              String   @default("Approved") // "Draft" | "Approved" | "Returned"
   edit_requested      Boolean  @default(false)       // true while user is waiting for admin to unlock
+  edit_requested_at   DateTime?                     // when the last edit request was sent
+  edit_request_count  Int      @default(0)          // lifetime count of edit requests (max 3)
   observer_notes      String?
   archived            Boolean  @default(false)
   archived_at         DateTime?
@@ -401,16 +405,6 @@ model AnnouncementMentionUser {
 
   @@id([announcement_id, user_id])
   @@map("announcement_mention_users")
-}
-
-model DivisionProgram {
-  id           Int     @id @default(autoincrement())
-  title        String
-  abbreviation String? // Short name / acronym
-  division     Division  // NOT NULL: clear indicator of functional division
-
-  @@unique([title, division])
-  @@map("division_programs")
 }
 
 model DivisionConfig {
