@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ClockCounterClockwise, CaretDown, CaretUp, Eye, SpinnerGap, Tray, PencilSimple, CheckCircle } from '@phosphor-icons/react';
+import { ClockCounterClockwise, CaretDown, CaretUp, Eye, SpinnerGap, Tray, PencilSimple, CheckCircle, Warning, X } from '@phosphor-icons/react';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
 import { AIPDocument } from '../docs/AIPDocument';
@@ -13,8 +14,16 @@ const ROW_PADDING_Y = 40;
 const PIR_BUTTON_HEIGHT = 32;
 
 export default function SubmissionsHistory() {
-  
-  
+  const userStr = sessionStorage.getItem('user');
+  let user = null;
+
+  try {
+    user = userStr ? JSON.parse(userStr) : null;
+  } catch {
+    sessionStorage.removeItem('user');
+  }
+
+  const usesSchoolTerminology = user?.role === 'School';
   const currentYear = new Date().getFullYear();
 
   const [history, setHistory] = useState([]);
@@ -28,8 +37,12 @@ export default function SubmissionsHistory() {
   const [previewContent, setPreviewContent] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [requestedEditIds, setRequestedEditIds] = useState(new Set());
+  const [editRequestCounts, setEditRequestCounts] = useState({});
   const [requestingEditId, setRequestingEditId] = useState(null);
   const [editRequestToast, setEditRequestToast] = useState(null);
+  const [confirmEditId, setConfirmEditId] = useState(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState(null);
+  const [cancelingEditId, setCancelingEditId] = useState(null);
 
   const [supervisorName, setSupervisorName] = useState('');
   const [supervisorTitle, setSupervisorTitle] = useState('');
@@ -71,14 +84,17 @@ export default function SubmissionsHistory() {
         setHistory(r.data);
         const init = {};
         const editedIds = new Set();
+        const counts = {};
         for (const entry of r.data) {
           init[entry.year] = entry.year === currentYear;
           for (const aip of entry.aips) {
             if (aip.editRequested) editedIds.add(aip.id);
+            counts[aip.id] = aip.editRequestCount ?? 0;
           }
         }
         setExpanded(init);
         setRequestedEditIds(editedIds);
+        setEditRequestCounts(counts);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -98,13 +114,14 @@ export default function SubmissionsHistory() {
       });
       setPreviewTitle('Annual Implementation Plan');
       setPreviewSubtitle(`${programTitle} — FY ${year}`);
-      setPreviewLandscape(false);
-      setPreviewContent(
+      setPreviewLandscape(true);
+        setPreviewContent(
         <AIPDocument
           year={String(d.year)}
           outcome={d.outcome}
           targetDescription={d.targetDescription}
           depedProgram={d.depedProgram}
+          usesSchoolTerminology={d.isSchoolOwned ?? true}
           sipTitle={d.sipTitle}
           projectCoord={d.projectCoord}
           objectives={d.objectives}
@@ -142,6 +159,7 @@ export default function SubmissionsHistory() {
           budgetFromDivision={d.budgetFromDivision}
           budgetFromCoPSF={d.budgetFromCoPSF}
           functionalDivision={d.functionalDivision}
+          usesSchoolTerminology={usesSchoolTerminology}
           indicatorTargets={d.indicatorQuarterlyTargets}
           activities={d.activities}
           factors={d.factors}
@@ -152,17 +170,32 @@ export default function SubmissionsHistory() {
     } catch { /* silently fail */ } finally {
       setPreviewLoading(false);
     }
-  }, [supervisorName, supervisorTitle]);
+  }, [supervisorName, supervisorTitle, usesSchoolTerminology]);
 
   const handleRequestEdit = useCallback(async (aipId) => {
+    setConfirmEditId(null);
     setRequestingEditId(aipId);
     try {
       await api.post(`/api/aips/${aipId}/request-edit`);
       setRequestedEditIds(prev => new Set(prev).add(aipId));
+      setEditRequestCounts(prev => ({ ...prev, [aipId]: (prev[aipId] ?? 0) + 1 }));
       setEditRequestToast('Edit request sent — an admin will be notified.');
       setTimeout(() => setEditRequestToast(null), 3500);
     } catch { /* silently fail — button stays active so user can retry */ } finally {
       setRequestingEditId(null);
+    }
+  }, []);
+
+  const handleCancelEditRequest = useCallback(async (aipId) => {
+    setCancelConfirmId(null);
+    setCancelingEditId(aipId);
+    try {
+      await api.post(`/api/aips/${aipId}/cancel-edit-request`);
+      setRequestedEditIds(prev => { const s = new Set(prev); s.delete(aipId); return s; });
+      setEditRequestToast('Edit request cancelled.');
+      setTimeout(() => setEditRequestToast(null), 3500);
+    } catch { /* silently fail */ } finally {
+      setCancelingEditId(null);
     }
   }, []);
 
@@ -272,13 +305,20 @@ export default function SubmissionsHistory() {
                             <StatusBadge status={aip.status} size="xs" />
                             {aip.status === 'Approved' && !aip.archived && (
                               requestedEditIds.has(aip.id) ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                                  <CheckCircle size={11} weight="fill" />
-                                  Request Sent
-                                </span>
-                              ) : (
                                 <button
-                                  onClick={() => handleRequestEdit(aip.id)}
+                                  onClick={() => setCancelConfirmId(aip.id)}
+                                  disabled={cancelingEditId === aip.id}
+                                  title="Cancel edit request"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:hover:border-red-900/50 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <CheckCircle size={11} weight="fill" className="group-hover:hidden" />
+                                  <X size={11} weight="bold" className="hidden group-hover:block" />
+                                  <span className="group-hover:hidden">{cancelingEditId === aip.id ? 'Cancelling…' : 'Request Sent'}</span>
+                                  <span className="hidden group-hover:inline">Cancel Request</span>
+                                </button>
+                              ) : (editRequestCounts[aip.id] ?? 0) < 3 ? (
+                                <button
+                                  onClick={() => setConfirmEditId(aip.id)}
                                   disabled={requestingEditId === aip.id}
                                   title="Request edit from admin"
                                   className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -286,6 +326,14 @@ export default function SubmissionsHistory() {
                                   <PencilSimple size={11} />
                                   {requestingEditId === aip.id ? 'Sending…' : 'Request Edit'}
                                 </button>
+                              ) : (
+                                <span
+                                  title="Edit request limit reached"
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-dark-border text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-dark-border"
+                                >
+                                  <PencilSimple size={11} />
+                                  No Requests Left
+                                </span>
                               )
                             )}
                           </div>
@@ -337,6 +385,124 @@ export default function SubmissionsHistory() {
       >
         {previewContent}
       </DocumentPreviewModal>
+
+      {/* Cancel Edit Request Confirmation Modal */}
+      <AnimatePresence>
+        {cancelConfirmId && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+            <Motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+              onClick={() => setCancelConfirmId(null)}
+            />
+            <Motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+              className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-dark-surface shadow-2xl ring-1 ring-slate-900/10 dark:ring-dark-border p-6"
+            >
+              <button
+                type="button"
+                onClick={() => setCancelConfirmId(null)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
+              >
+                <X size={16} weight="bold" />
+              </button>
+
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex items-center justify-center">
+                  <Warning size={20} weight="duotone" className="text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight">Cancel Edit Request?</h3>
+                  <p className="mt-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
+                    This will withdraw your edit request. The administrator will no longer be notified. You can send a new request anytime.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCancelConfirmId(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-colors"
+                >
+                  Keep Request
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCancelEditRequest(cancelConfirmId)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm"
+                >
+                  Yes, Cancel Request
+                </button>
+              </div>
+            </Motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Request Edit Confirmation Modal */}
+      <AnimatePresence>
+        {confirmEditId && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+            <Motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+              onClick={() => setConfirmEditId(null)}
+            />
+            <Motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+              className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-dark-surface shadow-2xl ring-1 ring-slate-900/10 dark:ring-dark-border p-6"
+            >
+              <button
+                type="button"
+                onClick={() => setConfirmEditId(null)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
+              >
+                <X size={16} weight="bold" />
+              </button>
+
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-center justify-center">
+                  <Warning size={20} weight="duotone" className="text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight">Request Edit Access?</h3>
+                  <p className="mt-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
+                    This will notify the administrator that you need to make changes to your approved AIP. You can only send one request at a time.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmEditId(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRequestEdit(confirmEditId)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 transition-colors shadow-sm"
+                >
+                  Yes, Send Request
+                </button>
+              </div>
+            </Motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

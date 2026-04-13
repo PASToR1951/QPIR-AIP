@@ -21,7 +21,7 @@ export const DocumentPreviewModal = ({
         if (landscape) {
             injected = document.createElement('style');
             injected.id = '__pir-landscape-print__';
-            injected.textContent = '@media print { @page { size: A4 landscape; margin: 1cm; } }';
+            injected.textContent = '@media print { @page { size: 13in 8.5in; margin: 1cm; } }';
             document.head.appendChild(injected);
         }
 
@@ -150,8 +150,8 @@ export const DocumentPreviewModal = ({
 
                         {/* Scrollable Preview Area */}
                         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto p-3 sm:p-4 md:p-6 lg:p-8 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-dark-border scrollbar-track-transparent print:overflow-visible print:p-0 print:flex-none print:h-auto">
-                            <div className={`${landscape ? 'max-w-[297mm]' : 'max-w-[210mm]'} mx-auto print:max-w-none`}>
-                                <div className={`bg-white text-black shadow-xl ring-1 ring-slate-900/5 rounded-sm p-4 sm:p-6 md:p-10 lg:p-12 print:p-0 print:shadow-none print:m-0 print:ring-0 ${landscape ? 'min-h-[210mm]' : 'min-h-[297mm]'} print:min-h-0`}>
+                            <div className={`${landscape ? 'min-w-[330.2mm] max-w-[330.2mm]' : 'max-w-[215.9mm]'} mx-auto print:max-w-none`}>
+                                <div className={`bg-white text-black shadow-xl ring-1 ring-slate-900/5 rounded-sm p-4 sm:p-6 md:p-10 lg:p-12 print:p-0 print:shadow-none print:m-0 print:ring-0 ${landscape ? 'min-h-[215.9mm]' : 'min-h-[330.2mm]'} print:min-h-0`}>
                                     {children}
                                 </div>
 

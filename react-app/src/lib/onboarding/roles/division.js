@@ -1,0 +1,154 @@
+export const divisionRoleConfig = {
+  hasChecklist: true,
+  isWelcomeEligible: true,
+  content: {
+    title: 'Welcome to your planning workspace',
+    subtitle: 'Manage AIP submissions and quarterly PIR reports for your assigned programs.',
+    bullets: [
+      'Submit AIPs — fill in programs, activities, and budgets through a structured step-by-step form.',
+      'Report quarterly — file PIR entries each quarter to track outcomes against your planned targets.',
+      'Stay organised — autosave and draft history keep your work safe across sessions.',
+    ],
+  },
+  tasks: [
+    {
+      id: 'division-dashboard',
+      label: 'View your dashboard',
+      description: 'Open your dashboard and find the AIP and PIR cards.',
+      route: '/',
+      completeOn: ['author.dashboard_visited'],
+      tourSteps: [
+        {
+          target: 'dashboard-summary',
+          title: 'Your Dashboard',
+          description: 'This is your planning workspace overview. It shows where your programs stand — AIP completion, pending PIR reports, and what action is needed next.',
+          placement: 'bottom',
+        },
+        {
+          target: 'dashboard-aip-card',
+          title: 'AIP — Annual Plan',
+          description: 'This card opens the Annual Implementation Plan workspace for your assigned programs. Click "Start Planning" to begin.',
+          placement: 'top',
+        },
+        {
+          target: 'dashboard-pir-card',
+          title: 'PIR — Quarterly Report',
+          description: 'After the AIP is submitted, quarterly PIR reports are filed here to track actual activities and spending versus what was planned.',
+          placement: 'top',
+        },
+        {
+          target: 'dashboard-submission-history',
+          title: 'Submission History',
+          description: 'All your past and in-progress submissions are listed here. Check this section to see review statuses and track which reports are still pending approval.',
+          placement: 'top',
+        },
+        {
+          target: 'dashboard-profile-menu',
+          title: 'Account & Logout',
+          description: 'Click your profile icon here to open the account menu. At the bottom of the menu you will find the Logout button — use it when you are done for the day.',
+          placement: 'bottom',
+        },
+      ],
+    },
+    {
+      id: 'division-open-form',
+      label: 'Open an AIP form',
+      description: 'Open the AIP form for one of your assigned programs.',
+      route: '/aip',
+      completeOn: ['author.form_visited'],
+      tourSteps: [
+        {
+          target: 'form-step-nav',
+          title: 'Form Steps',
+          description: 'The AIP is divided into sections. Work through each one in order — Alignment, Targets, Action Plan, and so on — before reaching the final review.',
+          placement: 'bottom',
+          prerequisiteTarget: 'aip-form-active',
+          missingTargetHint: 'Open the AIP form first by clicking "Start Planning" on your dashboard.',
+        },
+        {
+          target: 'form-program-selector',
+          title: 'Program Selector',
+          description: 'Select one of your assigned programs here to start. Each program has its own separate budget and activity entries.',
+          placement: 'bottom',
+        },
+      ],
+    },
+    {
+      id: 'division-program',
+      label: 'Select an assigned program',
+      description: 'Choose one of your assigned programs to load the form.',
+      route: '/aip',
+      completeOn: ['author.program_selected'],
+      tourSteps: [
+        {
+          target: 'form-program-selector',
+          title: 'Choose a Program',
+          description: 'Pick one of your assigned programs from this list. Once selected, the form loads that program\'s activities and budget fields.',
+          placement: 'bottom',
+          missingTargetHint: 'Open the AIP form first by clicking "Start Planning" on your dashboard.',
+        },
+      ],
+    },
+    {
+      id: 'division-save',
+      label: 'Save a draft section',
+      description: 'Enter a first draft section and make sure it saves.',
+      route: '/aip',
+      completeOn: ['author.draft_saved'],
+      tourSteps: [
+        {
+          target: 'form-autosave',
+          title: 'Save Status',
+          description: 'Autosave runs automatically as you work. This indicator shows when your last save happened. Click "Save Draft" here anytime for an extra manual checkpoint.',
+          placement: 'bottom',
+          prerequisiteTarget: 'aip-form-active',
+          missingTargetHint: 'Open the AIP form first by clicking "Start Planning" on your dashboard.',
+        },
+      ],
+    },
+    {
+      id: 'division-review',
+      label: 'Reach the review step',
+      description: 'Complete the form sections and open the review area.',
+      route: '/aip',
+      completeOn: ['author.review_area_opened'],
+      tourSteps: [
+        {
+          target: 'form-review-submit',
+          title: 'Review & Submit',
+          description: 'Once all sections are complete, this area appears at the bottom. Check all entries before submitting — post-submission changes need coordinator approval.',
+          placement: 'top',
+          prerequisiteTarget: 'aip-form-active',
+          missingTargetHint: 'Complete all form sections first, then scroll to the bottom to reach the review area.',
+        },
+      ],
+    },
+  ],
+  hints: [
+    {
+      id: 'division-autosave',
+      pathname: '/aip',
+      target: 'form-autosave',
+      title: 'Draft saving is already on',
+      description: 'Once you start editing, autosave keeps your first draft section from getting lost.',
+      requiredTaskId: 'division-open-form',
+      pendingTaskId: 'division-save',
+    },
+  ],
+  practiceTasks: [
+    {
+      id: 'practice-division-submit-aip',
+      label: 'Practice: Submit an AIP',
+      description: 'Walk through the AIP submission step on a mock program — no real data is affected.',
+      practiceType: 'aip_submit',
+      completeOn: ['practice.aip_submitted'],
+    },
+    {
+      id: 'practice-division-file-pir',
+      label: 'Practice: File a PIR',
+      description: 'Try the quarterly PIR filing flow without submitting anything real.',
+      practiceType: 'pir_submit',
+      completeOn: ['practice.pir_submitted'],
+    },
+  ],
+};

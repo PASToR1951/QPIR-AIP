@@ -11,10 +11,6 @@ function formatDeadlineShort(isoDate) {
     return new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function formatBudget(amount) {
-    if (!amount || amount === 0) return null;
-    return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
-}
 
 function getUrgencyTier(daysLeft) {
     if (daysLeft <= 0)  return { level: 'overdue',   color: 'rose',  bgTint: 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800' };

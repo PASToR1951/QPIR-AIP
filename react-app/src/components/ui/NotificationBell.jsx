@@ -182,7 +182,7 @@ export function NotificationBell() {
         onClick={() => setOpen(o => !o)}
         className={`relative p-2 rounded-xl transition-colors ${open ? 'bg-slate-100 dark:bg-dark-border' : 'hover:bg-slate-50 dark:hover:bg-dark-base'}`}
       >
-        <Bell size={22} className="text-slate-500 dark:text-slate-400" />
+        <Bell size={22} className={`transition-colors ${unread > 0 ? 'bell-ring text-accent' : 'text-slate-500 dark:text-slate-400'}`} />
         {unread > 0 && (
           <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5 rounded-full bg-accent text-white text-[9px] font-black flex items-center justify-center leading-none">
             {unread > 9 ? '9+' : unread}

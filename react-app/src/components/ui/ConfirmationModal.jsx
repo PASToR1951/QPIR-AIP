@@ -58,7 +58,7 @@ export const ConfirmationModal = ({
                                 {title}
                             </h3>
                             
-                            <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-10">
+                            <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-10 whitespace-pre-line">
                                 {message}
                             </p>
                             

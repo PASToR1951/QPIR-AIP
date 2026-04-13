@@ -9,7 +9,7 @@ const FACTOR_TYPES = ['Institutional', 'Technical', 'Infrastructure', 'Learning 
 const formatCurrency = (val) => {
   const n = parseFloat(val);
   if (isNaN(n)) return '—';
-  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(n);
+  return `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 function SectionHeading({ label }) {

@@ -314,7 +314,7 @@ export default function OnboardingController() {
 
       {hasChecklist && isHydrated && (
         <>
-          {showChecklistOnPage && (
+          {showChecklistOnPage && (!isComplete || checklistOpen) && (
             <OnboardingChecklist
               open={checklistOpen}
               hidden={onboarding.checklist_progress.panel_hidden}

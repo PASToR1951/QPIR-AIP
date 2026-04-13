@@ -61,6 +61,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                 {/* Profile Dropdown */}
                 <div className="flex items-center relative" ref={dropdownRef}>
                     <button
+                        data-tour="dashboard-profile-menu"
                         aria-label="Open profile menu"
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                         className={`flex min-w-0 max-w-[58vw] items-center gap-2 rounded-2xl px-2 py-1.5 transition-colors active:scale-95 sm:gap-3 sm:px-3 md:max-w-none ${isDropdownOpen ? 'bg-slate-100 dark:bg-dark-border' : 'hover:bg-slate-50 dark:hover:bg-dark-base'}`}

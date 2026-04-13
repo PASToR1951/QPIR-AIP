@@ -137,7 +137,7 @@ export default function Dashboard() {
       <main className="flex-1 w-full max-w-6xl mx-auto mt-6 px-4 pb-12 relative z-10">
         {/* Welcome Section */}
         <div className="mb-8">
-          <div className="relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2.5rem] p-8 md:p-10 shadow-sm overflow-hidden group">
+          <div data-tour="dashboard-summary" className="relative bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-[2.5rem] p-8 md:p-10 shadow-sm overflow-hidden group">
 {/* Card Background Facade */}
             <div
               className="absolute inset-0 opacity-70 grayscale pointer-events-none transition-all duration-700 group-hover:opacity-85 group-hover:grayscale-0"
