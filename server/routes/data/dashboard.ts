@@ -3,6 +3,7 @@ import { prisma } from "../../db/client.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
+import { writeUserLog, getClientIp } from "../../lib/userActivityLog.ts";
 import type { DataRouteEnv } from "./shared/types.ts";
 
 const dashboardRoutes = new Hono<{ Variables: DataRouteEnv }>();
@@ -374,6 +375,7 @@ dashboardRoutes.get("/me/export", requireAuth("Unauthorized"), async (c) => {
 
   if (!user) return c.json({ error: "User not found" }, 404);
 
+  writeUserLog({ userId: tokenUser.id, action: "data_export", ipAddress: getClientIp(c) });
   return c.json({
     exported_at: new Date().toISOString(),
     notice:

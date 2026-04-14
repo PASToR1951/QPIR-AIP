@@ -44,6 +44,7 @@ const AdminReports    = lazy(() => import('./admin/pages/AdminReports.jsx'));
 const AdminSettings   = lazy(() => import('./admin/pages/AdminSettings.jsx'));
 const AdminBackups    = lazy(() => import('./admin/pages/AdminBackups.jsx'));
 const AdminPIRReview  = lazy(() => import('./admin/pages/AdminPIRReview.jsx'));
+const UserLogs        = lazy(() => import('./UserLogs.jsx'));
 
 const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID'];
 
@@ -140,6 +141,11 @@ const ClusterHeadRouteGuard = ({ children }) => {
     const u = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (u?.role !== 'Cluster Coordinator' && u?.role !== 'Admin') return <Navigate to="/" replace />;
   } catch { return <Navigate to="/login" replace />; }
+  return children;
+};
+
+const AuthenticatedRoute = ({ children }) => {
+  if (isTokenObsolete()) return <Navigate to="/login" replace />;
   return children;
 };
 
@@ -261,6 +267,7 @@ export default function AnimatedContent() {
             <Route path="/oauth/callback" element={<OAuthCallback />} />
             <Route path="/auth/magic-link" element={<MagicLinkCallback />} />
             <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
+            <Route path="/user-logs" element={<AuthenticatedRoute><PageTransition><UserLogs /></PageTransition></AuthenticatedRoute>} />
             <Route path="/docs" element={<PageTransition><SystemDocs /></PageTransition>} />
             <Route path="/getting-started" element={<PageTransition><GettingStarted /></PageTransition>} />
             <Route path="/faq" element={<PageTransition><FAQ /></PageTransition>} />

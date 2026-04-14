@@ -6,6 +6,7 @@ import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth, verifySchoolCluster } from "./shared/guards.ts";
+import { writeUserLog, getClientIp } from "../../lib/userActivityLog.ts";
 import { fetchAIPForUser, fetchProgramByReference } from "./shared/lookups.ts";
 import {
   normalizeIndicators,
@@ -170,6 +171,7 @@ aipRoutes.delete(
       }
 
       await prisma.aIP.delete({ where: { id: aip.id } });
+      writeUserLog({ userId: tokenUser.id, action: "aip_delete", entityType: "AIP", entityId: aip.id, details: { programTitle: program.title, year }, ipAddress: getClientIp(c) });
       return c.json({ message: "AIP deleted successfully" });
     },
   ),
@@ -343,6 +345,7 @@ aipRoutes.post(
       });
       pushNotification(submitterNotif);
 
+      writeUserLog({ userId: tokenUser.id, action: "aip_submit", entityType: "AIP", entityId: aip.id, details: { programTitle: program.title, year: parsedYear }, ipAddress: getClientIp(c) });
       return c.json({ message: "AIP created successfully", aip });
     },
   ),
@@ -419,6 +422,7 @@ aipRoutes.put(
         include: { activities: true },
       });
 
+      writeUserLog({ userId: tokenUser.id, action: "aip_update", entityType: "AIP", entityId: aipId, details: { programTitle: aip.program.title, year: aip.year }, ipAddress: getClientIp(c) });
       return c.json({ message: "AIP updated successfully", aip: updated });
     },
   ),
@@ -502,6 +506,7 @@ aipRoutes.post(
         pushNotifications(editNotifs);
       }
 
+      writeUserLog({ userId: tokenUser.id, action: "aip_edit_request", entityType: "AIP", entityId: aipId, details: { programTitle: aip.program.title, year: aip.year }, ipAddress: getClientIp(c) });
       return c.json({ message: "Edit request sent to admin" });
     },
   ),
@@ -539,6 +544,7 @@ aipRoutes.post(
         data: { edit_requested: false, edit_requested_at: null },
       });
 
+      writeUserLog({ userId: tokenUser.id, action: "aip_cancel_edit_request", entityType: "AIP", entityId: aipId, ipAddress: getClientIp(c) });
       return c.json({ message: "Edit request cancelled" });
     },
   ),

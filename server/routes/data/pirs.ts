@@ -7,6 +7,7 @@ import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth, verifySchoolCluster } from "./shared/guards.ts";
+import { writeUserLog, getClientIp } from "../../lib/userActivityLog.ts";
 import { fetchAIPForUser, fetchPIRForUser, fetchProgramByTitle } from "./shared/lookups.ts";
 import {
   transformActivityReviews,
@@ -391,6 +392,7 @@ pirRoutes.post(
         pushNotifications(pirNotifs);
       }
 
+      writeUserLog({ userId: tokenUser.id, action: "pir_submit", entityType: "PIR", entityId: pir.id, details: { programTitle: cleanProgramTitle, quarter: cleanQuarter }, ipAddress: getClientIp(c) });
       return c.json({ message: "PIR created successfully", pir });
     },
   ),
@@ -490,6 +492,7 @@ pirRoutes.put(
         },
       });
 
+      writeUserLog({ userId: tokenUser.id, action: "pir_update", entityType: "PIR", entityId: pirId, details: { quarter: pir.quarter }, ipAddress: getClientIp(c) });
       return c.json({ message: "PIR updated successfully", pir: updated });
     },
   ),
@@ -526,6 +529,7 @@ pirRoutes.delete(
       }
 
       await prisma.pIR.delete({ where: { id: pirId } });
+      writeUserLog({ userId: tokenUser.id, action: "pir_delete", entityType: "PIR", entityId: pirId, details: { quarter: pir.quarter }, ipAddress: getClientIp(c) });
       return c.json({ message: "PIR deleted successfully" });
     },
   ),

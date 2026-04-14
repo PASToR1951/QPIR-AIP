@@ -15,6 +15,7 @@ import { prisma } from "../db/client.ts";
 import { JWT_SECRET } from "../lib/config.ts";
 import { logger } from "../lib/logger.ts";
 import { tokenCookieOptions } from "../lib/sessionCookie.ts";
+import { writeUserLog, getClientIp } from "../lib/userActivityLog.ts";
 import {
   generateCodeVerifier,
   generateCodeChallenge,
@@ -125,7 +126,7 @@ async function finishOAuthLogin(
   oauthSubject: string,
   email: string,
 ): Promise<
-  | { ok: true; token: string }
+  | { ok: true; token: string; userId: number }
   | { ok: false; error: 'account_pending' | 'account_inactive' }
 > {
   const normalizedEmail = email.toLowerCase().trim();
@@ -184,7 +185,7 @@ async function finishOAuthLogin(
     { expiresIn: '24h' },
   );
 
-  return { ok: true, token };
+  return { ok: true, token, userId: user.id };
 }
 
 // ── Google Workspace ──────────────────────────────────────────────────────────
@@ -273,6 +274,7 @@ oauthRoutes.get('/google/callback', async (c) => {
 
     if (!result.ok) return c.redirect(`${fe}/login?error=${result.error}`);
 
+    writeUserLog({ userId: result.userId, action: "login", details: { method: "oauth", provider: "google" }, ipAddress: getClientIp(c) });
     setCookie(c, 'token', result.token, tokenCookieOptions(c));
     return c.redirect(`${fe}/oauth/callback`);
   } catch (err) {

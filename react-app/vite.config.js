@@ -22,6 +22,8 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      // Allow imports from the monorepo root (e.g. docs/wiki/**/*.md?raw)
+      fs: { allow: ['..'] },
       // When a public host is configured, listen on all interfaces and point HMR
       // at that host so phones/tablets on the LAN can reach the dev server.
       host: devHost || (publicHost ? '0.0.0.0' : undefined),

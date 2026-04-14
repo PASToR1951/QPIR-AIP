@@ -9,6 +9,7 @@ import { logger } from "../lib/logger.ts";
 import { getUserFromToken } from "../lib/auth.ts";
 import { clearTokenCookieOptions, tokenCookieOptions } from "../lib/sessionCookie.ts";
 import { consumeMagicLink } from "../lib/magicLink.ts";
+import { writeUserLog, getClientIp } from "../lib/userActivityLog.ts";
 
 const authRoutes = new Hono();
 const DEFAULT_CHECKLIST_PROGRESS = {
@@ -203,6 +204,7 @@ authRoutes.post('/login', async (c) => {
     // Successful login — clear rate-limit counter
     loginAttempts.delete(key);
 
+    writeUserLog({ userId: user.id, action: "login", details: { method: "password" }, ipAddress: getClientIp(c) });
     return completeSessionLogin(c, user as Record<string, unknown>);
   } catch (error) {
     logger.error('Login failed', error);
@@ -224,6 +226,7 @@ authRoutes.post('/magic-link/verify', async (c) => {
       return c.json({ error: result.error }, 400);
     }
 
+    writeUserLog({ userId: (result.user as { id: number }).id, action: "login", details: { method: "magic_link" }, ipAddress: getClientIp(c) });
     return completeSessionLogin(
       c,
       result.user as Record<string, unknown>,
@@ -236,7 +239,11 @@ authRoutes.post('/magic-link/verify', async (c) => {
 });
 
 authRoutes.post('/logout', (c) => {
+  const tokenUser = getUserFromToken(c);
   deleteCookie(c, 'token', clearTokenCookieOptions(c));
+  if (tokenUser) {
+    writeUserLog({ userId: tokenUser.id, action: "logout", ipAddress: getClientIp(c) });
+  }
   return c.json({ message: 'Logged out' });
 });
 
@@ -426,6 +433,7 @@ authRoutes.post('/change-password', async (c) => {
       data: { password: hashed, must_change_password: false },
     });
 
+    writeUserLog({ userId: user.id, action: "password_change", ipAddress: getClientIp(c) });
     return c.json({ success: true });
   } catch (error) {
     logger.error('POST /change-password failed', error);
