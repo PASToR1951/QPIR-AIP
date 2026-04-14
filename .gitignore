@@ -4,6 +4,8 @@ tunnel.sh
 sync_to_notion.py
 update-docs.sh
 commit-batch.sh
+setup-production.sh
+docker-compose.prod.yml
 
 # ── Internal planning & developer notes ──────────────────────────────────────
 TODO.md
