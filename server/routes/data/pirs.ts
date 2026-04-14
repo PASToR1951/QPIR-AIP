@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { prisma } from "../../db/client.ts";
-import { getCESRoleForDivisionPIR } from "../../lib/routing.ts";
+import { getCESRoleForDivisionPIR, CES_ROLES } from "../../lib/routing.ts";
 import { logger } from "../../lib/logger.ts";
 import { pushNotifications } from "../../lib/notifStream.ts";
 import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
@@ -245,7 +245,7 @@ pirRoutes.post(
       if (!aip) return c.json({ error: "Resource not found" }, 404);
 
       if (
-        tokenUser.role === "Division Personnel" &&
+        (tokenUser.role === "Division Personnel" || CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])) &&
         aip.created_by_user_id !== tokenUser.id
       ) {
         return c.json({ error: "Access denied" }, 403);
@@ -278,6 +278,7 @@ pirRoutes.post(
       const inProgressStatuses = [
         "For CES Review",
         "For Cluster Head Review",
+        "For Admin Review",
         "Under Review",
       ];
 
@@ -305,6 +306,8 @@ pirRoutes.post(
             action_items: action_items ?? [],
             status: aip.school_id !== null
               ? "For Cluster Head Review"
+              : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
+              ? "For Admin Review"
               : "For CES Review",
             factors: { create: factorData },
             activity_reviews: { create: reviewData },
@@ -324,6 +327,8 @@ pirRoutes.post(
             action_items: action_items ?? [],
             status: aip.school_id !== null
               ? "For Cluster Head Review"
+              : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
+              ? "For Admin Review"
               : "For CES Review",
             factors: { create: factorData },
             activity_reviews: { create: reviewData },
@@ -364,6 +369,9 @@ pirRoutes.post(
           select: { id: true },
         });
         reviewerIds = cesCID.map((user: { id: number }) => user.id);
+      } else if (CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])) {
+        // CES-submitted PIRs go directly to Admin — no intermediate reviewer to notify
+        reviewerIds = [];
       } else {
         const cesRole = getCESRoleForDivisionPIR(aip.program?.division ?? null);
         const cesUsers = await prisma.user.findMany({

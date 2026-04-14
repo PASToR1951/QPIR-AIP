@@ -27,6 +27,8 @@ function getRouteSignal(roleKey, pathname) {
 
   if (roleKey === 'ces') {
     if (pathname === '/ces') return 'ces.queue_visited';
+    if (pathname === '/aip') return 'ces.aip_form_visited';
+    if (pathname === '/pir') return 'ces.pir_form_visited';
   }
 
   if (roleKey === 'cluster') {

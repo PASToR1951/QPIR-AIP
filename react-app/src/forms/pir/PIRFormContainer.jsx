@@ -57,7 +57,7 @@ export default function PIRFormContainer() {
         sessionStorage.removeItem('user');
     }
 
-    const isDivisionPersonnel = user?.role === 'Division Personnel';
+    const isDivisionPersonnel = ['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role);
     const quarterString = useMemo(() => getQuarterString(), []);
     const currentQuarterNum = useMemo(() => getQuarterNumber(quarterString), [quarterString]);
 

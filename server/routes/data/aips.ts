@@ -8,6 +8,7 @@ import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth, verifySchoolCluster } from "./shared/guards.ts";
 import { writeUserLog, getClientIp } from "../../lib/userActivityLog.ts";
 import { fetchAIPForUser, fetchProgramByReference } from "./shared/lookups.ts";
+import { CES_ROLES } from "../../lib/routing.ts";
 import {
   normalizeIndicators,
   serializeIndicators,
@@ -212,7 +213,7 @@ aipRoutes.post(
       const program = await fetchProgramByReference(program_id, program_title);
       if (!program) return c.json({ error: "Resource not found" }, 404);
 
-      if (tokenUser.role === "Division Personnel") {
+      if (tokenUser.role === "Division Personnel" || CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])) {
         const assigned = await prisma.user.findFirst({
           where: {
             id: tokenUser.id,

@@ -1,5 +1,5 @@
 import { Routes, Route, useNavigate } from 'react-router-dom';
-import { ClipboardText, SignOut } from '@phosphor-icons/react';
+import { ClipboardText, FileText, ChartBar, SignOut } from '@phosphor-icons/react';
 import CESDashboard from './CESDashboard.jsx';
 import CESPIRReview from './CESPIRReview.jsx';
 import Footer from '../components/ui/Footer.jsx';
@@ -51,6 +51,22 @@ export default function CESLayout() {
             >
               <ClipboardText size={15} />
               PIR Queue
+            </button>
+
+            <button
+              onClick={() => navigate('/aip')}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border/40 transition-colors"
+            >
+              <FileText size={15} />
+              My AIP
+            </button>
+
+            <button
+              onClick={() => navigate('/pir')}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border/40 transition-colors"
+            >
+              <ChartBar size={15} />
+              My PIR
             </button>
 
             <button

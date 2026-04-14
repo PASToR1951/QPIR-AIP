@@ -65,6 +65,8 @@ function preloadForRole(role) {
     }
   } else if (CES_ROLES.includes(role)) {
     import('./ces/CESLayout.jsx');
+    import('./AIPForm');
+    import('./PIRForm');
   } else if (role === 'Cluster Coordinator') {
     import('./cluster-head/ClusterHeadLayout.jsx');
   } else {
@@ -149,6 +151,17 @@ const AuthenticatedRoute = ({ children }) => {
   return children;
 };
 
+const SUBMITTER_ROLES = ['School', 'Division Personnel', 'Cluster Coordinator', 'CES-SGOD', 'CES-ASDS', 'CES-CID'];
+
+const SubmitterRoute = ({ children }) => {
+  if (isTokenObsolete()) return <Navigate to="/login" replace />;
+  try {
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (!SUBMITTER_ROLES.includes(user?.role)) return <Navigate to="/403" replace />;
+  } catch { return <Navigate to="/login" replace />; }
+  return children;
+};
+
 const PIRRouteGuard = ({ children }) => {
   const [hasAIP, setHasAIP] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -159,7 +172,7 @@ const PIRRouteGuard = ({ children }) => {
   } catch {
     sessionStorage.removeItem('user');
   }
-  const isDivisionPersonnel = user?.role === 'Division Personnel' || user?.role === 'Cluster Coordinator';
+  const isDivisionPersonnel = ['Division Personnel', 'Cluster Coordinator', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -285,19 +298,19 @@ export default function AnimatedContent() {
             <Route
               path="/aip"
               element={
-                <ProtectedRoute>
+                <SubmitterRoute>
                   <PageTransition><AIPForm /></PageTransition>
-                </ProtectedRoute>
+                </SubmitterRoute>
               }
             />
             <Route
               path="/pir"
               element={
-                <ProtectedRoute>
+                <SubmitterRoute>
                   <PIRRouteGuard>
                     <PageTransition><PIRForm /></PageTransition>
                   </PIRRouteGuard>
-                </ProtectedRoute>
+                </SubmitterRoute>
               }
             />
 

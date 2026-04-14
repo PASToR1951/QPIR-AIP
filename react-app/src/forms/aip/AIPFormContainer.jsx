@@ -37,7 +37,7 @@ export default function AIPFormContainer() {
     let user = null;
     try { user = userStr ? JSON.parse(userStr) : null; } catch { sessionStorage.removeItem('user'); }
 
-    const isDivisionPersonnel = user?.role === 'Division Personnel';
+    const isDivisionPersonnel = ['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role);
     const isSchoolUser        = user?.role === 'School';
     const projectTerminology  = getProjectTerminology(isSchoolUser);
     const schoolOrUserId      = user?.school_id || user?.id;

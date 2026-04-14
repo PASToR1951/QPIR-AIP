@@ -2,12 +2,12 @@ export const cesRoleConfig = {
   hasChecklist: true,
   isWelcomeEligible: true,
   content: {
-    title: 'Welcome to the CES review queue',
-    subtitle: 'Your workspace for reviewing PIR submissions forwarded from cluster coordinators.',
+    title: 'Welcome to your CES workspace',
+    subtitle: 'Review PIR submissions from your division — and file your own AIP and PIR reports.',
     bullets: [
-      'Review forwarded PIRs — quarterly reports from schools arrive here after cluster approval.',
-      'Filter and prioritise — quickly locate submissions by school name or quarter.',
-      'Note and forward, or return — move reports up the chain or send them back with remarks.',
+      'Review PIRs — quarterly reports from division personnel and cluster coordinators arrive here for your action.',
+      'Submit your own AIP — plan your programs and activities through the structured AIP form.',
+      'File quarterly PIRs — report your actual activities and spending against your planned targets each quarter.',
     ],
   },
   tasks: [
@@ -86,6 +86,63 @@ export const cesRoleConfig = {
       ],
     },
   ],
+    {
+      id: 'ces-aip-form',
+      label: 'Open your AIP form',
+      description: 'Navigate to the AIP form and load it for one of your assigned programs.',
+      route: '/aip',
+      completeOn: ['ces.aip_form_visited'],
+      tourSteps: [
+        {
+          target: 'form-step-nav',
+          title: 'AIP Form Steps',
+          description: 'The AIP is divided into sections — work through each one in order before reaching the final review and submission step.',
+          placement: 'bottom',
+          prerequisiteTarget: 'aip-form-active',
+          missingTargetHint: 'Open the AIP form first by clicking "My AIP" in the top navigation.',
+        },
+        {
+          target: 'form-program-selector',
+          title: 'Program Selector',
+          description: 'Select one of your assigned programs here to start. Each program has its own separate budget and activity entries.',
+          placement: 'bottom',
+        },
+      ],
+    },
+    {
+      id: 'ces-program',
+      label: 'Select an assigned program',
+      description: 'Choose one of your assigned programs to load the AIP form.',
+      route: '/aip',
+      completeOn: ['author.program_selected'],
+      tourSteps: [
+        {
+          target: 'form-program-selector',
+          title: 'Choose a Program',
+          description: 'Pick one of your assigned programs from this list. Once selected, the form loads that program\'s activities and budget fields.',
+          placement: 'bottom',
+          missingTargetHint: 'Open the AIP form first by clicking "My AIP" in the top navigation.',
+        },
+      ],
+    },
+    {
+      id: 'ces-file-pir',
+      label: 'File a quarterly PIR',
+      description: 'Open the PIR form to report your quarterly activities against your AIP.',
+      route: '/pir',
+      completeOn: ['ces.pir_form_visited'],
+      tourSteps: [
+        {
+          target: 'form-step-nav',
+          title: 'PIR Form Steps',
+          description: 'The PIR walks you through reporting actual activities, expenditures, and outcomes for the quarter — matched against what you planned in your AIP.',
+          placement: 'bottom',
+          prerequisiteTarget: 'pir-form-active',
+          missingTargetHint: 'Open the PIR form first by clicking "My PIR" in the top navigation.',
+        },
+      ],
+    },
+  ],
   hints: [
     {
       id: 'ces-filters',
@@ -95,12 +152,21 @@ export const cesRoleConfig = {
       description: 'A quick search or quarter filter is the fastest way to narrow live submissions before opening one.',
       pendingTaskId: 'ces-filter',
     },
+    {
+      id: 'ces-aip-autosave',
+      pathname: '/aip',
+      target: 'form-autosave',
+      title: 'Draft saving is already on',
+      description: 'Once you start editing, autosave keeps your work safe across sessions.',
+      requiredTaskId: 'ces-aip-form',
+      pendingTaskId: 'ces-program',
+    },
   ],
   practiceTasks: [
     {
       id: 'practice-ces-forward',
-      label: 'Practice: Forward a PIR to SDS',
-      description: 'Note and forward a mock PIR to the SDS — no real records change.',
+      label: 'Practice: Forward a PIR to Admin',
+      description: 'Note and forward a mock PIR to Admin — no real records change.',
       practiceType: 'ces_forward',
       completeOn: ['practice.ces_forwarded'],
     },
@@ -110,6 +176,20 @@ export const cesRoleConfig = {
       description: 'Return a mock PIR with feedback — no real records change.',
       practiceType: 'ces_return',
       completeOn: ['practice.ces_returned'],
+    },
+    {
+      id: 'practice-ces-submit-aip',
+      label: 'Practice: Submit an AIP',
+      description: 'Walk through the AIP submission flow on a mock program — no real data is affected.',
+      practiceType: 'aip_submit',
+      completeOn: ['practice.aip_submitted'],
+    },
+    {
+      id: 'practice-ces-file-pir',
+      label: 'Practice: File a PIR',
+      description: 'Try the quarterly PIR filing flow without submitting anything real.',
+      practiceType: 'pir_submit',
+      completeOn: ['practice.pir_submitted'],
     },
   ],
 };
