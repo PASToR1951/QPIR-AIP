@@ -6,7 +6,7 @@ set -euo pipefail
 
 CLOUD_ENABLED="${BACKUP_CLOUD_ENABLED:-false}"
 RCLONE_REMOTE="${BACKUP_RCLONE_REMOTE:-my_remote}"
-RCLONE_PATH="${BACKUP_RCLONE_PATH:-/QPIR-AIP-Backups}"
+RCLONE_PATH="${BACKUP_RCLONE_PATH:-/AIP-PIR-Backups}"
 BACKUP_DIR="/app/backups"
 
 log() { echo "[$(date -Iseconds)] [backup_upload] $*"; }

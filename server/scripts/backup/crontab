@@ -1,4 +1,4 @@
-# QPIR-AIP Backup Cron Schedule
+# AIP-PIR Backup Cron Schedule
 # All times are in the container's timezone (set TZ env if needed)
 
 # Hourly soft backup at :00 every hour

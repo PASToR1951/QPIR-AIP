@@ -85,7 +85,6 @@ export const cesRoleConfig = {
         },
       ],
     },
-  ],
     {
       id: 'ces-aip-form',
       label: 'Open your AIP form',

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { MagnifyingGlass, Plus, UploadSimple, CheckCircle } from '@phosphor-icons/react';
 import api from '../../lib/api.js';
 import { DataTable } from '../components/DataTable.jsx';
@@ -34,12 +34,12 @@ export default function AdminUsers() {
   const [resetUser, setResetUser] = useState(null);
   const [tempPassword, setTempPassword] = useState(null);
 
-  const showToast = (msg, type = 'success') => {
+  const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
-  };
+  }, []);
 
-  const { users, loading, schools, programs, clusters, fetchAll } = useUserData({ search, roleFilter, showToast });
+  const { users, loading, schools, programs, clusters, fetchAll, loadDropdownData } = useUserData({ search, roleFilter, showToast });
   const onboarding = useOnboardingData();
   const { actionLoading, formError, setFormError, form, setForm, handleCreate, handleEdit, handleDelete, handleToggle, handleResetPassword } = useUserMutations({ fetchAll, showToast });
 
@@ -49,6 +49,7 @@ export default function AdminUsers() {
   const takenSchoolIds = new Set(users.filter(u => u.role === 'School' && u.school?.id).map(u => u.school.id));
 
   const openEdit = (u) => {
+    loadDropdownData();
     setEditUser(u);
     setForm({ id: u.id, salutation: u.salutation || '', name: u.name || '', first_name: u.first_name || '', middle_initial: u.middle_initial || '', last_name: u.last_name || '', position: u.position || '', email: u.email, password: '', role: u.role, school_id: u.school?.id ?? null, cluster_id: null, program_ids: u.programs?.map(p => p.id) ?? [] });
     setFormError('');
@@ -80,7 +81,7 @@ export default function AdminUsers() {
             <button onClick={() => setImportOpen(true)} className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border hover:border-indigo-400 rounded-xl transition-colors shrink-0">
               <UploadSimple size={17} /><span className="hidden sm:inline">Import Directory</span>
             </button>
-            <button onClick={() => { setCreateOpen(true); setForm(EMPTY_USER_FORM); setFormError(''); }} className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shrink-0">
+            <button onClick={() => { loadDropdownData(); setCreateOpen(true); setForm(EMPTY_USER_FORM); setFormError(''); }} className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shrink-0">
               <Plus size={17} /><span className="hidden sm:inline">Add User</span><span className="sm:hidden">Add</span>
             </button>
           </div>

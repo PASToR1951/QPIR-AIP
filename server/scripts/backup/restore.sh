@@ -53,7 +53,7 @@ fi
 # --- Display backup list ---
 echo ""
 echo "======================================================"
-echo "  QPIR-AIP Database Restore"
+echo "  AIP-PIR Database Restore"
 echo "  WARNING: This will DESTROY all current data."
 echo "======================================================"
 echo ""

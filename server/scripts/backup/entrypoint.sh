@@ -4,7 +4,7 @@
 
 set -e
 
-echo "[entrypoint] Starting QPIR-AIP backup service..."
+echo "[entrypoint] Starting AIP-PIR backup service..."
 
 # Ensure backup directories exist on the mounted volume
 mkdir -p /app/backups/hourly /app/backups/daily

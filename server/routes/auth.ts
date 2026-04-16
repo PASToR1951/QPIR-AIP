@@ -138,27 +138,39 @@ authRoutes.post('/login', async (c) => {
   const { email, password, recaptchaToken } = body;
 
   if (RECAPTCHA_SECRET_KEY) {
-    if (!recaptchaToken) {
-      return c.json({ error: 'Please complete the reCAPTCHA challenge.' }, 400);
-    }
-    try {
-      const response = await fetch(`https://www.google.com/recaptcha/api/siteverify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          secret: RECAPTCHA_SECRET_KEY,
-          response: recaptchaToken,
-        }),
-      });
-      const data = await response.json();
-      if (!data.success || (data.score !== undefined && data.score < 0.5)) {
-        return c.json({ error: 'reCAPTCHA verification failed. Please try again.' }, 400);
+    const clientIp = getClientIp(c) ?? '';
+    const isPrivateIp =
+      clientIp === '' ||
+      clientIp === '::1' ||
+      /^127\./.test(clientIp) ||
+      /^10\./.test(clientIp) ||
+      /^192\.168\./.test(clientIp) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(clientIp) ||
+      /^::ffff:(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(clientIp);
+
+    if (!isPrivateIp) {
+      if (!recaptchaToken) {
+        return c.json({ error: 'Please complete the reCAPTCHA challenge.' }, 400);
       }
-    } catch (error) {
-      logger.error('reCAPTCHA verification error', error);
-      return c.json({ error: 'Service temporarily unavailable. Please try again later.' }, 500);
+      try {
+        const response = await fetch(`https://www.google.com/recaptcha/api/siteverify`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            secret: RECAPTCHA_SECRET_KEY,
+            response: recaptchaToken,
+          }),
+        });
+        const data = await response.json();
+        if (!data.success || (data.score !== undefined && data.score < 0.5)) {
+          return c.json({ error: 'reCAPTCHA verification failed. Please try again.' }, 400);
+        }
+      } catch (error) {
+        logger.error('reCAPTCHA verification error', error);
+        return c.json({ error: 'Service temporarily unavailable. Please try again later.' }, 500);
+      }
     }
   }
 

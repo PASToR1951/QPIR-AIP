@@ -138,7 +138,7 @@ export function UserForm({ form, setForm, schools, programs, clusters = [] }) {
           />
         </div>
       )}
-      {form.role === 'Division Personnel' && (
+      {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(form.role)) && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Assigned Programs</label>
           <MultiSelect

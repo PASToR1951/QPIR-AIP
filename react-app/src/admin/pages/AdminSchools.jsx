@@ -208,7 +208,13 @@ export default function AdminSchools() {
           {restrictSearch && <button onClick={() => setRestrictSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"><X size={13} /></button>}
         </div>
         <div className="space-y-2">
-          {programs.filter(p => p.school_level_requirement !== 'Division' && (!restrictSearch.trim() || p.title.toLowerCase().includes(restrictSearch.trim().toLowerCase()))).map(p => (
+          {programs.filter(p => {
+            if (p.school_level_requirement === 'Division') return false;
+            const schoolLevel = restrictSchool?.level;
+            if (schoolLevel === 'Elementary' && p.school_level_requirement === 'Secondary') return false;
+            if (schoolLevel === 'Secondary' && p.school_level_requirement === 'Elementary') return false;
+            return !restrictSearch.trim() || p.title.toLowerCase().includes(restrictSearch.trim().toLowerCase());
+          }).map(p => (
             <label key={p.id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 dark:hover:bg-dark-border/20 cursor-pointer">
               <input type="checkbox" checked={!restrictedIds.includes(p.id)}
                 onChange={() => setRestrictedIds(ids => ids.includes(p.id) ? ids.filter(i => i !== p.id) : [...ids, p.id])}

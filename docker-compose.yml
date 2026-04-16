@@ -88,7 +88,7 @@ services:
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-5}
       BACKUP_CLOUD_ENABLED: ${BACKUP_CLOUD_ENABLED:-false}
       BACKUP_RCLONE_REMOTE: ${BACKUP_RCLONE_REMOTE:-my_remote}
-      BACKUP_RCLONE_PATH: ${BACKUP_RCLONE_PATH:-/QPIR-AIP-Backups}
+      BACKUP_RCLONE_PATH: ${BACKUP_RCLONE_PATH:-/AIP-PIR-Backups}
 
   # ── Claude DevTools ──────────────────────────────────────────────────────────
   devtools:

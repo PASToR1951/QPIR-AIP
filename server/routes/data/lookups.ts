@@ -67,7 +67,11 @@ lookupsRoutes.get(
     async (c) => {
       const tokenUser = getAuthedUser(c);
 
-      if (tokenUser.role === "Division Personnel") {
+      const CES_ROLES = ["CES-SGOD", "CES-ASDS", "CES-CID"];
+      if (
+        tokenUser.role === "Division Personnel" ||
+        CES_ROLES.includes(tokenUser.role)
+      ) {
         const user = await prisma.user.findUnique({
           where: { id: tokenUser.id },
           include: {

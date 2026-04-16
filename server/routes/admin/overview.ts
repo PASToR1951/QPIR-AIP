@@ -32,6 +32,7 @@ overviewRoutes.get("/overview", async (c) => {
     4: "4th",
   };
 
+  // All DB queries run in parallel — no sequential awaits
   const [
     totalSchools,
     totalUsers,
@@ -41,6 +42,12 @@ overviewRoutes.get("/overview", async (c) => {
     pirCount,
     pirsByQuarter,
     schoolsWithAIP,
+    pirActivityReviews,
+    deadlineRow,
+    recentAIPs,
+    recentPIRs,
+    clusters,
+    allPrograms,
   ] = await Promise.all([
     prisma.school.count(),
     prisma.user.count({ where: { is_active: true } }),
@@ -59,7 +66,96 @@ overviewRoutes.get("/overview", async (c) => {
       select: { school_id: true },
       distinct: ["school_id"],
     }),
+    prisma.pIRActivityReview.findMany({
+      where: { pir: { aip: { year } } },
+      select: {
+        physical_target: true,
+        physical_accomplished: true,
+        financial_target: true,
+        financial_accomplished: true,
+      },
+    }),
+    prisma.deadline.findUnique({
+      where: { year_quarter: { year, quarter: currentQuarter } },
+    }),
+    prisma.aIP.findMany({
+      where: { status: { not: "Draft" } },
+      take: 10,
+      orderBy: { created_at: "desc" },
+      select: {
+        id: true,
+        status: true,
+        created_at: true,
+        school: { select: { name: true } },
+        program: { select: { title: true } },
+        created_by: {
+          select: {
+            role: true,
+            name: true,
+            email: true,
+            first_name: true,
+            middle_initial: true,
+            last_name: true,
+          },
+        },
+      },
+    }),
+    prisma.pIR.findMany({
+      where: { status: { not: "Draft" } },
+      take: 15,
+      orderBy: { created_at: "desc" },
+      select: {
+        id: true,
+        quarter: true,
+        status: true,
+        created_at: true,
+        aip: {
+          select: {
+            school: { select: { name: true } },
+            program: { select: { title: true } },
+          },
+        },
+        created_by: {
+          select: {
+            role: true,
+            name: true,
+            email: true,
+            first_name: true,
+            middle_initial: true,
+            last_name: true,
+          },
+        },
+      },
+    }),
+    prisma.cluster.findMany({
+      include: {
+        schools: {
+          include: {
+            aips: {
+              where: { year, status: { not: "Draft" } },
+              select: {
+                id: true,
+                pirs: {
+                  where: { status: { not: "Draft" } },
+                  select: { id: true, status: true, quarter: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.program.findMany({
+      where: { school_level_requirement: { not: "Division" } },
+      select: {
+        id: true,
+        school_level_requirement: true,
+        restricted_schools: { select: { id: true } },
+      },
+    }),
   ]);
+
+  // --- Pure JS computations (no DB calls below this line) ---
 
   const aipCompliantCount = schoolsWithAIP.length;
   const pirQuarterly = getQuarterNumbers().map((quarter) => {
@@ -105,16 +201,6 @@ overviewRoutes.get("/overview", async (c) => {
     ? Math.round((pirApprovedThisYear / pirTotalThisYear) * 100)
     : 0;
 
-  const pirActivityReviews = await prisma.pIRActivityReview.findMany({
-    where: { pir: { aip: { year } } },
-    select: {
-      physical_target: true,
-      physical_accomplished: true,
-      financial_target: true,
-      financial_accomplished: true,
-    },
-  });
-
   let avgPhysicalRate = 0;
   let avgFinancialRate = 0;
   const reviewsWithPhysicalTarget = pirActivityReviews.filter((review) =>
@@ -149,31 +235,12 @@ overviewRoutes.get("/overview", async (c) => {
     );
   }
 
-  const deadline = await prisma.deadline.findUnique({
-    where: { year_quarter: { year, quarter: currentQuarter } },
-  });
-  const deadlineDate = deadline
-    ? endOfDeadlineDay(deadline.date)
+  const deadlineDate = deadlineRow
+    ? endOfDeadlineDay(deadlineRow.date)
     : buildDefaultDeadline(year, currentQuarter);
   const daysLeft = Math.ceil(
     (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
   );
-
-  const recentAIPs = await prisma.aIP.findMany({
-    where: { status: { not: "Draft" } },
-    take: 10,
-    orderBy: { created_at: "desc" },
-    include: { school: true, program: true, created_by: true },
-  });
-  const recentPIRs = await prisma.pIR.findMany({
-    where: { status: { not: "Draft" } },
-    take: 15,
-    orderBy: { created_at: "desc" },
-    include: {
-      aip: { include: { school: true, program: true } },
-      created_by: true,
-    },
-  });
 
   const recentSubmissions = [
     ...recentAIPs.map((aip) => ({
@@ -204,34 +271,6 @@ overviewRoutes.get("/overview", async (c) => {
     .slice(0, 20);
 
   const currentQuarterPrefix = quarterPrefixes[currentQuarter];
-  const [clusters, allPrograms] = await Promise.all([
-    prisma.cluster.findMany({
-      include: {
-        schools: {
-          include: {
-            aips: {
-              where: { year, status: { not: "Draft" } },
-              select: {
-                id: true,
-                pirs: {
-                  where: { status: { not: "Draft" } },
-                  select: { id: true, status: true, quarter: true },
-                },
-              },
-            },
-          },
-        },
-      },
-    }),
-    prisma.program.findMany({
-      where: { school_level_requirement: { not: "Division" } },
-      select: {
-        id: true,
-        school_level_requirement: true,
-        restricted_schools: { select: { id: true } },
-      },
-    }),
-  ]);
 
   const clusterCompliance = clusters.map((cluster) => {
     const total = cluster.schools.length;

@@ -1,6 +1,6 @@
-# QPIR-AIP Backup System — Setup Guide & Runbook
+# AIP-PIR Backup System — Setup Guide & Runbook
 
-This document covers initial setup, daily operations, and disaster recovery for the QPIR-AIP backup system.
+This document covers initial setup, daily operations, and disaster recovery for the AIP-PIR backup system.
 
 ---
 
@@ -51,7 +51,7 @@ rclone lsd my_remote:
 # Then set in .env:
 # BACKUP_CLOUD_ENABLED=true
 # BACKUP_RCLONE_REMOTE=my_remote
-# BACKUP_RCLONE_PATH=/QPIR-AIP-Backups
+# BACKUP_RCLONE_PATH=/AIP-PIR-Backups
 # RCLONE_CONFIG_PATH=~/.config/rclone/rclone.conf
 ```
 
@@ -167,15 +167,15 @@ zcat /tmp/decrypted.sql.gz | head -100
 1. Provision a new server.
 2. Clone repository:
    ```bash
-   git clone https://github.com/PASToR1951/QPIR-AIP.git
-   cd QPIR-AIP
+   git clone https://github.com/PASToR1951/AIP-PIR.git
+   cd AIP-PIR
    ```
 3. Restore `.env` (you need `BACKUP_ENCRYPTION_KEY` — store this securely outside the server).
 4. Install rclone and download cloud backups:
    ```bash
    curl https://rclone.org/install.sh | sudo bash
    rclone config  # re-configure cloud access
-   rclone copy my_remote:/QPIR-AIP-Backups/ ./backups/
+   rclone copy my_remote:/AIP-PIR-Backups/ ./backups/
    ```
 5. Start just the database:
    ```bash
