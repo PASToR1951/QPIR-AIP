@@ -167,6 +167,7 @@ const REPORT_TABS = [
   { tab: 'factors',       label: 'Factors Analysis',  Icon: ListChecks   },
   { tab: 'sources',       label: 'Budget Sources',    Icon: Coins        },
   { tab: 'funnel',        label: 'AIP Status Funnel', Icon: FunnelSimple },
+  { tab: 'consolidation', label: 'PIR Consolidation', Icon: ChartLine     },
 ];
 
 function CollapsibleReports({ onNavigate }) {

@@ -8,6 +8,7 @@ export const TABS = [
   { key: 'sources', label: 'Budget Sources' },
   { key: 'funnel', label: 'AIP Status Funnel' },
   { key: 'cluster-pir', label: 'Cluster Summary' },
+  { key: 'consolidation', label: 'PIR Consolidation' },
 ];
 
 export const SOURCE_PALETTE = ['#6366f1', '#10b981', '#3b82f6', '#f59e0b', '#E94560', '#8b5cf6', '#06b6d4'];

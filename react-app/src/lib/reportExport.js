@@ -16,6 +16,7 @@ export const REPORT_TEMPLATES = {
   sources: { title: 'Budget Sources Report', subtitle: 'Funding Source Analysis by Program' },
   funnel: { title: 'AIP Status Funnel Report', subtitle: 'Annual Implementation Plan Status Distribution' },
   'cluster-pir': { title: 'Cluster PIR Summary', subtitle: 'Cluster Program Implementation Review Summary' },
+  consolidation: { title: 'Consolidated PIR Report', subtitle: 'Division Program Implementation Review Consolidation' },
 };
 
 /**
