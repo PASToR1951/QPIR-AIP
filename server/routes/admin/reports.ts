@@ -434,6 +434,107 @@ interface ConsolidationGroup {
   >;
 }
 
+function buildGroupMap(
+  pirs: any[],
+  groupBy: "cluster" | "program" | "division" | string,
+): Map<string, ConsolidationGroup> {
+  const groups = new Map<string, ConsolidationGroup>();
+  for (const pir of pirs) {
+    let groupKey: string;
+    let groupId: number | string;
+    let groupName: string;
+
+    if (groupBy === "cluster") {
+      const cluster = pir.aip.school?.cluster;
+      if (cluster) {
+        groupKey = `cluster-${cluster.id}`;
+        groupId = cluster.id;
+        groupName = cluster.name ?? `Cluster ${cluster.cluster_number}`;
+      } else {
+        groupKey = "division-office";
+        groupId = "division-office";
+        groupName = "Division Office";
+      }
+    } else if (groupBy === "program") {
+      groupKey = `program-${pir.aip.program_id}`;
+      groupId = pir.aip.program_id;
+      groupName = pir.aip.program?.title ?? `Program ${pir.aip.program_id}`;
+    } else {
+      groupKey = "division";
+      groupId = "division";
+      groupName = "Division-Wide";
+    }
+
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        id: groupId,
+        name: groupName,
+        pirCount: 0,
+        schools: new Set(),
+        programs: new Set(),
+        physicalTarget: 0,
+        physicalAccomplished: 0,
+        financialTarget: 0,
+        financialAccomplished: 0,
+        budgetDivision: 0,
+        budgetCoPSF: 0,
+        complianceCount: 0,
+        totalActivities: 0,
+        activityMap: new Map(),
+      });
+    }
+
+    const group = groups.get(groupKey)!;
+    group.pirCount++;
+    if (pir.aip.school_id) group.schools.add(pir.aip.school_id);
+    group.programs.add(pir.aip.program_id);
+    group.budgetDivision += Number(pir.budget_from_division);
+    group.budgetCoPSF += Number(pir.budget_from_co_psf);
+
+    for (const review of pir.activity_reviews) {
+      const actKey = review.aip_activity_id
+        ? `planned-${review.aip_activity_id}`
+        : `unplanned-${pir.id}-${review.id}`;
+      const actName = review.aip_activity?.activity_name ??
+        review.actual_tasks_conducted?.slice(0, 80) ??
+        "Unplanned Activity";
+
+      if (!group.activityMap.has(actKey)) {
+        group.activityMap.set(actKey, {
+          activityName: actName,
+          compliedCount: 0,
+          notCompliedCount: 0,
+          physicalTarget: 0,
+          physicalAccomplished: 0,
+          financialTarget: 0,
+          financialAccomplished: 0,
+          isUnplanned: review.is_unplanned,
+        });
+      }
+      const act = group.activityMap.get(actKey)!;
+      if (review.complied === true) act.compliedCount++;
+      else if (review.complied === false) act.notCompliedCount++;
+
+      const pt = Number(review.physical_target);
+      const pa = Number(review.physical_accomplished);
+      const ft = Number(review.financial_target);
+      const fa = Number(review.financial_accomplished);
+      act.physicalTarget += pt;
+      act.physicalAccomplished += pa;
+      act.financialTarget += ft;
+      act.financialAccomplished += fa;
+
+      group.physicalTarget += pt;
+      group.physicalAccomplished += pa;
+      group.financialTarget += ft;
+      group.financialAccomplished += fa;
+      if (review.complied === true) group.complianceCount++;
+      group.totalActivities++;
+    }
+  }
+  return groups;
+}
+
 function buildConsolidationResponse(
   groups: Map<string, ConsolidationGroup>,
   // deno-lint-ignore no-explicit-any
@@ -530,20 +631,20 @@ function buildConsolidationResponse(
       if (factor.facilitating_factors?.trim()) {
         factorAgg[type].facilitatingCount++;
         const text = factor.facilitating_factors.trim();
-        if (!factorAgg[type].facilitatingEntries.includes(text)) {
+        if (!factorAgg[type].facilitatingEntries.some(e => e.toLowerCase() === text.toLowerCase())) {
           factorAgg[type].facilitatingEntries.push(text);
         }
       }
       if (factor.hindering_factors?.trim()) {
         factorAgg[type].hinderingCount++;
         const text = factor.hindering_factors.trim();
-        if (!factorAgg[type].hinderingEntries.includes(text)) {
+        if (!factorAgg[type].hinderingEntries.some(e => e.toLowerCase() === text.toLowerCase())) {
           factorAgg[type].hinderingEntries.push(text);
         }
       }
       if (factor.recommendations?.trim()) {
         const text = factor.recommendations.trim();
-        if (!factorAgg[type].recommendationEntries.includes(text)) {
+        if (!factorAgg[type].recommendationEntries.some(e => e.toLowerCase() === text.toLowerCase())) {
           factorAgg[type].recommendationEntries.push(text);
         }
       }
@@ -575,6 +676,29 @@ function buildConsolidationResponse(
     }
   }
 
+  // Indicator aggregation
+  const seenIndicators = new Set<string>();
+  const aggregatedIndicators: {
+    description: string;
+    annual_target: string;
+    quarterly_target: string;
+  }[] = [];
+  for (const pir of allPirs) {
+    const targets = Array.isArray(pir.indicator_quarterly_targets)
+      ? pir.indicator_quarterly_targets
+      : [];
+    for (const ind of targets) {
+      const key = (ind.description ?? "").trim().toLowerCase();
+      if (!key || seenIndicators.has(key)) continue;
+      seenIndicators.add(key);
+      aggregatedIndicators.push({
+        description: (ind.description ?? "").trim(),
+        annual_target: ind.annual_target ?? "",
+        quarterly_target: ind.quarterly_target ?? "",
+      });
+    }
+  }
+
   const overallPhysRate = totalPhysTarget > 0
     ? Math.round((totalPhysAccomplished / totalPhysTarget) * 1000) / 10
     : 0;
@@ -602,6 +726,7 @@ function buildConsolidationResponse(
     groups: groupsArray,
     factors: factorAgg,
     actionItems,
+    indicators: aggregatedIndicators,
   };
 }
 
@@ -641,101 +766,7 @@ reportsRoutes.get("/reports/consolidation", async (c) => {
     include: CONSOLIDATION_PIR_INCLUDE,
   });
 
-  // Group PIRs
-  const groups = new Map<string, ConsolidationGroup>();
-  for (const pir of pirs) {
-    let groupKey: string;
-    let groupId: number | string;
-    let groupName: string;
-
-    if (groupBy === "cluster") {
-      const cluster = pir.aip.school?.cluster;
-      if (cluster) {
-        groupKey = `cluster-${cluster.id}`;
-        groupId = cluster.id;
-        groupName = cluster.name ?? `Cluster ${cluster.cluster_number}`;
-      } else {
-        groupKey = "division-office";
-        groupId = "division-office";
-        groupName = "Division Office";
-      }
-    } else if (groupBy === "program") {
-      groupKey = `program-${pir.aip.program_id}`;
-      groupId = pir.aip.program_id;
-      groupName = pir.aip.program?.title ?? `Program ${pir.aip.program_id}`;
-    } else {
-      groupKey = "division";
-      groupId = "division";
-      groupName = "Division-Wide";
-    }
-
-    if (!groups.has(groupKey)) {
-      groups.set(groupKey, {
-        id: groupId,
-        name: groupName,
-        pirCount: 0,
-        schools: new Set(),
-        programs: new Set(),
-        physicalTarget: 0,
-        physicalAccomplished: 0,
-        financialTarget: 0,
-        financialAccomplished: 0,
-        budgetDivision: 0,
-        budgetCoPSF: 0,
-        complianceCount: 0,
-        totalActivities: 0,
-        activityMap: new Map(),
-      });
-    }
-
-    const group = groups.get(groupKey)!;
-    group.pirCount++;
-    if (pir.aip.school_id) group.schools.add(pir.aip.school_id);
-    group.programs.add(pir.aip.program_id);
-    group.budgetDivision += Number(pir.budget_from_division);
-    group.budgetCoPSF += Number(pir.budget_from_co_psf);
-
-    for (const review of pir.activity_reviews) {
-      const actKey = review.aip_activity_id
-        ? `planned-${review.aip_activity_id}`
-        : `unplanned-${pir.id}-${review.id}`;
-      const actName = review.aip_activity?.activity_name ??
-        review.actual_tasks_conducted?.slice(0, 80) ??
-        "Unplanned Activity";
-
-      if (!group.activityMap.has(actKey)) {
-        group.activityMap.set(actKey, {
-          activityName: actName,
-          compliedCount: 0,
-          notCompliedCount: 0,
-          physicalTarget: 0,
-          physicalAccomplished: 0,
-          financialTarget: 0,
-          financialAccomplished: 0,
-          isUnplanned: review.is_unplanned,
-        });
-      }
-      const act = group.activityMap.get(actKey)!;
-      if (review.complied === true) act.compliedCount++;
-      else if (review.complied === false) act.notCompliedCount++;
-
-      const pt = Number(review.physical_target);
-      const pa = Number(review.physical_accomplished);
-      const ft = Number(review.financial_target);
-      const fa = Number(review.financial_accomplished);
-      act.physicalTarget += pt;
-      act.physicalAccomplished += pa;
-      act.financialTarget += ft;
-      act.financialAccomplished += fa;
-
-      group.physicalTarget += pt;
-      group.physicalAccomplished += pa;
-      group.financialTarget += ft;
-      group.financialAccomplished += fa;
-      if (review.complied === true) group.complianceCount++;
-      group.totalActivities++;
-    }
-  }
+  const groups = buildGroupMap(pirs, groupBy);
 
   return c.json(
     buildConsolidationResponse(groups, pirs, year, quarter, groupBy, statuses),
@@ -780,101 +811,7 @@ reportsRoutes.get("/reports/consolidation/export", async (c) => {
     include: CONSOLIDATION_PIR_INCLUDE,
   });
 
-  // Reuse the same grouping logic
-  const groups = new Map<string, ConsolidationGroup>();
-  for (const pir of pirs) {
-    let groupKey: string;
-    let groupId: number | string;
-    let groupName: string;
-
-    if (groupBy === "cluster") {
-      const cluster = pir.aip.school?.cluster;
-      if (cluster) {
-        groupKey = `cluster-${cluster.id}`;
-        groupId = cluster.id;
-        groupName = cluster.name ?? `Cluster ${cluster.cluster_number}`;
-      } else {
-        groupKey = "division-office";
-        groupId = "division-office";
-        groupName = "Division Office";
-      }
-    } else if (groupBy === "program") {
-      groupKey = `program-${pir.aip.program_id}`;
-      groupId = pir.aip.program_id;
-      groupName = pir.aip.program?.title ?? `Program ${pir.aip.program_id}`;
-    } else {
-      groupKey = "division";
-      groupId = "division";
-      groupName = "Division-Wide";
-    }
-
-    if (!groups.has(groupKey)) {
-      groups.set(groupKey, {
-        id: groupId,
-        name: groupName,
-        pirCount: 0,
-        schools: new Set(),
-        programs: new Set(),
-        physicalTarget: 0,
-        physicalAccomplished: 0,
-        financialTarget: 0,
-        financialAccomplished: 0,
-        budgetDivision: 0,
-        budgetCoPSF: 0,
-        complianceCount: 0,
-        totalActivities: 0,
-        activityMap: new Map(),
-      });
-    }
-
-    const group = groups.get(groupKey)!;
-    group.pirCount++;
-    if (pir.aip.school_id) group.schools.add(pir.aip.school_id);
-    group.programs.add(pir.aip.program_id);
-    group.budgetDivision += Number(pir.budget_from_division);
-    group.budgetCoPSF += Number(pir.budget_from_co_psf);
-
-    for (const review of pir.activity_reviews) {
-      const actKey = review.aip_activity_id
-        ? `planned-${review.aip_activity_id}`
-        : `unplanned-${pir.id}-${review.id}`;
-      const actName = review.aip_activity?.activity_name ??
-        review.actual_tasks_conducted?.slice(0, 80) ??
-        "Unplanned Activity";
-
-      if (!group.activityMap.has(actKey)) {
-        group.activityMap.set(actKey, {
-          activityName: actName,
-          compliedCount: 0,
-          notCompliedCount: 0,
-          physicalTarget: 0,
-          physicalAccomplished: 0,
-          financialTarget: 0,
-          financialAccomplished: 0,
-          isUnplanned: review.is_unplanned,
-        });
-      }
-      const act = group.activityMap.get(actKey)!;
-      if (review.complied === true) act.compliedCount++;
-      else if (review.complied === false) act.notCompliedCount++;
-
-      const pt = Number(review.physical_target);
-      const pa = Number(review.physical_accomplished);
-      const ft = Number(review.financial_target);
-      const fa = Number(review.financial_accomplished);
-      act.physicalTarget += pt;
-      act.physicalAccomplished += pa;
-      act.financialTarget += ft;
-      act.financialAccomplished += fa;
-
-      group.physicalTarget += pt;
-      group.physicalAccomplished += pa;
-      group.financialTarget += ft;
-      group.financialAccomplished += fa;
-      if (review.complied === true) group.complianceCount++;
-      group.totalActivities++;
-    }
-  }
+  const groups = buildGroupMap(pirs, groupBy);
 
   const consolidated = buildConsolidationResponse(
     groups,
@@ -956,6 +893,10 @@ reportsRoutes.get("/reports/consolidation/export", async (c) => {
         "Content-Disposition": `attachment; filename="${filename}.csv"`,
       },
     });
+  }
+
+  if (format !== "xlsx") {
+    return c.json({ error: "format must be 'csv' or 'xlsx'" }, 400);
   }
 
   const xlsxBody = toMultiSheetXLSX([

@@ -132,10 +132,39 @@ export function ConsolidatedPIRDocument({ data, year, quarter, groupBy, onClose 
           </div>
         </div>
 
-        {/* Section B: Accomplishment Summary */}
+        {/* Section B: Performance Indicators */}
+        {data.indicators?.length > 0 && (
+          <div className="mb-6">
+            <h2 className="font-black text-sm mb-3 uppercase tracking-widest border-l-4 border-black pl-3">
+              B. Performance Indicators
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[10px]">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-black px-2 py-1.5 text-left font-black">Description</th>
+                    <th className="border border-black px-2 py-1.5 text-center font-black">Annual Target</th>
+                    <th className="border border-black px-2 py-1.5 text-center font-black">Quarterly Target</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.indicators.map((ind, i) => (
+                    <tr key={i}>
+                      <td className="border border-black px-2 py-1">{ind.description}</td>
+                      <td className="border border-black px-2 py-1 text-center">{ind.annual_target || '\u00A0'}</td>
+                      <td className="border border-black px-2 py-1 text-center">{ind.quarterly_target || '\u00A0'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Section C: Accomplishment Summary */}
         <div className="mb-6">
           <h2 className="font-black text-sm mb-3 uppercase tracking-widest border-l-4 border-black pl-3">
-            B. Accomplishment Summary
+            C. Accomplishment Summary
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[10px]">
@@ -176,10 +205,10 @@ export function ConsolidatedPIRDocument({ data, year, quarter, groupBy, onClose 
           </div>
         </div>
 
-        {/* Section C: Consolidated M&E Table */}
+        {/* Section D: Consolidated M&E Table */}
         <div className="mb-6">
           <h2 className="font-black text-sm mb-3 uppercase tracking-widest border-l-4 border-black pl-3">
-            C. Consolidated Monitoring & Evaluation
+            D. Consolidated Monitoring & Evaluation
           </h2>
           {(data.groups || []).map((g) => (
             <div key={g.id} className="mb-4">
@@ -231,10 +260,10 @@ export function ConsolidatedPIRDocument({ data, year, quarter, groupBy, onClose 
           ))}
         </div>
 
-        {/* Section D: Factors Matrix */}
+        {/* Section E: Factors Matrix */}
         <div className="mb-6">
           <h2 className="font-black text-sm mb-3 uppercase tracking-widest border-l-4 border-black pl-3">
-            D. Factors Affecting Implementation
+            E. Factors Affecting Implementation
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-[10px]">
@@ -269,11 +298,11 @@ export function ConsolidatedPIRDocument({ data, year, quarter, groupBy, onClose 
           </div>
         </div>
 
-        {/* Section E: Action Items */}
+        {/* Section F: Action Items */}
         {data.actionItems?.length > 0 && (
           <div className="mb-6">
             <h2 className="font-black text-sm mb-3 uppercase tracking-widest border-l-4 border-black pl-3">
-              E. Action Items
+              F. Action Items
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[10px]">

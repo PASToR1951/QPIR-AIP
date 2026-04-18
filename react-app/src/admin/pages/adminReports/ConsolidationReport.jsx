@@ -110,7 +110,7 @@ export function ConsolidationReport({ year }) {
       {loading && <Spinner />}
       {error && <p className="text-center text-red-500 font-bold py-8">{error}</p>}
 
-      {!loading && data && (
+      {!loading && data && data.kpis?.totalPIRs > 0 && (
         <>
           <ConsolidationKpiCards kpis={data.kpis} />
           <ConsolidationGroupTable groups={data.groups} groupBy={groupBy} />
