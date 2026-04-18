@@ -56,7 +56,7 @@ export async function generatePIRPdf(data) {
   const unplannedActivities = activities.filter((activity) => activity.isUnplanned);
 
   let y = drawGovHeader(pdf, sealData, {
-    title: 'Quarterly Program Implementation Review (QPIR)',
+    title: 'Quarterly Program Implementation Review (AIP-PIR)',
     subtitle: 'Quarterly Division Monitoring Evaluation and Adjustment',
     badge: quarter,
   });

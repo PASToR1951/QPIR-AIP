@@ -56,7 +56,7 @@ export const PIRDocument = ({
         <div className="pir-printable text-black font-sans print:p-0 print:m-0 print:bg-white min-h-screen">
             {/* Header */}
             <GovDocHeader
-                documentTitle="Quarterly Program Implementation Review (QPIR)"
+                documentTitle="Quarterly Program Implementation Review (AIP-PIR)"
                 documentSubtitle="Quarterly Division Monitoring Evaluation and Adjustment"
                 badge={quarter}
             />
