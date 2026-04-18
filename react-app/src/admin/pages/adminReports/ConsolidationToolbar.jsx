@@ -3,6 +3,7 @@ import { DownloadSimple, FileText, FunnelSimple, CaretDown } from '@phosphor-ico
 import { SearchableSelect } from '../../components/SearchableSelect.jsx';
 
 const QUARTERS = [
+  { value: 0, label: 'All' },
   { value: 1, label: 'Q1' },
   { value: 2, label: 'Q2' },
   { value: 3, label: 'Q3' },
@@ -10,6 +11,7 @@ const QUARTERS = [
 ];
 
 const GROUP_BY_OPTIONS = [
+  { value: 'all', label: 'All' },
   { value: 'cluster', label: 'By Cluster' },
   { value: 'program', label: 'By Program' },
   { value: 'division', label: 'Division-Wide' },
@@ -68,7 +70,21 @@ export function ConsolidationToolbar({
     <div className="space-y-3">
       {/* Row 1: Quarter + GroupBy */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center rounded-xl border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-surface overflow-hidden">
+
+        {/* Quarter selector — mobile dropdown */}
+        <div className="relative sm:hidden">
+          <select
+            value={quarter}
+            onChange={(e) => setQuarter(Number(e.target.value))}
+            className="appearance-none rounded-xl border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-surface px-4 py-2 pr-8 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400"
+          >
+            {QUARTERS.map((q) => <option key={q.value} value={q.value}>{q.label}</option>)}
+          </select>
+          <CaretDown size={12} weight="bold" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        </div>
+
+        {/* Quarter selector — desktop pill buttons */}
+        <div className="hidden sm:flex items-center rounded-xl border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-surface overflow-hidden">
           {QUARTERS.map((q) => (
             <button
               key={q.value}
@@ -84,7 +100,24 @@ export function ConsolidationToolbar({
           ))}
         </div>
 
-        <div className="flex items-center rounded-xl border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-surface overflow-hidden">
+        {/* GroupBy selector — mobile dropdown */}
+        <div className="relative sm:hidden">
+          <select
+            value={groupBy}
+            onChange={(e) => {
+              setGroupBy(e.target.value);
+              setClusterId('');
+              setProgramId('');
+            }}
+            className="appearance-none rounded-xl border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-surface px-4 py-2 pr-8 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400"
+          >
+            {GROUP_BY_OPTIONS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
+          </select>
+          <CaretDown size={12} weight="bold" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        </div>
+
+        {/* GroupBy selector — desktop pill buttons */}
+        <div className="hidden sm:flex items-center rounded-xl border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-surface overflow-hidden">
           {GROUP_BY_OPTIONS.map((g) => (
             <button
               key={g.value}

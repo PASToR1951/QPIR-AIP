@@ -1,5 +1,6 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { CaretDown } from '@phosphor-icons/react';
 import { TABS } from './adminReports/constants.js';
 import { REPORT_COMPONENTS } from './adminReports/reportRegistry.js';
 import { ExportButtons, YearDropdown } from './adminReports/shared.jsx';
@@ -18,10 +19,27 @@ export default function AdminReports() {
   const { year, setYear, availableYears } = useReportYears();
   const ActiveReport = REPORT_COMPONENTS[tab] ?? REPORT_COMPONENTS.compliance;
 
+  const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
+
   return (
     <div className="space-y-4">
       <div className="border-b border-slate-200 pb-0 dark:border-dark-border">
-        <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none">
+        {/* Mobile: tab dropdown */}
+        <div className="relative sm:hidden mb-1">
+          <select
+            value={tab}
+            onChange={(e) => setTab(e.target.value)}
+            className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-2.5 pr-9 text-sm font-bold text-slate-700 shadow-sm focus:outline-none focus:border-indigo-400 dark:border-dark-border dark:bg-dark-surface dark:text-slate-200"
+          >
+            {TABS.map((item) => (
+              <option key={item.key} value={item.key}>{item.label}</option>
+            ))}
+          </select>
+          <CaretDown size={15} weight="bold" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        </div>
+
+        {/* Desktop: horizontal pill tabs */}
+        <div className="hidden sm:flex items-center gap-0.5 overflow-x-auto scrollbar-none">
           {TABS.map((item) => (
             <button
               key={item.key}
@@ -33,6 +51,7 @@ export default function AdminReports() {
             </button>
           ))}
         </div>
+
         <div className="flex items-center gap-3 pb-2">
           <YearDropdown year={year} setYear={setYear} availableYears={availableYears} />
           <ExportButtons type={tab} year={year} />

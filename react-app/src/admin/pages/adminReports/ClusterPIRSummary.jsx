@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CaretDown } from '@phosphor-icons/react';
 import api from '../../../lib/api.js';
 import { SearchableSelect } from '../../components/SearchableSelect.jsx';
 import { Spinner } from './shared.jsx';
@@ -99,7 +100,22 @@ export function ClusterPIRSummary({ year }) {
             placeholder="Select Cluster…"
           />
         </div>
-        <div className="flex items-center gap-1">
+        {/* Quarter selector — mobile dropdown */}
+        <div className="relative sm:hidden">
+          <select
+            value={quarter}
+            onChange={(e) => setQuarter(Number(e.target.value))}
+            className="appearance-none rounded-xl border border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-surface px-4 py-2 pr-8 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400"
+          >
+            {CY_QUARTERS.map((label, index) => (
+              <option key={label} value={index + 1}>{label}</option>
+            ))}
+          </select>
+          <CaretDown size={12} weight="bold" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        </div>
+
+        {/* Quarter selector — desktop pill buttons */}
+        <div className="hidden sm:flex items-center gap-1">
           {CY_QUARTERS.map((label, index) => (
             <button
               key={label}

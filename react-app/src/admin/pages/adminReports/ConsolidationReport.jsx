@@ -33,6 +33,9 @@ export function ConsolidationReport({ year }) {
     }).catch(console.error);
   }, []);
 
+  // Map UI 'all' option → 'division' for the API (backend doesn't know 'all')
+  const apiGroupBy = groupBy === 'all' ? 'division' : groupBy;
+
   useEffect(() => {
     if (statuses.size === 0) { setData(null); return; }
 
@@ -42,11 +45,11 @@ export function ConsolidationReport({ year }) {
     const params = new URLSearchParams({
       year: String(year),
       quarter: String(quarter),
-      groupBy,
+      groupBy: apiGroupBy,
       statuses: Array.from(statuses).join(','),
     });
-    if (groupBy === 'cluster' && clusterId) params.set('cluster', String(clusterId));
-    if (groupBy === 'program' && programId) params.set('program', String(programId));
+    if (apiGroupBy === 'cluster' && clusterId) params.set('cluster', String(clusterId));
+    if (apiGroupBy === 'program' && programId) params.set('program', String(programId));
 
     api.get(`/api/admin/reports/consolidation?${params}`)
       .then((r) => setData(r.data))
@@ -62,17 +65,17 @@ export function ConsolidationReport({ year }) {
     const params = new URLSearchParams({
       year: String(year),
       quarter: String(quarter),
-      groupBy,
+      groupBy: apiGroupBy,
       statuses: Array.from(statuses).join(','),
       format,
     });
-    if (groupBy === 'cluster' && clusterId) params.set('cluster', String(clusterId));
-    if (groupBy === 'program' && programId) params.set('program', String(programId));
+    if (apiGroupBy === 'cluster' && clusterId) params.set('cluster', String(clusterId));
+    if (apiGroupBy === 'program' && programId) params.set('program', String(programId));
 
     const url = `${API_URL}/api/admin/reports/consolidation/export?${params}`;
     const link = document.createElement('a');
     link.href = url;
-    link.download = `consolidation-Q${quarter}-${year}.${format}`;
+    link.download = `consolidation-${quarter === 0 ? 'All-Quarters' : `Q${quarter}`}-${year}.${format}`;
 
     try {
       const response = await fetch(url, { credentials: 'include' });
@@ -85,7 +88,7 @@ export function ConsolidationReport({ year }) {
     } catch (e) {
       console.error('Export failed:', e);
     }
-  }, [year, quarter, groupBy, clusterId, programId, statuses]);
+  }, [year, quarter, apiGroupBy, clusterId, programId, statuses]);
 
   return (
     <div className="space-y-5">
@@ -113,7 +116,7 @@ export function ConsolidationReport({ year }) {
       {!loading && data && data.kpis?.totalPIRs > 0 && (
         <>
           <ConsolidationKpiCards kpis={data.kpis} />
-          <ConsolidationGroupTable groups={data.groups} groupBy={groupBy} />
+          <ConsolidationGroupTable groups={data.groups} groupBy={apiGroupBy} />
           <ConsolidationFactors factors={data.factors} />
 
           {data.actionItems?.length > 0 && (

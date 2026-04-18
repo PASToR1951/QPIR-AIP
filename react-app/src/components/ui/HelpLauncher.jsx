@@ -25,6 +25,15 @@ const FONT_SIZES = [
   { value: 'xxl',   label: 'A', size: 'text-lg'     },
 ];
 
+const SHEEN_COLORS = {
+  pink:   { '--s-1': '#ec4899', '--s-2': '#f472b6', '--s-3': '#f9a8d4', '--s-4': '#fda4af', '--s-5': '#fb7185', '--s-shadow': 'rgba(236, 72, 153, 0.4)', '--s-shadow-hover': 'rgba(236, 72, 153, 0.5)' },
+  blue:   { '--s-1': '#3b82f6', '--s-2': '#60a5fa', '--s-3': '#93c5fd', '--s-4': '#7dd3fc', '--s-5': '#38bdf8', '--s-shadow': 'rgba(59, 130, 246, 0.4)', '--s-shadow-hover': 'rgba(59, 130, 246, 0.5)' },
+  indigo: { '--s-1': '#6366f1', '--s-2': '#818cf8', '--s-3': '#a5b4fc', '--s-4': '#c4b5fd', '--s-5': '#a78bfa', '--s-shadow': 'rgba(99, 102, 241, 0.4)', '--s-shadow-hover': 'rgba(99, 102, 241, 0.5)' },
+  teal:   { '--s-1': '#14b8a6', '--s-2': '#2dd4bf', '--s-3': '#5eead4', '--s-4': '#6ee7b7', '--s-5': '#34d399', '--s-shadow': 'rgba(20, 184, 166, 0.4)', '--s-shadow-hover': 'rgba(20, 184, 166, 0.5)' },
+  amber:  { '--s-1': '#f59e0b', '--s-2': '#fbbf24', '--s-3': '#fcd34d', '--s-4': '#fdba74', '--s-5': '#fb923c', '--s-shadow': 'rgba(245, 158, 11, 0.4)', '--s-shadow-hover': 'rgba(245, 158, 11, 0.5)' },
+  slate:  { '--s-1': '#334155', '--s-2': '#475569', '--s-3': '#64748b', '--s-4': '#4b5563', '--s-5': '#374151', '--s-shadow': 'rgba(15, 23, 42, 0.4)', '--s-shadow-hover': 'rgba(15, 23, 42, 0.5)' },
+};
+
 const SPACING_OPTIONS = [
   { value: 'normal',  label: '1×'   },
   { value: 'relaxed', label: '1.5×' },
@@ -403,17 +412,17 @@ export default function HelpLauncher() {
         <Motion.button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          whileHover={{ scale: 1.08 }}
+          whileHover={isOpen ? undefined : { scale: 1.08 }}
           whileTap={{ scale: 0.92 }}
+          animate={{ scale: isOpen ? 0.95 : 1 }}
           transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-          className={`flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full transition-[box-shadow] fab-sheen ${t.fab} ${t.fabHover}`}
+          className="flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full transition-[box-shadow] sheen-button text-white"
           aria-label="Open help and accessibility options"
           aria-expanded={isOpen}
+          data-active={isOpen}
+          style={SHEEN_COLORS[themeName] || SHEEN_COLORS.slate}
         >
-          <Motion.div
-            animate={{ rotate: isOpen ? 90 : 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 22 }}
-          >
+          <Motion.div transition={{ type: 'spring', stiffness: 300, damping: 22 }}>
             <Question size={26} weight="fill" />
           </Motion.div>
         </Motion.button>

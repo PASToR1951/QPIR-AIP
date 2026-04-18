@@ -26,13 +26,15 @@ const FACTOR_TYPES = [
   "Environmental",
   "Others",
 ];
-const QUARTER_PREFIXES: Record<number, string> = {
+const QUARTER_PREFIXES: Record<number, string | undefined> = {
+  0: undefined,
   1: "1st",
   2: "2nd",
   3: "3rd",
   4: "4th",
 };
 const QUARTER_LABELS: Record<number, string> = {
+  0: "All Quarters",
   1: "1st Quarter",
   2: "2nd Quarter",
   3: "3rd Quarter",
@@ -743,17 +745,14 @@ reportsRoutes.get("/reports/consolidation", async (c) => {
   } = parseConsolidationQuery(c);
   if (!isValidYear) return invalidYearResponse();
   if (!quarterValid) {
-    return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
+    return c.json({ error: "Invalid quarter (must be 0–4)" }, 400);
   }
 
-  const quarterPrefix = QUARTER_PREFIXES[quarter];
-  if (!quarterPrefix) {
-    return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
-  }
+  const quarterPrefix = QUARTER_PREFIXES[quarter]; // undefined when quarter=0
 
   const pirs = await prisma.pIR.findMany({
     where: {
-      quarter: { startsWith: quarterPrefix },
+      ...(quarterPrefix ? { quarter: { startsWith: quarterPrefix } } : {}),
       status: { in: statuses },
       deleted_at: null,
       aip: {
@@ -788,17 +787,14 @@ reportsRoutes.get("/reports/consolidation/export", async (c) => {
   } = parseConsolidationQuery(c);
   if (!isValidYear) return invalidYearResponse();
   if (!quarterValid) {
-    return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
+    return c.json({ error: "Invalid quarter (must be 0–4)" }, 400);
   }
 
-  const quarterPrefix = QUARTER_PREFIXES[quarter];
-  if (!quarterPrefix) {
-    return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
-  }
+  const quarterPrefix = QUARTER_PREFIXES[quarter]; // undefined when quarter=0
 
   const pirs = await prisma.pIR.findMany({
     where: {
-      quarter: { startsWith: quarterPrefix },
+      ...(quarterPrefix ? { quarter: { startsWith: quarterPrefix } } : {}),
       status: { in: statuses },
       deleted_at: null,
       aip: {
@@ -884,7 +880,7 @@ reportsRoutes.get("/reports/consolidation/export", async (c) => {
     row_count: summaryRows.length,
   });
 
-  const filename = `consolidation-Q${quarter}-${year}`;
+  const filename = `consolidation-${quarter === 0 ? 'All-Quarters' : `Q${quarter}`}-${year}`;
 
   if (format === "csv") {
     return new Response(toCSV(summaryRows), {
