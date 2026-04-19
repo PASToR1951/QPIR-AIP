@@ -179,16 +179,22 @@ app.get('/api/config', async (c) => {
     }
   }
 
+  // For each division, prefer the live CES user name; fall back to the admin-configured
+  // DivisionConfig text if no active CES user holds that role (e.g. vacant position).
+  const sgodName  = ces['CES-SGOD']  || config?.sgod_noted_by_name  || "";
+  const cidName   = ces['CES-CID']   || config?.cid_noted_by_name   || "";
+  const osdsName  = ces['CES-ASDS']  || config?.osds_noted_by_name  || "";
+
   return c.json({
     supervisor_name:      config?.supervisor_name ?? "",
     supervisor_title:     config?.supervisor_title ?? "",
     app_logo:             config?.app_logo ?? null,
-    sgod_noted_by_name:   ces['CES-SGOD'] ?? "",
-    sgod_noted_by_title:  ces['CES-SGOD'] ? CES_TITLES['CES-SGOD'] : "",
-    cid_noted_by_name:    ces['CES-CID']  ?? "",
-    cid_noted_by_title:   ces['CES-CID']  ? CES_TITLES['CES-CID']  : "",
-    osds_noted_by_name:   ces['CES-ASDS'] ?? "",
-    osds_noted_by_title:  ces['CES-ASDS'] ? CES_TITLES['CES-ASDS'] : "",
+    sgod_noted_by_name:   sgodName,
+    sgod_noted_by_title:  sgodName ? CES_TITLES['CES-SGOD'] : "",
+    cid_noted_by_name:    cidName,
+    cid_noted_by_title:   cidName  ? CES_TITLES['CES-CID']  : "",
+    osds_noted_by_name:   osdsName,
+    osds_noted_by_title:  osdsName ? CES_TITLES['CES-ASDS'] : "",
     cluster_head_name,
     cluster_head_title,
   });

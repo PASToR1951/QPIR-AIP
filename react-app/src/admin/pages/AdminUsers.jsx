@@ -14,6 +14,7 @@ import { TempPasswordModal } from './adminUsers/TempPasswordModal.jsx';
 import { useUserData } from './adminUsers/useUserData.js';
 import { useOnboardingData } from './adminUsers/useUserData.js';
 import { useUserMutations } from './adminUsers/useUserMutations.js';
+import { SignatoriesPanel } from './adminSettings/SignatoriesPanel.jsx';
 
 const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin', 'Observer'];
 
@@ -112,6 +113,10 @@ export default function AdminUsers() {
       </div>
 
       <OnboardingSnapshot {...onboarding} />
+
+      <div className="mt-4">
+        <SignatoriesPanel />
+      </div>
 
       {/* Modals */}
       <CreateUserWizard

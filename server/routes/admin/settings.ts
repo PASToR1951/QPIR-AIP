@@ -288,4 +288,153 @@ settingsRoutes.delete("/settings/app-logo", async (c) => {
   return c.json({ success: true });
 });
 
+settingsRoutes.get("/settings/signatories", async (c) => {
+  const [users, config, clusters, programs] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        is_active: true,
+        deleted_at: null,
+        role: { notIn: ["Pending", "Admin", "Observer"] },
+      },
+      select: {
+        id: true,
+        name: true,
+        first_name: true,
+        last_name: true,
+        role: true,
+        school: { select: { id: true, name: true, cluster_id: true } },
+        cluster: { select: { id: true, name: true, cluster_number: true } },
+        programs: { select: { id: true, title: true, division: true } },
+      },
+      orderBy: [{ role: "asc" }, { name: "asc" }],
+    }),
+    prisma.divisionConfig.findFirst(),
+    prisma.cluster.findMany({
+      include: {
+        cluster_head: {
+          select: { id: true, name: true, first_name: true, last_name: true, position: true },
+        },
+      },
+    }),
+    prisma.program.findMany({ select: { id: true, title: true, division: true } }),
+  ]);
+
+  // Build CES lookup: role → { name, title }
+  const CES_TITLES: Record<string, string> = {
+    "CES-SGOD": "Chief Education Supervisor, SGOD",
+    "CES-CID":  "Chief Education Supervisor, CID",
+    "CES-ASDS": "Assistant Schools Division Superintendent",
+  };
+  const CES_DIVISION_KEY: Record<string, string> = {
+    "SGOD": "CES-SGOD",
+    "CID":  "CES-CID",
+    "OSDS": "CES-ASDS",
+  };
+
+  // CES users who ARE the signatories (their own row in the user list)
+  const cesUsersByRole: Record<string, { name: string; title: string }> = {};
+  for (const u of users) {
+    if (["CES-SGOD", "CES-CID", "CES-ASDS"].includes(u.role)) {
+      const displayName = u.name || [u.first_name, u.last_name].filter(Boolean).join(" ");
+      cesUsersByRole[u.role] = { name: displayName, title: CES_TITLES[u.role] };
+    }
+  }
+
+  // Fallback to DivisionConfig when no CES user exists
+  const cesFallback: Record<string, { name: string; title: string }> = {
+    "CES-SGOD": {
+      name:  cesUsersByRole["CES-SGOD"]?.name  || config?.sgod_noted_by_name  || "",
+      title: cesUsersByRole["CES-SGOD"]?.title || (config?.sgod_noted_by_name  ? CES_TITLES["CES-SGOD"]  : ""),
+    },
+    "CES-CID": {
+      name:  cesUsersByRole["CES-CID"]?.name   || config?.cid_noted_by_name   || "",
+      title: cesUsersByRole["CES-CID"]?.title  || (config?.cid_noted_by_name   ? CES_TITLES["CES-CID"]   : ""),
+    },
+    "CES-ASDS": {
+      name:  cesUsersByRole["CES-ASDS"]?.name  || config?.osds_noted_by_name  || "",
+      title: cesUsersByRole["CES-ASDS"]?.title || (config?.osds_noted_by_name  ? CES_TITLES["CES-ASDS"]  : ""),
+    },
+  };
+
+  // Build cluster head lookup: clusterId → { name, title }
+  const clusterHeadByClusterId: Record<number, { name: string; title: string }> = {};
+  for (const cl of clusters) {
+    if (cl.cluster_head) {
+      const h = cl.cluster_head;
+      clusterHeadByClusterId[cl.id] = {
+        name:  h.name || [h.first_name, h.last_name].filter(Boolean).join(" "),
+        title: h.position || "Cluster Coordinator",
+      };
+    }
+  }
+
+  // Build program division lookup: programId → Division
+  const programDivision: Record<number, string | null> = {};
+  for (const p of programs) {
+    programDivision[p.id] = p.division;
+  }
+
+  const fallbackSupervisor = {
+    name:  config?.supervisor_name  || "",
+    title: config?.supervisor_title || "",
+  };
+
+  // Resolve signatory for each user
+  const rows = users.map((u) => {
+    let signatory: { name: string; title: string; source: string };
+
+    if (u.role === "School") {
+      const clusterId = u.school?.cluster_id;
+      const head = clusterId ? clusterHeadByClusterId[clusterId] : null;
+      if (head?.name) {
+        signatory = { ...head, source: "cluster_head" };
+      } else {
+        signatory = { name: "", title: "", source: "none" };
+      }
+    } else if (u.role === "Cluster Coordinator") {
+      const cid = cesFallback["CES-CID"];
+      signatory = cid.name
+        ? { ...cid, source: "ces_cid" }
+        : { name: "", title: "", source: "none" };
+    } else if (u.role === "Division Personnel") {
+      // Use the first program's division to determine the CES chief
+      const firstDivision = u.programs.map(p => programDivision[p.id]).find(Boolean);
+      const cesRole = firstDivision ? CES_DIVISION_KEY[firstDivision] : null;
+      const ces = cesRole ? cesFallback[cesRole] : null;
+      if (ces?.name) {
+        signatory = { ...ces, source: `ces_${firstDivision?.toLowerCase() ?? "unknown"}` };
+      } else if (fallbackSupervisor.name) {
+        signatory = { ...fallbackSupervisor, source: "division_config" };
+      } else {
+        signatory = { name: "", title: "", source: "none" };
+      }
+    } else if (["CES-SGOD", "CES-CID", "CES-ASDS"].includes(u.role)) {
+      // CES users are themselves signatories — their own supervisor is the SDS
+      signatory = fallbackSupervisor.name
+        ? { ...fallbackSupervisor, source: "division_config" }
+        : { name: "", title: "", source: "none" };
+    } else {
+      signatory = { name: "", title: "", source: "none" };
+    }
+
+    return {
+      user: {
+        id: u.id,
+        name: u.name || [u.first_name, u.last_name].filter(Boolean).join(" ") || u.first_name || "",
+        role: u.role,
+        school: u.school?.name ?? null,
+        cluster: u.cluster
+          ? `Cluster ${u.cluster.cluster_number}`
+          : u.school?.cluster_id
+            ? `Cluster ${clusters.find(c => c.id === u.school?.cluster_id)?.cluster_number ?? "?"}`
+            : null,
+        programs: u.programs.map(p => p.title),
+      },
+      signatory,
+    };
+  });
+
+  return c.json(rows);
+});
+
 export default settingsRoutes;
