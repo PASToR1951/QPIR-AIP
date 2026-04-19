@@ -4,7 +4,7 @@
  *
  * - Division Personnel PIRs route by program.division:
  *   SGOD → CES-SGOD, OSDS → CES-ASDS, CID → CES-CID, null → CES-CID (fallback)
- * - Cluster Coordinator PIRs always route to CES-CID (call with null)
+ * - Cluster Coordinator PIRs always route to CES-CID (call with null; also applies to school-level CC PIRs)
  * - School PIRs do NOT use this function — they route to the Cluster Coordinator
  */
 export function getCESRoleForDivisionPIR(programDivision: string | null): string {

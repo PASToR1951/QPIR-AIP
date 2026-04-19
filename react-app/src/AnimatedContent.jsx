@@ -69,6 +69,8 @@ function preloadForRole(role) {
     import('./PIRForm');
   } else if (role === 'Cluster Coordinator') {
     import('./cluster-head/ClusterHeadLayout.jsx');
+    import('./AIPForm');
+    import('./PIRForm');
   } else {
     import('./AIPForm');
     import('./PIRForm');
@@ -172,7 +174,8 @@ const PIRRouteGuard = ({ children }) => {
   } catch {
     sessionStorage.removeItem('user');
   }
-  const isDivisionPersonnel = ['Division Personnel', 'Cluster Coordinator', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role);
+  const isDivisionPersonnel = ['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role) ||
+    (user?.role === 'Cluster Coordinator' && !user?.school_id);
 
   useEffect(() => {
     const checkStatus = async () => {

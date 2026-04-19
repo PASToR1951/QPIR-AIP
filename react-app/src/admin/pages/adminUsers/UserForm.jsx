@@ -126,17 +126,30 @@ export function UserForm({ form, setForm, schools, programs, clusters = [] }) {
         </div>
       )}
       {form.role === 'Cluster Coordinator' && (
-        <div>
-          <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-            Assigned Cluster <span className="text-rose-500">*</span>
-          </label>
-          <SearchableSelect
-            options={clusters.map(c => ({ value: c.id, label: c.name || `Cluster ${c.cluster_number}` }))}
-            value={form.cluster_id}
-            onChange={v => setForm(f => ({ ...f, cluster_id: v }))}
-            placeholder="Select cluster"
-          />
-        </div>
+        <>
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+              Assigned Cluster <span className="text-rose-500">*</span>
+            </label>
+            <SearchableSelect
+              options={clusters.map(c => ({ value: c.id, label: c.name || `Cluster ${c.cluster_number}` }))}
+              value={form.cluster_id}
+              onChange={v => setForm(f => ({ ...f, cluster_id: v }))}
+              placeholder="Select cluster"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+              Own School <span className="text-slate-400 font-normal normal-case">(if Cluster Head submits school AIPs/PIRs)</span>
+            </label>
+            <SearchableSelect
+              options={[{ value: null, label: 'None — division-level only' }, ...schools.map(s => ({ value: s.id, label: s.name }))]}
+              value={form.school_id}
+              onChange={v => setForm(f => ({ ...f, school_id: v }))}
+              placeholder="Select school (optional)"
+            />
+          </div>
+        </>
       )}
       {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(form.role)) && (
         <div>

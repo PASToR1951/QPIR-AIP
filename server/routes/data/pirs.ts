@@ -304,7 +304,7 @@ pirRoutes.post(
             functional_division: functional_division ?? null,
             indicator_quarterly_targets: indicator_quarterly_targets ?? [],
             action_items: action_items ?? [],
-            status: aip.school_id !== null
+            status: aip.school_id !== null && tokenUser.role !== "Cluster Coordinator"
               ? "For Cluster Head Review"
               : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
               ? "For Admin Review"
@@ -325,7 +325,7 @@ pirRoutes.post(
             functional_division: functional_division ?? null,
             indicator_quarterly_targets: indicator_quarterly_targets ?? [],
             action_items: action_items ?? [],
-            status: aip.school_id !== null
+            status: aip.school_id !== null && tokenUser.role !== "Cluster Coordinator"
               ? "For Cluster Head Review"
               : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
               ? "For Admin Review"
@@ -478,7 +478,7 @@ pirRoutes.put(
         where: { id: pir.aip_id },
         select: { school_id: true },
       });
-      const resubmitStatus = pirAip?.school_id !== null
+      const resubmitStatus = pirAip?.school_id !== null && tokenUser.role !== "Cluster Coordinator"
         ? "For Cluster Head Review"
         : "For CES Review";
 

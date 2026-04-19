@@ -460,7 +460,7 @@ usersRoutes.patch("/users/:id", async (c) => {
     updateData.school_id = school_id;
     updateData.cluster_id = null;
   } else if (role === "Cluster Coordinator") {
-    updateData.school_id = null;
+    if (school_id !== undefined) updateData.school_id = school_id;
     if (cluster_id !== undefined) updateData.cluster_id = cluster_id;
   } else if (
     [

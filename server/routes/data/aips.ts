@@ -228,7 +228,9 @@ aipRoutes.post(
         }
       }
 
-      const schoolId = tokenUser.role === "School" ? tokenUser.school_id : null;
+      const schoolId = (tokenUser.role === "School" || tokenUser.role === "Cluster Coordinator")
+        ? tokenUser.school_id
+        : null;
       const parsedYear = safeParseInt(year, new Date().getFullYear(), 2020, 2100);
 
       const aipFields = {

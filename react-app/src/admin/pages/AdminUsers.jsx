@@ -52,7 +52,7 @@ export default function AdminUsers() {
   const openEdit = (u) => {
     loadDropdownData();
     setEditUser(u);
-    setForm({ id: u.id, salutation: u.salutation || '', name: u.name || '', first_name: u.first_name || '', middle_initial: u.middle_initial || '', last_name: u.last_name || '', position: u.position || '', email: u.email, password: '', role: u.role, school_id: u.school?.id ?? null, cluster_id: null, program_ids: u.programs?.map(p => p.id) ?? [] });
+    setForm({ id: u.id, salutation: u.salutation || '', name: u.name || '', first_name: u.first_name || '', middle_initial: u.middle_initial || '', last_name: u.last_name || '', position: u.position || '', email: u.email, password: '', role: u.role, school_id: u.school?.id ?? null, cluster_id: u.cluster_id ?? null, program_ids: u.programs?.map(p => p.id) ?? [] });
     setFormError('');
   };
 
