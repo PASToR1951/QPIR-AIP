@@ -7,7 +7,7 @@ export function requireAuth(
   message = "Authentication required",
 ): MiddlewareHandler<{ Variables: DataRouteEnv }> {
   return async (c, next) => {
-    const user = getUserFromToken(c);
+    const user = await getUserFromToken(c);
     if (!user) return c.json({ error: message }, 401);
     c.set("user", user);
     await next();

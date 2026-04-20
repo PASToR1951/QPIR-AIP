@@ -39,7 +39,7 @@ deadlinesRoutes.get("/deadlines", async (c) => {
 });
 
 deadlinesRoutes.post("/deadlines", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const { year, quarter, date, open_date, grace_period_days } = await c.req
     .json();
 
@@ -101,7 +101,7 @@ deadlinesRoutes.post("/deadlines", async (c) => {
 });
 
 deadlinesRoutes.delete("/deadlines/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   await prisma.deadline.delete({ where: { id } });
   await writeAuditLog(admin.id, "reset_deadline", "Deadline", id, {});

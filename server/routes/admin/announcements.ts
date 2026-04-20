@@ -29,7 +29,7 @@ announcementsRoutes.get("/announcements", async (c) => {
 });
 
 announcementsRoutes.post("/announcements", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const { message, type, is_active, dismissible, expires_at } = sanitizeObject(
     await c.req.json(),
   );
@@ -180,7 +180,7 @@ announcementsRoutes.post("/announcements", async (c) => {
 });
 
 announcementsRoutes.delete("/announcements", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const existing = await prisma.announcement.findFirst({
     orderBy: { created_at: "desc" },
   });

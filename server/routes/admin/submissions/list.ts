@@ -87,7 +87,7 @@ listRouter.get("/submissions", async (c) => {
 
 // GET /submissions/export
 listRouter.get("/submissions/export", async (c) => {
-  const exporter = getUserFromToken(c)!;
+  const exporter = (await getUserFromToken(c))!;
   const format = parseExportFormat(c.req.query("format"));
   const type = c.req.query("type");
   const year = c.req.query("year")

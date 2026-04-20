@@ -9,6 +9,7 @@ import {
   ClockCounterClockwise,
   CaretDown, ChartBar, Wallet, TrendUp, ListChecks, FunnelSimple, Coins,
   Database,
+  Key,
 } from '@phosphor-icons/react';
 import { useOnboarding } from '../hooks/useOnboarding.jsx';
 import { isChecklistLandingPage } from '../lib/onboardingUtils.js';
@@ -41,6 +42,7 @@ const NAV_GROUPS = [
   {
     label: 'System',
     items: [
+      { to: '/admin/sessions', label: 'Sessions', icon: Key, adminOnly: true, preload: () => import('./pages/AdminSessions.jsx') },
       { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Beta', adminOnly: true },
       { to: '/admin/backups',  label: 'Backups',     icon: Database, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminBackups.jsx') },
       { to: '/admin/settings', label: 'Settings',    icon: Gear, adminOnly: true, preload: () => import('./pages/AdminSettings.jsx') },

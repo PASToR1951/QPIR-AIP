@@ -12,8 +12,8 @@ const HOURLY_DIR = "/app/backups/hourly";
 const DAILY_DIR  = "/app/backups/daily";
 const HOURLY_SCRIPT = "/app/scripts/backup/backup_hourly.sh";
 
-function requireAdmin(c: Context): TokenPayload | null {
-  const user = getUserFromToken(c);
+async function requireAdmin(c: Context): Promise<TokenPayload | null> {
+  const user = await getUserFromToken(c);
   if (!user || user.role !== "Admin") return null;
   return user;
 }
@@ -53,7 +53,7 @@ async function listBackupFiles(dir: string): Promise<Array<{ name: string; size:
 // GET /admin/backup/status
 // Returns the contents of status.json plus a listing of backup files.
 backupRoutes.get("/status", async (c) => {
-  const admin = requireAdmin(c);
+  const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Forbidden" }, 403);
 
   let statusData: Record<string, unknown> = {
@@ -94,7 +94,7 @@ backupRoutes.get("/status", async (c) => {
 // Spawns backup_hourly.sh as a background process and returns immediately.
 // The backup runs asynchronously; poll /status to see the result.
 backupRoutes.post("/trigger", async (c) => {
-  const admin = requireAdmin(c);
+  const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Forbidden" }, 403);
 
   logger.info("Manual backup triggered", { admin_id: admin.id });

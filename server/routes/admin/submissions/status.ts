@@ -18,7 +18,7 @@ export const statusRouter = new Hono();
 
 // PATCH /submissions/:id/status
 statusRouter.patch("/submissions/:id/status", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const { type, status, feedback } = sanitizeObject(await c.req.json());
   const normalizedFeedback = typeof feedback === "string"

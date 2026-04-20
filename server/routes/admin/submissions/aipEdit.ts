@@ -12,7 +12,7 @@ export const aipEditRouter = new Hono();
 
 // PATCH /aips/:id/approve-edit
 aipEditRouter.patch("/aips/:id/approve-edit", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
 
   const aip = await prisma.aIP.update({
@@ -28,7 +28,7 @@ aipEditRouter.patch("/aips/:id/approve-edit", async (c) => {
 
 // PATCH /aips/:id/deny-edit
 aipEditRouter.patch("/aips/:id/deny-edit", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
 
   const aip = await prisma.aIP.update({

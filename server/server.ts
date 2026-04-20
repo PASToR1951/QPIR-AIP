@@ -223,7 +223,7 @@ app.get('/api/announcement', async (c) => {
   if (!hasSchoolMentions && !hasUserMentions) return c.json(a);
 
   // Targeted announcement — check if requesting user qualifies
-  const caller = getUserFromToken(c);
+  const caller = await getUserFromToken(c);
   if (!caller) return c.json({ error: 'Unauthorized' }, 401);
 
   const schoolMatch = hasSchoolMentions && caller.school_id != null &&

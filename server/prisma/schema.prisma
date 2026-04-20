@@ -139,6 +139,9 @@ model User {
   // User activity logs
   activity_logs UserActivityLog[] @relation("UserActivityLogs")
 
+  // Authenticated browser/device sessions
+  sessions      UserSession[]
+
   // Notifications
   notifications         Notification[]
   announcement_mentions AnnouncementMentionUser[]
@@ -148,6 +151,26 @@ model User {
   created_at DateTime @default(now())
 
   @@unique([oauth_provider, oauth_subject])
+}
+
+model UserSession {
+  id            Int      @id @default(autoincrement())
+  user_id       Int
+  session_token String   @unique
+  user_agent    String?
+  ip_address    String?
+  device_label  String?
+  created_at    DateTime @default(now())
+  last_seen_at  DateTime @default(now())
+  expires_at    DateTime
+  revoked_at    DateTime?
+  revoked_by    Int?
+
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([expires_at])
+  @@map("user_sessions")
 }
 
 // PKCE + CSRF state for OAuth flows — single-use, 10-minute TTL

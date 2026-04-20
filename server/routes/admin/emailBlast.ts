@@ -38,12 +38,12 @@ emailRoutes.get("/email-recipients", async (c) => {
 });
 
 emailRoutes.post("/email/send-welcome-batch", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const body = sanitizeObject(await c.req.json().catch(() => ({})));
   const userIds = Array.isArray(body.user_ids)
     ? body.user_ids
       .map(Number)
-      .filter((value) => Number.isInteger(value) && value > 0)
+      .filter((value: number) => Number.isInteger(value) && value > 0)
     : [];
 
   if (userIds.length === 0) {
@@ -98,13 +98,13 @@ emailRoutes.post("/email/send-welcome-batch", async (c) => {
 });
 
 emailRoutes.post("/email-blast", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const body = sanitizeObject(await c.req.json().catch(() => ({})));
   const type = body.type === "pir" ? "pir" : body.type === "aip" ? "aip" : null;
   const label = typeof body.label === "string" ? body.label.trim() : "";
   const targetRoles = Array.isArray(body.target_roles) && body.target_roles.length > 0
     ? body.target_roles
-      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .filter((value: unknown): value is string => typeof value === "string" && value.trim().length > 0)
     : ["School", "Division Personnel"];
 
   if (!type) return c.json({ error: "type must be either 'aip' or 'pir'." }, 400);

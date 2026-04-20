@@ -36,7 +36,7 @@ adminRoutes.use("/schools/:id/restrictions", adminOnly);
 adminRoutes.use("/schools/:id/logo", adminOnly);
 
 observerRoutes.get("/clusters", async (c) => {
-  const actor = requireAdminOrObserver(c);
+  const actor = await requireAdminOrObserver(c);
   if (!actor) return c.json({ error: "Unauthorized" }, 401);
 
   if (actor.role === OBSERVER_ROLE) {
@@ -80,7 +80,7 @@ observerRoutes.get("/clusters", async (c) => {
 });
 
 adminRoutes.post("/clusters", async (c) => {
-  const admin = requireAdmin(c);
+  const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { cluster_number, name } = sanitizeObject(await c.req.json());
   if (!cluster_number) {
@@ -104,7 +104,7 @@ adminRoutes.post("/clusters", async (c) => {
 });
 
 adminRoutes.patch("/clusters/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const { cluster_number, name } = sanitizeObject(await c.req.json());
   if (!cluster_number) {
@@ -129,7 +129,7 @@ adminRoutes.patch("/clusters/:id", async (c) => {
 });
 
 adminRoutes.patch("/clusters/:id/head", async (c) => {
-  const admin = requireAdmin(c);
+  const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const clusterId = safeParseInt(c.req.param("id"), 0);
   const { user_id } = sanitizeObject(await c.req.json());
@@ -153,7 +153,7 @@ adminRoutes.patch("/clusters/:id/head", async (c) => {
 });
 
 adminRoutes.delete("/clusters/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const schoolCount = await prisma.school.count({ where: { cluster_id: id } });
   if (schoolCount > 0) {
@@ -168,7 +168,7 @@ adminRoutes.delete("/clusters/:id", async (c) => {
 });
 
 adminRoutes.post("/clusters/:id/logo", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   if (!id) return c.json({ error: "Invalid cluster ID" }, 400);
 
@@ -216,7 +216,7 @@ adminRoutes.post("/clusters/:id/logo", async (c) => {
 });
 
 adminRoutes.delete("/clusters/:id/logo", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   if (!id) return c.json({ error: "Invalid cluster ID" }, 400);
 
@@ -230,7 +230,7 @@ adminRoutes.delete("/clusters/:id/logo", async (c) => {
 });
 
 observerRoutes.get("/schools", async (c) => {
-  const actor = requireAdminOrObserver(c);
+  const actor = await requireAdminOrObserver(c);
   if (!actor) return c.json({ error: "Unauthorized" }, 401);
   const clusterId = c.req.query("cluster")
     ? safeParseInt(c.req.query("cluster"), 0)
@@ -274,7 +274,7 @@ observerRoutes.get("/schools", async (c) => {
 });
 
 adminRoutes.post("/schools", async (c) => {
-  const admin = requireAdmin(c);
+  const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { name, abbreviation, level, cluster_id } = sanitizeObject(
     await c.req.json(),
@@ -312,7 +312,7 @@ adminRoutes.post("/schools", async (c) => {
 });
 
 adminRoutes.patch("/schools/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const body = sanitizeObject(await c.req.json());
   const { name, abbreviation, level, cluster_id } = body;
@@ -353,7 +353,7 @@ adminRoutes.patch("/schools/:id", async (c) => {
 });
 
 adminRoutes.delete("/schools/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   await prisma.school.delete({ where: { id } });
   await writeAuditLog(admin.id, "deleted_school", "School", id, {});
@@ -361,7 +361,7 @@ adminRoutes.delete("/schools/:id", async (c) => {
 });
 
 adminRoutes.patch("/schools/:id/restrictions", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const { restricted_program_ids } = await c.req.json();
   await prisma.school.update({
@@ -379,7 +379,7 @@ adminRoutes.patch("/schools/:id/restrictions", async (c) => {
 });
 
 adminRoutes.post("/schools/:id/logo", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   if (!id) return c.json({ error: "Invalid school ID" }, 400);
 
@@ -427,7 +427,7 @@ adminRoutes.post("/schools/:id/logo", async (c) => {
 });
 
 adminRoutes.delete("/schools/:id/logo", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   if (!id) return c.json({ error: "Invalid school ID" }, 400);
 

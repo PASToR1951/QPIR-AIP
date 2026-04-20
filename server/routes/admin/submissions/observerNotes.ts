@@ -10,7 +10,7 @@ export const observerNotesRouter = new Hono();
 
 // PATCH /submissions/:id/observer-notes
 observerNotesRouter.patch("/submissions/:id/observer-notes", async (c) => {
-  const actor = getUserFromToken(c)!;
+  const actor = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const body = sanitizeObject(await c.req.json());
   const type = typeof body.type === "string"

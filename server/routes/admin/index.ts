@@ -20,6 +20,7 @@ import announcementsRoutes from "./announcements.ts";
 import settingsRoutes from "./settings.ts";
 import auditRoutes from "./audit.ts";
 import emailRoutes from "./emailBlast.ts";
+import sessionsRoutes from "./sessions.ts";
 
 const adminRoutes = new Hono();
 
@@ -34,6 +35,7 @@ adminRoutes.route("/", submissionAdminRoutes);
 adminRoutes.route("/", usersRoutes);
 adminRoutes.route("/", schoolsAdminRoutes);
 adminRoutes.route("/", programAdminRoutes);
+adminRoutes.route("/", sessionsRoutes);
 adminRoutes.route("/", deadlinesRoutes);
 adminRoutes.route("/", reportsRoutes);
 adminRoutes.route("/", announcementsRoutes);

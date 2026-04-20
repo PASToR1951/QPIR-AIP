@@ -6,6 +6,7 @@ import { logger } from "../../lib/logger.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { sanitizeObject } from "../../lib/sanitize.ts";
 import { sendWelcomeEmail } from "../../lib/accountEmails.ts";
+import { revokeAllUserSessions } from "../../lib/userSessions.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { adminOnly, OBSERVER_ROLE } from "./shared/guards.ts";
 import { parsePositiveInt } from "./shared/params.ts";
@@ -102,7 +103,7 @@ usersRoutes.get("/users", async (c) => {
 });
 
 usersRoutes.post("/users", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const {
     salutation,
     name,
@@ -234,7 +235,7 @@ usersRoutes.post("/users", async (c) => {
 });
 
 usersRoutes.post("/users/import", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const body = sanitizeObject(await c.req.json());
   const rows: unknown[] = Array.isArray(body.users) ? body.users : [];
 
@@ -404,7 +405,7 @@ usersRoutes.post("/users/import", async (c) => {
 });
 
 usersRoutes.patch("/users/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const body = sanitizeObject(await c.req.json());
   const {
@@ -420,6 +421,14 @@ usersRoutes.patch("/users/:id", async (c) => {
     program_ids,
     is_active,
   } = body;
+
+  const existingUser = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, is_active: true },
+  });
+  if (!existingUser) {
+    return c.json({ error: "Not found" }, 404);
+  }
 
   const cesRoles = ["CES-SGOD", "CES-ASDS", "CES-CID"];
   if (role !== undefined && cesRoles.includes(role)) {
@@ -488,7 +497,17 @@ usersRoutes.patch("/users/:id", async (c) => {
       },
     });
 
-    await writeAuditLog(admin.id, "updated_user", "User", id, body);
+    const revokedSessionCount =
+      existingUser.is_active && is_active === false
+        ? await revokeAllUserSessions(id, { revokedBy: admin.id })
+        : 0;
+
+    await writeAuditLog(admin.id, "updated_user", "User", id, {
+      ...body,
+      ...(is_active === false
+        ? { revoked_session_count: revokedSessionCount }
+        : {}),
+    });
     return c.json({
       id: user.id,
       email: user.email,
@@ -502,7 +521,7 @@ usersRoutes.patch("/users/:id", async (c) => {
 });
 
 usersRoutes.delete("/users/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
 
   if (id === admin.id) {
@@ -512,16 +531,26 @@ usersRoutes.delete("/users/:id", async (c) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return c.json({ error: "Not found" }, 404);
 
+  const revokedSessionCount = await revokeAllUserSessions(id, {
+    revokedBy: admin.id,
+  });
   await prisma.user.delete({ where: { id } });
   await writeAuditLog(admin.id, "deleted_user", "User", id, {
     role: user.role,
+    revoked_session_count: revokedSessionCount,
   });
   return c.json({ success: true });
 });
 
 usersRoutes.post("/users/:id/reset-password", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!user) return c.json({ error: "Not found" }, 404);
 
   const tempPassword = Array.from(crypto.getRandomValues(new Uint8Array(8)))
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -532,7 +561,12 @@ usersRoutes.post("/users/:id/reset-password", async (c) => {
   const hashed = await bcrypt.hash(tempPassword, salt);
 
   await prisma.user.update({ where: { id }, data: { password: hashed, must_change_password: true } });
-  await writeAuditLog(admin.id, "reset_password", "User", id, {});
+  const revokedSessionCount = await revokeAllUserSessions(id, {
+    revokedBy: admin.id,
+  });
+  await writeAuditLog(admin.id, "reset_password", "User", id, {
+    revoked_session_count: revokedSessionCount,
+  });
 
   return c.json({
     success: true,
@@ -543,7 +577,7 @@ usersRoutes.post("/users/:id/reset-password", async (c) => {
 });
 
 usersRoutes.post("/users/:id/anonymize", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
 
   const user = await prisma.user.findUnique({
@@ -566,8 +600,12 @@ usersRoutes.post("/users/:id/anonymize", async (c) => {
     },
   });
 
+  const revokedSessionCount = await revokeAllUserSessions(id, {
+    revokedBy: admin.id,
+  });
   await writeAuditLog(admin.id, "anonymized_user", "User", id, {
     role: user.role,
+    revoked_session_count: revokedSessionCount,
   });
   return c.json({
     success: true,

@@ -29,7 +29,7 @@ const PIR_READABLE_ROLES = [
 ];
 
 pirReviewRoutes.get("/pirs", async (c) => {
-  const tokenUser = getUserFromToken(c);
+  const tokenUser = await getUserFromToken(c);
   if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
   if (!PIR_READABLE_ROLES.includes(tokenUser.role)) {
     return c.json({ error: "Forbidden" }, 403);
@@ -63,7 +63,7 @@ pirReviewRoutes.get("/pirs", async (c) => {
 });
 
 pirReviewRoutes.get("/pirs/:id", async (c) => {
-  const tokenUser = getUserFromToken(c);
+  const tokenUser = await getUserFromToken(c);
   if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
   if (!PIR_READABLE_ROLES.includes(tokenUser.role)) {
     return c.json({ error: "Forbidden" }, 403);
@@ -127,7 +127,7 @@ pirReviewRoutes.get("/pirs/:id", async (c) => {
 });
 
 pirReviewRoutes.get("/ces/pirs", async (c) => {
-  const tokenUser = requireCES(c);
+  const tokenUser = await requireCES(c);
   if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
   const quarter = c.req.query("quarter");
@@ -172,7 +172,7 @@ pirReviewRoutes.get("/ces/pirs", async (c) => {
 });
 
 pirReviewRoutes.post("/ces/pirs/:id/start-review", async (c) => {
-  const tokenUser = requireCES(c);
+  const tokenUser = await requireCES(c);
   if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
   const pirId = safeParseInt(c.req.param("id"), 0);
@@ -218,7 +218,7 @@ pirReviewRoutes.post("/ces/pirs/:id/start-review", async (c) => {
 });
 
 pirReviewRoutes.post("/ces/pirs/:id/note", async (c) => {
-  const tokenUser = requireCES(c);
+  const tokenUser = await requireCES(c);
   if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
   const pirId = safeParseInt(c.req.param("id"), 0);
@@ -271,7 +271,7 @@ pirReviewRoutes.post("/ces/pirs/:id/note", async (c) => {
 });
 
 pirReviewRoutes.post("/ces/pirs/:id/return", async (c) => {
-  const tokenUser = requireCES(c);
+  const tokenUser = await requireCES(c);
   if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
   const pirId = safeParseInt(c.req.param("id"), 0);
@@ -326,7 +326,7 @@ pirReviewRoutes.post("/ces/pirs/:id/return", async (c) => {
 });
 
 pirReviewRoutes.get("/cluster-head/pirs", async (c) => {
-  const tokenUser = requireClusterHead(c);
+  const tokenUser = await requireClusterHead(c);
   if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
   const quarter = c.req.query("quarter");
@@ -360,7 +360,7 @@ pirReviewRoutes.get("/cluster-head/pirs", async (c) => {
 });
 
 pirReviewRoutes.post("/cluster-head/pirs/:id/start-review", async (c) => {
-  const tokenUser = requireClusterHead(c);
+  const tokenUser = await requireClusterHead(c);
   if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
   const pirId = safeParseInt(c.req.param("id"), 0);
@@ -409,7 +409,7 @@ pirReviewRoutes.post("/cluster-head/pirs/:id/start-review", async (c) => {
 });
 
 pirReviewRoutes.post("/cluster-head/pirs/:id/note", async (c) => {
-  const tokenUser = requireClusterHead(c);
+  const tokenUser = await requireClusterHead(c);
   if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
   const pirId = safeParseInt(c.req.param("id"), 0);
@@ -469,7 +469,7 @@ pirReviewRoutes.post("/cluster-head/pirs/:id/note", async (c) => {
 });
 
 pirReviewRoutes.post("/cluster-head/pirs/:id/return", async (c) => {
-  const tokenUser = requireClusterHead(c);
+  const tokenUser = await requireClusterHead(c);
   if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
   const pirId = safeParseInt(c.req.param("id"), 0);

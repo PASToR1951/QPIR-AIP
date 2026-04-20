@@ -11,7 +11,7 @@ export const pirActionsRouter = new Hono();
 
 // PATCH /pirs/:id/remarks
 pirActionsRouter.patch("/pirs/:id/remarks", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const { remarks } = sanitizeObject(await c.req.json());
 
@@ -38,7 +38,7 @@ pirActionsRouter.patch("/pirs/:id/remarks", async (c) => {
 
 // PATCH /pirs/:id/presented
 pirActionsRouter.patch("/pirs/:id/presented", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
 
   const pir = await prisma.pIR.findUnique({ where: { id } });
@@ -58,7 +58,7 @@ pirActionsRouter.patch("/pirs/:id/presented", async (c) => {
 
 // PATCH /pirs/:id/activity-notes
 pirActionsRouter.patch("/pirs/:id/activity-notes", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const pirId = safeParseInt(c.req.param("id"), 0);
   const { activity_review_id, notes } = sanitizeObject(await c.req.json());
 

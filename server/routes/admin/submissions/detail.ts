@@ -12,7 +12,7 @@ export const detailRouter = new Hono();
 
 // GET /submissions/:id
 detailRouter.get("/submissions/:id", async (c) => {
-  const actor = getUserFromToken(c)!;
+  const actor = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const type = c.req.query("type") || "aip";
 

@@ -9,13 +9,10 @@
 //   GET /google/callback        — Google authorization code callback
 
 import { Hono } from "hono";
-import { setCookie } from "hono/cookie";
-import jwt from "jsonwebtoken";
 import { prisma } from "../db/client.ts";
-import { JWT_SECRET } from "../lib/config.ts";
 import { logger } from "../lib/logger.ts";
-import { tokenCookieOptions } from "../lib/sessionCookie.ts";
 import { writeUserLog, getClientIp } from "../lib/userActivityLog.ts";
+import { createSessionCookie } from "../lib/userSessions.ts";
 import {
   generateCodeVerifier,
   generateCodeChallenge,
@@ -126,7 +123,16 @@ async function finishOAuthLogin(
   oauthSubject: string,
   email: string,
 ): Promise<
-  | { ok: true; token: string; userId: number }
+  | {
+    ok: true;
+    user: {
+      id: number;
+      role: string;
+      school_id: number | null;
+      cluster_id: number | null;
+      school: { cluster_id: number | null } | null;
+    };
+  }
   | { ok: false; error: 'account_pending' | 'account_inactive' }
 > {
   const normalizedEmail = email.toLowerCase().trim();
@@ -174,18 +180,18 @@ async function finishOAuthLogin(
     };
   }
 
-  const token = jwt.sign(
-    {
+  return {
+    ok: true,
+    user: {
       id: user.id,
       role: user.role,
       school_id: user.school_id,
-      cluster_id: user.cluster_id ?? user.school?.cluster_id ?? null,
+      cluster_id: user.cluster_id ?? null,
+      school: user.school
+        ? { cluster_id: user.school.cluster_id ?? null }
+        : null,
     },
-    JWT_SECRET,
-    { expiresIn: '24h' },
-  );
-
-  return { ok: true, token, userId: user.id };
+  };
 }
 
 // ── Google Workspace ──────────────────────────────────────────────────────────
@@ -274,8 +280,8 @@ oauthRoutes.get('/google/callback', async (c) => {
 
     if (!result.ok) return c.redirect(`${fe}/login?error=${result.error}`);
 
-    writeUserLog({ userId: result.userId, action: "login", details: { method: "oauth", provider: "google" }, ipAddress: getClientIp(c) });
-    setCookie(c, 'token', result.token, tokenCookieOptions(c));
+    await createSessionCookie(c, result.user);
+    writeUserLog({ userId: result.user.id, action: "login", details: { method: "oauth", provider: "google" }, ipAddress: getClientIp(c) });
     return c.redirect(`${fe}/oauth/callback`);
   } catch (err) {
     logger.error('Google OAuth callback error', err);

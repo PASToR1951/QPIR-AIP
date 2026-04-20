@@ -1,0 +1,199 @@
+import { Hono } from "hono";
+import { prisma } from "../../db/client.ts";
+import { getUserFromToken } from "../../lib/auth.ts";
+import { revokeAllUserSessions, revokeSessionById } from "../../lib/userSessions.ts";
+import { safeParseInt } from "../../lib/safeParseInt.ts";
+import { writeAuditLog } from "./shared/audit.ts";
+import { buildSubmittedBy } from "./shared/display.ts";
+import { adminOnly } from "./shared/guards.ts";
+import { parsePositiveInt } from "./shared/params.ts";
+
+const sessionsRoutes = new Hono();
+
+sessionsRoutes.use("/sessions", adminOnly);
+sessionsRoutes.use("/sessions/*", adminOnly);
+
+function buildStatusWhere(status: string | undefined) {
+  const now = new Date();
+
+  switch (status) {
+    case "active":
+      return {
+        revoked_at: null,
+        expires_at: { gt: now },
+      };
+    case "expired":
+      return {
+        revoked_at: null,
+        expires_at: { lte: now },
+      };
+    case "revoked":
+      return {
+        revoked_at: { not: null },
+      };
+    default:
+      return {};
+  }
+}
+
+function serializeAdminSession(
+  session: {
+    id: number;
+    device_label: string | null;
+    ip_address: string | null;
+    created_at: Date;
+    last_seen_at: Date;
+    expires_at: Date;
+    revoked_at: Date | null;
+    user: {
+      id: number;
+      role: string;
+      email: string;
+      name: string | null;
+      first_name: string | null;
+      middle_initial: string | null;
+      last_name: string | null;
+    };
+  },
+) {
+  return {
+    id: session.id,
+    user: {
+      id: session.user.id,
+      name: buildSubmittedBy(session.user),
+      email: session.user.email,
+      role: session.user.role,
+    },
+    device_label: session.device_label ?? "Unknown device",
+    ip_address: session.ip_address,
+    created_at: session.created_at.toISOString(),
+    last_seen_at: session.last_seen_at.toISOString(),
+    expires_at: session.expires_at.toISOString(),
+    revoked_at: session.revoked_at?.toISOString() ?? null,
+  };
+}
+
+sessionsRoutes.get("/sessions", async (c) => {
+  const search = c.req.query("search")?.trim();
+  const userId = parsePositiveInt(c.req.query("userId"));
+  const status = c.req.query("status");
+
+  const sessions = await prisma.userSession.findMany({
+    where: {
+      ...(userId ? { user_id: userId } : {}),
+      ...buildStatusWhere(status),
+      ...(search
+        ? {
+          user: {
+            is: {
+              OR: [
+                { name: { contains: search, mode: "insensitive" } },
+                { first_name: { contains: search, mode: "insensitive" } },
+                { last_name: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+              ],
+            },
+          },
+        }
+        : {}),
+    },
+    orderBy: [{ last_seen_at: "desc" }, { created_at: "desc" }],
+    select: {
+      id: true,
+      device_label: true,
+      ip_address: true,
+      created_at: true,
+      last_seen_at: true,
+      expires_at: true,
+      revoked_at: true,
+      user: {
+        select: {
+          id: true,
+          role: true,
+          email: true,
+          name: true,
+          first_name: true,
+          middle_initial: true,
+          last_name: true,
+        },
+      },
+    },
+  });
+
+  return c.json(sessions.map(serializeAdminSession));
+});
+
+sessionsRoutes.delete("/sessions/user/:userId", async (c) => {
+  const admin = (await getUserFromToken(c))!;
+  const userId = safeParseInt(c.req.param("userId"), 0);
+  if (!userId) return c.json({ error: "Invalid user id" }, 400);
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      role: true,
+      email: true,
+      name: true,
+      first_name: true,
+      middle_initial: true,
+      last_name: true,
+    },
+  });
+  if (!user) return c.json({ error: "User not found" }, 404);
+
+  const revoked = await revokeAllUserSessions(userId, { revokedBy: admin.id });
+  await writeAuditLog(admin.id, "revoked_user_sessions", "User", userId, {
+    revoked_count: revoked,
+    target_email: user.email,
+    target_name: buildSubmittedBy(user),
+  });
+
+  return c.json({ revoked });
+});
+
+sessionsRoutes.delete("/sessions/:id", async (c) => {
+  const admin = (await getUserFromToken(c))!;
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (!id) return c.json({ error: "Invalid session id" }, 400);
+
+  const session = await prisma.userSession.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      user_id: true,
+      device_label: true,
+      ip_address: true,
+      revoked_at: true,
+      user: {
+        select: {
+          id: true,
+          role: true,
+          email: true,
+          name: true,
+          first_name: true,
+          middle_initial: true,
+          last_name: true,
+        },
+      },
+    },
+  });
+  if (!session) return c.json({ error: "Session not found" }, 404);
+
+  if (!session.revoked_at) {
+    await revokeSessionById(session.id, admin.id);
+  }
+
+  await writeAuditLog(admin.id, "revoked_session", "UserSession", session.id, {
+    user_id: session.user_id,
+    user_email: session.user.email,
+    user_name: buildSubmittedBy(session.user),
+    device_label: session.device_label ?? "Unknown device",
+    ip_address: session.ip_address,
+    already_revoked: Boolean(session.revoked_at),
+  });
+
+  return c.json({ success: true });
+});
+
+export default sessionsRoutes;

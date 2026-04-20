@@ -38,7 +38,7 @@ settingsRoutes.get("/settings/email-config", async (c) => {
 });
 
 settingsRoutes.put("/settings/email-config", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const body = sanitizeObject(await c.req.json());
   const current = await getOrCreateEmailConfig();
 
@@ -130,7 +130,7 @@ settingsRoutes.put("/settings/email-config", async (c) => {
 });
 
 settingsRoutes.post("/settings/email-config/test", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const [config, adminUser] = await Promise.all([
     getOrCreateEmailConfig(),
     prisma.user.findUnique({
@@ -188,7 +188,7 @@ settingsRoutes.get("/settings/division-config", async (c) => {
 });
 
 settingsRoutes.post("/settings/division-config", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const body = sanitizeObject(await c.req.json());
   const {
     supervisor_name, supervisor_title,
@@ -231,7 +231,7 @@ settingsRoutes.post("/settings/division-config", async (c) => {
 });
 
 settingsRoutes.post("/settings/app-logo", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
 
   let formData: FormData;
   try {
@@ -279,7 +279,7 @@ settingsRoutes.post("/settings/app-logo", async (c) => {
 });
 
 settingsRoutes.delete("/settings/app-logo", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
 
   await removeExistingAppLogos();
   await prisma.divisionConfig.updateMany({ data: { app_logo: null } });

@@ -30,7 +30,7 @@ export const ConfirmationModal = ({
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
+                <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
                     <motion.div
                         role="dialog"
                         aria-modal="true"

@@ -50,7 +50,7 @@ const FUNNEL_STATUSES = [
 
 reportsRoutes.use("/reports/*", adminOnly);
 reportsRoutes.use("/reports/*", async (c, next) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const now = Date.now();
   let timestamps = reportRequests.get(admin.id) || [];
   timestamps = timestamps.filter((timestamp) => now - timestamp < REPORT_WINDOW_MS);
@@ -773,7 +773,7 @@ reportsRoutes.get("/reports/consolidation", async (c) => {
 });
 
 reportsRoutes.get("/reports/consolidation/export", async (c) => {
-  const reportExporter = getUserFromToken(c)!;
+  const reportExporter = (await getUserFromToken(c))!;
   const {
     year,
     quarter,
@@ -912,7 +912,7 @@ reportsRoutes.get("/reports/consolidation/export", async (c) => {
 });
 
 reportsRoutes.get("/reports/:type/export", async (c) => {
-  const reportExporter = getUserFromToken(c)!;
+  const reportExporter = (await getUserFromToken(c))!;
   const type = c.req.param("type");
   const { year, format, isValidYear } = parseReportQuery(c);
   if (!isValidYear) return invalidYearResponse();

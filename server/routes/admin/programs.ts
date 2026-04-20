@@ -54,7 +54,7 @@ adminRoutes.use("/programs/:id/personnel", adminOnly);
 adminRoutes.use("/programs/:id/members", adminOnly);
 
 observerRoutes.get("/programs", async (c) => {
-  const actor = requireAdminOrObserver(c);
+  const actor = await requireAdminOrObserver(c);
   if (!actor) return c.json({ error: "Unauthorized" }, 401);
 
   if (actor.role === OBSERVER_ROLE) {
@@ -92,7 +92,7 @@ observerRoutes.get("/programs", async (c) => {
 });
 
 adminRoutes.post("/programs", async (c) => {
-  const admin = requireAdmin(c);
+  const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
   const { title, abbreviation, division, school_level_requirement } =
     sanitizeObject(await c.req.json());
@@ -121,7 +121,7 @@ adminRoutes.post("/programs", async (c) => {
 });
 
 adminRoutes.patch("/programs/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const { title, abbreviation, division, school_level_requirement } =
     sanitizeObject(await c.req.json());
@@ -154,7 +154,7 @@ adminRoutes.patch("/programs/:id", async (c) => {
 });
 
 adminRoutes.delete("/programs/:id", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   await prisma.program.delete({ where: { id } });
   await writeAuditLog(admin.id, "deleted_program", "Program", id, {});
@@ -162,7 +162,7 @@ adminRoutes.delete("/programs/:id", async (c) => {
 });
 
 adminRoutes.patch("/programs/:id/personnel", async (c) => {
-  const admin = getUserFromToken(c)!;
+  const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   const { user_ids } = await c.req.json();
   await prisma.program.update({
@@ -178,7 +178,7 @@ adminRoutes.patch("/programs/:id/personnel", async (c) => {
 });
 
 adminRoutes.get("/programs/:id/members", async (c) => {
-  const admin = requireAdmin(c);
+  const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
 
   const id = safeParseInt(c.req.param("id"), 0);
@@ -219,7 +219,7 @@ adminRoutes.get("/programs/:id/members", async (c) => {
 });
 
 adminRoutes.get("/programs/:id/template", async (c) => {
-  const admin = requireAdmin(c);
+  const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
 
   const id = safeParseInt(c.req.param("id"), 0);
@@ -238,7 +238,7 @@ adminRoutes.get("/programs/:id/template", async (c) => {
 });
 
 adminRoutes.put("/programs/:id/template", async (c) => {
-  const admin = requireAdmin(c);
+  const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
 
   const id = safeParseInt(c.req.param("id"), 0);
@@ -306,7 +306,7 @@ adminRoutes.put("/programs/:id/template", async (c) => {
 });
 
 adminRoutes.delete("/programs/:id/template", async (c) => {
-  const admin = requireAdmin(c);
+  const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
 
   const id = safeParseInt(c.req.param("id"), 0);
@@ -332,4 +332,3 @@ adminRoutes.delete("/programs/:id/template", async (c) => {
   );
   return c.json({ success: true });
 });
-

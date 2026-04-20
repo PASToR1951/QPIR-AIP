@@ -1,15 +1,23 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { setCookie, deleteCookie, getCookie } from "hono/cookie";
+import { deleteCookie, getCookie } from "hono/cookie";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { prisma } from "../db/client.ts";
-import { JWT_SECRET, RECAPTCHA_SECRET_KEY } from "../lib/config.ts";
+import { RECAPTCHA_SECRET_KEY } from "../lib/config.ts";
 import { logger } from "../lib/logger.ts";
 import { getUserFromToken } from "../lib/auth.ts";
-import { clearTokenCookieOptions, tokenCookieOptions } from "../lib/sessionCookie.ts";
+import { clearTokenCookieOptions } from "../lib/sessionCookie.ts";
 import { consumeMagicLink } from "../lib/magicLink.ts";
 import { writeUserLog, getClientIp } from "../lib/userActivityLog.ts";
+import {
+  createSessionCookie,
+  hashSessionToken,
+  revokeAllUserSessions,
+  revokeSessionById,
+  revokeSessionBySid,
+} from "../lib/userSessions.ts";
+import { safeParseInt } from "../lib/safeParseInt.ts";
 
 const authRoutes = new Hono();
 const DEFAULT_CHECKLIST_PROGRESS = {
@@ -81,33 +89,41 @@ function buildSessionUserPayload(user: Record<string, unknown>) {
   };
 }
 
-function issueSessionCookie(c: Context, user: Record<string, unknown>) {
-  const token = jwt.sign(
-    {
-      id: user.id,
-      role: user.role,
-      school_id: user.school_id,
-      cluster_id: user.cluster_id ??
-        (user.school as { cluster_id?: number | null } | null)?.cluster_id ??
-        null,
-    },
-    JWT_SECRET,
-    { expiresIn: "24h" },
-  );
-
-  setCookie(c, "token", token, tokenCookieOptions(c));
+function mapOwnSession(
+  session: {
+    id: number;
+    device_label: string | null;
+    created_at: Date;
+    last_seen_at: Date;
+    expires_at: Date;
+    revoked_at: Date | null;
+    session_token: string;
+  },
+  currentSessionToken: string | null,
+) {
   return {
-    token,
-    expiresAt: Math.floor(Date.now() / 1000) + 86400,
+    id: session.id,
+    device_label: session.device_label ?? 'Unknown device',
+    created_at: session.created_at.toISOString(),
+    last_seen_at: session.last_seen_at.toISOString(),
+    expires_at: session.expires_at.toISOString(),
+    revoked_at: session.revoked_at?.toISOString() ?? null,
+    is_current: currentSessionToken === session.session_token,
   };
 }
 
-function completeSessionLogin(
+async function completeSessionLogin(
   c: Context,
   user: Record<string, unknown>,
   message = "Login successful",
 ) {
-  const { expiresAt } = issueSessionCookie(c, user);
+  const { expiresAt } = await createSessionCookie(c, {
+    id: Number(user.id),
+    role: String(user.role),
+    school_id: (user.school_id as number | null | undefined) ?? null,
+    cluster_id: (user.cluster_id as number | null | undefined) ?? null,
+    school: user.school as { cluster_id?: number | null } | null | undefined,
+  });
   return c.json({
     message,
     expiresAt,
@@ -250,8 +266,11 @@ authRoutes.post('/magic-link/verify', async (c) => {
   }
 });
 
-authRoutes.post('/logout', (c) => {
-  const tokenUser = getUserFromToken(c);
+authRoutes.post('/logout', async (c) => {
+  const tokenUser = await getUserFromToken(c);
+  if (tokenUser?.sid) {
+    await revokeSessionBySid(tokenUser.sid).catch(() => {});
+  }
   deleteCookie(c, 'token', clearTokenCookieOptions(c));
   if (tokenUser) {
     writeUserLog({ userId: tokenUser.id, action: "logout", ipAddress: getClientIp(c) });
@@ -263,7 +282,7 @@ authRoutes.post('/logout', (c) => {
 // The JWT lives in the HttpOnly cookie; this endpoint lets the frontend read user metadata without
 // ever touching the raw token.
 authRoutes.get('/me', async (c) => {
-  const tokenUser = getUserFromToken(c);
+  const tokenUser = await getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
 
   try {
@@ -309,7 +328,7 @@ authRoutes.get('/me', async (c) => {
 });
 
 authRoutes.patch('/me/onboarding', async (c) => {
-  const tokenUser = getUserFromToken(c);
+  const tokenUser = await getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
 
   try {
@@ -405,7 +424,7 @@ authRoutes.patch('/me/onboarding', async (c) => {
 });
 
 authRoutes.post('/change-password', async (c) => {
-  const tokenUser = getUserFromToken(c);
+  const tokenUser = await getUserFromToken(c);
   if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
 
   const body = await c.req.json().catch(() => ({}));
@@ -451,6 +470,79 @@ authRoutes.post('/change-password', async (c) => {
     logger.error('POST /change-password failed', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
+});
+
+authRoutes.get('/sessions', async (c) => {
+  const tokenUser = await getUserFromToken(c);
+  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
+
+  const currentSessionToken = tokenUser.sid
+    ? await hashSessionToken(tokenUser.sid)
+    : null;
+
+  const sessions = await prisma.userSession.findMany({
+    where: { user_id: tokenUser.id },
+    orderBy: [{ last_seen_at: 'desc' }, { created_at: 'desc' }],
+    select: {
+      id: true,
+      device_label: true,
+      created_at: true,
+      last_seen_at: true,
+      expires_at: true,
+      revoked_at: true,
+      session_token: true,
+    },
+  });
+
+  return c.json(
+    sessions.map((session) => mapOwnSession(session, currentSessionToken)),
+  );
+});
+
+authRoutes.delete('/sessions/:id', async (c) => {
+  const tokenUser = await getUserFromToken(c);
+  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
+
+  const id = safeParseInt(c.req.param('id'), 0);
+  if (!id) return c.json({ error: 'Invalid session id' }, 400);
+
+  const session = await prisma.userSession.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      user_id: true,
+      revoked_at: true,
+      session_token: true,
+    },
+  });
+
+  if (!session || session.user_id !== tokenUser.id) {
+    return c.json({ error: 'Session not found' }, 404);
+  }
+
+  if (tokenUser.sid) {
+    const currentSessionToken = await hashSessionToken(tokenUser.sid);
+    if (session.session_token === currentSessionToken) {
+      return c.json({ error: 'Use logout to end the current device session.' }, 400);
+    }
+  }
+
+  if (!session.revoked_at) {
+    await revokeSessionById(session.id);
+  }
+
+  return c.json({ success: true });
+});
+
+authRoutes.delete('/sessions', async (c) => {
+  const tokenUser = await getUserFromToken(c);
+  if (!tokenUser) return c.json({ error: 'Unauthorized' }, 401);
+
+  const revoked = await revokeAllUserSessions(tokenUser.id, {
+    exceptSid: tokenUser.sid,
+  });
+
+  return c.json({ revoked });
 });
 
 export default authRoutes;

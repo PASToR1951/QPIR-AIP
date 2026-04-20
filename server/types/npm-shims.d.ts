@@ -50,3 +50,24 @@ declare module "pg" {
 
   export default pg;
 }
+
+declare module "nodemailer" {
+  export interface Transporter {
+    sendMail(options: Record<string, unknown>): Promise<unknown>;
+  }
+
+  export function createTransport(
+    options: Record<string, unknown>,
+  ): Transporter;
+
+  const nodemailer: {
+    createTransport: typeof createTransport;
+  };
+
+  export default nodemailer;
+}
+
+declare module "npm:nodemailer" {
+  export * from "nodemailer";
+  export { default } from "nodemailer";
+}

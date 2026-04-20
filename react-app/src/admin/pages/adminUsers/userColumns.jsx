@@ -1,9 +1,9 @@
 import React from 'react';
-import { PencilSimple, Key, LockKey, LockKeyOpen, Trash } from '@phosphor-icons/react';
+import { PencilSimple, Key, ClockCounterClockwise, LockKey, LockKeyOpen, Trash } from '@phosphor-icons/react';
 import { withResponsiveHide } from '../../components/dataTableColumns.js';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 
-export function buildUserColumns({ onEdit, onResetPassword, onToggle, onDelete, showProgTooltip, hideProgTooltip }) {
+export function buildUserColumns({ onEdit, onManageSessions, onResetPassword, onToggle, onDelete, showProgTooltip, hideProgTooltip }) {
   return withResponsiveHide([
     {
       key: 'name', label: 'Name', sortable: true, render: (v, row) => {
@@ -55,6 +55,9 @@ export function buildUserColumns({ onEdit, onResetPassword, onToggle, onDelete, 
           </button>
           <button onClick={() => onResetPassword(row)} title="Reset Password" className="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors">
             <Key size={17} />
+          </button>
+          <button onClick={() => onManageSessions(row)} title="Sessions" className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors">
+            <ClockCounterClockwise size={17} />
           </button>
           <button onClick={() => onToggle(row)} title={row.is_active ? 'Disable' : 'Enable'}
             className={`p-1.5 rounded-lg transition-colors ${row.is_active ? 'text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30' : 'text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'}`}>

@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer from "npm:nodemailer";
 import { decryptText } from "./emailCrypto.ts";
 import { getOrCreateEmailConfig, isEmailConfigured } from "./emailConfig.ts";
 import { logger } from "./logger.ts";

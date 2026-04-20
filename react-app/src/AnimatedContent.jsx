@@ -43,6 +43,7 @@ const AdminDeadlines  = lazy(() => import('./admin/pages/AdminDeadlines.jsx'));
 const AdminReports    = lazy(() => import('./admin/pages/AdminReports.jsx'));
 const AdminSettings   = lazy(() => import('./admin/pages/AdminSettings.jsx'));
 const AdminBackups    = lazy(() => import('./admin/pages/AdminBackups.jsx'));
+const AdminSessions   = lazy(() => import('./admin/pages/AdminSessions.jsx'));
 const AdminPIRReview  = lazy(() => import('./admin/pages/AdminPIRReview.jsx'));
 const UserLogs        = lazy(() => import('./UserLogs.jsx'));
 
@@ -62,6 +63,7 @@ function preloadForRole(role) {
       import('./admin/pages/AdminReports.jsx');
       import('./admin/pages/AdminSettings.jsx');
       import('./admin/pages/AdminBackups.jsx');
+      import('./admin/pages/AdminSessions.jsx');
     }
   } else if (CES_ROLES.includes(role)) {
     import('./ces/CESLayout.jsx');
@@ -257,6 +259,7 @@ export default function AnimatedContent() {
               <Route path="programs" element={<AdminOnlyGuard><AdminPrograms /></AdminOnlyGuard>} />
               <Route path="deadlines" element={<AdminOnlyGuard><AdminDeadlines /></AdminOnlyGuard>} />
               <Route path="reports" element={<AdminOnlyGuard><AdminReports /></AdminOnlyGuard>} />
+              <Route path="sessions" element={<AdminOnlyGuard><AdminSessions /></AdminOnlyGuard>} />
               <Route path="settings" element={<AdminOnlyGuard><AdminSettings /></AdminOnlyGuard>} />
               <Route path="backups" element={<AdminOnlyGuard><AdminBackups /></AdminOnlyGuard>} />
               <Route path="pirs/:id" element={<AdminPIRReview />} />

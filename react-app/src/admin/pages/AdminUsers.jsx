@@ -11,6 +11,7 @@ import { UserForm, EMPTY_USER_FORM, userDisplayName } from './adminUsers/UserFor
 import { buildUserColumns } from './adminUsers/userColumns.jsx';
 import { OnboardingSnapshot } from './adminUsers/OnboardingSnapshot.jsx';
 import { TempPasswordModal } from './adminUsers/TempPasswordModal.jsx';
+import { UserSessionsModal } from '../components/UserSessionsModal.jsx';
 import { useUserData } from './adminUsers/useUserData.js';
 import { useOnboardingData } from './adminUsers/useUserData.js';
 import { useUserMutations } from './adminUsers/useUserMutations.js';
@@ -34,6 +35,7 @@ export default function AdminUsers() {
   const [toggleUser, setToggleUser] = useState(null);
   const [resetUser, setResetUser] = useState(null);
   const [tempPassword, setTempPassword] = useState(null);
+  const [sessionUser, setSessionUser] = useState(null);
 
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type });
@@ -58,6 +60,7 @@ export default function AdminUsers() {
 
   const columns = buildUserColumns({
     onEdit: openEdit,
+    onManageSessions: (row) => setSessionUser(row),
     onResetPassword: (row) => setResetUser(row),
     onToggle: (row) => setToggleUser(row),
     onDelete: (row) => setDeleteUser(row),
@@ -158,6 +161,13 @@ export default function AdminUsers() {
         onCancel={() => setResetUser(null)} loading={actionLoading} />
 
       {tempPassword && <TempPasswordModal password={tempPassword} onClose={() => setTempPassword(null)} />}
+
+      <UserSessionsModal
+        open={!!sessionUser}
+        user={sessionUser}
+        onClose={() => setSessionUser(null)}
+        showToast={showToast}
+      />
 
       <UserProfileModal
         open={!!viewUser} user={viewUser} onClose={() => setViewUser(null)}
