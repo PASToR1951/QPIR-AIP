@@ -16,6 +16,7 @@ import {
 } from "./programs.ts";
 import deadlinesRoutes from "./deadlines.ts";
 import reportsRoutes from "./reports.ts";
+import consolidationNotesRoutes from "./consolidationNotes.ts";
 import announcementsRoutes from "./announcements.ts";
 import settingsRoutes from "./settings.ts";
 import auditRoutes from "./audit.ts";
@@ -39,6 +40,7 @@ adminRoutes.route("/", programAdminRoutes);
 adminRoutes.route("/", sessionsRoutes);
 adminRoutes.route("/", deadlinesRoutes);
 adminRoutes.route("/", reportsRoutes);
+adminRoutes.route("/", consolidationNotesRoutes);
 adminRoutes.route("/", announcementsRoutes);
 adminRoutes.route("/", settingsRoutes);
 adminRoutes.route("/", emailRoutes);

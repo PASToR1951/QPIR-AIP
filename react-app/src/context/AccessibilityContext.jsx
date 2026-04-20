@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 const AccessibilityContext = createContext(null);
@@ -14,6 +15,21 @@ const DEFAULTS = {
     dyslexicFont: false,
     lineSpacing: 'normal',  // 'normal' | 'relaxed' | 'loose'
     letterSpacing: 'normal', // 'normal' | 'wide'
+    launcherVisible: true,
+    launcherPosition: null,
+};
+
+const normalizeLauncherPosition = (value) => {
+    if (!value || typeof value !== 'object') return DEFAULTS.launcherPosition;
+
+    const left = Number(value.left);
+    const top = Number(value.top);
+
+    if (!Number.isFinite(left) || !Number.isFinite(top)) {
+        return DEFAULTS.launcherPosition;
+    }
+
+    return { left, top };
 };
 
 const normalizeSettings = (raw = {}) => {
@@ -27,6 +43,10 @@ const normalizeSettings = (raw = {}) => {
         colorScheme: ['system', 'light', 'dark'].includes(migratedColorScheme)
             ? migratedColorScheme
             : DEFAULTS.colorScheme,
+        launcherVisible: typeof rest.launcherVisible === 'boolean'
+            ? rest.launcherVisible
+            : DEFAULTS.launcherVisible,
+        launcherPosition: normalizeLauncherPosition(rest.launcherPosition),
     };
 };
 
@@ -98,12 +118,19 @@ export function AccessibilityProvider({ children }) {
 
     const reset = useCallback(() => setSettings(DEFAULTS), []);
 
+    const resetLauncher = useCallback(() => setSettings(prev => ({
+        ...prev,
+        launcherVisible: DEFAULTS.launcherVisible,
+        launcherPosition: DEFAULTS.launcherPosition,
+    })), []);
+
     const contextValue = useMemo(() => ({
         settings: { ...settings, darkMode: resolvedDarkMode },
         resolvedDarkMode,
         update,
         reset,
-    }), [settings, resolvedDarkMode, update, reset]);
+        resetLauncher,
+    }), [settings, resolvedDarkMode, update, reset, resetLauncher]);
 
     return (
         <AccessibilityContext.Provider value={contextValue}>

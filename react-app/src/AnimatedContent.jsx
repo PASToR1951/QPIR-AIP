@@ -13,40 +13,41 @@ import { auth } from './lib/auth';
 import Login from './Login';
 
 // Route-level lazy imports — each becomes its own chunk
-const Dashboard      = lazy(() => import('./Dashboard'));
-const AIPForm        = lazy(() => import('./AIPForm'));
-const PIRForm        = lazy(() => import('./PIRForm'));
-const NotFound       = lazy(() => import('./NotFound'));
-const ErrorPage      = lazy(() => import('./ErrorPage'));
-const Changelog      = lazy(() => import('./components/Changelog'));
-const SystemDocs     = lazy(() => import('./components/SystemDocs'));
+const Dashboard = lazy(() => import('./Dashboard'));
+const AIPForm = lazy(() => import('./AIPForm'));
+const PIRForm = lazy(() => import('./PIRForm'));
+const NotFound = lazy(() => import('./NotFound'));
+const ErrorPage = lazy(() => import('./ErrorPage'));
+const Changelog = lazy(() => import('./components/Changelog'));
+const SystemDocs = lazy(() => import('./components/SystemDocs'));
 const GettingStarted = lazy(() => import('./components/GettingStarted.jsx'));
-const FAQ            = lazy(() => import('./components/FAQ'));
-const PrivacyPolicy  = lazy(() => import('./components/PrivacyPolicy'));
-const OAuthCallback  = lazy(() => import('./OAuthCallback'));
+const FAQ = lazy(() => import('./components/FAQ'));
+const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
+const OAuthCallback = lazy(() => import('./OAuthCallback'));
 const MagicLinkCallback = lazy(() => import('./MagicLinkCallback.jsx'));
 
 // CES pages
-const CESLayout      = lazy(() => import('./ces/CESLayout.jsx'));
+const CESLayout = lazy(() => import('./ces/CESLayout.jsx'));
 
 // Cluster Head pages
 const ClusterHeadLayout = lazy(() => import('./cluster-head/ClusterHeadLayout.jsx'));
 
 // Admin layout + pages
-const AdminLayout     = lazy(() => import('./admin/AdminLayout.jsx'));
-const AdminOverview   = lazy(() => import('./admin/pages/AdminOverview.jsx'));
+const AdminLayout = lazy(() => import('./admin/AdminLayout.jsx'));
+const AdminOverview = lazy(() => import('./admin/pages/AdminOverview.jsx'));
 const AdminSubmissions = lazy(() => import('./admin/pages/AdminSubmissions.jsx'));
-const AdminUsers      = lazy(() => import('./admin/pages/AdminUsers.jsx'));
-const AdminSchools    = lazy(() => import('./admin/pages/AdminSchools.jsx'));
-const AdminPrograms   = lazy(() => import('./admin/pages/AdminPrograms.jsx'));
-const AdminDeadlines  = lazy(() => import('./admin/pages/AdminDeadlines.jsx'));
-const AdminReports    = lazy(() => import('./admin/pages/AdminReports.jsx'));
-const AdminSettings   = lazy(() => import('./admin/pages/AdminSettings.jsx'));
-const AdminBackups    = lazy(() => import('./admin/pages/AdminBackups.jsx'));
-const AdminSessions   = lazy(() => import('./admin/pages/AdminSessions.jsx'));
-const AdminLogs       = lazy(() => import('./admin/pages/AdminLogs.jsx'));
-const AdminPIRReview  = lazy(() => import('./admin/pages/AdminPIRReview.jsx'));
-const UserLogs        = lazy(() => import('./UserLogs.jsx'));
+const AdminUsers = lazy(() => import('./admin/pages/AdminUsers.jsx'));
+const AdminSchools = lazy(() => import('./admin/pages/AdminSchools.jsx'));
+const AdminPrograms = lazy(() => import('./admin/pages/AdminPrograms.jsx'));
+const AdminDeadlines = lazy(() => import('./admin/pages/AdminDeadlines.jsx'));
+const AdminReports = lazy(() => import('./admin/pages/AdminReports.jsx'));
+const AdminSettings = lazy(() => import('./admin/pages/AdminSettings.jsx'));
+const AdminBackups = lazy(() => import('./admin/pages/AdminBackups.jsx'));
+const AdminSessions = lazy(() => import('./admin/pages/AdminSessions.jsx'));
+const AdminLogs = lazy(() => import('./admin/pages/AdminLogs.jsx'));
+const AdminPIRReview = lazy(() => import('./admin/pages/AdminPIRReview.jsx'));
+const AdminConsolidationTemplate = lazy(() => import('./admin/pages/AdminConsolidationTemplate.jsx'));
+const UserLogs = lazy(() => import('./UserLogs.jsx'));
 
 const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID'];
 
@@ -262,6 +263,7 @@ export default function AnimatedContent() {
               <Route path="programs" element={<AdminOnlyGuard><AdminPrograms /></AdminOnlyGuard>} />
               <Route path="deadlines" element={<AdminOnlyGuard><AdminDeadlines /></AdminOnlyGuard>} />
               <Route path="reports" element={<AdminOnlyGuard><AdminReports /></AdminOnlyGuard>} />
+              <Route path="consolidation-template" element={<AdminOnlyGuard><AdminConsolidationTemplate /></AdminOnlyGuard>} />
               <Route path="sessions" element={<AdminOnlyGuard><AdminSessions /></AdminOnlyGuard>} />
               <Route path="logs" element={<AdminOnlyGuard><AdminLogs /></AdminOnlyGuard>} />
               <Route path="settings" element={<AdminOnlyGuard><AdminSettings /></AdminOnlyGuard>} />

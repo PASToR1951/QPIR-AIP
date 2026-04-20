@@ -35,7 +35,7 @@ export function createEmptyAipActivity({
     ...overrides
 } = {}) {
     return {
-        id: overrides.id ?? crypto.randomUUID(),
+        id: overrides.id ?? (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`),
         phase,
         name: '',
         period: '',

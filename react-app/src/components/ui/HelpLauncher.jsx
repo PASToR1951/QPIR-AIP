@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import {
@@ -16,6 +16,12 @@ import { useAccessibility } from '../../context/AccessibilityContext';
 import { useOnboarding } from '../../hooks/useOnboarding.jsx';
 import { usePracticeMode } from '../../context/PracticeModeContext.jsx';
 import { isChecklistLandingPage } from '../../lib/onboardingUtils.js';
+
+const VIEWPORT_MARGIN = 20;
+const PANEL_GAP = 12;
+const DRAG_THRESHOLD = 6;
+const DEFAULT_FAB_SIZE = { width: 56, height: 56 };
+const LAUNCHER_SHORTCUT_LABEL = 'Ctrl + Alt + A';
 
 const FONT_SIZES = [
   { value: 'sm',     label: 'A', size: 'text-[10px]' },
@@ -76,15 +82,56 @@ function ToggleRow({ label, description, icon, value, onChange, theme }) {
   );
 }
 
+const getViewport = () => ({
+  width: typeof window !== 'undefined' ? window.innerWidth : 1280,
+  height: typeof window !== 'undefined' ? window.innerHeight : 720,
+});
+
+const getFabSize = (element) => ({
+  width: element?.offsetWidth || DEFAULT_FAB_SIZE.width,
+  height: element?.offsetHeight || DEFAULT_FAB_SIZE.height,
+});
+
+const getDefaultLauncherPosition = (viewport, fabSize) => ({
+  left: Math.max(VIEWPORT_MARGIN, viewport.width - fabSize.width - VIEWPORT_MARGIN),
+  top: Math.max(VIEWPORT_MARGIN, viewport.height - fabSize.height - VIEWPORT_MARGIN),
+});
+
+const clampLauncherPosition = (position, viewport, fabSize) => {
+  const maxLeft = Math.max(VIEWPORT_MARGIN, viewport.width - fabSize.width - VIEWPORT_MARGIN);
+  const maxTop = Math.max(VIEWPORT_MARGIN, viewport.height - fabSize.height - VIEWPORT_MARGIN);
+
+  return {
+    left: Math.min(Math.max(position.left, VIEWPORT_MARGIN), maxLeft),
+    top: Math.min(Math.max(position.top, VIEWPORT_MARGIN), maxTop),
+  };
+};
+
+const resolveLauncherPosition = (position, viewport, fabSize) =>
+  clampLauncherPosition(
+    position ?? getDefaultLauncherPosition(viewport, fabSize),
+    viewport,
+    fabSize,
+  );
+
+const positionsMatch = (left, right) =>
+  Math.round(left.left) === Math.round(right.left) &&
+  Math.round(left.top) === Math.round(right.top);
+
 export default function HelpLauncher() {
   const location = useLocation();
   const helpConfig = useMemo(() => getPortalHelp(location.pathname), [location.pathname]);
+  const { settings, update, reset, resetLauncher } = useAccessibility();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('help');
   const [tourOpen, setTourOpen] = useState(false);
+  const [viewport, setViewport] = useState(() => getViewport());
+  const [fabSize, setFabSize] = useState(DEFAULT_FAB_SIZE);
+  const [dragPreviewPosition, setDragPreviewPosition] = useState(null);
   const popoverRef = useRef(null);
-
-  const { settings, update, reset } = useAccessibility();
+  const fabRef = useRef(null);
+  const dragStateRef = useRef(null);
+  const suppressToggleRef = useRef(false);
   const {
     hasChecklist,
     checklistOpen,
@@ -99,6 +146,20 @@ export default function HelpLauncher() {
   const showChecklistActions = hasChecklist &&
     isChecklistLandingPage(roleKey, location.pathname) &&
     !['observer', 'pending'].includes(roleKey);
+  const resolvedLauncherPosition = useMemo(
+    () => resolveLauncherPosition(settings.launcherPosition, viewport, fabSize),
+    [fabSize, settings.launcherPosition, viewport],
+  );
+  const launcherPosition = dragPreviewPosition ?? resolvedLauncherPosition;
+  const launcherAnchor = {
+    left: launcherPosition.left + fabSize.width / 2,
+    top: launcherPosition.top + fabSize.height / 2,
+  };
+  const openAbove = launcherAnchor.top > viewport.height / 2;
+  const alignRight = launcherAnchor.left > viewport.width / 2;
+  const panelSide = alignRight ? 'right' : 'left';
+  const panelVertical = openAbove ? 'bottom' : 'top';
+  const panelOffset = fabSize.height + PANEL_GAP;
 
   // Close panel on navigation
   useEffect(() => {
@@ -114,6 +175,29 @@ export default function HelpLauncher() {
     return () => window.clearTimeout(timer);
   }, [location.pathname, helpConfig]);
 
+  // Keep launcher position in bounds as the viewport changes.
+  useEffect(() => {
+    const handleResize = () => {
+      const nextViewport = getViewport();
+      const nextFabSize = getFabSize(fabRef.current);
+      const nextPosition = resolveLauncherPosition(settings.launcherPosition, nextViewport, nextFabSize);
+
+      setViewport(nextViewport);
+      setFabSize(nextFabSize);
+      setDragPreviewPosition((currentPosition) =>
+        currentPosition ? clampLauncherPosition(currentPosition, nextViewport, nextFabSize) : currentPosition,
+      );
+
+      if (settings.launcherPosition && !positionsMatch(settings.launcherPosition, nextPosition)) {
+        update('launcherPosition', nextPosition);
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [settings.launcherPosition, update]);
+
   // Close on outside click
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -126,6 +210,20 @@ export default function HelpLauncher() {
     return () => document.removeEventListener('mousedown', handleOutside);
   }, [isOpen]);
 
+  // Provide a recovery shortcut when the floating launcher is hidden.
+  useEffect(() => {
+    const handleShortcut = (event) => {
+      if (!event.ctrlKey || !event.altKey || event.key.toLowerCase() !== 'a') return;
+
+      event.preventDefault();
+      setActiveTab('a11y');
+      setIsOpen(true);
+    };
+
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
+
   const segmentActive = (active) =>
     active
       ? `bg-gradient-to-br ${t.segmentOn} text-white shadow-sm ${t.segmentShadow}`
@@ -135,9 +233,106 @@ export default function HelpLauncher() {
   const helpItemCls =
     `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-slate-600 dark:text-slate-300 transition-colors ${t.hoverItem}`;
 
+  const restoreLauncherFromSettings = () => {
+    setDragPreviewPosition(null);
+    resetLauncher();
+    setActiveTab('a11y');
+    setIsOpen(true);
+  };
+
+  const resetLauncherPosition = () => {
+    setDragPreviewPosition(null);
+    update('launcherPosition', null);
+  };
+
+  const handleFabPointerDown = (event) => {
+    if (event.button !== undefined && event.button !== 0) return;
+
+    dragStateRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originLeft: launcherPosition.left,
+      originTop: launcherPosition.top,
+      fabSize,
+      moved: false,
+      nextPosition: launcherPosition,
+    };
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleFabPointerMove = (event) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - dragState.startX;
+    const deltaY = event.clientY - dragState.startY;
+    const nextPosition = clampLauncherPosition(
+      {
+        left: dragState.originLeft + deltaX,
+        top: dragState.originTop + deltaY,
+      },
+      viewport,
+      dragState.fabSize,
+    );
+
+    if (!dragState.moved && Math.hypot(deltaX, deltaY) >= DRAG_THRESHOLD) {
+      dragState.moved = true;
+      suppressToggleRef.current = true;
+    }
+
+    dragState.nextPosition = nextPosition;
+
+    if (dragState.moved) {
+      setDragPreviewPosition(nextPosition);
+    }
+  };
+
+  const finishDragging = (pointerId) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || (pointerId != null && dragState.pointerId !== pointerId)) return;
+
+    if (dragState.moved) {
+      update('launcherPosition', dragState.nextPosition);
+      setDragPreviewPosition(null);
+      window.setTimeout(() => {
+        suppressToggleRef.current = false;
+      }, 0);
+    }
+
+    dragStateRef.current = null;
+  };
+
+  const handleFabPointerUp = (event) => {
+    finishDragging(event.pointerId);
+  };
+
+  const handleFabPointerCancel = (event) => {
+    finishDragging(event.pointerId);
+  };
+
+  const handleFabClick = () => {
+    if (suppressToggleRef.current) {
+      suppressToggleRef.current = false;
+      return;
+    }
+
+    setIsOpen((prev) => !prev);
+  };
+
   return (
     <>
-      <div ref={popoverRef} className="fixed bottom-5 right-5 z-[95] print:hidden flex flex-col items-end">
+      <div
+        ref={popoverRef}
+        className="fixed z-[95] print:hidden"
+        style={{
+          left: launcherPosition.left,
+          top: launcherPosition.top,
+          width: fabSize.width,
+          height: fabSize.height,
+        }}
+      >
 
         {/* Panel */}
         <AnimatePresence>
@@ -148,8 +343,12 @@ export default function HelpLauncher() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 10 }}
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              style={{ transformOrigin: 'bottom right' }}
-              className="mb-3 w-72 max-w-[calc(100vw-2.5rem)] rounded-[1.5rem] border border-slate-200 bg-white shadow-2xl dark:border-dark-border dark:bg-dark-surface overflow-hidden"
+              style={{
+                transformOrigin: `${panelVertical} ${panelSide}`,
+                [panelVertical]: panelOffset,
+                [panelSide]: 0,
+              }}
+              className="absolute z-[1] w-72 max-w-[calc(100vw-2.5rem)] rounded-[1.5rem] border border-slate-200 bg-white shadow-2xl dark:border-dark-border dark:bg-dark-surface overflow-hidden"
             >
               {/* Tab header */}
               <div className="flex items-center gap-2 px-3 pt-3 pb-2.5 border-b border-slate-100 dark:border-dark-border">
@@ -284,6 +483,20 @@ export default function HelpLauncher() {
                       animate="visible"
                       variants={{ visible: { transition: { staggerChildren: 0.045 } } }}
                     >
+                      {!settings.launcherVisible && (
+                        <Motion.div
+                          variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}
+                          className="rounded-2xl border border-amber-200 dark:border-amber-800/50 bg-amber-50/80 dark:bg-amber-950/20 px-3 py-2.5"
+                        >
+                          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
+                            Floating Button Hidden
+                          </p>
+                          <p className="mt-1 text-xs leading-relaxed text-amber-800/90 dark:text-amber-200/80">
+                            Use {LAUNCHER_SHORTCUT_LABEL} any time to reopen Accessibility settings and bring the launcher back.
+                          </p>
+                        </Motion.div>
+                      )}
+
                       {/* Visual */}
                       <Motion.div variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Visual</p>
@@ -392,6 +605,55 @@ export default function HelpLauncher() {
                         className="border-t border-slate-100 dark:border-dark-border"
                       />
 
+                      {/* Launcher */}
+                      <Motion.div variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Launcher</p>
+                        <div className="space-y-3.5">
+                          <ToggleRow
+                            label="Show Floating Button"
+                            description={settings.launcherVisible
+                              ? 'Keep the help and accessibility button on screen.'
+                              : `Hidden for now. Press ${LAUNCHER_SHORTCUT_LABEL} to return here.`}
+                            icon={<AccessibilityIcon className="w-5 h-5" />}
+                            value={settings.launcherVisible}
+                            onChange={(value) => {
+                              update('launcherVisible', value);
+                              if (value) {
+                                setActiveTab('a11y');
+                                setIsOpen(true);
+                              }
+                            }}
+                            theme={themeName}
+                          />
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={resetLauncherPosition}
+                              className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-dark-border dark:text-slate-300 dark:hover:bg-dark-border"
+                            >
+                              Reset Position
+                            </button>
+                            <button
+                              type="button"
+                              onClick={restoreLauncherFromSettings}
+                              className={`rounded-xl px-3 py-2 text-xs font-bold text-white transition-all ${t.segmentOn} ${t.segmentShadow} bg-gradient-to-br`}
+                            >
+                              Restore Button
+                            </button>
+                          </div>
+
+                          <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                            Drag the floating button anywhere on the screen. Reset Position returns it to the default bottom-right spot.
+                          </p>
+                        </div>
+                      </Motion.div>
+
+                      <Motion.div
+                        variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}
+                        className="border-t border-slate-100 dark:border-dark-border"
+                      />
+
                       <Motion.button
                         variants={{ hidden: { opacity: 0, y: 6 }, visible: { opacity: 1, y: 0 } }}
                         onClick={reset}
@@ -409,23 +671,34 @@ export default function HelpLauncher() {
         </AnimatePresence>
 
         {/* FAB */}
-        <Motion.button
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          whileHover={isOpen ? undefined : { scale: 1.08 }}
-          whileTap={{ scale: 0.92 }}
-          animate={{ scale: isOpen ? 0.95 : 1 }}
-          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-          className="flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full transition-[box-shadow] sheen-button text-white"
-          aria-label="Open help and accessibility options"
-          aria-expanded={isOpen}
-          data-active={isOpen}
-          style={SHEEN_COLORS[themeName] || SHEEN_COLORS.slate}
-        >
-          <Motion.div transition={{ type: 'spring', stiffness: 300, damping: 22 }}>
-            <Question size={26} weight="fill" />
-          </Motion.div>
-        </Motion.button>
+        {settings.launcherVisible && (
+          <Motion.button
+            ref={fabRef}
+            type="button"
+            onClick={handleFabClick}
+            onPointerDown={handleFabPointerDown}
+            onPointerMove={handleFabPointerMove}
+            onPointerUp={handleFabPointerUp}
+            onPointerCancel={handleFabPointerCancel}
+            whileHover={isOpen ? undefined : { scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
+            animate={{ scale: isOpen ? 0.95 : 1 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+            className="flex h-11 w-11 cursor-grab items-center justify-center rounded-full transition-[box-shadow] sheen-button text-white active:cursor-grabbing sm:h-14 sm:w-14"
+            aria-label="Open help and accessibility options"
+            aria-expanded={isOpen}
+            data-active={isOpen}
+            style={{
+              ...(SHEEN_COLORS[themeName] || SHEEN_COLORS.slate),
+              touchAction: 'none',
+            }}
+            title={`Drag to move. ${LAUNCHER_SHORTCUT_LABEL} reopens Accessibility if hidden.`}
+          >
+            <Motion.div transition={{ type: 'spring', stiffness: 300, damping: 22 }}>
+              <Question size={26} weight="fill" />
+            </Motion.div>
+          </Motion.button>
+        )}
       </div>
 
       {helpConfig && (

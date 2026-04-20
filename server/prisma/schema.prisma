@@ -65,6 +65,7 @@ model Program {
   template                 ProgramTemplate?
   personnel                User[] @relation("UserPrograms")
   restricted_schools       School[] @relation("RestrictedPrograms")
+  consolidation_notes      ConsolidationNote[]
 
   @@unique([title, school_level_requirement])
   @@map("programs")
@@ -315,6 +316,23 @@ model PIRFactor {
   pir                  PIR    @relation(fields: [pir_id], references: [id], onDelete: Cascade)
 
   @@unique([pir_id, factor_type]) // Only one record per factor type per PIR
+}
+
+model ConsolidationNote {
+  id                  Int      @id @default(autoincrement())
+  year                Int
+  quarter             Int
+  program_id          Int
+  ta_schools_pct      String?
+  gaps                String?
+  recommendations     String?
+  management_response String?
+  updated_at          DateTime @updatedAt
+
+  program             Program  @relation(fields: [program_id], references: [id], onDelete: Cascade)
+
+  @@unique([year, quarter, program_id])
+  @@map("consolidation_notes")
 }
 
 model Notification {

@@ -13,7 +13,7 @@ export const FACTOR_TYPES = ["Institutional", "Technical", "Infrastructure", "Le
 
 export function createEmptyPirActivity(overrides = {}) {
     return {
-        id: overrides.id ?? crypto.randomUUID(),
+        id: overrides.id ?? (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`),
         name: '',
         implementation_period: '',
         period_start_month: null,

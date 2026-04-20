@@ -10,6 +10,7 @@ import {
   CaretDown, ChartBar, Wallet, TrendUp, ListChecks, FunnelSimple, Coins,
   Database,
   Key,
+  FileXls,
 } from '@phosphor-icons/react';
 import { useOnboarding } from '../hooks/useOnboarding.jsx';
 import { isChecklistLandingPage } from '../lib/onboardingUtils.js';
@@ -30,22 +31,24 @@ const NAV_GROUPS = [
   {
     label: 'School Management',
     items: [
-      { to: '/admin/schools',   label: 'Schools',   icon: Buildings, adminOnly: true, preload: () => import('./pages/AdminSchools.jsx') },
-      { to: '/admin/programs',  label: 'Programs',  icon: BookOpenIcon, adminOnly: true, preload: () => import('./pages/AdminPrograms.jsx') },
+      { to: '/admin/schools', label: 'Schools', icon: Buildings, adminOnly: true, preload: () => import('./pages/AdminSchools.jsx') },
+      { to: '/admin/programs', label: 'Programs', icon: BookOpenIcon, adminOnly: true, preload: () => import('./pages/AdminPrograms.jsx') },
       { to: '/admin/deadlines', label: 'Deadlines', icon: CalendarSlash, adminOnly: true, preload: () => import('./pages/AdminDeadlines.jsx') },
     ],
   },
   {
     label: 'Analytics',
-    items: [],
+    items: [
+      { to: '/admin/consolidation-template', label: 'Consolidation Template', icon: FileXls, adminOnly: true, preload: () => import('./pages/AdminConsolidationTemplate.jsx') },
+    ],
   },
   {
     label: 'System',
     items: [
       { to: '/admin/sessions', label: 'Sessions', icon: Key, adminOnly: true, preload: () => import('./pages/AdminSessions.jsx') },
-      { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminLogs.jsx') },
-      { to: '/admin/backups',  label: 'Backups',     icon: Database, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminBackups.jsx') },
-      { to: '/admin/settings', label: 'Settings',    icon: Gear, adminOnly: true, preload: () => import('./pages/AdminSettings.jsx') },
+      { to: '/admin/logs', label: 'Admin Logs', icon: ClockCounterClockwise, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminLogs.jsx') },
+      { to: '/admin/backups', label: 'Backups', icon: Database, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminBackups.jsx') },
+      { to: '/admin/settings', label: 'Settings', icon: Gear, adminOnly: true, preload: () => import('./pages/AdminSettings.jsx') },
     ],
   },
 ];
@@ -69,11 +72,10 @@ const NavItem = ({ to, label, Icon, end, badge, onNavigate, preload }) => (
         <Icon
           size={20}
           weight={isActive ? 'fill' : 'regular'}
-          className={`shrink-0 transition-all duration-200 ${
-            isActive
+          className={`shrink-0 transition-all duration-200 ${isActive
               ? 'text-[#E94560] drop-shadow-[0_0_6px_rgba(233,69,96,0.3)]'
               : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'
-          }`}
+            }`}
         />
         <span className="truncate flex-1">{label}</span>
         {badge && (
@@ -88,8 +90,8 @@ const NavItem = ({ to, label, Icon, end, badge, onNavigate, preload }) => (
 
 const SUBMISSION_TABS = [
   { type: 'all', label: 'All Submissions', Icon: FileText },
-  { type: 'aip', label: 'AIPs',            Icon: BookOpenIcon },
-  { type: 'pir', label: 'PIRs',            Icon: ChartBar },
+  { type: 'aip', label: 'AIPs', Icon: BookOpenIcon },
+  { type: 'pir', label: 'PIRs', Icon: ChartBar },
 ];
 
 function CollapsibleSubmissions({ onNavigate }) {
@@ -161,15 +163,15 @@ function CollapsibleSubmissions({ onNavigate }) {
 }
 
 const REPORT_TABS = [
-  { tab: 'compliance',    label: 'AIP Compliance',    Icon: Checks       },
-  { tab: 'quarterly',     label: 'PIR Quarterly',     Icon: ChartBar     },
-  { tab: 'budget',        label: 'Budget',            Icon: Wallet },
-  { tab: 'workload',      label: 'Personnel Workload', Icon: Users        },
-  { tab: 'accomplishment',label: 'Accomplishment',    Icon: TrendUp      },
-  { tab: 'factors',       label: 'Factors Analysis',  Icon: ListChecks   },
-  { tab: 'sources',       label: 'Budget Sources',    Icon: Coins        },
-  { tab: 'funnel',        label: 'AIP Status Funnel', Icon: FunnelSimple },
-  { tab: 'consolidation', label: 'PIR Consolidation', Icon: ChartBar      },
+  { tab: 'compliance', label: 'AIP Compliance', Icon: Checks },
+  { tab: 'quarterly', label: 'PIR Quarterly', Icon: ChartBar },
+  { tab: 'budget', label: 'Budget', Icon: Wallet },
+  { tab: 'workload', label: 'Personnel Workload', Icon: Users },
+  { tab: 'accomplishment', label: 'Accomplishment', Icon: TrendUp },
+  { tab: 'factors', label: 'Factors Analysis', Icon: ListChecks },
+  { tab: 'sources', label: 'Budget Sources', Icon: Coins },
+  { tab: 'funnel', label: 'AIP Status Funnel', Icon: FunnelSimple },
+  { tab: 'consolidation', label: 'PIR Consolidation', Icon: ChartBar },
 ];
 
 function CollapsibleReports({ onNavigate }) {
@@ -268,11 +270,10 @@ function AdminOnboardingTrigger({ onNavigate }) {
               {Array.from({ length: segments }).map((_, i) => (
                 <div
                   key={i}
-                  className={`h-1 w-3 rounded-full transition-colors duration-300 ${
-                    i < done
+                  className={`h-1 w-3 rounded-full transition-colors duration-300 ${i < done
                       ? 'bg-emerald-400 dark:bg-emerald-500'
                       : 'bg-slate-200 dark:bg-slate-600'
-                  }`}
+                    }`}
                 />
               ))}
             </div>
