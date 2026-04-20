@@ -63,7 +63,7 @@ export function AdminOverviewHero({ appLogo, navigate, stats, user }) {
           </div>
         </div>
 
-        <div className="hidden flex-col lg:flex lg:w-80 xl:w-96">
+        <div className="flex flex-col lg:w-80 xl:w-96">
           <div className="border-b border-slate-100 px-5 py-3.5 dark:border-dark-border">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">At a Glance</span>
           </div>

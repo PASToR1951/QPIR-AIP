@@ -44,6 +44,7 @@ const AdminReports    = lazy(() => import('./admin/pages/AdminReports.jsx'));
 const AdminSettings   = lazy(() => import('./admin/pages/AdminSettings.jsx'));
 const AdminBackups    = lazy(() => import('./admin/pages/AdminBackups.jsx'));
 const AdminSessions   = lazy(() => import('./admin/pages/AdminSessions.jsx'));
+const AdminLogs       = lazy(() => import('./admin/pages/AdminLogs.jsx'));
 const AdminPIRReview  = lazy(() => import('./admin/pages/AdminPIRReview.jsx'));
 const UserLogs        = lazy(() => import('./UserLogs.jsx'));
 
@@ -64,6 +65,7 @@ function preloadForRole(role) {
       import('./admin/pages/AdminSettings.jsx');
       import('./admin/pages/AdminBackups.jsx');
       import('./admin/pages/AdminSessions.jsx');
+      import('./admin/pages/AdminLogs.jsx');
     }
   } else if (CES_ROLES.includes(role)) {
     import('./ces/CESLayout.jsx');
@@ -239,11 +241,12 @@ export default function AnimatedContent() {
 
   // Kick off background preloads for the user's role once, after mount
   useEffect(() => {
+    if (isAdminPath) return;
     try {
       const user = JSON.parse(sessionStorage.getItem('user') || 'null');
       if (user?.role) preloadForRole(user.role);
     } catch { /* session not ready yet */ }
-  }, []);
+  }, [isAdminPath]);
 
   // Admin routes rendered outside AnimatePresence so AdminLayout stays mounted
   if (isAdminPath) {
@@ -260,6 +263,7 @@ export default function AnimatedContent() {
               <Route path="deadlines" element={<AdminOnlyGuard><AdminDeadlines /></AdminOnlyGuard>} />
               <Route path="reports" element={<AdminOnlyGuard><AdminReports /></AdminOnlyGuard>} />
               <Route path="sessions" element={<AdminOnlyGuard><AdminSessions /></AdminOnlyGuard>} />
+              <Route path="logs" element={<AdminOnlyGuard><AdminLogs /></AdminOnlyGuard>} />
               <Route path="settings" element={<AdminOnlyGuard><AdminSettings /></AdminOnlyGuard>} />
               <Route path="backups" element={<AdminOnlyGuard><AdminBackups /></AdminOnlyGuard>} />
               <Route path="pirs/:id" element={<AdminPIRReview />} />

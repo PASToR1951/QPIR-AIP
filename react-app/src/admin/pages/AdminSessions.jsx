@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MagnifyingGlass, CheckCircle, Users } from '@phosphor-icons/react';
+import { MagnifyingGlass, CheckCircle, Users, CaretLeft, CaretRight } from '@phosphor-icons/react';
 import api from '../../lib/api.js';
 import { DataTable } from '../components/DataTable.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
@@ -12,6 +12,7 @@ const STATUS_PILLS = [
   { label: 'Expired', value: 'expired' },
   { label: 'Revoked', value: 'revoked' },
 ];
+const PAGE_SIZE = 25;
 
 function SessionStatusPill({ session }) {
   const status = getSessionStatus(session);
@@ -25,6 +26,8 @@ function SessionStatusPill({ session }) {
 export default function AdminSessions() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -39,19 +42,36 @@ export default function AdminSessions() {
   const loadSessions = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/api/admin/sessions', {
+      const response = await api.get('/api/admin/sessions', {
         params: {
           ...(search.trim() ? { search: search.trim() } : {}),
           ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+          page,
+          limit: PAGE_SIZE,
         },
       });
-      setSessions(data);
+      const rows = Array.isArray(response.data) ? response.data : [];
+      const headerTotal = Number(response.headers?.['x-total-count']);
+      const totalCount = Number.isFinite(headerTotal) ? headerTotal : rows.length;
+      const lastPage = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
+      if (totalCount > 0 && page > lastPage) {
+        setPage(lastPage);
+        return;
+      }
+
+      setSessions(rows);
+      setTotal(totalCount);
     } catch (err) {
       showToast(err.friendlyMessage ?? 'Failed to load sessions.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [search, showToast, statusFilter]);
+  }, [page, search, showToast, statusFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter]);
 
   useEffect(() => {
     void loadSessions();
@@ -61,6 +81,14 @@ export default function AdminSessions() {
     () => sessions.filter((session) => isSessionRevocable(session)).length,
     [sessions],
   );
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(total / PAGE_SIZE)),
+    [total],
+  );
+  const showingStart = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const showingEnd = total === 0 ? 0 : Math.min((page - 1) * PAGE_SIZE + sessions.length, total);
+  const canGoPrev = page > 1;
+  const canGoNext = page < totalPages;
 
   const handleConfirm = async () => {
     if (!confirmAction) return;
@@ -202,12 +230,36 @@ export default function AdminSessions() {
             <DataTable
               columns={columns}
               data={sessions}
+              pageSize={PAGE_SIZE}
               fillHeight
               emptyMessage="No sessions found."
-              endMessage={search || statusFilter !== 'all' ? 'All matching sessions shown' : 'End of sessions list'}
-              endCountLabel="session"
-              showEndCount
             />
+            {total > 0 && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="text-slate-500 dark:text-slate-400">
+                  Showing {showingStart}–{showingEnd} of {total}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage((current) => Math.max(1, current - 1))}
+                    disabled={!canGoPrev}
+                    className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-dark-border"
+                  >
+                    <CaretLeft size={18} />
+                  </button>
+                  <span className="min-w-[6rem] text-center text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                    disabled={!canGoNext}
+                    className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-dark-border"
+                  >
+                    <CaretRight size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -17,6 +17,8 @@ export const staggerContainer = {
 export const CHART_COLORS = ['#E94560', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316'];
 export const BAR_COLORS = { Submitted: '#3b82f6', Approved: '#10b981', 'Under Review': '#f59e0b', Returned: '#E94560' };
 export const PIR_QUARTERLY_KEYS = ['Submitted', 'Approved', 'Under Review', 'Returned'];
+export const DIVISION_COLORS = { SGOD: '#6366f1', CID: '#10b981', OSDS: '#f59e0b' };
+export const DIVISION_KEYS = ['SGOD', 'CID', 'OSDS'];
 
 export function useIsDark() {
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));

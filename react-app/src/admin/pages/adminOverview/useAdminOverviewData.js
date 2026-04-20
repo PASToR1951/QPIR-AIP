@@ -38,6 +38,9 @@ export function useAdminOverviewData() {
       Approved: quarter.approved,
       'Under Review': quarter.underReview,
       Returned: quarter.returned,
+      SGOD: quarter.SGOD ?? 0,
+      CID: quarter.CID ?? 0,
+      OSDS: quarter.OSDS ?? 0,
     }))
   ), [data?.pirQuarterly]);
 
@@ -51,6 +54,8 @@ export function useAdminOverviewData() {
       pct: entry.pct,
     }))
   ), [data?.clusterCompliance]);
+
+  const sectionData = data?.divisionSections ?? [];
 
   const user = useMemo(() => {
     try {
@@ -70,6 +75,7 @@ export function useAdminOverviewData() {
     nivoTheme,
     pieData,
     quarterData,
+    sectionData,
     setClusterSort,
     sortedClusters,
     stats,

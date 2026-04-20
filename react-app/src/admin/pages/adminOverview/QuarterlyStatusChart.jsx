@@ -1,5 +1,5 @@
 import React from 'react';
-import { PIR_QUARTERLY_KEYS, BAR_COLORS } from './chartTheme.js';
+import { PIR_QUARTERLY_KEYS, BAR_COLORS, DIVISION_KEYS, DIVISION_COLORS } from './chartTheme.js';
 import { getQuarterTotal, getQuarterAxisMax } from './overviewHelpers.jsx';
 
 export function QuarterlyStatusChart({ data }) {
@@ -37,20 +37,37 @@ export function QuarterlyStatusChart({ data }) {
 
               return (
                 <div key={quarter.name} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                  <div className="relative flex min-h-0 w-full flex-1 items-end justify-center">
+                  <div className="relative flex min-h-0 w-full flex-1 items-end justify-center gap-1">
+                    {/* Status bar */}
                     <div
-                      className="flex w-full max-w-[58px] flex-col-reverse overflow-hidden rounded-md bg-slate-100 dark:bg-dark-border/40 shadow-sm ring-1 ring-slate-200/70 dark:ring-dark-border/70"
-                      style={{ height: `${heightPct}%`, opacity: total > 0 ? 1 : 0 }}
+                      className="flex flex-col-reverse overflow-hidden rounded-md bg-slate-100 dark:bg-dark-border/40 shadow-sm ring-1 ring-slate-200/70 dark:ring-dark-border/70"
+                      style={{ height: `${heightPct}%`, opacity: total > 0 ? 1 : 0, width: '52%', maxWidth: 34 }}
                     >
                       {PIR_QUARTERLY_KEYS.map((key) => {
                         const value = quarter[key] ?? 0;
                         if (value <= 0 || total <= 0) return null;
-
                         return (
                           <span
                             key={key}
                             title={`${quarter.name} ${key}: ${value}`}
                             style={{ height: `${(value / total) * 100}%`, background: BAR_COLORS[key] }}
+                          />
+                        );
+                      })}
+                    </div>
+                    {/* Division bar */}
+                    <div
+                      className="flex flex-col-reverse overflow-hidden rounded-md bg-slate-100 dark:bg-dark-border/40 shadow-sm ring-1 ring-slate-200/70 dark:ring-dark-border/70"
+                      style={{ height: `${heightPct}%`, opacity: total > 0 ? 1 : 0, width: '40%', maxWidth: 26 }}
+                    >
+                      {DIVISION_KEYS.map((key) => {
+                        const value = quarter[key] ?? 0;
+                        if (value <= 0 || total <= 0) return null;
+                        return (
+                          <span
+                            key={key}
+                            title={`${quarter.name} ${key}: ${value}`}
+                            style={{ height: `${(value / total) * 100}%`, background: DIVISION_COLORS[key] }}
                           />
                         );
                       })}

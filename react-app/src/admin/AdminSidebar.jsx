@@ -43,7 +43,7 @@ const NAV_GROUPS = [
     label: 'System',
     items: [
       { to: '/admin/sessions', label: 'Sessions', icon: Key, adminOnly: true, preload: () => import('./pages/AdminSessions.jsx') },
-      { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Beta', adminOnly: true },
+      { to: '/admin/logs',     label: 'Admin Logs',  icon: ClockCounterClockwise, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminLogs.jsx') },
       { to: '/admin/backups',  label: 'Backups',     icon: Database, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminBackups.jsx') },
       { to: '/admin/settings', label: 'Settings',    icon: Gear, adminOnly: true, preload: () => import('./pages/AdminSettings.jsx') },
     ],

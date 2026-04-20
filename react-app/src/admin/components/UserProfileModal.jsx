@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XCircle, PencilSimple, Key, Prohibit, Trash, Copy, CheckCircle, SpinnerGap } from '@phosphor-icons/react';
 import { StatusBadge } from './StatusBadge.jsx';
+import api from '../../lib/api.js';
 
 function displayName(user) {
   if (!user) return '';
@@ -22,6 +23,9 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
   const [resetStep, setResetStep] = useState('idle'); // idle | confirm | loading | done | error
   const [generatedPw, setGeneratedPw] = useState('');
   const [pwCopied, setPwCopied] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState('');
 
   // Reset internal state when modal closes or user changes
   useEffect(() => {
@@ -29,16 +33,47 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
       setResetStep('idle');
       setGeneratedPw('');
       setPwCopied(false);
+      setProfile(null);
+      setProfileLoading(false);
+      setProfileError('');
     }
   }, [open]);
 
-  const name = user ? displayName(user) : '';
-  const programs = user?.programs ?? [];
-  const isCES = user?.role?.startsWith('CES-');
-  const isDivPersonnel = user?.role === 'Division Personnel';
+  useEffect(() => {
+    if (!open || !user?.id) return undefined;
+
+    let cancelled = false;
+    setProfileLoading(true);
+    setProfileError('');
+
+    api.get(`/api/admin/users/${user.id}/profile`)
+      .then((response) => {
+        if (!cancelled) setProfile(response.data ?? null);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setProfile(null);
+          setProfileError(error.friendlyMessage ?? 'Could not load the latest profile details.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setProfileLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, user?.id]);
+
+  const activeUser = profile ?? user;
+
+  const name = activeUser ? displayName(activeUser) : '';
+  const programs = activeUser?.programs ?? [];
+  const isCES = activeUser?.role?.startsWith('CES-');
+  const isDivPersonnel = activeUser?.role === 'Division Personnel';
   let functionalDivision = null;
   if (isCES) {
-    functionalDivision = user.role.split('-')[1];
+    functionalDivision = activeUser.role.split('-')[1];
   } else if (isDivPersonnel && programs.length > 0) {
     const divs = [...new Set(programs.map(p => p.division).filter(Boolean))];
     if (divs.length > 0) functionalDivision = divs.join(', ');
@@ -47,7 +82,7 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
   const handleGeneratePassword = async () => {
     setResetStep('loading');
     try {
-      const pw = await onResetPassword(user.id);
+      const pw = await onResetPassword(activeUser.id);
       setGeneratedPw(pw);
       setResetStep('done');
     } catch {
@@ -93,17 +128,17 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
           {/* Identity */}
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 leading-tight truncate">{name}</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5">{user.email}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5">{activeUser.email}</p>
             <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-              <StatusBadge status={user.role} size="xs" />
+              <StatusBadge status={activeUser.role} size="xs" />
               {functionalDivision && (
                 <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide rounded-lg bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400">
                   {functionalDivision}
                 </span>
               )}
-              <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${user.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-600'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                {user.is_active ? 'Active' : 'Disabled'}
+              <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${activeUser.is_active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-600'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${activeUser.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                {activeUser.is_active ? 'Active' : 'Disabled'}
               </span>
             </div>
           </div>
@@ -120,20 +155,31 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
           {/* Left: Profile details */}
           <div className="px-4 sm:px-8 py-6 space-y-5">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Profile</p>
+            {profileLoading && (
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-400 dark:text-slate-500">
+                <SpinnerGap size={16} className="animate-spin" />
+                Loading latest profile details…
+              </div>
+            )}
+            {!profileLoading && profileError && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
+                {profileError}
+              </div>
+            )}
             <dl className="space-y-4">
               <div>
                 <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Role</dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">{user.role}</dd>
+                <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">{activeUser.role}</dd>
               </div>
               {isCES || isDivPersonnel ? (
                 <div>
                   <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Position</dt>
-                  <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">{user.position ?? '—'}</dd>
+                  <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">{activeUser.position ?? '—'}</dd>
                 </div>
               ) : (
                 <div>
                   <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">School</dt>
-                  <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">{user.school?.name ?? '—'}</dd>
+                  <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">{activeUser.school?.name ?? '—'}</dd>
                 </div>
               )}
               <div>
@@ -154,8 +200,8 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
               <div>
                 <dt className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Joined</dt>
                 <dd className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                  {user.created_at
-                    ? new Date(user.created_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })
+                  {activeUser.created_at
+                    ? new Date(activeUser.created_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' })
                     : '—'}
                 </dd>
               </div>
@@ -260,11 +306,11 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
             <PencilSimple size={16} /> Edit User
           </button>
           <button
-            onClick={onToggle}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border border border-slate-200 dark:border-dark-border transition-colors"
-          >
-            <Prohibit size={16} /> {user.is_active ? 'Disable' : 'Enable'} Account
-          </button>
+                  onClick={onToggle}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border border border-slate-200 dark:border-dark-border transition-colors"
+                >
+            <Prohibit size={16} /> {activeUser.is_active ? 'Disable' : 'Enable'} Account
+                </button>
           <div className="ml-auto">
             <button
               onClick={onDelete}
