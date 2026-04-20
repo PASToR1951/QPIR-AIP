@@ -73,6 +73,7 @@ statusRouter.patch("/submissions/:id/status", async (c) => {
     type === "pir" ? "PIR" : "AIP",
     id,
     { status, feedback: normalizedFeedback || null },
+    { ctx: c },
   );
 
   return c.json({ success: true });

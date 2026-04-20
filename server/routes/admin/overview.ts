@@ -48,6 +48,7 @@ overviewRoutes.get("/overview", async (c) => {
     recentPIRs,
     clusters,
     allPrograms,
+    programsByDivision,
   ] = await Promise.all([
     prisma.school.count(),
     prisma.user.count({ where: { is_active: true } }),
@@ -59,7 +60,13 @@ overviewRoutes.get("/overview", async (c) => {
     prisma.pIR.count({ where: { status: { not: "Draft" } } }),
     prisma.pIR.findMany({
       where: { aip: { year }, status: { not: "Draft" } },
-      select: { quarter: true, status: true },
+      select: {
+        quarter: true,
+        status: true,
+        functional_division: true,
+        ces_reviewer: { select: { role: true } },
+        aip: { select: { program: { select: { division: true } } } },
+      },
     }),
     prisma.aIP.findMany({
       where: { year, school_id: { not: null }, status: { not: "Draft" } },
@@ -153,9 +160,30 @@ overviewRoutes.get("/overview", async (c) => {
         restricted_schools: { select: { id: true } },
       },
     }),
+    prisma.program.groupBy({
+      by: ["division"],
+      where: { division: { not: null } },
+      _count: { id: true },
+    }),
   ]);
 
   // --- Pure JS computations (no DB calls below this line) ---
+
+  type SectionKey = "SGOD" | "CID" | "OSDS";
+  const resolvePirSection = (pir: typeof pirsByQuarter[number]): SectionKey => {
+    const reviewerRole = pir.ces_reviewer?.role;
+    if (reviewerRole === "CES-SGOD") return "SGOD";
+    if (reviewerRole === "CES-ASDS") return "OSDS";
+    if (reviewerRole === "CES-CID") return "CID";
+    const fd = pir.functional_division;
+    if (fd === "SGOD") return "SGOD";
+    if (fd === "OSDS" || fd === "ASDS") return "OSDS";
+    if (fd === "CID") return "CID";
+    const programDiv = pir.aip?.program?.division;
+    if (programDiv === "SGOD") return "SGOD";
+    if (programDiv === "OSDS" || programDiv === "ASDS") return "OSDS";
+    return "CID";
+  };
 
   const aipCompliantCount = schoolsWithAIP.length;
   const pirQuarterly = getQuarterNumbers().map((quarter) => {
@@ -179,6 +207,9 @@ overviewRoutes.get("/overview", async (c) => {
         )
       ).length,
       returned: quarterPirs.filter((pir) => pir.status === "Returned").length,
+      SGOD: quarterPirs.filter((pir) => resolvePirSection(pir) === "SGOD").length,
+      CID: quarterPirs.filter((pir) => resolvePirSection(pir) === "CID").length,
+      OSDS: quarterPirs.filter((pir) => resolvePirSection(pir) === "OSDS").length,
     };
   });
 
@@ -214,7 +245,7 @@ overviewRoutes.get("/overview", async (c) => {
       (sum, review) =>
         sum +
         (Number(review.physical_accomplished) / Number(review.physical_target)) *
-          100,
+        100,
       0,
     );
     avgPhysicalRate = Math.round(
@@ -226,8 +257,8 @@ overviewRoutes.get("/overview", async (c) => {
       (sum, review) =>
         sum +
         (Number(review.financial_accomplished) /
-            Number(review.financial_target)) *
-          100,
+          Number(review.financial_target)) *
+        100,
       0,
     );
     avgFinancialRate = Math.round(
@@ -330,10 +361,10 @@ overviewRoutes.get("/overview", async (c) => {
     const totalAips = schools.reduce((sum, school) => sum + school.totalAips, 0);
     const submittedAips = schools.reduce((sum, school) =>
       sum + school.submitted
-    , 0);
+      , 0);
     const approvedAips = schools.reduce((sum, school) =>
       sum + school.approved
-    , 0);
+      , 0);
 
     return {
       id: cluster.id,
@@ -346,6 +377,38 @@ overviewRoutes.get("/overview", async (c) => {
       approvedAips,
       pct: totalAips > 0 ? Math.round((submittedAips / totalAips) * 100) : 0,
       schools,
+    };
+  });
+
+
+  const sectionMeta: Array<{ key: SectionKey; label: string; full: string }> = [
+    { key: "SGOD", label: "SGOD", full: "School Governance & Operations Division" },
+    { key: "CID", label: "CID", full: "Curriculum Implementation Division" },
+    { key: "OSDS", label: "OSDS", full: "Office of the Schools Division Superintendent" },
+  ];
+
+  const programCountByDivision = Object.fromEntries(
+    programsByDivision.map((row) => [row.division, row._count.id])
+  );
+
+  const divisionSections = sectionMeta.map(({ key, label, full }) => {
+    const sectionPirs = pirsByQuarter.filter((pir) => resolvePirSection(pir) === key);
+    const currentQuarterSection = sectionPirs.filter((pir) =>
+      pir.quarter.startsWith(quarterPrefixes[currentQuarter])
+    );
+    return {
+      key,
+      label,
+      full,
+      programCount: programCountByDivision[key] ?? 0,
+      total: sectionPirs.length,
+      thisQuarter: currentQuarterSection.length,
+      pending: sectionPirs.filter((pir) => pir.status === "For CES Review").length,
+      inReview: sectionPirs.filter((pir) =>
+        ["For Cluster Head Review", "Under Review"].includes(pir.status)
+      ).length,
+      approved: sectionPirs.filter((pir) => pir.status === "Approved").length,
+      returned: sectionPirs.filter((pir) => pir.status === "Returned").length,
     };
   });
 
@@ -379,6 +442,7 @@ overviewRoutes.get("/overview", async (c) => {
     clusterCompliance,
     pirQuarterly,
     pirClusterStatus,
+    divisionSections,
   });
 });
 
@@ -421,8 +485,8 @@ overviewRoutes.get("/onboarding-overview", async (c) => {
     return relevantDate >= since;
   }).map((row) => {
     const progress = row.checklist_progress &&
-        typeof row.checklist_progress === "object" &&
-        !Array.isArray(row.checklist_progress)
+      typeof row.checklist_progress === "object" &&
+      !Array.isArray(row.checklist_progress)
       ? row.checklist_progress as Record<string, unknown>
       : {};
     const completedTaskIds = Array.isArray(progress.completed_task_ids)

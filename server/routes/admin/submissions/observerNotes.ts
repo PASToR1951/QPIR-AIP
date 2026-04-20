@@ -39,7 +39,7 @@ observerNotesRouter.patch("/submissions/:id/observer-notes", async (c) => {
     await writeAuditLog(actor.id, "updated_observer_notes", "PIR", id, {
       actor_role: actor.role,
       notes_length: notes.length,
-    });
+    }, { ctx: c });
     return c.json({
       success: true,
       observer_notes: (pir as Record<string, unknown>).observer_notes ?? notes,
@@ -59,7 +59,7 @@ observerNotesRouter.patch("/submissions/:id/observer-notes", async (c) => {
   await writeAuditLog(actor.id, "updated_observer_notes", "AIP", id, {
     actor_role: actor.role,
     notes_length: notes.length,
-  });
+  }, { ctx: c });
   return c.json({
     success: true,
     observer_notes: (aip as Record<string, unknown>).observer_notes ?? notes,

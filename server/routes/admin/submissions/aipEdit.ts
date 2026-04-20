@@ -22,7 +22,9 @@ aipEditRouter.patch("/aips/:id/approve-edit", async (c) => {
   });
 
   await pushAIPEditApprovedNotification(aip);
-  await writeAuditLog(admin.id, "approved_aip_edit_request", "AIP", id, {});
+  await writeAuditLog(admin.id, "approved_aip_edit_request", "AIP", id, {}, {
+    ctx: c,
+  });
   return c.json({ success: true });
 });
 
@@ -38,6 +40,8 @@ aipEditRouter.patch("/aips/:id/deny-edit", async (c) => {
   });
 
   await pushAIPEditDeniedNotification(aip);
-  await writeAuditLog(admin.id, "denied_aip_edit_request", "AIP", id, {});
+  await writeAuditLog(admin.id, "denied_aip_edit_request", "AIP", id, {}, {
+    ctx: c,
+  });
   return c.json({ success: true });
 });

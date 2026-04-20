@@ -154,7 +154,7 @@ listRouter.get("/submissions/export", async (c) => {
     year: year ?? "all",
     status: status ?? "all",
     row_count: rows.length,
-  });
+  }, { ctx: c });
 
   if (format === "csv") {
     return new Response(toCSV(rows), {

@@ -26,7 +26,7 @@ detailRouter.get("/submissions/:id", async (c) => {
     await writeAuditLog(actor.id, "read_pir", "PIR", pir.id, {
       quarter: pir.quarter,
       actor_role: actor.role,
-    });
+    }, { ctx: c });
 
     return c.json(pir);
   }

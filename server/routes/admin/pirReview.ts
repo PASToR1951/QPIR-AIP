@@ -213,7 +213,9 @@ pirReviewRoutes.post("/ces/pirs/:id/start-review", async (c) => {
     pushNotification(notification);
   }
 
-  await writeAuditLog(tokenUser.id, "started_pir_review", "PIR", pirId, {});
+  await writeAuditLog(tokenUser.id, "started_pir_review", "PIR", pirId, {}, {
+    ctx: c,
+  });
   return c.json({ success: true });
 });
 
@@ -266,7 +268,7 @@ pirReviewRoutes.post("/ces/pirs/:id/note", async (c) => {
 
   await writeAuditLog(tokenUser.id, "ces_noted_pir", "PIR", pirId, {
     ces_remarks: ces_remarks ?? null,
-  });
+  }, { ctx: c });
   return c.json({ success: true, pir: updated });
 });
 
@@ -321,7 +323,7 @@ pirReviewRoutes.post("/ces/pirs/:id/return", async (c) => {
 
   await writeAuditLog(tokenUser.id, "ces_returned_pir", "PIR", pirId, {
     ces_remarks: ces_remarks ?? null,
-  });
+  }, { ctx: c });
   return c.json({ success: true });
 });
 
@@ -404,7 +406,9 @@ pirReviewRoutes.post("/cluster-head/pirs/:id/start-review", async (c) => {
     pushNotification(notification);
   }
 
-  await writeAuditLog(tokenUser.id, "started_pir_review", "PIR", pirId, {});
+  await writeAuditLog(tokenUser.id, "started_pir_review", "PIR", pirId, {}, {
+    ctx: c,
+  });
   return c.json({ success: true });
 });
 
@@ -464,7 +468,7 @@ pirReviewRoutes.post("/cluster-head/pirs/:id/note", async (c) => {
 
   await writeAuditLog(tokenUser.id, "cluster_head_noted_pir", "PIR", pirId, {
     remarks: remarks ?? null,
-  });
+  }, { ctx: c });
   return c.json({ success: true });
 });
 
@@ -524,7 +528,7 @@ pirReviewRoutes.post("/cluster-head/pirs/:id/return", async (c) => {
 
   await writeAuditLog(tokenUser.id, "cluster_head_returned_pir", "PIR", pirId, {
     remarks: remarks ?? null,
-  });
+  }, { ctx: c });
   return c.json({ success: true });
 });
 

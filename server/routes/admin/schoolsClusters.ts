@@ -93,7 +93,7 @@ adminRoutes.post("/clusters", async (c) => {
     await writeAuditLog(admin.id, "created_cluster", "Cluster", cluster.id, {
       cluster_number,
       name,
-    });
+    }, { ctx: c });
     return c.json(cluster);
   } catch (error: any) {
     if (error?.code === "P2002") {
@@ -118,7 +118,7 @@ adminRoutes.patch("/clusters/:id", async (c) => {
     await writeAuditLog(admin.id, "updated_cluster", "Cluster", id, {
       cluster_number,
       name,
-    });
+    }, { ctx: c });
     return c.json(cluster);
   } catch (error: any) {
     if (error?.code === "P2002") {
@@ -137,7 +137,9 @@ adminRoutes.patch("/clusters/:id/head", async (c) => {
   // user_id = null means "unassign"
   if (user_id === null) {
     await prisma.cluster.update({ where: { id: clusterId }, data: { cluster_head_id: null } });
-    await writeAuditLog(admin.id, "unassigned_cluster_head", "Cluster", clusterId, {});
+    await writeAuditLog(admin.id, "unassigned_cluster_head", "Cluster", clusterId, {}, {
+      ctx: c,
+    });
     return c.json({ success: true });
   }
 
@@ -148,7 +150,9 @@ adminRoutes.patch("/clusters/:id/head", async (c) => {
   if (!user) return c.json({ error: "User must be an active Cluster Coordinator in this cluster" }, 400);
 
   await prisma.cluster.update({ where: { id: clusterId }, data: { cluster_head_id: user.id } });
-  await writeAuditLog(admin.id, "assigned_cluster_head", "Cluster", clusterId, { user_id: user.id });
+  await writeAuditLog(admin.id, "assigned_cluster_head", "Cluster", clusterId, { user_id: user.id }, {
+    ctx: c,
+  });
   return c.json({ success: true });
 });
 
@@ -163,7 +167,9 @@ adminRoutes.delete("/clusters/:id", async (c) => {
   }
   await prisma.cluster.delete({ where: { id } });
   await removeExistingClusterLogos(id);
-  await writeAuditLog(admin.id, "deleted_cluster", "Cluster", id, {});
+  await writeAuditLog(admin.id, "deleted_cluster", "Cluster", id, {}, {
+    ctx: c,
+  });
   return c.json({ success: true });
 });
 
@@ -210,7 +216,7 @@ adminRoutes.post("/clusters/:id/logo", async (c) => {
   await prisma.cluster.update({ where: { id }, data: { logo: logoPath } });
   await writeAuditLog(admin.id, "uploaded_cluster_logo", "Cluster", id, {
     logo: logoPath,
-  });
+  }, { ctx: c });
 
   return c.json({ logo: logoPath });
 });
@@ -225,7 +231,9 @@ adminRoutes.delete("/clusters/:id/logo", async (c) => {
 
   await prisma.cluster.update({ where: { id }, data: { logo: null } });
   await removeExistingClusterLogos(id);
-  await writeAuditLog(admin.id, "removed_cluster_logo", "Cluster", id, {});
+  await writeAuditLog(admin.id, "removed_cluster_logo", "Cluster", id, {}, {
+    ctx: c,
+  });
   return c.json({ logo: null });
 });
 
@@ -307,7 +315,7 @@ adminRoutes.post("/schools", async (c) => {
     abbreviation,
     level,
     cluster_id: clusterId,
-  });
+  }, { ctx: c });
   return c.json(school);
 });
 
@@ -348,7 +356,9 @@ adminRoutes.patch("/schools/:id", async (c) => {
     },
   });
 
-  await writeAuditLog(admin.id, "updated_school", "School", id, body);
+  await writeAuditLog(admin.id, "updated_school", "School", id, body, {
+    ctx: c,
+  });
   return c.json(school);
 });
 
@@ -356,7 +366,9 @@ adminRoutes.delete("/schools/:id", async (c) => {
   const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   await prisma.school.delete({ where: { id } });
-  await writeAuditLog(admin.id, "deleted_school", "School", id, {});
+  await writeAuditLog(admin.id, "deleted_school", "School", id, {}, {
+    ctx: c,
+  });
   return c.json({ success: true });
 });
 
@@ -374,7 +386,7 @@ adminRoutes.patch("/schools/:id/restrictions", async (c) => {
   });
   await writeAuditLog(admin.id, "updated_school_restrictions", "School", id, {
     restricted_program_ids,
-  });
+  }, { ctx: c });
   return c.json({ success: true });
 });
 
@@ -421,7 +433,7 @@ adminRoutes.post("/schools/:id/logo", async (c) => {
   await prisma.school.update({ where: { id }, data: { logo: logoPath } });
   await writeAuditLog(admin.id, "uploaded_school_logo", "School", id, {
     logo: logoPath,
-  });
+  }, { ctx: c });
 
   return c.json({ logo: logoPath });
 });
@@ -436,7 +448,9 @@ adminRoutes.delete("/schools/:id/logo", async (c) => {
 
   await prisma.school.update({ where: { id }, data: { logo: null } });
   await removeExistingSchoolLogos(id);
-  await writeAuditLog(admin.id, "removed_school_logo", "School", id, {});
+  await writeAuditLog(admin.id, "removed_school_logo", "School", id, {}, {
+    ctx: c,
+  });
 
   return c.json({ logo: null });
 });

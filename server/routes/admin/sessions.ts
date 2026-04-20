@@ -13,6 +13,22 @@ const sessionsRoutes = new Hono();
 sessionsRoutes.use("/sessions", adminOnly);
 sessionsRoutes.use("/sessions/*", adminOnly);
 
+function buildSearchWhere(search: string | undefined) {
+  if (!search) return {};
+  return {
+    user: {
+      is: {
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { first_name: { contains: search, mode: "insensitive" as const } },
+          { last_name: { contains: search, mode: "insensitive" as const } },
+          { email: { contains: search, mode: "insensitive" as const } },
+        ],
+      },
+    },
+  };
+}
+
 function buildStatusWhere(status: string | undefined) {
   const now = new Date();
 
@@ -77,27 +93,22 @@ sessionsRoutes.get("/sessions", async (c) => {
   const search = c.req.query("search")?.trim();
   const userId = parsePositiveInt(c.req.query("userId"));
   const status = c.req.query("status");
+  const page = parsePositiveInt(c.req.query("page"));
+  const limit = Math.min(100, parsePositiveInt(c.req.query("limit")) ?? 25);
 
+  const where = {
+    ...(userId ? { user_id: userId } : {}),
+    ...buildStatusWhere(status),
+    ...buildSearchWhere(search),
+  };
+
+  const shouldPaginate = Boolean(page);
   const sessions = await prisma.userSession.findMany({
-    where: {
-      ...(userId ? { user_id: userId } : {}),
-      ...buildStatusWhere(status),
-      ...(search
-        ? {
-          user: {
-            is: {
-              OR: [
-                { name: { contains: search, mode: "insensitive" } },
-                { first_name: { contains: search, mode: "insensitive" } },
-                { last_name: { contains: search, mode: "insensitive" } },
-                { email: { contains: search, mode: "insensitive" } },
-              ],
-            },
-          },
-        }
-        : {}),
-    },
+    where,
     orderBy: [{ last_seen_at: "desc" }, { created_at: "desc" }],
+    ...(shouldPaginate
+      ? { skip: ((page ?? 1) - 1) * limit, take: limit }
+      : {}),
     select: {
       id: true,
       device_label: true,
@@ -119,6 +130,13 @@ sessionsRoutes.get("/sessions", async (c) => {
       },
     },
   });
+  const total = shouldPaginate ? await prisma.userSession.count({ where }) : null;
+
+  if (shouldPaginate) {
+    c.header("X-Page", String(page ?? 1));
+    c.header("X-Page-Size", String(limit));
+    c.header("X-Total-Count", String(total ?? sessions.length));
+  }
 
   return c.json(sessions.map(serializeAdminSession));
 });
@@ -147,7 +165,7 @@ sessionsRoutes.delete("/sessions/user/:userId", async (c) => {
     revoked_count: revoked,
     target_email: user.email,
     target_name: buildSubmittedBy(user),
-  });
+  }, { ctx: c });
 
   return c.json({ revoked });
 });
@@ -191,7 +209,7 @@ sessionsRoutes.delete("/sessions/:id", async (c) => {
     device_label: session.device_label ?? "Unknown device",
     ip_address: session.ip_address,
     already_revoked: Boolean(session.revoked_at),
-  });
+  }, { ctx: c });
 
   return c.json({ success: true });
 });

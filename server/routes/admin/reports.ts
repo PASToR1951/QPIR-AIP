@@ -878,7 +878,7 @@ reportsRoutes.get("/reports/consolidation/export", async (c) => {
     groupBy,
     format,
     row_count: summaryRows.length,
-  });
+  }, { ctx: c });
 
   const filename = `consolidation-${quarter === 0 ? 'All-Quarters' : `Q${quarter}`}-${year}`;
 
@@ -1079,7 +1079,7 @@ reportsRoutes.get("/reports/:type/export", async (c) => {
     year,
     format,
     row_count: rows.length,
-  });
+  }, { ctx: c });
 
   if (!rows.length) {
     return c.json({

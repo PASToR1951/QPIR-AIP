@@ -218,6 +218,20 @@ authRoutes.post('/login', async (c) => {
       // Also reject OAuth-only accounts (no password set) — they must use SSO
       const prev = loginAttempts.get(key);
       loginAttempts.set(key, { count: (prev?.count ?? 0) + 1, firstAttempt: prev?.firstAttempt ?? now });
+      writeUserLog({
+        userId: user?.id ?? null,
+        action: "failed_login",
+        details: {
+          email_attempted: email ?? null,
+          method: "password",
+          reason: !user
+            ? "user_not_found"
+            : !user.is_active
+            ? "user_inactive"
+            : "password_unavailable",
+        },
+        ipAddress: getClientIp(c),
+      });
       return c.json({ error: 'Invalid credentials' }, 401);
     }
 
@@ -226,6 +240,16 @@ authRoutes.post('/login', async (c) => {
       // Record failed attempt
       const prev = loginAttempts.get(key);
       loginAttempts.set(key, { count: (prev?.count ?? 0) + 1, firstAttempt: prev?.firstAttempt ?? now });
+      writeUserLog({
+        userId: user.id,
+        action: "failed_login",
+        details: {
+          email_attempted: email ?? null,
+          method: "password",
+          reason: "password_mismatch",
+        },
+        ipAddress: getClientIp(c),
+      });
       return c.json({ error: 'Invalid credentials' }, 401);
     }
 

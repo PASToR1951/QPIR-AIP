@@ -16,6 +16,118 @@ const usersRoutes = new Hono();
 usersRoutes.use("/users", adminOnly);
 usersRoutes.use("/users/*", adminOnly);
 
+function buildUserPrograms(
+  user: {
+    role: string;
+    school?: { id: number; level: string } | null;
+    programs: Array<{ id: number; title: string; division: string | null }>;
+  },
+  allPrograms: Array<{
+    id: number;
+    title: string;
+    division: string | null;
+    school_level_requirement: string;
+    restricted_schools: Array<{ id: number }>;
+  }>,
+) {
+  if (user.role === "School" && user.school) {
+    const schoolLevel = user.school.level;
+    const schoolId = user.school.id;
+    return allPrograms
+      .filter((program) => {
+        const restricted = program.restricted_schools;
+        if (program.school_level_requirement === "Select Schools") {
+          return restricted.some((school) => school.id === schoolId);
+        }
+        const levelMatch = program.school_level_requirement === "Both" ||
+          program.school_level_requirement === schoolLevel ||
+          (schoolLevel === "Both" &&
+            ["Elementary", "Secondary"].includes(
+              program.school_level_requirement,
+            ));
+        if (!levelMatch) return false;
+        if (restricted.length > 0) {
+          return restricted.some((school) => school.id === schoolId);
+        }
+        return true;
+      })
+      .map((program) => ({
+        id: program.id,
+        title: program.title,
+        division: program.division,
+      }));
+  }
+
+  return user.programs.map((program) => ({
+    id: program.id,
+    title: program.title,
+    division: program.division,
+  }));
+}
+
+function serializeAdminUser(
+  user: {
+    id: number;
+    salutation: string | null;
+    name: string | null;
+    first_name: string | null;
+    middle_initial: string | null;
+    last_name: string | null;
+    position: string | null;
+    email: string;
+    role: string;
+    is_active: boolean;
+    cluster_id: number | null;
+    created_at: Date;
+    school:
+      | {
+        id: number;
+        name: string;
+        level: string;
+      }
+      | null;
+    cluster?:
+      | {
+        id: number;
+        name: string | null;
+        cluster_number: number | null;
+      }
+      | null;
+    programs: Array<{ id: number; title: string; division: string | null }>;
+  },
+  allPrograms: Array<{
+    id: number;
+    title: string;
+    division: string | null;
+    school_level_requirement: string;
+    restricted_schools: Array<{ id: number }>;
+  }>,
+) {
+  return {
+    id: user.id,
+    salutation: user.salutation,
+    name: user.name,
+    first_name: user.first_name,
+    middle_initial: user.middle_initial,
+    last_name: user.last_name,
+    position: user.position,
+    email: user.email,
+    role: user.role,
+    is_active: user.is_active,
+    cluster_id: user.cluster_id,
+    school: user.school ? { id: user.school.id, name: user.school.name } : null,
+    cluster: user.cluster
+      ? {
+        id: user.cluster.id,
+        name: user.cluster.name,
+        cluster_number: user.cluster.cluster_number,
+      }
+      : null,
+    programs: buildUserPrograms(user, allPrograms),
+    created_at: user.created_at,
+  };
+}
+
 usersRoutes.get("/users", async (c) => {
   const search = c.req.query("search");
   const role = c.req.query("role");
@@ -36,7 +148,7 @@ usersRoutes.get("/users", async (c) => {
           ],
         }),
       },
-      include: { school: { include: { cluster: true } }, programs: true },
+      include: { school: { include: { cluster: true } }, cluster: true, programs: true },
       orderBy: { created_at: "desc" },
     }),
     prisma.program.findMany({
@@ -52,54 +164,44 @@ usersRoutes.get("/users", async (c) => {
     }),
   ]);
 
-  return c.json(users.map((user) => {
-    let programs;
-    if (user.role === "School" && user.school) {
-      const schoolLevel = user.school.level;
-      const schoolId = user.school.id;
-      programs = allPrograms
-        .filter((program) => {
-          const restricted = program.restricted_schools;
-          if (program.school_level_requirement === "Select Schools") {
-            return restricted.some((school) => school.id === schoolId);
-          }
-          const levelMatch = program.school_level_requirement === "Both" ||
-            program.school_level_requirement === schoolLevel ||
-            (schoolLevel === "Both" &&
-              ["Elementary", "Secondary"].includes(
-                program.school_level_requirement,
-              ));
-          if (!levelMatch) return false;
-          if (restricted.length > 0) {
-            return restricted.some((school) => school.id === schoolId);
-          }
-          return true;
-        })
-        .map((program) => ({ id: program.id, title: program.title, division: program.division }));
-    } else {
-      programs = user.programs.map((program) => ({
-        id: program.id,
-        title: program.title,
-        division: program.division,
-      }));
-    }
+  return c.json(users.map((user) => serializeAdminUser(user, allPrograms)));
+});
 
-    return {
-      id: user.id,
-      salutation: user.salutation,
-      name: user.name,
-      first_name: user.first_name,
-      middle_initial: user.middle_initial,
-      last_name: user.last_name,
-      position: user.position,
-      email: user.email,
-      role: user.role,
-      is_active: user.is_active,
-      school: user.school ? { id: user.school.id, name: user.school.name } : null,
-      programs,
-      created_at: user.created_at,
-    };
-  }));
+usersRoutes.get("/users/:id/profile", async (c) => {
+  const admin = (await getUserFromToken(c))!;
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (!id) return c.json({ error: "Invalid user id" }, 400);
+
+  const [user, allPrograms] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id },
+      include: {
+        school: { include: { cluster: true } },
+        cluster: true,
+        programs: true,
+      },
+    }),
+    prisma.program.findMany({
+      where: { school_level_requirement: { not: "Division" } },
+      select: {
+        id: true,
+        title: true,
+        school_level_requirement: true,
+        division: true,
+        restricted_schools: { select: { id: true } },
+      },
+      orderBy: { title: "asc" },
+    }),
+  ]);
+
+  if (!user) return c.json({ error: "Not found" }, 404);
+
+  await writeAuditLog(admin.id, "viewed_user_pii", "User", id, {
+    email: user.email,
+    role: user.role,
+  }, { ctx: c });
+
+  return c.json(serializeAdminUser(user, allPrograms));
 });
 
 usersRoutes.post("/users", async (c) => {
@@ -396,7 +498,7 @@ usersRoutes.post("/users/import", async (c) => {
       skipped,
       error_count: errors.length,
       roles_imported: rolesImported,
-    });
+    }, { ctx: c });
   } catch (error) {
     logger.error("Failed to write audit log for bulk import", error);
   }
@@ -507,7 +609,7 @@ usersRoutes.patch("/users/:id", async (c) => {
       ...(is_active === false
         ? { revoked_session_count: revokedSessionCount }
         : {}),
-    });
+    }, { ctx: c });
     return c.json({
       id: user.id,
       email: user.email,
@@ -538,7 +640,7 @@ usersRoutes.delete("/users/:id", async (c) => {
   await writeAuditLog(admin.id, "deleted_user", "User", id, {
     role: user.role,
     revoked_session_count: revokedSessionCount,
-  });
+  }, { ctx: c });
   return c.json({ success: true });
 });
 
@@ -566,7 +668,7 @@ usersRoutes.post("/users/:id/reset-password", async (c) => {
   });
   await writeAuditLog(admin.id, "reset_password", "User", id, {
     revoked_session_count: revokedSessionCount,
-  });
+  }, { ctx: c });
 
   return c.json({
     success: true,
@@ -606,7 +708,7 @@ usersRoutes.post("/users/:id/anonymize", async (c) => {
   await writeAuditLog(admin.id, "anonymized_user", "User", id, {
     role: user.role,
     revoked_session_count: revokedSessionCount,
-  });
+  }, { ctx: c });
   return c.json({
     success: true,
     message: "User PII has been anonymized (RA 10173 §23).",

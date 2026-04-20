@@ -124,7 +124,7 @@ settingsRoutes.put("/settings/email-config", async (c) => {
     magic_link_ttl_login: updated.magic_link_ttl_login,
     magic_link_ttl_welcome: updated.magic_link_ttl_welcome,
     magic_link_ttl_reminder: updated.magic_link_ttl_reminder,
-  });
+  }, { ctx: c });
 
   return c.json(toPublicEmailConfig(updated));
 });
@@ -167,7 +167,7 @@ settingsRoutes.post("/settings/email-config/test", async (c) => {
 
   await writeAuditLog(admin.id, "sent_email_config_test", "EmailConfig", config.id, {
     target_email: adminUser.email,
-  });
+  }, { ctx: c });
 
   return c.json({ success: true, target: adminUser.email });
 });
@@ -226,6 +226,7 @@ settingsRoutes.post("/settings/division-config", async (c) => {
     "DivisionConfig",
     config.id,
     body,
+    { ctx: c },
   );
   return c.json(config);
 });
@@ -273,7 +274,7 @@ settingsRoutes.post("/settings/app-logo", async (c) => {
   }
   await writeAuditLog(admin.id, "uploaded_app_logo", "DivisionConfig", 1, {
     app_logo: logoPath,
-  });
+  }, { ctx: c });
 
   return c.json({ app_logo: logoPath });
 });
@@ -283,7 +284,9 @@ settingsRoutes.delete("/settings/app-logo", async (c) => {
 
   await removeExistingAppLogos();
   await prisma.divisionConfig.updateMany({ data: { app_logo: null } });
-  await writeAuditLog(admin.id, "deleted_app_logo", "DivisionConfig", 1, {});
+  await writeAuditLog(admin.id, "deleted_app_logo", "DivisionConfig", 1, {}, {
+    ctx: c,
+  });
 
   return c.json({ success: true });
 });

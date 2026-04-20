@@ -5,8 +5,8 @@
     "prisma:generate": "npx prisma generate --schema prisma/schema.prisma",
     "prisma:prepare": "deno task prisma:deploy && deno task prisma:generate",
     "start": "deno task prisma:prepare && deno run --env --allow-net --allow-env --allow-read --allow-write --allow-sys server.ts",
-    "dev": "deno run --watch --env --allow-net --allow-env --allow-read --allow-write --allow-sys server.ts",
-    "tunnel": "deno run --watch --env-file=.env.tunnel --allow-net --allow-env --allow-read --allow-write --allow-sys server.ts",
+    "dev": "deno task prisma:prepare && deno run --watch --env --allow-net --allow-env --allow-read --allow-write --allow-sys server.ts",
+    "tunnel": "deno task prisma:prepare && deno run --watch --env-file=.env.tunnel --allow-net --allow-env --allow-read --allow-write --allow-sys server.ts",
     "seed": "deno run -A --env scripts/seed.ts"
   },
   "compilerOptions": {

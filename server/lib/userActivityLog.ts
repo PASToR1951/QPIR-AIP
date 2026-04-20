@@ -3,7 +3,7 @@ import { logger } from "./logger.ts";
 import type { Context } from "hono";
 
 export interface UserLogParams {
-  userId: number;
+  userId: number | null;
   action: string;
   entityType?: string | null;
   entityId?: number | null;
@@ -19,7 +19,7 @@ export function writeUserLog(params: UserLogParams): void {
   prisma.userActivityLog
     .create({
       data: {
-        user_id: params.userId,
+        user_id: params.userId ?? null,
         action: params.action,
         entity_type: params.entityType ?? null,
         entity_id: params.entityId ?? null,

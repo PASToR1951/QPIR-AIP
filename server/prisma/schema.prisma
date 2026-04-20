@@ -459,11 +459,16 @@ model AuditLog {
   entity_type String   // "User", "AIP", "PIR", "School", "Program", etc.
   entity_id   Int
   details     Json
+  ip_address  String?  // Client IP when the log was written from an HTTP request
   created_at  DateTime @default(now())
 
   // SetNull preserves the audit record when the admin account is deleted (evidence retention).
   admin       User?    @relation(fields: [admin_id], references: [id], onDelete: SetNull)
 
+  @@index([created_at(sort: Desc)])
+  @@index([action, created_at(sort: Desc)])
+  @@index([entity_type, entity_id, created_at(sort: Desc)])
+  @@index([admin_id, created_at(sort: Desc)])
   @@map("audit_logs")
 }
 
@@ -480,5 +485,8 @@ model UserActivityLog {
   user        User?    @relation("UserActivityLogs", fields: [user_id], references: [id], onDelete: SetNull)
 
   @@index([user_id, created_at(sort: Desc)])
+  @@index([created_at(sort: Desc)])
+  @@index([action, created_at(sort: Desc)])
+  @@index([entity_type, entity_id, created_at(sort: Desc)])
   @@map("user_activity_logs")
 }

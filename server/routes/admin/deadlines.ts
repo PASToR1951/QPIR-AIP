@@ -96,7 +96,7 @@ deadlinesRoutes.post("/deadlines", async (c) => {
     quarter,
     newDate: date,
     previousDate: existing?.date ?? null,
-  });
+  }, { ctx: c });
   return c.json(deadline);
 });
 
@@ -104,7 +104,9 @@ deadlinesRoutes.delete("/deadlines/:id", async (c) => {
   const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   await prisma.deadline.delete({ where: { id } });
-  await writeAuditLog(admin.id, "reset_deadline", "Deadline", id, {});
+  await writeAuditLog(admin.id, "reset_deadline", "Deadline", id, {}, {
+    ctx: c,
+  });
   return c.json({ success: true });
 });
 

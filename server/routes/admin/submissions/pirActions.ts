@@ -32,7 +32,9 @@ pirActionsRouter.patch("/pirs/:id/remarks", async (c) => {
     await pushPIRRemarksNotification(pir);
   }
 
-  await writeAuditLog(admin.id, "update_remarks", "PIR", id, { remarks });
+  await writeAuditLog(admin.id, "update_remarks", "PIR", id, { remarks }, {
+    ctx: c,
+  });
   return c.json({ success: true, remarks: pir.remarks });
 });
 
@@ -51,7 +53,7 @@ pirActionsRouter.patch("/pirs/:id/presented", async (c) => {
 
   await writeAuditLog(admin.id, "toggle_presented", "PIR", id, {
     presented: updated.presented,
-  });
+  }, { ctx: c });
 
   return c.json({ success: true, presented: updated.presented });
 });
@@ -77,7 +79,7 @@ pirActionsRouter.patch("/pirs/:id/activity-notes", async (c) => {
   await writeAuditLog(admin.id, "update_activity_notes", "PIR", pirId, {
     activity_review_id,
     notes,
-  });
+  }, { ctx: c });
 
   return c.json({ ok: true });
 });

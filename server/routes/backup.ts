@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
 import { logger } from "../lib/logger.ts";
-import { prisma } from "../db/client.ts";
+import { writeAuditLog } from "./admin/shared/audit.ts";
 
 import type { Context } from "hono";
 
@@ -16,19 +16,6 @@ async function requireAdmin(c: Context): Promise<TokenPayload | null> {
   const user = await getUserFromToken(c);
   if (!user || user.role !== "Admin") return null;
   return user;
-}
-
-async function writeAuditLog(
-  adminId: number,
-  action: string,
-  entityType: string,
-  entityId: number,
-  details: Record<string, unknown>
-) {
-  await prisma.auditLog.create({
-    // deno-lint-ignore no-explicit-any
-    data: { admin_id: adminId, action, entity_type: entityType, entity_id: entityId, details: details as any },
-  });
 }
 
 // List .enc files in a directory, returning name, size, modified time
@@ -125,7 +112,7 @@ backupRoutes.post("/trigger", async (c) => {
     await writeAuditLog(admin.id, "BACKUP_TRIGGERED", "backup", 0, {
       triggered_by: admin.id,
       at: new Date().toISOString(),
-    });
+    }, { ctx: c });
   } catch (e) {
     logger.warn("Failed to write audit log for backup trigger", { error: String(e) });
   }

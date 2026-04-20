@@ -14,6 +14,7 @@ import { ALLOWED_ORIGIN } from "./lib/config.ts";
 import { logger } from "./lib/logger.ts";
 import { startDeadlineReminderScheduler } from "./lib/deadlineReminders.ts";
 import { startMagicLinkCleanupScheduler } from "./lib/magicLink.ts";
+import { makeRateLimiter } from "./lib/rateLimiter.ts";
 
 const app = new Hono();
 
@@ -24,29 +25,6 @@ const UPLOADED_LOGO_CONTENT_TYPES: Record<string, string> = {
   jpeg: "image/jpeg",
   gif: "image/gif",
 };
-
-// In-memory sliding window rate limiter
-const rateLimitWindows = new Map<string, number[]>();
-
-function makeRateLimiter(limit: number, windowMs: number) {
-  return async (c: any, next: any) => {
-    const ip = c.req.header('x-forwarded-for') || c.req.header('x-real-ip');
-    // Without a proxy providing the real IP, all requests would share one bucket
-    // and legitimate users would be blocked. Skip rate limiting in that case.
-    if (!ip) { await next(); return; }
-    const key = `${c.req.path}|${ip}`;
-    const now = Date.now();
-    const windowStart = now - windowMs;
-
-    const timestamps = (rateLimitWindows.get(key) || []).filter(t => t > windowStart);
-    if (timestamps.length >= limit) {
-      return c.json({ error: 'Too many requests, please try again later.' }, 429);
-    }
-    timestamps.push(now);
-    rateLimitWindows.set(key, timestamps);
-    await next();
-  };
-}
 
 async function serveUploadedLogo(c: Context, dir: string) {
   const filename = c.req.param('filename');

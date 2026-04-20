@@ -107,7 +107,7 @@ adminRoutes.post("/programs", async (c) => {
     });
     await writeAuditLog(admin.id, "created_program", "Program", program.id, {
       title,
-    });
+    }, { ctx: c });
     return c.json(program);
   } catch (error: any) {
     if (error?.code === "P2002") {
@@ -140,7 +140,7 @@ adminRoutes.patch("/programs/:id", async (c) => {
       abbreviation,
       division,
       school_level_requirement,
-    });
+    }, { ctx: c });
     return c.json(program);
   } catch (error: any) {
     if (error?.code === "P2002") {
@@ -157,7 +157,9 @@ adminRoutes.delete("/programs/:id", async (c) => {
   const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
   await prisma.program.delete({ where: { id } });
-  await writeAuditLog(admin.id, "deleted_program", "Program", id, {});
+  await writeAuditLog(admin.id, "deleted_program", "Program", id, {}, {
+    ctx: c,
+  });
   return c.json({ success: true });
 });
 
@@ -173,7 +175,7 @@ adminRoutes.patch("/programs/:id/personnel", async (c) => {
   });
   await writeAuditLog(admin.id, "updated_program_personnel", "Program", id, {
     user_ids,
-  });
+  }, { ctx: c });
   return c.json({ success: true });
 });
 
@@ -300,6 +302,7 @@ adminRoutes.put("/programs/:id/template", async (c) => {
       target_code: targetCode,
       indicator_count: indicators.length,
     },
+    { ctx: c },
   );
 
   return c.json(serializeProgramTemplate(saved));
@@ -329,6 +332,7 @@ adminRoutes.delete("/programs/:id/template", async (c) => {
       program_id: id,
       target_code: existing.target_code,
     },
+    { ctx: c },
   );
   return c.json({ success: true });
 });

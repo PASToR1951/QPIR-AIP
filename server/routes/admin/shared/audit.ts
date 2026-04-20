@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { prisma } from "../../../db/client.ts";
+import { getClientIp } from "../../../lib/userActivityLog.ts";
 
 export async function writeAuditLog(
   adminId: number,
@@ -7,7 +8,9 @@ export async function writeAuditLog(
   entityType: string,
   entityId: number,
   details: Record<string, unknown>,
+  opts: { ipAddress?: string | null; ctx?: Context } = {},
 ) {
+  const ipAddress = opts.ipAddress ?? (opts.ctx ? getClientIp(opts.ctx) : null);
   await prisma.auditLog.create({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: {
@@ -16,6 +19,7 @@ export async function writeAuditLog(
       entity_type: entityType,
       entity_id: entityId,
       details: details as any,
+      ip_address: ipAddress,
     },
   });
 }
@@ -26,6 +30,7 @@ interface AuditPayload {
   entityType: string;
   entityId: number;
   details: Record<string, unknown>;
+  opts?: { ipAddress?: string | null };
 }
 
 export function withAudit(
@@ -45,6 +50,7 @@ export function withAudit(
         result.audit.entityType,
         result.audit.entityId,
         result.audit.details,
+        { ...result.audit.opts, ctx: c },
       );
     }
     return result.response;

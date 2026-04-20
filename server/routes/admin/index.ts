@@ -21,6 +21,7 @@ import settingsRoutes from "./settings.ts";
 import auditRoutes from "./audit.ts";
 import emailRoutes from "./emailBlast.ts";
 import sessionsRoutes from "./sessions.ts";
+import logsRoutes from "./logs/index.ts";
 
 const adminRoutes = new Hono();
 
@@ -42,5 +43,6 @@ adminRoutes.route("/", announcementsRoutes);
 adminRoutes.route("/", settingsRoutes);
 adminRoutes.route("/", emailRoutes);
 adminRoutes.route("/", auditRoutes);
+adminRoutes.route("/", logsRoutes);
 
 export default adminRoutes;

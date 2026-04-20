@@ -85,7 +85,7 @@ emailRoutes.post("/email/send-welcome-batch", async (c) => {
       sent,
       failed,
       skipped,
-    });
+    }, { ctx: c });
 
     await writeStreamPayload(stream, {
       type: "complete",
@@ -199,7 +199,7 @@ emailRoutes.post("/email-blast", async (c) => {
       sent,
       failed,
       skipped,
-    });
+    }, { ctx: c });
 
     await writeStreamPayload(stream, {
       type: "complete",
