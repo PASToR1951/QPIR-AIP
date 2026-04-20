@@ -739,6 +739,7 @@ reportsRoutes.get("/reports/consolidation", async (c) => {
     groupBy,
     statuses,
     clusterId,
+    schoolId,
     programId,
     isValidYear,
     isValidQuarter: quarterValid,
@@ -758,6 +759,7 @@ reportsRoutes.get("/reports/consolidation", async (c) => {
       aip: {
         year,
         deleted_at: null,
+        ...(schoolId && { school_id: schoolId }),
         ...(clusterId && { school: { cluster_id: clusterId } }),
         ...(programId && { program_id: programId }),
       },
@@ -780,6 +782,7 @@ reportsRoutes.get("/reports/consolidation/export", async (c) => {
     groupBy,
     statuses,
     clusterId,
+    schoolId,
     programId,
     format,
     isValidYear,
@@ -800,6 +803,7 @@ reportsRoutes.get("/reports/consolidation/export", async (c) => {
       aip: {
         year,
         deleted_at: null,
+        ...(schoolId && { school_id: schoolId }),
         ...(clusterId && { school: { cluster_id: clusterId } }),
         ...(programId && { program_id: programId }),
       },

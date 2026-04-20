@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users, Buildings, PaperPlaneTilt } from '@phosphor-icons/react';
+import { Spinner } from '../../components/Spinner.jsx';
 import { SettingsCard, StatTile } from './SettingsUI.jsx';
 import { StreamProgressCard } from './StreamProgressCard.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
@@ -10,7 +11,7 @@ export function RecipientsPanel({ emailLoading, recipientsData, recipientRoleFil
     <SettingsCard icon={Users} iconBg="bg-emerald-100 dark:bg-emerald-950/50" iconColor="text-emerald-600 dark:text-emerald-400"
       title="Recipients Directory" description="Review the active users who can receive broadcast or reminder emails.">
       {emailLoading ? (
-        <div className="flex items-center justify-center h-28"><div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-emerald-500 animate-spin" /></div>
+        <div className="flex items-center justify-center h-28"><Spinner /></div>
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -50,7 +51,7 @@ export function EmailBlastPanel({ emailLoading, blastForm, setBlastForm, recipie
     <SettingsCard icon={PaperPlaneTilt} iconBg="bg-violet-100 dark:bg-violet-950/50" iconColor="text-violet-600 dark:text-violet-400"
       title="Portal Open Notification" description="Send a seasonal announcement that the AIP or PIR portal is now open.">
       {emailLoading ? (
-        <div className="flex items-center justify-center h-28"><div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-violet-500 animate-spin" /></div>
+        <div className="flex items-center justify-center h-28"><Spinner /></div>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -93,7 +94,7 @@ export function EmailBlastPanel({ emailLoading, blastForm, setBlastForm, recipie
             </div>
             <button onClick={onSend} disabled={blastSending || blastForm.target_roles.length === 0}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-colors">
-              {blastSending ? <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" /> : <PaperPlaneTilt size={15} weight="bold" />}
+              {blastSending ? <Spinner size="sm" variant="white" /> : <PaperPlaneTilt size={15} weight="bold" />}
               {blastSending ? 'Sending…' : `Send to ${estimatedBlastRecipients} users`}
             </button>
           </div>

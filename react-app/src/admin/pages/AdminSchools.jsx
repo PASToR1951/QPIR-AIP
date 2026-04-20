@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle, MagnifyingGlass, Plus, X } from '@phosphor-icons/react';
+import { Spinner } from '../components/Spinner.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
@@ -115,7 +116,7 @@ export default function AdminSchools() {
         {fetchError && <div className="rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 text-sm font-medium">{fetchError}</div>}
 
         {loading ? (
-          <div className="flex items-center justify-center h-48"><div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" /></div>
+          <div className="flex items-center justify-center h-48"><Spinner /></div>
         ) : (
           <div className="space-y-3">
             {filteredClusters.map(cl => (

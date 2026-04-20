@@ -1,20 +1,41 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { CaretDown, X, MagnifyingGlass } from '@phosphor-icons/react';
 
 export const MultiSelect = ({ options = [], selected = [], onChange, placeholder = 'Select…', className = '' }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [dropPos, setDropPos] = useState(null);
   const containerRef = useRef(null);
+  const dropRef = useRef(null);
 
   useEffect(() => {
     const handler = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target) &&
+        (!dropRef.current || !dropRef.current.contains(e.target))
+      ) {
         setOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => {
+      if (dropRef.current && dropRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
 
   const filtered = options
     .filter(o => String(o.label).toLowerCase().includes(query.toLowerCase()))
@@ -27,6 +48,19 @@ export const MultiSelect = ({ options = [], selected = [], onChange, placeholder
   const selectedLabels = options.filter(o => selected.includes(o.value));
 
   const handleOpen = () => {
+    if (!open && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const approximateDropHeight = Math.min(options.length * 40 + 60, 252);
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUpward = spaceBelow < approximateDropHeight && rect.top > approximateDropHeight;
+
+      setDropPos({
+        left: rect.left,
+        width: rect.width,
+        top: openUpward ? undefined : rect.bottom + 4,
+        bottom: openUpward ? window.innerHeight - rect.top + 4 : undefined,
+      });
+    }
     setOpen(v => !v);
     setQuery('');
   };
@@ -56,8 +90,19 @@ export const MultiSelect = ({ options = [], selected = [], onChange, placeholder
         <CaretDown size={16} className={`ml-auto text-slate-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
-        <div className="mt-1 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl shadow-lg overflow-hidden">
+      {open && dropPos && createPortal(
+        <div
+          ref={dropRef}
+          style={{
+            position: 'fixed',
+            top: dropPos.top,
+            bottom: dropPos.bottom,
+            left: dropPos.left,
+            width: dropPos.width,
+            zIndex: 9999,
+          }}
+          className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl shadow-xl overflow-hidden"
+        >
           <div className="p-2 border-b border-slate-100 dark:border-dark-border">
             <div className="flex items-center gap-2 px-2">
               <MagnifyingGlass size={16} className="text-slate-400 shrink-0" />
@@ -93,7 +138,8 @@ export const MultiSelect = ({ options = [], selected = [], onChange, placeholder
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

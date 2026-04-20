@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Signature, MagnifyingGlass, WarningCircle, SpinnerGap, X } from '@phosphor-icons/react';
+import { Signature, MagnifyingGlass, WarningCircle, X } from '@phosphor-icons/react';
+import { Spinner } from '../../components/Spinner.jsx';
 import api from '../../../lib/api.js';
 import { SettingsCard } from './SettingsUI.jsx';
 
@@ -108,7 +109,7 @@ export function SignatoriesPanel() {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-8 text-slate-400">
-          <SpinnerGap size={18} className="animate-spin" />
+          <Spinner />
           <span className="text-sm font-bold">Loading signatories…</span>
         </div>
       ) : error ? (

@@ -1,5 +1,6 @@
 import React from 'react';
 import { EnvelopeSimple, FloppyDisk, PaperPlaneTilt, Clock } from '@phosphor-icons/react';
+import { Spinner } from '../../components/Spinner.jsx';
 import { SettingsCard } from './SettingsUI.jsx';
 import { DurationField } from './DurationField.jsx';
 import { STATUS_TONE_CLASSES } from './settingsConstants.js';
@@ -11,7 +12,7 @@ export function EmailConfigPanel({ emailConfig, setEmailConfig, emailLoading, em
   if (emailLoading) return (
     <SettingsCard icon={EnvelopeSimple} iconBg="bg-blue-100 dark:bg-blue-950/50" iconColor="text-blue-600 dark:text-blue-400"
       title="Email Configuration" description="Configure Gmail SMTP delivery for welcome emails, reminders, and portal-open notifications.">
-      <div className="flex items-center justify-center h-32"><div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-blue-500 animate-spin" /></div>
+      <div className="flex items-center justify-center h-32"><Spinner /></div>
     </SettingsCard>
   );
 
@@ -62,11 +63,11 @@ export function EmailConfigPanel({ emailConfig, setEmailConfig, emailLoading, em
       </div>
       <div className="flex flex-wrap gap-2">
         <button onClick={onSave} disabled={emailSaving} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-colors">
-          {emailSaving ? <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" /> : <FloppyDisk size={15} weight="bold" />}
+          {emailSaving ? <Spinner size="sm" variant="white" /> : <FloppyDisk size={15} weight="bold" />}
           {emailSaving ? 'Saving…' : 'Save Email Settings'}
         </button>
         <button onClick={onTest} disabled={emailTesting} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-dark-base dark:hover:bg-white/[0.06] text-slate-700 dark:text-slate-200 disabled:opacity-50 transition-colors">
-          {emailTesting ? <span className="w-4 h-4 rounded-full border-2 border-slate-400/40 border-t-slate-500 animate-spin" /> : <PaperPlaneTilt size={15} weight="bold" />}
+          {emailTesting ? <Spinner size="sm" variant="subtle" /> : <PaperPlaneTilt size={15} weight="bold" />}
           {emailTesting ? 'Sending Test…' : 'Send Test Email'}
         </button>
       </div>
@@ -79,7 +80,7 @@ export function MagicLinkPanel({ emailLoading, emailSaving, ttlInputs, setTtlInp
     <SettingsCard icon={Clock} iconBg="bg-amber-100 dark:bg-amber-950/50" iconColor="text-amber-600 dark:text-amber-400"
       title="Magic Link Settings" description="Set how long each type of magic link remains valid.">
       {emailLoading ? (
-        <div className="flex items-center justify-center h-28"><div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-amber-500 animate-spin" /></div>
+        <div className="flex items-center justify-center h-28"><Spinner /></div>
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4">

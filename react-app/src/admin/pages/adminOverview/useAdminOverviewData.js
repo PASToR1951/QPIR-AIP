@@ -56,6 +56,7 @@ export function useAdminOverviewData() {
   ), [data?.clusterCompliance]);
 
   const sectionData = data?.divisionSections ?? [];
+  const divisionAipCompliance = data?.divisionAipCompliance ?? [];
 
   const user = useMemo(() => {
     try {
@@ -69,6 +70,7 @@ export function useAdminOverviewData() {
     appLogo,
     clusterSort,
     data,
+    divisionAipCompliance,
     fetchError,
     isDark,
     loading,

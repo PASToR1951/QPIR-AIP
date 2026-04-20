@@ -5,6 +5,7 @@ import {
   ArrowClockwise, Terminal, Clock, HardDrive, CalendarBlank,
   ShieldCheck, Info,
 } from '@phosphor-icons/react';
+import { Spinner } from '../components/Spinner.jsx';
 
 function formatBytes(bytes) {
   if (bytes === 0 || bytes == null) return '0 B';
@@ -176,7 +177,7 @@ export default function AdminBackups() {
 
         {loading && !status ? (
           <div className="flex items-center justify-center py-8">
-            <div className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-pink-500 animate-spin" />
+            <Spinner />
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -230,7 +231,7 @@ export default function AdminBackups() {
           className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[#E94560] hover:bg-[#c23152] rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-[#E94560]/20"
         >
           {triggering ? (
-            <><div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Running...</>
+            <><Spinner size="sm" variant="white" /> Running...</>
           ) : (
             <><Database size={16} /> Trigger Backup Now</>
           )}
@@ -281,7 +282,7 @@ export default function AdminBackups() {
 
         {loading ? (
           <div className="flex items-center justify-center py-6">
-            <div className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-pink-500 animate-spin" />
+            <Spinner />
           </div>
         ) : (
           <div className="space-y-0.5 max-h-72 overflow-y-auto">

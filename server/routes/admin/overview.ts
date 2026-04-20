@@ -49,6 +49,8 @@ overviewRoutes.get("/overview", async (c) => {
     clusters,
     allPrograms,
     programsByDivision,
+    divisionProgramCounts,
+    divisionAips,
   ] = await Promise.all([
     prisma.school.count(),
     prisma.user.count({ where: { is_active: true } }),
@@ -164,6 +166,15 @@ overviewRoutes.get("/overview", async (c) => {
       by: ["division"],
       where: { division: { not: null } },
       _count: { id: true },
+    }),
+    prisma.program.groupBy({
+      by: ["division"],
+      where: { school_level_requirement: "Division", division: { not: null } },
+      _count: { id: true },
+    }),
+    prisma.aIP.findMany({
+      where: { year, school_id: null, status: { not: "Draft" } },
+      select: { status: true, program: { select: { division: true } } },
     }),
   ]);
 
@@ -412,6 +423,23 @@ overviewRoutes.get("/overview", async (c) => {
     };
   });
 
+  const divisionAipCompliance = sectionMeta.map(({ key, label, full }) => {
+    const totalPrograms =
+      divisionProgramCounts.find((r) => r.division === key)?._count.id ?? 0;
+    const sectionAips = divisionAips.filter((a) => a.program?.division === key);
+    const withAip = sectionAips.length;
+    const approved = sectionAips.filter((a) => a.status === "Approved").length;
+    return {
+      key,
+      label,
+      full,
+      totalPrograms,
+      withAip,
+      approved,
+      pct: totalPrograms > 0 ? Math.round((withAip / totalPrograms) * 100) : 0,
+    };
+  });
+
   return c.json({
     stats: {
       totalSchools,
@@ -443,6 +471,7 @@ overviewRoutes.get("/overview", async (c) => {
     pirQuarterly,
     pirClusterStatus,
     divisionSections,
+    divisionAipCompliance,
   });
 });
 

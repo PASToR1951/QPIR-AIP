@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { DownloadSimple, Funnel } from '@phosphor-icons/react';
+import { Spinner } from '../components/Spinner.jsx';
 import { DataTable } from '../components/DataTable.jsx';
 import { HIGHLIGHT_DURATION_MS, TOAST_DURATION_MS } from '../../constants.js';
 import { auth } from '../../lib/auth.js';
@@ -191,7 +192,7 @@ export default function AdminSubmissions() {
 
         {/* Table */}
         {loading ? (
-          <div className="flex items-center justify-center h-48"><div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" /></div>
+          <div className="flex items-center justify-center h-48"><Spinner /></div>
         ) : (() => {
           const groups = groupSubmissions(submissions, group);
           if (!groups) return renderTable(submissions, { emptyMessage: 'No submissions match the current filters.', initialPage: targetPage, endMessage: 'All matching submissions shown' });

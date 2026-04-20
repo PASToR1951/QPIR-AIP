@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XCircle, GraduationCap, MagnifyingGlass, X } from '@phosphor-icons/react';
+import { Spinner } from './Spinner.jsx';
 import api from '../../lib/api.js';
 
 const LEVEL_LABELS = {
@@ -105,7 +106,7 @@ export default function ProgramMembersModal({ open, program, onClose }) {
               <div className="px-6 pb-4 overflow-y-auto min-h-0 flex-1">
                 {loading ? (
                   <div className="flex items-center justify-center h-40">
-                    <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />
+                    <Spinner />
                   </div>
                 ) : error ? (
                   <p className="text-center text-sm text-rose-500 py-10">{error}</p>

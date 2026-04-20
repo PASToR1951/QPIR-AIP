@@ -1,6 +1,7 @@
 import React from 'react';
 import { XCircle, DownloadSimple, LockKeyOpen, LockKey, FloppyDisk } from '@phosphor-icons/react';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
+import { Spinner } from '../../components/Spinner.jsx';
 import { getProjectTerminology } from '../../../lib/projectTerminology.js';
 
 export function SubmissionDetailModal({
@@ -33,7 +34,7 @@ export function SubmissionDetailModal({
         <div id="submission-detail-body" className="flex-1 min-h-0 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
           {viewLoading ? (
             <div className="flex min-h-[60vh] items-center justify-center">
-              <div className="w-6 h-6 rounded-full border-2 border-slate-300 border-t-indigo-500 animate-spin" />
+              <Spinner />
             </div>
           ) : viewData ? (
             <div className="mx-auto max-w-7xl space-y-5 text-sm">

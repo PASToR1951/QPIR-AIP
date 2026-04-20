@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Plus, Trash } from '@phosphor-icons/react';
+import { Spinner } from './Spinner.jsx';
 import api from '../../lib/api.js';
 import { FormModal } from './FormModal.jsx';
 import { ConfirmModal } from './ConfirmModal.jsx';
@@ -201,7 +202,7 @@ export default function ProgramTemplatesModal({
       >
         {loading ? (
           <div className="flex items-center justify-center py-10">
-            <div className="h-6 w-6 rounded-full border-2 border-slate-300 border-t-indigo-500 animate-spin" />
+            <Spinner />
           </div>
         ) : (
           <div className="space-y-5">

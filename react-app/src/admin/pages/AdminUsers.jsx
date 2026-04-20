@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { MagnifyingGlass, Plus, UploadSimple, CheckCircle } from '@phosphor-icons/react';
+import { Spinner } from '../components/Spinner.jsx';
 import api from '../../lib/api.js';
 import { DataTable } from '../components/DataTable.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
@@ -48,8 +49,6 @@ export default function AdminUsers() {
 
   const showProgTooltip = (e, items) => { clearTimeout(tooltipHideTimer.current); setProgTooltip({ x: e.clientX, y: e.clientY, items }); };
   const hideProgTooltip = () => { tooltipHideTimer.current = setTimeout(() => setProgTooltip(null), 120); };
-
-  const takenSchoolIds = new Set(users.filter(u => u.role === 'School' && u.school?.id).map(u => u.school.id));
 
   const openEdit = (u) => {
     loadDropdownData();
@@ -101,7 +100,7 @@ export default function AdminUsers() {
 
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />
+            <Spinner />
           </div>
         ) : (
           <div className="flex-1 min-h-0">
@@ -125,8 +124,9 @@ export default function AdminUsers() {
       <CreateUserWizard
         open={createOpen}
         onClose={() => { setCreateOpen(false); setForm(EMPTY_USER_FORM); setFormError(''); }}
-        onSave={async (wizardForm) => { const ok = await handleCreate(wizardForm); if (ok) setCreateOpen(false); }}
-        schools={schools.filter(s => !takenSchoolIds.has(s.id))}
+        onSave={handleCreate}
+        schools={schools}
+        users={users}
         programs={programs} clusters={clusters}
         loading={actionLoading} error={formError}
       />
@@ -137,7 +137,7 @@ export default function AdminUsers() {
       />
 
       <FormModal open={!!editUser} title="Edit User" onSave={async () => { const ok = await handleEdit(editUser); if (ok) setEditUser(null); }} onCancel={() => setEditUser(null)} loading={actionLoading} saveLabel="Save Changes">
-        <UserForm form={form} setForm={setForm} schools={schools.filter(s => !takenSchoolIds.has(s.id) || s.id === form.school_id)} programs={programs} clusters={clusters} />
+        <UserForm form={form} setForm={setForm} schools={schools} users={users} programs={programs} clusters={clusters} />
         {formError && <p className="mt-3 text-xs font-bold text-rose-600">{formError}</p>}
       </FormModal>
 

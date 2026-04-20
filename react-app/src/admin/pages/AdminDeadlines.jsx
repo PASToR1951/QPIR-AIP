@@ -6,6 +6,7 @@ import {
   ClockCountdown, CaretDown, Hourglass, Warning, Info, LockSimple,
   CheckCircle, Timer,
 } from '@phosphor-icons/react';
+import { Spinner } from '../components/Spinner.jsx';
 
 function Tip({ text }) {
   return (
@@ -239,7 +240,7 @@ export default function AdminDeadlines() {
 
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />
+            <Spinner />
           </div>
         ) : (
           <>

@@ -125,6 +125,14 @@ const EXACT_MAP = {
     'First name and last name are required for Division Personnel accounts.',
   'email, password, role are required':
     'Email, password, and role are all required to create a new user.',
+  'Select an assigned cluster before choosing an own school.':
+    'Please choose the Cluster Head’s assigned cluster before selecting an own school.',
+  'Selected school not found':
+    'The selected school could not be found. Please choose another school.',
+  'Selected school must belong to the assigned cluster':
+    'Please choose a school that belongs to the selected cluster.',
+  'This school already has an assigned Cluster Head.':
+    'That school already has a Cluster Head assigned. Please choose another school.',
   'Minimum 8 characters required':
     'Password must be at least 8 characters long.',
   'Must contain an uppercase letter':

@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { Megaphone, At, Buildings, User, CalendarBlank, FloppyDisk, Trash, CheckCircle } from '@phosphor-icons/react';
+import { Spinner } from '../../components/Spinner.jsx';
 import { SettingsCard, BannerPreview } from './SettingsUI.jsx';
 import { DateTimePicker } from './DateTimePicker.jsx';
 import { TYPE_CONFIG, MAX_CHARS } from './settingsConstants.js';
@@ -110,7 +111,7 @@ export function AnnouncementPanel({
             <div className="flex flex-col items-start">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-black text-slate-700 dark:text-slate-200 leading-none">{announcement.is_active ? 'Active' : 'Inactive'}</span>
-                {autoSaving && <span className="w-3 h-3 rounded-full border-2 border-slate-300 border-t-indigo-500 animate-spin" />}
+                {autoSaving && <Spinner size="xs" />}
                 {autoSaved && !autoSaving && <CheckCircle size={12} weight="fill" className="text-emerald-500" />}
               </div>
               <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{announcement.is_active ? 'Visible to all users' : 'Hidden from users'}</span>
@@ -139,7 +140,7 @@ export function AnnouncementPanel({
             </button>
             <button onClick={handleSave} disabled={!canPublish}
               className={`flex items-center gap-2 px-5 py-2 text-sm font-bold rounded-xl transition-all shadow-sm disabled:cursor-not-allowed ${publishButtonStyle}`}>
-              {saving ? <span className="w-3.5 h-3.5 rounded-full border-2 border-white/50 border-t-white animate-spin" /> : hasSavedMessage && !hasUnpublishedChanges ? <CheckCircle size={15} weight="fill" /> : <FloppyDisk size={15} weight="bold" />}
+              {saving ? <Spinner size="sm" variant="white" /> : hasSavedMessage && !hasUnpublishedChanges ? <CheckCircle size={15} weight="fill" /> : <FloppyDisk size={15} weight="bold" />}
               {publishButtonLabel}
             </button>
           </div>

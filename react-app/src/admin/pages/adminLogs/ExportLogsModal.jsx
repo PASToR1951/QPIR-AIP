@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DownloadSimple, XCircle } from '@phosphor-icons/react';
+import { Spinner } from '../../components/Spinner.jsx';
 
 export function ExportLogsModal({ open, onClose, onExport }) {
   const [reason, setReason] = useState('');
@@ -124,7 +125,7 @@ export function ExportLogsModal({ open, onClose, onExport }) {
               >
                 {loading ? (
                   <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <Spinner size="sm" variant="white" />
                     Exporting…
                   </>
                 ) : (

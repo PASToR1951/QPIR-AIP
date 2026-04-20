@@ -128,6 +128,65 @@ function serializeAdminUser(
   };
 }
 
+type UserValidationClient = Pick<typeof prisma, "school" | "user">;
+
+async function validateClusterCoordinatorSchoolAssignment(
+  db: UserValidationClient,
+  {
+    clusterId,
+    schoolId,
+    excludeUserId,
+  }: {
+    clusterId?: number | null;
+    schoolId?: number | null;
+    excludeUserId?: number;
+  },
+): Promise<{ error: string; status: 400 | 409 } | null> {
+  if (schoolId == null) return null;
+
+  if (clusterId == null) {
+    return {
+      error: "Select an assigned cluster before choosing an own school.",
+      status: 400,
+    };
+  }
+
+  const school = await db.school.findUnique({
+    where: { id: schoolId },
+    select: { id: true, cluster_id: true },
+  });
+  if (!school) {
+    return {
+      error: "Selected school not found",
+      status: 400,
+    };
+  }
+
+  if (school.cluster_id !== clusterId) {
+    return {
+      error: "Selected school must belong to the assigned cluster",
+      status: 400,
+    };
+  }
+
+  const existingClusterCoordinator = await db.user.findFirst({
+    where: {
+      role: "Cluster Coordinator",
+      school_id: schoolId,
+      ...(excludeUserId ? { NOT: { id: excludeUserId } } : {}),
+    },
+    select: { id: true },
+  });
+  if (existingClusterCoordinator) {
+    return {
+      error: "This school already has an assigned Cluster Head.",
+      status: 409,
+    };
+  }
+
+  return null;
+}
+
 usersRoutes.get("/users", async (c) => {
   const search = c.req.query("search");
   const role = c.req.query("role");
@@ -276,6 +335,17 @@ usersRoutes.post("/users", async (c) => {
         error:
           "This school already has a user account. Only one account per school is allowed.",
       }, 409);
+    }
+  }
+
+  if (role === "Cluster Coordinator") {
+    const schoolAssignmentError =
+      await validateClusterCoordinatorSchoolAssignment(prisma, {
+        clusterId: cluster_id ?? null,
+        schoolId: school_id ?? null,
+      });
+    if (schoolAssignmentError) {
+      return c.json({ error: schoolAssignmentError.error }, schoolAssignmentError.status);
     }
   }
 
@@ -526,13 +596,23 @@ usersRoutes.patch("/users/:id", async (c) => {
 
   const existingUser = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, is_active: true },
+    select: {
+      id: true,
+      is_active: true,
+      role: true,
+      school_id: true,
+      cluster_id: true,
+    },
   });
   if (!existingUser) {
     return c.json({ error: "Not found" }, 404);
   }
 
   const cesRoles = ["CES-SGOD", "CES-ASDS", "CES-CID"];
+  const nextRole = role ?? existingUser.role;
+  const nextSchoolId = school_id !== undefined ? school_id : existingUser.school_id;
+  const nextClusterId = cluster_id !== undefined ? cluster_id : existingUser.cluster_id;
+
   if (role !== undefined && cesRoles.includes(role)) {
     const existing = await prisma.user.findFirst({
       where: { role, NOT: { id } },
@@ -545,15 +625,27 @@ usersRoutes.patch("/users/:id", async (c) => {
     }
   }
 
-  if (role === "School" && school_id != null) {
+  if (nextRole === "School" && nextSchoolId != null) {
     const existing = await prisma.user.findFirst({
-      where: { role: "School", school_id, NOT: { id } },
+      where: { role: "School", school_id: nextSchoolId, NOT: { id } },
     });
     if (existing) {
       return c.json({
         error:
           "This school already has a user account. Only one account per school is allowed.",
       }, 409);
+    }
+  }
+
+  if (nextRole === "Cluster Coordinator") {
+    const schoolAssignmentError =
+      await validateClusterCoordinatorSchoolAssignment(prisma, {
+        clusterId: nextClusterId ?? null,
+        schoolId: nextSchoolId ?? null,
+        excludeUserId: id,
+      });
+    if (schoolAssignmentError) {
+      return c.json({ error: schoolAssignmentError.error }, schoolAssignmentError.status);
     }
   }
 

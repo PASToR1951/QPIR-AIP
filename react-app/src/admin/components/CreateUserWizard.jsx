@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import {
-  XCircle, ArrowLeft, Buildings, IdentificationBadge, ShieldStar,
+  XCircle, CaretLeft, Buildings, IdentificationBadge, ShieldStar,
   UserPlus, CaretRight, Eye, EyeSlash, UsersThree,
 } from '@phosphor-icons/react';
 import { SearchableSelect } from './SearchableSelect.jsx';
 import { MultiSelect } from './MultiSelect.jsx';
+import {
+  getAvailableClusterCoordinatorOwnSchools,
+  getAvailableSchoolRoleSchools,
+} from '../pages/adminUsers/schoolAssignmentOptions.js';
 
 const inputCls =
   'w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all';
@@ -163,10 +167,19 @@ const STRENGTH_CONFIG = {
   strong:   { label: 'Strong',   bars: 3, color: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
 };
 
-function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
+function DetailsForm({ form, setForm, schools, users = [], programs, clusters = [] }) {
   const [showPassword, setShowPassword] = useState(false);
   const isDepedEmail = true;
   const strength = getPasswordStrength(form.password);
+  const availableSchoolRoleSchools = getAvailableSchoolRoleSchools({
+    schools,
+    users,
+  });
+  const availableClusterCoordinatorSchools = getAvailableClusterCoordinatorOwnSchools({
+    schools,
+    users,
+    clusterId: form.cluster_id,
+  });
 
   const emailLocal = isDepedEmail ? form.email.replace(/@deped\.gov\.ph$/, '') : form.email;
 
@@ -390,7 +403,7 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
             Assigned School <span className="text-rose-500">*</span>
           </label>
           <SearchableSelect
-            options={schools.map(s => ({ value: s.id, label: s.name }))}
+            options={availableSchoolRoleSchools.map(s => ({ value: s.id, label: s.name }))}
             value={form.school_id}
             onChange={v => setForm(f => ({ ...f, school_id: v }))}
             placeholder="Select school"
@@ -402,17 +415,38 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
       )}
 
       {form.role === 'Cluster Coordinator' && (
-        <div>
-          <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-            Assigned Cluster <span className="text-rose-500">*</span>
-          </label>
-          <SearchableSelect
-            options={clusters.map(c => ({ value: c.id, label: c.name || `Cluster ${c.cluster_number}` }))}
-            value={form.cluster_id}
-            onChange={v => setForm(f => ({ ...f, cluster_id: v }))}
-            placeholder="Select cluster"
-          />
-        </div>
+        <>
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+              Assigned Cluster <span className="text-rose-500">*</span>
+            </label>
+            <SearchableSelect
+              options={clusters.map(c => ({ value: c.id, label: c.name || `Cluster ${c.cluster_number}` }))}
+              value={form.cluster_id}
+              onChange={v => setForm(f => ({ ...f, cluster_id: v, school_id: null }))}
+              placeholder="Select cluster"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+              Own School <span className="text-slate-400 font-normal normal-case">(if Cluster Head submits school AIPs/PIRs)</span>
+            </label>
+            <SearchableSelect
+              options={[
+                { value: null, label: 'None — division-level only' },
+                ...availableClusterCoordinatorSchools.map(s => ({ value: s.id, label: s.name })),
+              ]}
+              value={form.school_id}
+              onChange={v => setForm(f => ({ ...f, school_id: v }))}
+              placeholder={form.cluster_id ? 'Select school (optional)' : 'Select cluster first'}
+            />
+            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+              {form.cluster_id
+                ? 'Only schools in the selected cluster that do not already have an assigned Cluster Head are listed.'
+                : 'Choose the assigned cluster first to list eligible schools.'}
+            </p>
+          </div>
+        </>
       )}
 
       {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(form.role)) && (
@@ -437,19 +471,32 @@ function DetailsForm({ form, setForm, schools, programs, clusters = [] }) {
  * ─────────────────────────────────────────────────────────── */
 const ROLE_META = Object.fromEntries(ROLES.map(r => [r.value, r]));
 
-export function CreateUserWizard({ open, onClose, onSave, schools, programs, clusters = [], loading, error }) {
-  const emptyForm = {
-    salutation: '', name: '', first_name: '', middle_initial: '', last_name: '', position: '',
-    email: '', password: '', role: null, school_id: null, cluster_id: null, program_ids: [],
+function createEmptyForm() {
+  return {
+    salutation: '',
+    name: '',
+    first_name: '',
+    middle_initial: '',
+    last_name: '',
+    position: '',
+    email: '',
+    password: '',
+    role: null,
+    school_id: null,
+    cluster_id: null,
+    program_ids: [],
   };
+}
+
+export function CreateUserWizard({ open, onClose, onSave, schools, users = [], programs, clusters = [], loading, error }) {
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(createEmptyForm);
 
   if (!open) return null;
 
   const handleClose = () => {
     setStep(1);
-    setForm(emptyForm);
+    setForm(createEmptyForm());
     onClose();
   };
 
@@ -460,7 +507,12 @@ export function CreateUserWizard({ open, onClose, onSave, schools, programs, clu
     setStep(2);
   };
 
-  const handleSave = () => onSave(form);
+  const handleSave = async () => {
+    const ok = await onSave(form);
+    if (ok) {
+      handleClose();
+    }
+  };
 
   const selectedMeta = form.role ? ROLE_META[form.role] : null;
   const SelectedIcon = selectedMeta?.icon;
@@ -480,7 +532,7 @@ export function CreateUserWizard({ open, onClose, onSave, schools, programs, clu
               onClick={handleBack}
               className="p-1.5 -ml-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
             >
-              <ArrowLeft size={18} />
+              <CaretLeft size={18} weight="bold" />
             </button>
           )}
           <div className="flex-1">
@@ -515,7 +567,7 @@ export function CreateUserWizard({ open, onClose, onSave, schools, programs, clu
             <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, cluster_id: null, program_ids: [] }))} />
           )}
           {step === 2 && (
-            <DetailsForm form={form} setForm={setForm} schools={schools} programs={programs} clusters={clusters} />
+            <DetailsForm form={form} setForm={setForm} schools={schools} users={users} programs={programs} clusters={clusters} />
           )}
         </div>
 

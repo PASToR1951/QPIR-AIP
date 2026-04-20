@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MagnifyingGlass, CheckCircle, Users, CaretLeft, CaretRight } from '@phosphor-icons/react';
+import { Spinner } from '../components/Spinner.jsx';
 import api from '../../lib/api.js';
 import { DataTable } from '../components/DataTable.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
@@ -223,7 +224,7 @@ export default function AdminSessions() {
 
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-600" />
+            <Spinner />
           </div>
         ) : (
           <div className="min-h-0 flex-1">

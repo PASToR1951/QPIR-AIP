@@ -1,6 +1,10 @@
 import React from 'react';
 import { SearchableSelect } from '../../components/SearchableSelect.jsx';
 import { MultiSelect } from '../../components/MultiSelect.jsx';
+import {
+  getAvailableClusterCoordinatorOwnSchools,
+  getAvailableSchoolRoleSchools,
+} from './schoolAssignmentOptions.js';
 
 const inputCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 const selectCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
@@ -23,8 +27,20 @@ export function userDisplayName(u) {
   return u.name || (u.role === 'School' ? u.school?.name : null) || u.email || '';
 }
 
-export function UserForm({ form, setForm, schools, programs, clusters = [] }) {
+export function UserForm({ form, setForm, schools, users = [], programs, clusters = [] }) {
   const emailLocal = form.email.replace(/@deped\.gov\.ph$/, '');
+  const availableSchoolRoleSchools = getAvailableSchoolRoleSchools({
+    schools,
+    users,
+    currentUserId: form.id,
+  });
+  const availableClusterCoordinatorSchools = getAvailableClusterCoordinatorOwnSchools({
+    schools,
+    users,
+    clusterId: form.cluster_id,
+    currentUserId: form.id,
+  });
+
   const handleEmailChange = (e) => {
     const val = e.target.value.replace(/@.*$/, '');
     setForm(f => ({ ...f, email: val + '@deped.gov.ph' }));
@@ -110,7 +126,19 @@ export function UserForm({ form, setForm, schools, programs, clusters = [] }) {
         <SearchableSelect
           options={ROLES.map(r => ({ value: r, label: r }))}
           value={form.role}
-          onChange={v => setForm(f => ({ ...f, role: v, school_id: null, cluster_id: null, program_ids: [] }))}
+          onChange={v => setForm(f => {
+            const wasSplit = f.role === 'Division Personnel' || f.role === 'School';
+            const nowSplit = v === 'Division Personnel' || v === 'School';
+            let nameUpdate = {};
+            if (wasSplit && !nowSplit) {
+              const parts = [f.first_name, f.middle_initial ? `${f.middle_initial}.` : '', f.last_name].filter(Boolean);
+              nameUpdate = { name: parts.join(' ') };
+            } else if (!wasSplit && nowSplit && f.name && !f.first_name) {
+              const tokens = f.name.trim().split(/\s+/);
+              nameUpdate = { first_name: tokens[0] || '', last_name: tokens.slice(-1)[0] || '' };
+            }
+            return { ...f, role: v, school_id: null, cluster_id: null, program_ids: [], ...nameUpdate };
+          })}
           placeholder="Select role"
         />
       </div>
@@ -118,7 +146,7 @@ export function UserForm({ form, setForm, schools, programs, clusters = [] }) {
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">School</label>
           <SearchableSelect
-            options={schools.map(s => ({ value: s.id, label: s.name }))}
+            options={availableSchoolRoleSchools.map(s => ({ value: s.id, label: s.name }))}
             value={form.school_id}
             onChange={v => setForm(f => ({ ...f, school_id: v }))}
             placeholder="Select school"
@@ -134,7 +162,7 @@ export function UserForm({ form, setForm, schools, programs, clusters = [] }) {
             <SearchableSelect
               options={clusters.map(c => ({ value: c.id, label: c.name || `Cluster ${c.cluster_number}` }))}
               value={form.cluster_id}
-              onChange={v => setForm(f => ({ ...f, cluster_id: v }))}
+              onChange={v => setForm(f => ({ ...f, cluster_id: v, school_id: null }))}
               placeholder="Select cluster"
             />
           </div>
@@ -143,11 +171,19 @@ export function UserForm({ form, setForm, schools, programs, clusters = [] }) {
               Own School <span className="text-slate-400 font-normal normal-case">(if Cluster Head submits school AIPs/PIRs)</span>
             </label>
             <SearchableSelect
-              options={[{ value: null, label: 'None — division-level only' }, ...schools.map(s => ({ value: s.id, label: s.name }))]}
+              options={[
+                { value: null, label: 'None — division-level only' },
+                ...availableClusterCoordinatorSchools.map(s => ({ value: s.id, label: s.name })),
+              ]}
               value={form.school_id}
               onChange={v => setForm(f => ({ ...f, school_id: v }))}
-              placeholder="Select school (optional)"
+              placeholder={form.cluster_id ? 'Select school (optional)' : 'Select cluster first'}
             />
+            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+              {form.cluster_id
+                ? 'Only schools in the selected cluster that do not already have an assigned Cluster Head are listed.'
+                : 'Choose the assigned cluster first to list eligible schools.'}
+            </p>
           </div>
         </>
       )}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../lib/api.js';
+import { Spinner } from './Spinner.jsx';
 import { DataTable } from './DataTable.jsx';
 import { FormModal } from './FormModal.jsx';
 import { ConfirmModal } from './ConfirmModal.jsx';
@@ -145,7 +146,7 @@ export function UserSessionsModal({ open, user, onClose, showToast }) {
 
           {loading ? (
             <div className="flex items-center justify-center py-10">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-600" />
+              <Spinner />
             </div>
           ) : (
             <DataTable

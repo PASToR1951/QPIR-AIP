@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Spinner as SpinnerBase } from '../../components/Spinner.jsx';
 import { DownloadSimple, CalendarBlank, CaretDown } from '@phosphor-icons/react';
 import { downloadCSV, exportReport } from '../../../lib/reportExport.js';
 import { EXPORT_STYLES } from './constants.js';
@@ -30,7 +31,7 @@ export function CsvButton({ rows, filename }) {
 export function Spinner() {
   return (
     <div className="flex items-center justify-center h-48">
-      <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />
+      <SpinnerBase />
     </div>
   );
 }

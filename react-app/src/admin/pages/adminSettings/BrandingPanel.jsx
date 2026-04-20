@@ -1,6 +1,7 @@
 import React from 'react';
 import { Palette, UploadSimple, Trash } from '@phosphor-icons/react';
 import { SettingsCard } from './SettingsUI.jsx';
+import { Spinner } from '../../components/Spinner.jsx';
 
 export function BrandingPanel({ appLogo, logoFileRef, logoUploading, logoResetting, onUpload, onReset }) {
   return (
@@ -20,12 +21,12 @@ export function BrandingPanel({ appLogo, logoFileRef, logoUploading, logoResetti
               onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(f); }} />
             <button onClick={() => logoFileRef.current?.click()} disabled={logoUploading || logoResetting}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 transition-colors">
-              {logoUploading ? <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" /> : <UploadSimple size={15} weight="bold" />}
+              {logoUploading ? <Spinner size="sm" variant="white" /> : <UploadSimple size={15} weight="bold" />}
               {logoUploading ? 'Uploading…' : 'Upload Logo'}
             </button>
             <button onClick={onReset} disabled={logoUploading || logoResetting}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 hover:bg-slate-200 dark:bg-dark-base dark:hover:bg-white/[0.06] text-slate-600 dark:text-slate-300 disabled:opacity-50 transition-colors">
-              {logoResetting ? <span className="w-4 h-4 rounded-full border-2 border-slate-400/40 border-t-slate-500 animate-spin" /> : <Trash size={15} weight="bold" />}
+              {logoResetting ? <Spinner size="sm" variant="subtle" /> : <Trash size={15} weight="bold" />}
               {logoResetting ? 'Resetting…' : 'Reset to Default'}
             </button>
           </div>

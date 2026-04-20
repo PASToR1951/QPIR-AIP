@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAppLogo } from '../context/BrandingContext.jsx';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
   House, X,
   FileText, Users, Buildings, BookOpenIcon, BookOpenUserIcon,
   CalendarSlash, ChartLine, Gear, SignOut, Checks,
-  ClockCounterClockwise,
   CaretDown, ChartBar, Wallet, TrendUp, ListChecks, FunnelSimple, Coins,
-  Database,
-  Key,
-  FileXls,
+  Table,
 } from '@phosphor-icons/react';
 import { useOnboarding } from '../hooks/useOnboarding.jsx';
 import { isChecklistLandingPage } from '../lib/onboardingUtils.js';
@@ -39,19 +36,17 @@ const NAV_GROUPS = [
   {
     label: 'Analytics',
     items: [
-      { to: '/admin/consolidation-template', label: 'Consolidation Template', icon: FileXls, adminOnly: true, preload: () => import('./pages/AdminConsolidationTemplate.jsx') },
+      { to: '/admin/consolidation-template', label: 'Consolidation', icon: Table, adminOnly: true, preload: () => import('./pages/AdminConsolidationTemplate.jsx') },
     ],
   },
   {
     label: 'System',
     items: [
-      { to: '/admin/sessions', label: 'Sessions', icon: Key, adminOnly: true, preload: () => import('./pages/AdminSessions.jsx') },
-      { to: '/admin/logs', label: 'Admin Logs', icon: ClockCounterClockwise, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminLogs.jsx') },
-      { to: '/admin/backups', label: 'Backups', icon: Database, badge: 'Beta', adminOnly: true, preload: () => import('./pages/AdminBackups.jsx') },
       { to: '/admin/settings', label: 'Settings', icon: Gear, adminOnly: true, preload: () => import('./pages/AdminSettings.jsx') },
     ],
   },
 ];
+
 
 const NavItem = ({ to, label, Icon, end, badge, onNavigate, preload }) => (
   <NavLink
@@ -69,14 +64,14 @@ const NavItem = ({ to, label, Icon, end, badge, onNavigate, preload }) => (
   >
     {({ isActive }) => (
       <>
-        <Icon
-          size={20}
-          weight={isActive ? 'fill' : 'regular'}
-          className={`shrink-0 transition-all duration-200 ${isActive
-              ? 'text-[#E94560] drop-shadow-[0_0_6px_rgba(233,69,96,0.3)]'
-              : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'
-            }`}
-        />
+        {React.createElement(Icon, {
+          size: 20,
+          weight: isActive ? 'fill' : 'regular',
+          className: `shrink-0 transition-all duration-200 ${isActive
+            ? 'text-[#E94560] drop-shadow-[0_0_6px_rgba(233,69,96,0.3)]'
+            : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'
+          }`,
+        })}
         <span className="truncate flex-1">{label}</span>
         {badge && (
           <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-violet-100 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-800/50 leading-none shrink-0">
@@ -87,6 +82,7 @@ const NavItem = ({ to, label, Icon, end, badge, onNavigate, preload }) => (
     )}
   </NavLink>
 );
+
 
 const SUBMISSION_TABS = [
   { type: 'all', label: 'All Submissions', Icon: FileText },
@@ -128,7 +124,7 @@ function CollapsibleSubmissions({ onNavigate }) {
 
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div
+          <Motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -149,13 +145,17 @@ function CollapsibleSubmissions({ onNavigate }) {
                         : 'font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-900/[0.07] dark:hover:bg-white/[0.10]'
                       }`}
                   >
-                    <Icon size={13} weight={isActive ? 'fill' : 'regular'} className="shrink-0" />
+                    {React.createElement(Icon, {
+                      size: 13,
+                      weight: isActive ? 'fill' : 'regular',
+                      className: 'shrink-0',
+                    })}
                     <span className="truncate">{label}</span>
                   </NavLink>
                 );
               })}
             </div>
-          </motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </div>
@@ -171,7 +171,7 @@ const REPORT_TABS = [
   { tab: 'factors', label: 'Factors Analysis', Icon: ListChecks },
   { tab: 'sources', label: 'Budget Sources', Icon: Coins },
   { tab: 'funnel', label: 'AIP Status Funnel', Icon: FunnelSimple },
-  { tab: 'consolidation', label: 'PIR Consolidation', Icon: ChartBar },
+  { tab: 'consolidation', label: 'PIR Consolidation', Icon: Table },
 ];
 
 function CollapsibleReports({ onNavigate }) {
@@ -208,7 +208,7 @@ function CollapsibleReports({ onNavigate }) {
 
       <AnimatePresence initial={false}>
         {open && (
-          <motion.div
+          <Motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -229,13 +229,17 @@ function CollapsibleReports({ onNavigate }) {
                         : 'font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-900/[0.07] dark:hover:bg-white/[0.10]'
                       }`}
                   >
-                    <Icon size={13} weight={isActive ? 'fill' : 'regular'} className="shrink-0" />
+                    {React.createElement(Icon, {
+                      size: 13,
+                      weight: isActive ? 'fill' : 'regular',
+                      className: 'shrink-0',
+                    })}
                     <span className="truncate">{label}</span>
                   </NavLink>
                 );
               })}
             </div>
-          </motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </div>

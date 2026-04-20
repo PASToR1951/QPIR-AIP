@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XCircle, PencilSimple, Key, Prohibit, Trash, Copy, CheckCircle, SpinnerGap } from '@phosphor-icons/react';
+import { XCircle, PencilSimple, Key, Prohibit, Trash, Copy, CheckCircle } from '@phosphor-icons/react';
+import { Spinner } from './Spinner.jsx';
 import { StatusBadge } from './StatusBadge.jsx';
 import api from '../../lib/api.js';
 
@@ -157,7 +158,7 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Profile</p>
             {profileLoading && (
               <div className="flex items-center gap-2 text-sm font-bold text-slate-400 dark:text-slate-500">
-                <SpinnerGap size={16} className="animate-spin" />
+                <Spinner size="sm" />
                 Loading latest profile details…
               </div>
             )}
@@ -253,7 +254,7 @@ export function UserProfileModal({ open, user, onClose, onEdit, onResetPassword,
 
             {resetStep === 'loading' && (
               <div className="flex-1 flex items-center justify-center gap-3 text-slate-400">
-                <SpinnerGap size={22} className="animate-spin" />
+                <Spinner />
                 <span className="text-sm font-bold">Generating…</span>
               </div>
             )}

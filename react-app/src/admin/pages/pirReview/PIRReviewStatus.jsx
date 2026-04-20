@@ -1,11 +1,12 @@
 import React from 'react';
 import { ArrowBendUpLeft, Check } from '@phosphor-icons/react';
+import { Spinner } from '../../components/Spinner.jsx';
 
 export function PIRReviewStatus({ done, doneAction, loadError, loading, navigate }) {
   if (loading) {
     return (
       <div className="flex justify-center p-12">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-accent dark:border-slate-600" />
+        <Spinner />
       </div>
     );
   }

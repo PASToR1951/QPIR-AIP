@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { XCircle, ClockCounterClockwise, WarningCircle, Info, User, LinkSimple, GlobeHemisphereWest } from '@phosphor-icons/react';
+import { Spinner } from '../../components/Spinner.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { formatActorPrimary, formatActorSecondary, formatEntityPrimary, formatEntitySecondary, formatManilaTimestamp, getSeverityBadgeClass, getSourceBadgeClass } from './formatters.js';
 
@@ -84,7 +85,7 @@ export function LogDetailDrawer({
             <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
               {loading ? (
                 <div className="flex h-full min-h-[18rem] items-center justify-center">
-                  <div className="h-7 w-7 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-500 dark:border-slate-600" />
+                  <Spinner size="lg" />
                 </div>
               ) : error ? (
                 <div className="flex min-h-[18rem] flex-col items-center justify-center gap-3 text-center">

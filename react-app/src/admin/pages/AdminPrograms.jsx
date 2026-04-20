@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../lib/api.js';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Buildings, BookOpen, PencilSimple, Trash, Plus, CheckCircle, X, UsersThree, ArrowsDownUp, User } from '@phosphor-icons/react';
+import { Spinner } from '../components/Spinner.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
 import { SearchableSelect } from '../components/SearchableSelect.jsx';
@@ -318,7 +319,7 @@ export default function AdminPrograms() {
 
             {loadingPrograms ? (
               <div className="flex items-center justify-center h-48">
-                <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />
+                <Spinner />
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -422,7 +423,7 @@ export default function AdminPrograms() {
 
             {loadingPrograms ? (
               <div className="flex items-center justify-center h-48">
-                <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-indigo-500 animate-spin" />
+                <Spinner />
               </div>
             ) : divisionProgramGroups.length ? (
               <div className="space-y-5">

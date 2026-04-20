@@ -108,6 +108,7 @@ export default function AdminOverview() {
     appLogo,
     clusterSort,
     data,
+    divisionAipCompliance,
     fetchError,
     isDark,
     loading,
@@ -142,6 +143,7 @@ export default function AdminOverview() {
           <DeferredOverviewSection fallback={<AdminOverviewChartsFallback />}>
             <Suspense fallback={<AdminOverviewChartsFallback />}>
               <LazyAdminOverviewCharts
+                divisionAipCompliance={divisionAipCompliance}
                 isDark={isDark}
                 nivoTheme={nivoTheme}
                 pieData={pieData}

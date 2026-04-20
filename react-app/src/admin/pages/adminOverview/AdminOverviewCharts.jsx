@@ -8,27 +8,43 @@ import { InfoTip } from './overviewHelpers.jsx';
 
 const SECTION_ACCENTS = {
   SGOD: {
-    gradient: 'from-indigo-500 to-blue-500',
     badge: 'bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-500/20',
     thisQ: 'text-indigo-600 dark:text-indigo-400',
     dot: 'bg-indigo-400',
     count: 'text-indigo-700 dark:text-indigo-400',
   },
   CID: {
-    gradient: 'from-emerald-500 to-teal-500',
     badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-500/20',
     thisQ: 'text-emerald-600 dark:text-emerald-400',
     dot: 'bg-emerald-400',
     count: 'text-emerald-700 dark:text-emerald-400',
   },
   OSDS: {
-    gradient: 'from-amber-500 to-orange-500',
     badge: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-500/20',
     thisQ: 'text-amber-600 dark:text-amber-400',
     dot: 'bg-amber-400',
     count: 'text-amber-700 dark:text-amber-400',
   },
 };
+
+function DivisionAipRow({ data }) {
+  if (!data?.length) return null;
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-slate-100 pt-3 dark:border-dark-border/60">
+      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Division</span>
+      {data.map((s) => {
+        const accent = SECTION_ACCENTS[s.key] ?? SECTION_ACCENTS.OSDS;
+        return (
+          <div key={s.key} className="flex items-center gap-1.5">
+            <span className={`h-2 w-2 shrink-0 rounded-full ${accent.dot}`} />
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{s.label}</span>
+            <span className={`text-[11px] font-black ${accent.count}`}>{s.withAip}/{s.totalPrograms}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function DivisionRow({ sectionData }) {
   if (!sectionData?.length) return null;
@@ -49,7 +65,7 @@ function DivisionRow({ sectionData }) {
   );
 }
 
-export function AdminOverviewCharts({ isDark, nivoTheme, pieData, quarterData, sectionData = [] }) {
+export function AdminOverviewCharts({ isDark, nivoTheme, pieData, quarterData, sectionData = [], divisionAipCompliance = [] }) {
   return (
     <>
       <Motion.div variants={fadeUp} className="flex items-center gap-4 px-1">
@@ -181,7 +197,7 @@ export function AdminOverviewCharts({ isDark, nivoTheme, pieData, quarterData, s
           ) : (
             <div className="flex h-52 items-center justify-center text-sm text-slate-400 dark:text-slate-600">No data</div>
           )}
-          <DivisionRow sectionData={sectionData} />
+          <DivisionAipRow data={divisionAipCompliance} />
         </div>
       </Motion.div>
 
@@ -206,9 +222,7 @@ export function AdminOverviewCharts({ isDark, nivoTheme, pieData, quarterData, s
                   key={section.key}
                   className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg dark:border-dark-border dark:bg-dark-surface"
                 >
-                  <div className={`h-1 w-full bg-gradient-to-r ${accent.gradient}`} />
-
-                  <div className="flex items-start justify-between px-5 pt-4 pb-3">
+                  <div className="flex items-start justify-between px-5 py-4">
                     <div>
                       <p className="text-sm font-black leading-tight text-slate-900 dark:text-slate-100">{section.label}</p>
                       <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">{section.full}</p>

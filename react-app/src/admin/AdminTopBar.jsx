@@ -10,6 +10,7 @@ const PAGE_LABELS = {
   '/admin/programs': 'Programs',
   '/admin/deadlines': 'Deadlines',
   '/admin/reports': 'Reports',
+  '/admin/consolidation-template': 'Consolidation',
   '/admin/sessions': 'Sessions',
   '/admin/settings': 'Settings',
 };
