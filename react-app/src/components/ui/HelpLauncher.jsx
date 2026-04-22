@@ -275,7 +275,7 @@ function HelpTabContent({
     ...(helpConfig.steps?.length > 0 ? [{
       as: 'button',
       icon: <PlayCircle size={18} />,
-      label: 'Show tour again',
+      label: 'Start guided tour',
       onClick: () => { localStorage.removeItem(helpConfig.storageKey); onStartTour(); onClose(); },
     }] : []),
   ];

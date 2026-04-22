@@ -79,11 +79,11 @@ export default function MyDevicesModal({ open, onClose }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
               onClick={onClose}
             />
 
-            <div className="relative z-10 flex min-h-full items-start justify-center p-4 sm:p-6">
+            <div className="relative z-10 flex min-h-full items-center justify-center p-4 sm:p-6">
               <motion.div
                 initial={{ opacity: 0, scale: 0.96, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}

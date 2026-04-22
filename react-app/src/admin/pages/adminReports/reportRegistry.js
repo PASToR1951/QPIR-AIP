@@ -7,7 +7,6 @@ import { FactorsReport } from './FactorsReport.jsx';
 import { BudgetSourcesReport } from './BudgetSourcesReport.jsx';
 import { AIPFunnelReport } from './AIPFunnelReport.jsx';
 import { ClusterPIRSummary } from './ClusterPIRSummary.jsx';
-import { ConsolidationReport } from './ConsolidationReport.jsx';
 
 export const REPORT_COMPONENTS = {
   compliance: ComplianceReport,
@@ -19,5 +18,4 @@ export const REPORT_COMPONENTS = {
   sources: BudgetSourcesReport,
   funnel: AIPFunnelReport,
   'cluster-pir': ClusterPIRSummary,
-  consolidation: ConsolidationReport,
 };

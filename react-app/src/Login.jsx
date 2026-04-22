@@ -63,6 +63,7 @@ export default function Login() {
   const [loginView, setLoginView] = useState(googleOAuthAvailable ? GOOGLE_VIEW : MANUAL_VIEW);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
   const { executeRecaptcha } = useGoogleReCaptcha();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -98,7 +99,6 @@ export default function Login() {
     }
   }, [searchParams]);
 
-  const cardRef = useRef(null);
   const panelShellRef = useRef(null);
   const googlePanelRef = useRef(null);
   const manualPanelRef = useRef(null);
@@ -155,18 +155,13 @@ export default function Login() {
   }, [loginView]);
 
   const shakeCard = () => {
-    if (!cardRef.current) return;
-    cardRef.current.classList.remove('login-shake');
-    cardRef.current.offsetHeight; // force reflow to restart animation
-    cardRef.current.classList.add('login-shake');
-    cardRef.current.addEventListener('animationend', () => {
-      cardRef.current?.classList.remove('login-shake');
-    }, { once: true });
+    // Reset first so rapid re-submissions re-trigger the animation
+    setIsShaking(false);
+    requestAnimationFrame(() => setIsShaking(true));
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError('');
     setIsLoading(true);
 
     const finalEmail = email.includes('@') ? email : `${email}@deped.gov.ph`;
@@ -273,10 +268,10 @@ export default function Login() {
       />
 
       {/* Main Content */}
-      <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center flex-1 w-full py-8 md:pb-32">
+      <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center flex-1 w-full py-8">
         <div
-          ref={cardRef}
-          className="relative bg-[#fafafa]/90 dark:bg-dark-surface/90 border border-slate-200 dark:border-dark-border rounded-[2rem] p-6 md:p-8 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 dark:ring-dark-border/30 backdrop-blur-md login-card-entrance"
+          className={`relative bg-[#fafafa]/90 dark:bg-dark-surface/90 border border-slate-200 dark:border-dark-border rounded-[2rem] p-6 md:p-8 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 dark:ring-dark-border/30 backdrop-blur-md login-card-entrance${isShaking ? ' login-shake' : ''}`}
+          onAnimationEnd={(e) => { if (e.animationName === 'login-shake') setIsShaking(false); }}
         >
           <button
             type="button"
@@ -471,7 +466,7 @@ export default function Login() {
             <span className="hidden md:inline text-slate-300 dark:text-slate-600">•</span>
             <a
               href="mailto:guihulngan.city@deped.gov.ph"
-              className="inline-flex items-center gap-1.5 font-medium text-slate-600 dark:text-slate-300 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
+              className="inline-flex items-center gap-1.5 font-medium text-slate-600 dark:text-slate-300 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 py-2 md:py-0 text-xs md:text-[11px]"
             >
               <Mail size={14} />
               Need help signing in? Contact SDO IT
