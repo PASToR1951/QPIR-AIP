@@ -88,34 +88,6 @@ export function buildSubmissionFilters(c: Context) {
   };
 }
 
-const VALID_CONSOLIDATION_STATUSES = new Set([
-  "Submitted",
-  "Under Review",
-  "For CES Review",
-  "For Cluster Head Review",
-  "For Admin Review",
-  "Approved",
-  "Returned",
-]);
-
-const VALID_GROUP_BY = new Set(["cluster", "program", "division"]);
-
-export function parseConsolidationQuery(c: Context) {
-  const base = parseReportQuery(c);
-  const rawGroupBy = c.req.query("groupBy") || "cluster";
-  const groupBy = VALID_GROUP_BY.has(rawGroupBy)
-    ? (rawGroupBy as "cluster" | "program" | "division")
-    : "cluster";
-
-  const rawStatuses = c.req.query("statuses") || "Approved";
-  const statuses = rawStatuses
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => VALID_CONSOLIDATION_STATUSES.has(s));
-  if (!statuses.length) statuses.push("Approved");
-
-  return { ...base, groupBy, statuses };
-}
 
 export function parseReportQuery(
   c: Context,

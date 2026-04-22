@@ -74,15 +74,3 @@ export const SCHOOL_CLUSTER_INCLUDE = {
   cluster: true,
 } as const;
 
-export const CONSOLIDATION_PIR_INCLUDE = {
-  aip: {
-    include: {
-      school: { include: { cluster: true } },
-      program: true,
-      activities: true,
-    },
-  },
-  activity_reviews: { include: { aip_activity: true } },
-  factors: true,
-  created_by: { select: { name: true, role: true } },
-} as const;
