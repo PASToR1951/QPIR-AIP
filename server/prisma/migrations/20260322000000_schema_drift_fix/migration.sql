@@ -4,7 +4,7 @@
 -- =============================================================
 
 -- 1. SCHOOL: add abbreviation
-ALTER TABLE "schools" ADD COLUMN IF NOT EXISTS "abbreviation" TEXT;
+ALTER TABLE "School" ADD COLUMN IF NOT EXISTS "abbreviation" TEXT;
 
 -- 2. USER: add is_active
 ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "is_active" BOOLEAN NOT NULL DEFAULT true;

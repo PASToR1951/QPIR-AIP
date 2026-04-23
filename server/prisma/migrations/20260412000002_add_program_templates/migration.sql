@@ -19,6 +19,6 @@ ON "program_templates"("program_id");
 
 ALTER TABLE "program_templates"
 ADD CONSTRAINT "program_templates_program_id_fkey"
-FOREIGN KEY ("program_id") REFERENCES "programs"("id")
+FOREIGN KEY ("program_id") REFERENCES "Program"("id")
 ON DELETE CASCADE
 ON UPDATE CASCADE;

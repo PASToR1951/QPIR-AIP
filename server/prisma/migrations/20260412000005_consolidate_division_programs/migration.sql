@@ -8,7 +8,7 @@
 -- Both tables share the same "Division" enum for the division column,
 -- so no casting is required.
 
-INSERT INTO "programs" ("title", "abbreviation", "division", "school_level_requirement")
+INSERT INTO "Program" ("title", "abbreviation", "division", "school_level_requirement")
 SELECT "title", "abbreviation", "division", 'Division'
 FROM "division_programs"
 ON CONFLICT ("title", "school_level_requirement") DO NOTHING;

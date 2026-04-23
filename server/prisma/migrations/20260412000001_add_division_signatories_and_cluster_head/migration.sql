@@ -7,10 +7,10 @@ ALTER TABLE "division_config" ADD COLUMN "osds_noted_by_name" TEXT NOT NULL DEFA
 ALTER TABLE "division_config" ADD COLUMN "osds_noted_by_title" TEXT NOT NULL DEFAULT '';
 
 -- AlterTable: Add cluster head assignment to clusters
-ALTER TABLE "clusters" ADD COLUMN "cluster_head_id" INTEGER;
+ALTER TABLE "Cluster" ADD COLUMN "cluster_head_id" INTEGER;
 
 -- CreateIndex
-CREATE UNIQUE INDEX "clusters_cluster_head_id_key" ON "clusters"("cluster_head_id");
+CREATE UNIQUE INDEX "clusters_cluster_head_id_key" ON "Cluster"("cluster_head_id");
 
 -- AddForeignKey
-ALTER TABLE "clusters" ADD CONSTRAINT "clusters_cluster_head_id_fkey" FOREIGN KEY ("cluster_head_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Cluster" ADD CONSTRAINT "clusters_cluster_head_id_fkey" FOREIGN KEY ("cluster_head_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

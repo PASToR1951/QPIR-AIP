@@ -1,1 +1,1 @@
-ALTER TABLE "schools" ADD COLUMN "logo" TEXT;
+ALTER TABLE "School" ADD COLUMN "logo" TEXT;

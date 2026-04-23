@@ -19,5 +19,5 @@ CREATE UNIQUE INDEX "consolidation_notes_year_quarter_program_id_key"
 
 -- AddForeignKey
 ALTER TABLE "consolidation_notes" ADD CONSTRAINT "consolidation_notes_program_id_fkey"
-    FOREIGN KEY ("program_id") REFERENCES "programs"("id")
+    FOREIGN KEY ("program_id") REFERENCES "Program"("id")
     ON DELETE CASCADE ON UPDATE CASCADE;

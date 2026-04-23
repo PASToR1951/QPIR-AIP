@@ -2,4 +2,4 @@
 ALTER TABLE "PIR" ADD COLUMN "presented" BOOLEAN NOT NULL DEFAULT false;
 
 -- AlterTable: Add KRA category grouping to programs
-ALTER TABLE "programs" ADD COLUMN "category" TEXT;
+ALTER TABLE "Program" ADD COLUMN "category" TEXT;

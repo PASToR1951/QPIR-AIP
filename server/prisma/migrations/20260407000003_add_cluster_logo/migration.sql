@@ -1,1 +1,1 @@
-ALTER TABLE "clusters" ADD COLUMN "logo" TEXT;
+ALTER TABLE "Cluster" ADD COLUMN "logo" TEXT;
