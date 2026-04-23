@@ -13,7 +13,11 @@ TECH_DESIGN_PLAN.md
 instructions.md
 
 # ── Internal documentation (not for public/repo consumers) ───────────────────
-/docs/
+/docs/*
+!/docs/SYSTEM_DOCUMENTATION_THESIS.md
+!/docs/wiki/
+!/docs/wiki/user-guides/
+!/docs/wiki/user-guides/Getting-Started.md
 unappended-changes.md
 
 # ── Generated schema exports ──────────────────────────────────────────────────
@@ -36,8 +40,8 @@ AUDIT_REPORT.md
 .env
 .env.local
 .env.tunnel
-.env.docker
 .env.*.local
+env
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules/
@@ -50,6 +54,7 @@ build/
 # Dirs are created on-demand by the server; must not be committed.
 server/public/school-logos/
 server/public/cluster-logos/
+server/public/app-logo/
 
 # ── Logs & runtime ────────────────────────────────────────────────────────────
 *.log
@@ -70,9 +75,17 @@ coverage/
 server/generated/
 
 # ── Backup & temp files ──────────────────────────────────────────────────────
+/backups/
+/.docker/rclone/
+*.dump
+*.dump.enc
+*.dump.enc.sha256
+*.sql.gz
+*.sql.gz.enc
+*.sql.gz.enc.sha256
 *.bak
 *.backup
-Dockerfile.backup
+!server/Dockerfile.backup
 *~
 
 # ── External tools ────────────────────────────────────────────────────────────
@@ -85,4 +98,3 @@ Thumbs.db
 .vscode/
 *.suo
 *.sw?
-react-app/src/version.js

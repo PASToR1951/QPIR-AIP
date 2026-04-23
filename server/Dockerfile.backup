@@ -1,0 +1,17 @@
+# =============================================================================
+# AIP-PIR Backup Service
+# =============================================================================
+FROM rclone/rclone:1.69 AS rclone-bin
+
+FROM postgres:16
+
+WORKDIR /app
+
+COPY --from=rclone-bin /usr/local/bin/rclone /usr/local/bin/rclone
+COPY scripts/backup/ ./scripts/backup/
+RUN chmod +x ./scripts/backup/*.sh && \
+    mkdir -p ./backups/hourly ./backups/daily ./backups/triggers
+
+VOLUME ["/app/backups"]
+
+ENTRYPOINT ["./scripts/backup/entrypoint.sh"]

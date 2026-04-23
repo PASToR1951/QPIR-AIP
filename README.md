@@ -55,7 +55,7 @@ AIP-PIR/
 │   │   ├── Dashboard.jsx       # Main user dashboard
 │   │   ├── App.jsx             # Root app with error boundary
 │   │   ├── AnimatedContent.jsx # Lazy-loaded routes and route guards
-│   │   └── version.js          # Version + changelog registry (gitignored)
+│   │   └── version.js          # Version + changelog registry
 │   └── public/                 # Institutional logos, fonts, and default cluster logos
 │
 └── server/                     # Deno backend
@@ -133,7 +133,7 @@ For Docker, copy the checked-in template instead:
 cp .env.docker .env
 ```
 
-Then fill the root `.env` values for PostgreSQL, JWT, backups, OAuth, and `VITE_API_URL`.
+Then fill the root `.env` values for PostgreSQL, `JWT_SECRET`, `EMAIL_CONFIG_SECRET`, backups, OAuth, `ALLOWED_ORIGIN`, and `VITE_API_URL`.
 
 ### 3. Initialize the database
 
@@ -184,18 +184,21 @@ These scripts are listed in `.gitignore`, so fresh clones should use the manual 
 After filling the root `.env` from `.env.docker`, start the core application services:
 
 ```bash
-docker compose up -d --build db backend frontend
+docker compose up -d --build
 ```
 
 Optional services:
 
 ```bash
-docker compose up -d --build backup
+docker compose --profile backup up -d --build backup
+docker compose --profile devtools up -d --build devtools
 ```
 
-The compose file also defines a `devtools` service that expects a local `./claude-devtools` directory. Start named services unless that optional directory exists.
+The `backup` service runs scheduled backups and processes manual backup requests from the Admin UI. Start the `backup` profile before relying on the Backups panel in production.
 
-If you serve the frontend from a non-Vite origin such as `http://localhost` on port 80, make sure the backend receives a matching `ALLOWED_ORIGIN` value, for example by adding it under `backend.environment`. Do the same for the `OAUTH_*` and `GOOGLE_*` values when enabling SSO in Docker.
+The first time the Docker Postgres volume is initialized, Compose creates the read-only backup database user from `BACKUP_DB_USER` and `BACKUP_DB_PASSWORD`. If you already have an existing `db_data` volume, run `server/scripts/db_readonly_user.sql` manually or create the user yourself.
+
+If you serve the frontend from a non-Vite origin such as `http://localhost` on port 80, make sure `.env` has a matching `ALLOWED_ORIGIN`. Do the same for the `OAUTH_*`, `GOOGLE_*`, and reCAPTCHA values when enabling those features in Docker.
 
 ---
 

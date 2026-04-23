@@ -10,7 +10,7 @@ const backupRoutes = new Hono();
 const STATUS_FILE = "/app/backups/status.json";
 const HOURLY_DIR = "/app/backups/hourly";
 const DAILY_DIR  = "/app/backups/daily";
-const HOURLY_SCRIPT = "/app/scripts/backup/backup_hourly.sh";
+const TRIGGER_DIR = Deno.env.get("BACKUP_TRIGGER_DIR") || "/app/backups/triggers";
 
 async function requireAdmin(c: Context): Promise<TokenPayload | null> {
   const user = await getUserFromToken(c);
@@ -78,34 +78,26 @@ backupRoutes.get("/status", async (c) => {
 });
 
 // POST /admin/backup/trigger
-// Spawns backup_hourly.sh as a background process and returns immediately.
-// The backup runs asynchronously; poll /status to see the result.
+// Queues a manual hourly backup for the backup service to process.
 backupRoutes.post("/trigger", async (c) => {
   const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Forbidden" }, 403);
 
   logger.info("Manual backup triggered", { admin_id: admin.id });
 
-  // Fire and forget — don't block the HTTP response
-  (async () => {
-    try {
-      const cmd = new Deno.Command("bash", {
-        args: [HOURLY_SCRIPT],
-        stdout: "piped",
-        stderr: "piped",
-      });
-      const { code, stdout, stderr } = await cmd.output();
-      const out = new TextDecoder().decode(stdout);
-      const err = new TextDecoder().decode(stderr);
-      if (code !== 0) {
-        logger.error("Manual backup failed", undefined, { code, stderr: err });
-      } else {
-        logger.info("Manual backup completed", { stdout: out.slice(-500) });
-      }
-    } catch (e) {
-      logger.error("Manual backup spawn error", e instanceof Error ? e : new Error(String(e)));
-    }
-  })();
+  try {
+    await Deno.mkdir(TRIGGER_DIR, { recursive: true });
+    const triggerId = `${Date.now()}-${crypto.randomUUID()}`;
+    const triggerPath = `${TRIGGER_DIR}/hourly-${triggerId}.json`;
+    await Deno.writeTextFile(triggerPath, JSON.stringify({
+      type: "hourly",
+      triggered_by: admin.id,
+      at: new Date().toISOString(),
+    }, null, 2));
+  } catch (e) {
+    logger.error("Manual backup queue failed", e instanceof Error ? e : new Error(String(e)));
+    return c.json({ error: "Failed to queue backup request. Check that the backup volume is writable." }, 500);
+  }
 
   // Write audit log
   try {
@@ -117,7 +109,7 @@ backupRoutes.post("/trigger", async (c) => {
     logger.warn("Failed to write audit log for backup trigger", { error: String(e) });
   }
 
-  return c.json({ triggered: true, message: "Backup started in background. Check /admin/backup/status for progress." });
+  return c.json({ triggered: true, message: "Backup queued. Check /admin/backup/status for progress." });
 });
 
 export default backupRoutes;

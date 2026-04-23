@@ -1,0 +1,4 @@
+FROM postgres:16-alpine
+
+COPY scripts/db_init_backup_user.sh /docker-entrypoint-initdb.d/20-backup-user.sh
+RUN chmod +x /docker-entrypoint-initdb.d/20-backup-user.sh

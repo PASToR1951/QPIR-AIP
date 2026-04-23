@@ -12,18 +12,23 @@ WORKDIR /app
 # e.g. http://192.168.1.100:3001 or https://api.yourdomain.com
 ARG VITE_API_URL=http://localhost:3001
 ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_RECAPTCHA_SITE_KEY=
+ENV VITE_RECAPTCHA_SITE_KEY=$VITE_RECAPTCHA_SITE_KEY
 
-COPY package.json package-lock.json* ./
+COPY react-app/package.json react-app/package-lock.json* ./
 RUN npm ci
 
-COPY . .
+COPY react-app/ ./
+RUN mkdir -p /docs/wiki/user-guides
+COPY docs/SYSTEM_DOCUMENTATION_THESIS.md /docs/SYSTEM_DOCUMENTATION_THESIS.md
+COPY docs/wiki/user-guides/Getting-Started.md /docs/wiki/user-guides/Getting-Started.md
 RUN npm run build
 
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────
 FROM nginx:1.27-alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY react-app/nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

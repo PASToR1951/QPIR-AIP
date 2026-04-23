@@ -14,5 +14,10 @@ generated/
 *.log
 *.pid
 
-# Scripts not needed at runtime
-scripts/
+# Most scripts are not needed at runtime. Backup scripts are copied explicitly
+# into the dedicated backup service image.
+scripts/*
+!scripts/backup/
+!scripts/backup/**
+!scripts/db_init_backup_user.sh
+!scripts/db_readonly_user.sql
