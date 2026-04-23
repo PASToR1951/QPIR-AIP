@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   const legacyTunnelHost = env.VITE_TUNNEL_HOST
   const publicHost = env.VITE_PUBLIC_HOST || legacyTunnelHost
   const devHost = env.VITE_DEV_HOST
+  const devPort = Number(env.VITE_DEV_PORT || '5173')
   const apiProxyTarget = env.VITE_API_PROXY_TARGET
   const allowedHosts = env.VITE_ALLOWED_HOSTS
     ? env.VITE_ALLOWED_HOSTS.split(',').map((host) => host.trim()).filter(Boolean)
@@ -16,7 +17,7 @@ export default defineConfig(({ mode }) => {
       : undefined
   const hmrProtocol = env.VITE_HMR_PROTOCOL || (legacyTunnelHost ? 'wss' : 'ws')
   const hmrClientPort = Number(
-    env.VITE_HMR_CLIENT_PORT || (hmrProtocol === 'wss' ? '443' : '5173')
+    env.VITE_HMR_CLIENT_PORT || (hmrProtocol === 'wss' ? '443' : String(devPort))
   )
 
   return {
@@ -26,11 +27,13 @@ export default defineConfig(({ mode }) => {
       fs: { allow: ['..'] },
       // When a public host is configured, listen on all interfaces and point HMR
       // at that host so phones/tablets on the LAN can reach the dev server.
+      port: devPort,
+      strictPort: Boolean(publicHost),
       host: devHost || (publicHost ? '0.0.0.0' : undefined),
       allowedHosts,
       hmr: publicHost
         ? { host: publicHost, clientPort: hmrClientPort, protocol: hmrProtocol }
-        : { host: 'localhost', port: 5173 },
+        : undefined,
       proxy: apiProxyTarget
         ? {
             '/api': {

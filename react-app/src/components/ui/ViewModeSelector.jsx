@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { EndOfListCue } from './EndOfListCue';
+import { EndOfListCue } from './EndOfListCue.jsx';
 
 const THEME_CLASSES = {
     pink: {

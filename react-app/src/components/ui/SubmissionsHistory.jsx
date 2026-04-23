@@ -7,7 +7,7 @@ import { AIPDocument } from '../docs/AIPDocument';
 import { PIRDocument } from '../docs/PIRDocument';
 import { StatusBadge } from '../../admin/components/StatusBadge';
 import { useTextMeasure } from '../../lib/useTextMeasure';
-import { EndOfListCue } from './EndOfListCue';
+import { EndOfListCue } from './EndOfListCue.jsx';
 import api from '../../lib/api.js';
 
 const ROW_PADDING_Y = 40;

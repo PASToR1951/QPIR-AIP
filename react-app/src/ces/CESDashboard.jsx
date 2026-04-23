@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api.js';
 import { ArrowRight, MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
-import { EndOfListCue } from '../components/ui/EndOfListCue';
+import { EndOfListCue } from '../components/ui/EndOfListCue.jsx';
 import { shouldShowEndOfListCue } from '../components/ui/endOfListCue';
 import { emitOnboardingSignal } from '../lib/onboardingSignals.js';
 

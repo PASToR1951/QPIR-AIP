@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, MagnifyingGlass as Search, CaretDown as ChevronDown, CaretUp as ChevronUp, Question as HelpCircle, BookOpen, WarningCircle as AlertCircle } from '@phosphor-icons/react';
 import Footer from './ui/Footer';
-import { EndOfListCue } from './ui/EndOfListCue';
+import { EndOfListCue } from './ui/EndOfListCue.jsx';
 
 const FAQ_DATA = [
   {

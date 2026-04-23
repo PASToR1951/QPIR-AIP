@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowUp, ArrowDown, CaretLeft, CaretRight } from '@phosphor-icons/react';
-import { EndOfListCue } from '../../components/ui/EndOfListCue';
+import { EndOfListCue } from '../../components/ui/EndOfListCue.jsx';
 import { shouldShowEndOfListCue } from '../../components/ui/endOfListCue';
 
 export const DataTable = ({

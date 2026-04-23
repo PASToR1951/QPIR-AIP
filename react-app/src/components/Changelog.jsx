@@ -19,7 +19,7 @@ import {
 } from '@phosphor-icons/react';
 import { CURRENT_VERSION, getChangelog } from '../version';
 import Footer from './ui/Footer';
-import { EndOfListCue } from './ui/EndOfListCue';
+import { EndOfListCue } from './ui/EndOfListCue.jsx';
 
 const TYPE_CONFIG = {
   feature: {

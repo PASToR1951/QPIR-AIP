@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../lib/api.js';
 import { MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
-import { EndOfListCue } from '../components/ui/EndOfListCue';
+import { EndOfListCue } from '../components/ui/EndOfListCue.jsx';
 import { shouldShowEndOfListCue } from '../components/ui/endOfListCue';
 import { emitOnboardingSignal } from '../lib/onboardingSignals.js';
 

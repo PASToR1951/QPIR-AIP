@@ -1,3 +1,17 @@
+// Safari does not support requestIdleCallback — polyfill before any deps load
+if (typeof window !== 'undefined' && !window.requestIdleCallback) {
+  window.requestIdleCallback = (cb, options) => {
+    const start = Date.now();
+    return setTimeout(() => {
+      cb({
+        didTimeout: false,
+        timeRemaining: () => Math.max(0, 50 - (Date.now() - start)),
+      });
+    }, options?.timeout ?? 1);
+  };
+  window.cancelIdleCallback = (id) => clearTimeout(id);
+}
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { IconContext } from '@phosphor-icons/react'
