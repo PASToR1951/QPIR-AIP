@@ -119,6 +119,9 @@ OAUTH_REDIRECT_BASE_URL=http://localhost:3001
 OAUTH_STATE_SECRET="your-strong-oauth-state-secret"
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+TRUST_PROXY=false
+TRUSTED_PROXY_CIDRS=
+RECAPTCHA_BYPASS_PRIVATE_IPS=false
 ```
 
 **Frontend** — create `react-app/.env`:
