@@ -59,6 +59,9 @@ services:
       OAUTH_STATE_SECRET: ${OAUTH_STATE_SECRET:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
+      RECAPTCHA_BYPASS_PRIVATE_IPS: ${RECAPTCHA_BYPASS_PRIVATE_IPS:-false}
       BACKUP_TRIGGER_DIR: /app/backups/triggers
     volumes:
       - ./backups:/app/backups
