@@ -25,8 +25,13 @@ CLAUDE.md
 server/scripts/.audit_tokens.json
 server/scripts/.populate_aip_pir_sample_manifest.json
 
+# ── Local mock-data helpers ──────────────────────────────────────────────────
+populate-aip-pir.sh
+server/scripts/populate_aip_pir_sample.ts
+
 # ── Environment variables ─────────────────────────────────────────────────────
 .env
+.env.docker
 .env.local
 .env.tunnel
 .env.*.local
