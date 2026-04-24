@@ -1,20 +1,21 @@
 {
   "name": "server",
   "dependencies": {
-    "@mermaid-js/mermaid-cli": "^11.12.0",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^2.4.3",
+    "exceljs": "^4.4.0",
     "hono": "^4.11.4",
     "jsonwebtoken": "^9.0.3",
-    "nodemailer": "^6.10.0",
-    "pg": "^8.20.0",
-    "prisma-dbml-generator": "^0.12.0",
-    "prisma-erd-generator": "^2.4.2",
-    "xlsx": "^0.18.5"
+    "nodemailer": "^8.0.5",
+    "pg": "^8.20.0"
   },
   "devDependencies": {
     "prisma": "^7.4.2"
+  },
+  "overrides": {
+    "@hono/node-server": "1.19.13",
+    "tmp": "0.2.5"
   }
 }

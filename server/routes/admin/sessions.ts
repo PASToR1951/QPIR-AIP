@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { prisma } from "../../db/client.ts";
 import { getUserFromToken } from "../../lib/auth.ts";
-import { revokeAllUserSessions, revokeSessionById } from "../../lib/userSessions.ts";
+import {
+  revokeAllUserSessions,
+  revokeSessionById,
+} from "../../lib/userSessions.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { buildSubmittedBy } from "./shared/display.ts";
@@ -13,19 +16,33 @@ const sessionsRoutes = new Hono();
 sessionsRoutes.use("/sessions", adminOnly);
 sessionsRoutes.use("/sessions/*", adminOnly);
 
-function buildSearchWhere(search: string | undefined) {
-  if (!search) return {};
-  return {
-    user: {
-      is: {
+function buildUserWhere(search: string | undefined, role: string | undefined) {
+  const userWhere = {
+    ...(role ? { role } : {}),
+    ...(search
+      ? {
         OR: [
           { name: { contains: search, mode: "insensitive" as const } },
           { first_name: { contains: search, mode: "insensitive" as const } },
           { last_name: { contains: search, mode: "insensitive" as const } },
           { email: { contains: search, mode: "insensitive" as const } },
         ],
-      },
-    },
+      }
+      : {}),
+  };
+
+  return Object.keys(userWhere).length > 0 ? { user: { is: userWhere } } : {};
+}
+
+function buildDeviceWhere(device: string | undefined) {
+  if (!device) return {};
+  return {
+    OR: [
+      { device_label: { contains: device, mode: "insensitive" as const } },
+      ...(device.toLowerCase().includes("unknown")
+        ? [{ device_label: null }]
+        : []),
+    ],
   };
 }
 
@@ -91,6 +108,8 @@ function serializeAdminSession(
 
 sessionsRoutes.get("/sessions", async (c) => {
   const search = c.req.query("search")?.trim();
+  const role = c.req.query("role")?.trim();
+  const device = c.req.query("device")?.trim();
   const userId = parsePositiveInt(c.req.query("userId"));
   const status = c.req.query("status");
   const page = parsePositiveInt(c.req.query("page"));
@@ -99,16 +118,15 @@ sessionsRoutes.get("/sessions", async (c) => {
   const where = {
     ...(userId ? { user_id: userId } : {}),
     ...buildStatusWhere(status),
-    ...buildSearchWhere(search),
+    ...buildUserWhere(search, role),
+    ...buildDeviceWhere(device),
   };
 
   const shouldPaginate = Boolean(page);
   const sessions = await prisma.userSession.findMany({
     where,
     orderBy: [{ last_seen_at: "desc" }, { created_at: "desc" }],
-    ...(shouldPaginate
-      ? { skip: ((page ?? 1) - 1) * limit, take: limit }
-      : {}),
+    ...(shouldPaginate ? { skip: ((page ?? 1) - 1) * limit, take: limit } : {}),
     select: {
       id: true,
       device_label: true,
@@ -130,7 +148,9 @@ sessionsRoutes.get("/sessions", async (c) => {
       },
     },
   });
-  const total = shouldPaginate ? await prisma.userSession.count({ where }) : null;
+  const total = shouldPaginate
+    ? await prisma.userSession.count({ where })
+    : null;
 
   if (shouldPaginate) {
     c.header("X-Page", String(page ?? 1));

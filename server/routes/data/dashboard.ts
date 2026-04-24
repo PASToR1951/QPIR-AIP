@@ -3,7 +3,8 @@ import { prisma } from "../../db/client.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
-import { writeUserLog, getClientIp } from "../../lib/userActivityLog.ts";
+import { writeUserLog } from "../../lib/userActivityLog.ts";
+import { getClientIp } from "../../lib/clientIp.ts";
 import type { DataRouteEnv } from "./shared/types.ts";
 
 const dashboardRoutes = new Hono<{ Variables: DataRouteEnv }>();

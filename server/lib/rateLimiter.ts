@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import { getClientIp } from "./userActivityLog.ts";
+import { getClientIp } from "./clientIp.ts";
 
 const rateLimitWindows = new Map<string, number[]>();
 

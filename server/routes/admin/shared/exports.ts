@@ -1,24 +1,50 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+
+export function sanitizeSpreadsheetValue(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  return /^[=+\-@]/.test(value.trimStart()) ? `'${value}` : value;
+}
+
+function sanitizeRows(rows: Record<string, unknown>[]) {
+  return rows.map((row) =>
+    Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [
+        key,
+        sanitizeSpreadsheetValue(value),
+      ]),
+    )
+  );
+}
 
 export function toCSV(rows: Record<string, unknown>[]): string {
   if (!rows.length) return "";
   const headers = Object.keys(rows[0]);
-  const lines = rows.map((row) =>
-    headers.map((header) => JSON.stringify(row[header] ?? "")).join(",")
-  );
-  return "\uFEFF" + [headers.join(","), ...lines].join("\r\n");
+  const sanitizedRows = sanitizeRows(rows);
+  return "\uFEFF" + [
+    headers.map((header) => JSON.stringify(sanitizeSpreadsheetValue(header)))
+      .join(","),
+    ...sanitizedRows.map((row) =>
+      headers.map((header) => JSON.stringify(row[header] ?? "")).join(",")
+    ),
+  ].join("\r\n");
 }
 
-export function toXLSX(
+export async function toXLSX(
   rows: Record<string, unknown>[],
   sheetName = "Sheet1",
-): ArrayBuffer {
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, sheetName);
-  const output = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as
-    | Uint8Array
-    | ArrayBuffer;
+): Promise<ArrayBuffer> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet(sheetName);
+  const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+  worksheet.columns = headers.map((header) => ({
+    header: String(sanitizeSpreadsheetValue(header)),
+    key: header,
+  }));
+  for (const row of sanitizeRows(rows)) {
+    worksheet.addRow(row);
+  }
+
+  const output = await workbook.xlsx.writeBuffer() as Uint8Array | ArrayBuffer;
   if (output instanceof ArrayBuffer) return output;
 
   const body = new ArrayBuffer(output.byteLength);
@@ -26,17 +52,23 @@ export function toXLSX(
   return body;
 }
 
-export function toMultiSheetXLSX(
+export async function toMultiSheetXLSX(
   sheets: { name: string; rows: Record<string, unknown>[] }[],
-): ArrayBuffer {
-  const wb = XLSX.utils.book_new();
+): Promise<ArrayBuffer> {
+  const workbook = new ExcelJS.Workbook();
   for (const sheet of sheets) {
-    const ws = XLSX.utils.json_to_sheet(sheet.rows);
-    XLSX.utils.book_append_sheet(wb, ws, sheet.name);
+    const worksheet = workbook.addWorksheet(sheet.name);
+    const headers = sheet.rows.length > 0 ? Object.keys(sheet.rows[0]) : [];
+    worksheet.columns = headers.map((header) => ({
+      header: String(sanitizeSpreadsheetValue(header)),
+      key: header,
+    }));
+    for (const row of sanitizeRows(sheet.rows)) {
+      worksheet.addRow(row);
+    }
   }
-  const output = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as
-    | Uint8Array
-    | ArrayBuffer;
+
+  const output = await workbook.xlsx.writeBuffer() as Uint8Array | ArrayBuffer;
   if (output instanceof ArrayBuffer) return output;
 
   const body = new ArrayBuffer(output.byteLength);

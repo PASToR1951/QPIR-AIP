@@ -20,6 +20,7 @@ RUN npm ci
 COPY prisma/ ./prisma/
 ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/pir_system?schema=public"
 RUN npx prisma generate
+RUN npm prune --omit=dev
 
 # ── Deno config ───────────────────────────────────────────────────────────────
 COPY deno.json deno.lock ./

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "../../db/client.ts";
 import { getUserFromToken } from "../../lib/auth.ts";
 import { writeAuditLog } from "./shared/audit.ts";
-import { toCSV, toMultiSheetXLSX, toXLSX } from "./shared/exports.ts";
+import { toCSV, toXLSX } from "./shared/exports.ts";
 import { adminOnly } from "./shared/guards.ts";
 import { parseReportQuery } from "./shared/params.ts";
 import {
@@ -53,7 +53,10 @@ reportsRoutes.use("/reports/*", async (c, next) => {
     (ts) => now - ts < REPORT_WINDOW_MS,
   );
   if (timestamps.length >= MAX_REPORT_REQUESTS) {
-    return c.json({ error: "Rate limit exceeded for reports. Please wait." }, 429);
+    return c.json(
+      { error: "Rate limit exceeded for reports. Please wait." },
+      429,
+    );
   }
   timestamps.push(now);
   reportRequests.set(admin.id, timestamps);
@@ -61,10 +64,13 @@ reportsRoutes.use("/reports/*", async (c, next) => {
 });
 
 function invalidYearResponse() {
-  return new Response(JSON.stringify({ error: "Invalid year (must be 2020–2100)" }), {
-    status: 400,
-    headers: { "Content-Type": "application/json" },
-  });
+  return new Response(
+    JSON.stringify({ error: "Invalid year (must be 2020–2100)" }),
+    {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
 }
 
 type AccomplishmentRow = {
@@ -83,7 +89,11 @@ function aggregateAccomplishmentBySchool(
     financial_target: unknown;
     financial_accomplished: unknown;
     // deno-lint-ignore no-explicit-any
-    pir: { aip: { school?: { name: string; cluster?: { name: string } | null } | null } };
+    pir: {
+      aip: {
+        school?: { name: string; cluster?: { name: string } | null } | null;
+      };
+    };
   }>,
 ): Record<string, AccomplishmentRow> {
   const bySchool: Record<string, AccomplishmentRow> = {};
@@ -91,16 +101,25 @@ function aggregateAccomplishmentBySchool(
     const school = review.pir.aip.school?.name ?? "Division";
     const cluster = review.pir.aip.school?.cluster?.name ?? "Division";
     if (!bySchool[school]) {
-      bySchool[school] = { school, cluster, physSum: 0, physCount: 0, finSum: 0, finCount: 0 };
+      bySchool[school] = {
+        school,
+        cluster,
+        physSum: 0,
+        physCount: 0,
+        finSum: 0,
+        finCount: 0,
+      };
     }
     const physTarget = Number(review.physical_target);
     const finTarget = Number(review.financial_target);
     if (physTarget > 0) {
-      bySchool[school].physSum += (Number(review.physical_accomplished) / physTarget) * 100;
+      bySchool[school].physSum +=
+        (Number(review.physical_accomplished) / physTarget) * 100;
       bySchool[school].physCount++;
     }
     if (finTarget > 0) {
-      bySchool[school].finSum += (Number(review.financial_accomplished) / finTarget) * 100;
+      bySchool[school].finSum +=
+        (Number(review.financial_accomplished) / finTarget) * 100;
       bySchool[school].finCount++;
     }
   }
@@ -172,23 +191,38 @@ const EXPORT_BUILDERS: Record<string, ExportBuilder> = {
     const reviews = await prisma.pIRActivityReview.findMany({
       where: { pir: { aip: { year } } },
       include: {
-        pir: { include: { aip: { include: { school: { include: { cluster: true } } } } } },
+        pir: {
+          include: {
+            aip: { include: { school: { include: { cluster: true } } } },
+          },
+        },
       },
     });
     const bySchool = aggregateAccomplishmentBySchool(reviews);
     return Object.values(bySchool).map((s) => ({
       School: s.school,
       Cluster: s.cluster,
-      "Physical Rate (%)": s.physCount > 0 ? Math.round(s.physSum / s.physCount) : 0,
-      "Financial Rate (%)": s.finCount > 0 ? Math.round(s.finSum / s.finCount) : 0,
+      "Physical Rate (%)": s.physCount > 0
+        ? Math.round(s.physSum / s.physCount)
+        : 0,
+      "Financial Rate (%)": s.finCount > 0
+        ? Math.round(s.finSum / s.finCount)
+        : 0,
     }));
   },
   factors: async (year) => {
-    const factors = await prisma.pIRFactor.findMany({ where: { pir: { aip: { year } } } });
+    const factors = await prisma.pIRFactor.findMany({
+      where: { pir: { aip: { year } } },
+    });
     return FACTOR_TYPES.map((factorType) => {
-      const matching = factors.filter((f) => f.factor_type.trim() === factorType);
-      const facilitating = matching.filter((f) => f.facilitating_factors?.trim()).length;
-      const hindering = matching.filter((f) => f.hindering_factors?.trim()).length;
+      const matching = factors.filter((f) =>
+        f.factor_type.trim() === factorType
+      );
+      const facilitating = matching.filter((f) =>
+        f.facilitating_factors?.trim()
+      ).length;
+      const hindering =
+        matching.filter((f) => f.hindering_factors?.trim()).length;
       return {
         "Factor Type": factorType,
         Facilitating: facilitating,
@@ -212,14 +246,19 @@ const EXPORT_BUILDERS: Record<string, ExportBuilder> = {
       .map(([source, total]) => ({ Source: source, "Total Amount": total }));
   },
   funnel: async (year) => {
-    const aips = await prisma.aIP.findMany({ where: { year }, select: { status: true } });
+    const aips = await prisma.aIP.findMany({
+      where: { year },
+      select: { status: true },
+    });
     const total = aips.length;
     return FUNNEL_STATUSES.map((status) => {
       const count = aips.filter((a) => a.status === status).length;
       return {
         Status: status,
         Count: count,
-        "% of Total": total > 0 ? ((count / total) * 100).toFixed(1) + "%" : "0.0%",
+        "% of Total": total > 0
+          ? ((count / total) * 100).toFixed(1) + "%"
+          : "0.0%",
       };
     }).filter((row) => Number(row.Count) > 0);
   },
@@ -261,19 +300,27 @@ reportsRoutes.get("/reports/compliance", async (c) => {
       level: school.level,
     };
     for (const program of programs) {
-      const submitted = school.aips.some((aip) => aip.program_id === program.id);
+      const submitted = school.aips.some((aip) =>
+        aip.program_id === program.id
+      );
       const eligible = program.school_level_requirement === "Both" ||
         program.school_level_requirement === school.level ||
         (program.school_level_requirement === "Select Schools" &&
           !school.restricted_programs?.some((restricted) =>
             restricted.id === program.id
           ));
-      row[program.title] = eligible ? (submitted ? "submitted" : "missing") : "na";
+      row[program.title] = eligible
+        ? (submitted ? "submitted" : "missing")
+        : "na";
     }
     return row;
   });
 
-  return c.json({ matrix, programs: programs.map((program) => program.title), year });
+  return c.json({
+    matrix,
+    programs: programs.map((program) => program.title),
+    year,
+  });
 });
 
 reportsRoutes.get("/reports/quarterly", async (c) => {
@@ -292,13 +339,17 @@ reportsRoutes.get("/reports/quarterly", async (c) => {
 
   const summary = ["1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter"]
     .map((_, index) => {
-      const quarterPirs = pirs.filter((pir) => pir.quarter.startsWith(`${index + 1}`));
+      const quarterPirs = pirs.filter((pir) =>
+        pir.quarter.startsWith(`${index + 1}`)
+      );
       return {
         quarter: `Q${index + 1}`,
         submitted: quarterPirs.filter((pir) =>
           ["Submitted", "Approved"].includes(pir.status)
         ).length,
-        pending: quarterPirs.filter((pir) => pir.status === "Submitted").length,
+        pending: quarterPirs.filter((pir) =>
+          pir.status === "Submitted"
+        ).length,
         approved: quarterPirs.filter((pir) => pir.status === "Approved").length,
         returned: quarterPirs.filter((pir) => pir.status === "Returned").length,
       };
@@ -318,12 +369,22 @@ reportsRoutes.get("/reports/budget", async (c) => {
 
   const byProgram: Record<
     string,
-    { program: string; total: number; sources: Record<string, number>; activityCount: number }
+    {
+      program: string;
+      total: number;
+      sources: Record<string, number>;
+      activityCount: number;
+    }
   > = {};
   for (const activity of activities) {
     const key = activity.aip.program.title;
     if (!byProgram[key]) {
-      byProgram[key] = { program: key, total: 0, sources: {}, activityCount: 0 };
+      byProgram[key] = {
+        program: key,
+        total: 0,
+        sources: {},
+        activityCount: 0,
+      };
     }
     const amount = Number(activity.budget_amount);
     byProgram[key].total += amount;
@@ -393,7 +454,9 @@ reportsRoutes.get("/reports/factors", async (c) => {
   });
 
   const data = FACTOR_TYPES.map((type) => {
-    const matching = factors.filter((factor) => factor.factor_type.trim() === type);
+    const matching = factors.filter((factor) =>
+      factor.factor_type.trim() === type
+    );
     return {
       type,
       facilitating: matching.filter((factor) =>
@@ -424,8 +487,13 @@ reportsRoutes.get("/reports/aip-funnel", async (c) => {
 });
 
 reportsRoutes.get("/reports/cluster-pir-summary", async (c) => {
-  const { year, quarter, clusterId, isValidYear, isValidQuarter: quarterValid } =
-    parseReportQuery(c, { requireCluster: true });
+  const {
+    year,
+    quarter,
+    clusterId,
+    isValidYear,
+    isValidQuarter: quarterValid,
+  } = parseReportQuery(c, { requireCluster: true });
   if (!isValidYear) return invalidYearResponse();
   if (!quarterValid) {
     return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
@@ -458,7 +526,10 @@ reportsRoutes.get("/reports/cluster-pir-summary", async (c) => {
     },
   });
 
-  const aipMap: Record<number, Record<number, { pirId: number; presented: boolean }>> = {};
+  const aipMap: Record<
+    number,
+    Record<number, { pirId: number; presented: boolean }>
+  > = {};
   for (const aip of aips) {
     if (!aip.school_id) continue;
     if (!aipMap[aip.school_id]) aipMap[aip.school_id] = {};
@@ -473,7 +544,12 @@ reportsRoutes.get("/reports/cluster-pir-summary", async (c) => {
 
   const matrix: Record<
     string,
-    { eligible: boolean; pirExists: boolean; pirId: number | null; presented: boolean }
+    {
+      eligible: boolean;
+      pirExists: boolean;
+      pirId: number | null;
+      presented: boolean;
+    }
   > = {};
   const totals: Record<number, { pirTool: number; presented: number }> = {};
 
@@ -522,7 +598,6 @@ reportsRoutes.get("/reports/cluster-pir-summary", async (c) => {
   });
 });
 
-
 reportsRoutes.get("/reports/:type/export", async (c) => {
   const reportExporter = (await getUserFromToken(c))!;
   const type = c.req.param("type");
@@ -540,23 +615,28 @@ reportsRoutes.get("/reports/:type/export", async (c) => {
   }, { ctx: c });
 
   if (!rows.length) {
-    return c.json({ error: `No data found for report type '${type}' in year ${year}.` }, 404);
+    return c.json({
+      error: `No data found for report type '${type}' in year ${year}.`,
+    }, 404);
   }
 
   if (format === "csv") {
     return new Response(toCSV(rows), {
       headers: {
         "Content-Type": "text/csv",
-        "Content-Disposition": `attachment; filename="${type}-report-${year}.csv"`,
+        "Content-Disposition":
+          `attachment; filename="${type}-report-${year}.csv"`,
       },
     });
   }
 
   if (format === "xlsx") {
-    return new Response(toXLSX(rows, type), {
+    return new Response(await toXLSX(rows, type), {
       headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${type}-report-${year}.xlsx"`,
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition":
+          `attachment; filename="${type}-report-${year}.xlsx"`,
       },
     });
   }

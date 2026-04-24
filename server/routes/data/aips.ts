@@ -6,7 +6,8 @@ import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth, verifySchoolCluster } from "./shared/guards.ts";
-import { writeUserLog, getClientIp } from "../../lib/userActivityLog.ts";
+import { writeUserLog } from "../../lib/userActivityLog.ts";
+import { getClientIp } from "../../lib/clientIp.ts";
 import { fetchAIPForUser, fetchProgramByReference } from "./shared/lookups.ts";
 import { CES_ROLES } from "../../lib/routing.ts";
 import {

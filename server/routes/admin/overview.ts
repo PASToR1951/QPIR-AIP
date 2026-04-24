@@ -190,7 +190,7 @@ overviewRoutes.get("/overview", async (c) => {
     if (fd === "SGOD") return "SGOD";
     if (fd === "OSDS" || fd === "ASDS") return "OSDS";
     if (fd === "CID") return "CID";
-    const programDiv = pir.aip?.program?.division;
+    const programDiv = pir.aip?.program?.division as string | null | undefined;
     if (programDiv === "SGOD") return "SGOD";
     if (programDiv === "OSDS" || programDiv === "ASDS") return "OSDS";
     return "CID";
@@ -217,10 +217,15 @@ overviewRoutes.get("/overview", async (c) => {
           pir.status,
         )
       ).length,
-      returned: quarterPirs.filter((pir) => pir.status === "Returned").length,
-      SGOD: quarterPirs.filter((pir) => resolvePirSection(pir) === "SGOD").length,
+      returned: quarterPirs.filter((pir) =>
+        pir.status === "Returned"
+      ).length,
+      SGOD: quarterPirs.filter((pir) =>
+        resolvePirSection(pir) === "SGOD"
+      ).length,
       CID: quarterPirs.filter((pir) => resolvePirSection(pir) === "CID").length,
-      OSDS: quarterPirs.filter((pir) => resolvePirSection(pir) === "OSDS").length,
+      OSDS:
+        quarterPirs.filter((pir) => resolvePirSection(pir) === "OSDS").length,
     };
   });
 
@@ -228,17 +233,14 @@ overviewRoutes.get("/overview", async (c) => {
     pir.quarter.startsWith(quarterPrefixes[currentQuarter])
   );
   const pirSubmittedThisQ = currentQuarterPirs.length;
-  const pirApprovedThisQ = currentQuarterPirs.filter((pir) =>
-    pir.status === "Approved"
-  ).length;
-  const pirReturnedThisQ = currentQuarterPirs.filter((pir) =>
-    pir.status === "Returned"
-  ).length;
+  const pirApprovedThisQ =
+    currentQuarterPirs.filter((pir) => pir.status === "Approved").length;
+  const pirReturnedThisQ =
+    currentQuarterPirs.filter((pir) => pir.status === "Returned").length;
 
   const pirTotalThisYear = pirsByQuarter.length;
-  const pirApprovedThisYear = pirsByQuarter.filter((pir) =>
-    pir.status === "Approved"
-  ).length;
+  const pirApprovedThisYear =
+    pirsByQuarter.filter((pir) => pir.status === "Approved").length;
   const pirApprovalRate = pirTotalThisYear > 0
     ? Math.round((pirApprovedThisYear / pirTotalThisYear) * 100)
     : 0;
@@ -255,8 +257,9 @@ overviewRoutes.get("/overview", async (c) => {
     const totalPhysicalRate = reviewsWithPhysicalTarget.reduce(
       (sum, review) =>
         sum +
-        (Number(review.physical_accomplished) / Number(review.physical_target)) *
-        100,
+        (Number(review.physical_accomplished) /
+            Number(review.physical_target)) *
+          100,
       0,
     );
     avgPhysicalRate = Math.round(
@@ -268,8 +271,8 @@ overviewRoutes.get("/overview", async (c) => {
       (sum, review) =>
         sum +
         (Number(review.financial_accomplished) /
-          Number(review.financial_target)) *
-        100,
+            Number(review.financial_target)) *
+          100,
       0,
     );
     avgFinancialRate = Math.round(
@@ -332,7 +335,9 @@ overviewRoutes.get("/overview", async (c) => {
   const getExpectedProgramCount = (schoolId: number, schoolLevel: string) =>
     allPrograms.filter((program) => {
       if (program.school_level_requirement === "Select Schools") {
-        return program.restricted_schools.some((school) => school.id === schoolId);
+        return program.restricted_schools.some((school) =>
+          school.id === schoolId
+        );
       }
       const levelMatch = program.school_level_requirement === "Both" ||
         program.school_level_requirement === schoolLevel ||
@@ -369,13 +374,18 @@ overviewRoutes.get("/overview", async (c) => {
       };
     }).sort((a, b) => a.pct - b.pct);
 
-    const totalAips = schools.reduce((sum, school) => sum + school.totalAips, 0);
-    const submittedAips = schools.reduce((sum, school) =>
-      sum + school.submitted
-      , 0);
-    const approvedAips = schools.reduce((sum, school) =>
-      sum + school.approved
-      , 0);
+    const totalAips = schools.reduce(
+      (sum, school) => sum + school.totalAips,
+      0,
+    );
+    const submittedAips = schools.reduce(
+      (sum, school) => sum + school.submitted,
+      0,
+    );
+    const approvedAips = schools.reduce(
+      (sum, school) => sum + school.approved,
+      0,
+    );
 
     return {
       id: cluster.id,
@@ -391,19 +401,28 @@ overviewRoutes.get("/overview", async (c) => {
     };
   });
 
-
   const sectionMeta: Array<{ key: SectionKey; label: string; full: string }> = [
-    { key: "SGOD", label: "SGOD", full: "School Governance & Operations Division" },
+    {
+      key: "SGOD",
+      label: "SGOD",
+      full: "School Governance & Operations Division",
+    },
     { key: "CID", label: "CID", full: "Curriculum Implementation Division" },
-    { key: "OSDS", label: "OSDS", full: "Office of the Schools Division Superintendent" },
+    {
+      key: "OSDS",
+      label: "OSDS",
+      full: "Office of the Schools Division Superintendent",
+    },
   ];
 
   const programCountByDivision = Object.fromEntries(
-    programsByDivision.map((row) => [row.division, row._count.id])
+    programsByDivision.map((row) => [row.division, row._count.id]),
   );
 
   const divisionSections = sectionMeta.map(({ key, label, full }) => {
-    const sectionPirs = pirsByQuarter.filter((pir) => resolvePirSection(pir) === key);
+    const sectionPirs = pirsByQuarter.filter((pir) =>
+      resolvePirSection(pir) === key
+    );
     const currentQuarterSection = sectionPirs.filter((pir) =>
       pir.quarter.startsWith(quarterPrefixes[currentQuarter])
     );
@@ -414,18 +433,22 @@ overviewRoutes.get("/overview", async (c) => {
       programCount: programCountByDivision[key] ?? 0,
       total: sectionPirs.length,
       thisQuarter: currentQuarterSection.length,
-      pending: sectionPirs.filter((pir) => pir.status === "For CES Review").length,
-      inReview: sectionPirs.filter((pir) =>
-        ["For Cluster Head Review", "Under Review"].includes(pir.status)
+      pending: sectionPirs.filter((pir) =>
+        pir.status === "For CES Review"
       ).length,
+      inReview:
+        sectionPirs.filter((pir) =>
+          ["For Cluster Head Review", "Under Review"].includes(pir.status)
+        ).length,
       approved: sectionPirs.filter((pir) => pir.status === "Approved").length,
       returned: sectionPirs.filter((pir) => pir.status === "Returned").length,
     };
   });
 
   const divisionAipCompliance = sectionMeta.map(({ key, label, full }) => {
-    const totalPrograms =
-      divisionProgramCounts.find((r) => r.division === key)?._count.id ?? 0;
+    const totalPrograms = divisionProgramCounts.find((r) =>
+      r.division === key
+    )?._count.id ?? 0;
     const sectionAips = divisionAips.filter((a) => a.program?.division === key);
     const withAip = sectionAips.length;
     const approved = sectionAips.filter((a) => a.status === "Approved").length;
@@ -514,8 +537,8 @@ overviewRoutes.get("/onboarding-overview", async (c) => {
     return relevantDate >= since;
   }).map((row) => {
     const progress = row.checklist_progress &&
-      typeof row.checklist_progress === "object" &&
-      !Array.isArray(row.checklist_progress)
+        typeof row.checklist_progress === "object" &&
+        !Array.isArray(row.checklist_progress)
       ? row.checklist_progress as Record<string, unknown>
       : {};
     const completedTaskIds = Array.isArray(progress.completed_task_ids)

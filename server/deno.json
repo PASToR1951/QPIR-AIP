@@ -18,10 +18,10 @@
     "hono": "npm:hono@^4.0.0",
     "@prisma/client": "npm:@prisma/client@^7.4.2",
     "bcrypt": "npm:bcryptjs@^2.4.3",
+    "exceljs": "npm:exceljs@^4.4.0",
     "jsonwebtoken": "npm:jsonwebtoken@^9.0.3",
-    "nodemailer": "npm:nodemailer@^6.10.0",
-    "pg": "npm:pg@^8.20.0",
-    "xlsx": "npm:xlsx@^0.18.5"
+    "nodemailer": "npm:nodemailer@^8.0.5",
+    "pg": "npm:pg@^8.20.0"
   },
   "allowScripts": {
     "allow": [],

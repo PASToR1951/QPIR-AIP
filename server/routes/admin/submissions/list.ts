@@ -11,7 +11,12 @@ import {
   AIP_SUBMISSION_INCLUDE,
   PIR_SUBMISSION_INCLUDE,
 } from "../shared/prismaSelects.ts";
-import { normalizeAIP, normalizePIR, type RawAIP, type RawPIR } from "./normalizers.ts";
+import {
+  normalizeAIP,
+  normalizePIR,
+  type RawAIP,
+  type RawPIR,
+} from "./normalizers.ts";
 
 export const listRouter = new Hono();
 
@@ -166,12 +171,11 @@ listRouter.get("/submissions/export", async (c) => {
   }
 
   if (format === "xlsx") {
-    return new Response(toXLSX(rows, "Submissions"), {
+    return new Response(await toXLSX(rows, "Submissions"), {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition":
-          `attachment; filename="submissions-export.xlsx"`,
+        "Content-Disposition": `attachment; filename="submissions-export.xlsx"`,
       },
     });
   }

@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { prisma } from "../../../db/client.ts";
-import { getClientIp } from "../../../lib/userActivityLog.ts";
+import { getClientIp } from "../../../lib/clientIp.ts";
 
 export async function writeAuditLog(
   adminId: number,

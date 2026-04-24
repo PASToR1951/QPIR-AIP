@@ -1,6 +1,5 @@
 import { prisma } from "../db/client.ts";
 import { logger } from "./logger.ts";
-import type { Context } from "hono";
 
 export interface UserLogParams {
   userId: number | null;
@@ -35,13 +34,4 @@ export function writeUserLog(params: UserLogParams): void {
         action: params.action,
       });
     });
-}
-
-/** Extract client IP from Hono context (proxy headers). */
-export function getClientIp(c: Context): string | null {
-  return (
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-    c.req.header("x-real-ip") ??
-    null
-  );
 }

@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../db/client.ts";
 import { JWT_SECRET } from "./config.ts";
 import { tokenCookieOptions } from "./sessionCookie.ts";
-import { getClientIp } from "./userActivityLog.ts";
+import { getClientIp } from "./clientIp.ts";
 
 export const SESSION_MAX_AGE_SECONDS = 86400;
 export const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;

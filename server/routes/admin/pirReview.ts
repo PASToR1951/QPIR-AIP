@@ -16,6 +16,7 @@ import {
   PIR_LIST_INCLUDE,
   REVIEW_QUEUE_INCLUDE,
 } from "./shared/prismaSelects.ts";
+import { canReadPirRecord, pirReadableWhereFor } from "./shared/pirAccess.ts";
 
 const pirReviewRoutes = new Hono();
 
@@ -38,7 +39,7 @@ pirReviewRoutes.get("/pirs", async (c) => {
   const quarter = c.req.query("quarter");
   const pirs = await prisma.pIR.findMany({
     where: {
-      status: { not: "Draft" },
+      ...pirReadableWhereFor(tokenUser),
       ...(quarter ? { quarter } : {}),
     },
     include: PIR_LIST_INCLUDE,
@@ -75,6 +76,9 @@ pirReviewRoutes.get("/pirs/:id", async (c) => {
     include: PIR_DETAIL_INCLUDE,
   });
   if (!pir) return c.json({ error: "PIR not found" }, 404);
+  if (!canReadPirRecord(tokenUser, pir as any)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
 
   const factorsMap: Record<string, any> = {};
   for (const factor of pir.factors) {
@@ -371,7 +375,9 @@ pirReviewRoutes.post("/cluster-head/pirs/:id/start-review", async (c) => {
     include: { aip: { include: { program: true, school: true } } },
   });
   if (!pir) return c.json({ error: "PIR not found" }, 404);
-  if (!["For Cluster Head Review", "Under Review"].includes((pir as any).status)) {
+  if (
+    !["For Cluster Head Review", "Under Review"].includes((pir as any).status)
+  ) {
     return c.json({ error: "PIR is not in a reviewable state" }, 409);
   }
   if ((pir as any).aip.school?.cluster_id !== tokenUser.cluster_id) {
@@ -431,7 +437,9 @@ pirReviewRoutes.post("/cluster-head/pirs/:id/note", async (c) => {
     },
   });
   if (!pir) return c.json({ error: "PIR not found" }, 404);
-  if (!["For Cluster Head Review", "Under Review"].includes((pir as any).status)) {
+  if (
+    !["For Cluster Head Review", "Under Review"].includes((pir as any).status)
+  ) {
     return c.json({ error: "PIR is not pending Cluster Head review" }, 409);
   }
   if ((pir as any).aip.school?.cluster_id !== tokenUser.cluster_id) {
