@@ -12,7 +12,7 @@ export function useSubmissionModal({ isObserver, handleStatusUpdate, fetchSubmis
   const [observerNotes, setObserverNotes]     = useState('');
   const [observerNotesSaving, setObserverNotesSaving] = useState(false);
   const [observerNotesSaved, setObserverNotesSaved]   = useState(false);
-  const [observerNotesError, setObserverNotesError]   = useState('');
+  const [observerNotesError, setObserverNotesError]   = useState(null);
   const [pdfLoadingId, setPdfLoadingId]       = useState(null);
 
   const underReviewTimerRef = useRef(null);
@@ -23,9 +23,8 @@ export function useSubmissionModal({ isObserver, handleStatusUpdate, fetchSubmis
     setViewItem(null);
     setViewData(null);
     setObserverNotes('');
-    setObserverNotesSaving(false);
     setObserverNotesSaved(false);
-    setObserverNotesError('');
+    setObserverNotesError(null);
   };
 
   const openView = async (item) => {
@@ -35,7 +34,7 @@ export function useSubmissionModal({ isObserver, handleStatusUpdate, fetchSubmis
     setViewLoading(true);
     setObserverNotes('');
     setObserverNotesSaved(false);
-    setObserverNotesError('');
+    setObserverNotesError(null);
     try {
       const r = await api.get(`/api/admin/submissions/${item.id}?type=${item.type.toLowerCase()}`);
       setViewData(r.data);
@@ -97,31 +96,28 @@ export function useSubmissionModal({ isObserver, handleStatusUpdate, fetchSubmis
     }
   };
 
+  // Allow external status changes (e.g. auto-Under-Review) to sync into viewData
+  const syncViewDataStatus = (status) =>
+    setViewData(prev => prev ? { ...prev, status } : prev);
+
   const handleObserverNotesSave = async () => {
-    if (!isObserver || !viewItem) return;
+    if (!viewItem || !isObserver) return;
     setObserverNotesSaving(true);
+    setObserverNotesError(null);
     setObserverNotesSaved(false);
-    setObserverNotesError('');
     try {
-      const r = await api.patch(`/api/admin/submissions/${viewItem.id}/observer-notes`, {
+      await api.patch(`/api/admin/submissions/${viewItem.id}/observer-notes`, {
         type: viewItem.type.toLowerCase(),
         notes: observerNotes,
       });
-      const savedNotes = r.data.observer_notes ?? observerNotes;
-      setObserverNotes(savedNotes);
-      setViewData(prev => prev ? { ...prev, observer_notes: savedNotes } : prev);
       setObserverNotesSaved(true);
       setTimeout(() => setObserverNotesSaved(false), 2500);
-    } catch (e) {
-      setObserverNotesError(e.friendlyMessage ?? 'Failed to save observer notes.');
+    } catch {
+      setObserverNotesError('Failed to save. Please try again.');
     } finally {
       setObserverNotesSaving(false);
     }
   };
-
-  // Allow external status changes (e.g. auto-Under-Review) to sync into viewData
-  const syncViewDataStatus = (status) =>
-    setViewData(prev => prev ? { ...prev, status } : prev);
 
   return {
     viewItem, viewData, viewLoading,

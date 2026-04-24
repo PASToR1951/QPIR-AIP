@@ -219,8 +219,10 @@ export default function AdminSubmissions() {
         isObserver={isObserver} onClose={modal.closeView} onExportPDF={modal.handleExportPDF}
         editActionLoading={modal.editActionLoading} onEditAction={modal.handleEditAction}
         observerNotes={modal.observerNotes} setObserverNotes={modal.setObserverNotes}
-        observerNotesSaving={modal.observerNotesSaving} observerNotesSaved={modal.observerNotesSaved}
-        observerNotesError={modal.observerNotesError} onObserverNotesSave={modal.handleObserverNotesSave}
+        observerNotesSaving={modal.observerNotesSaving}
+        observerNotesSaved={modal.observerNotesSaved}
+        observerNotesError={modal.observerNotesError}
+        onObserverNotesSave={modal.handleObserverNotesSave}
         canDownloadSubmission={actions.canDownloadSubmission}
       />
     </>

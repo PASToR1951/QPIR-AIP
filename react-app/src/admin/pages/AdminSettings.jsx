@@ -3,7 +3,7 @@ import api from '../../lib/api.js';
 import {
   CheckCircle, Database, Gear, Users, Buildings, BookOpen,
   Palette, EnvelopeSimple, Key, PaperPlaneTilt, Megaphone,
-  ClockCounterClockwise,
+  ClockCounterClockwise, Desktop,
 } from '@phosphor-icons/react';
 import { Spinner } from '../components/Spinner.jsx';
 import { CURRENT_VERSION } from '../../version.js';
@@ -32,9 +32,9 @@ const SECTIONS = [
 ];
 
 const SUB_SECTIONS = [
-  { key: 'sessions', label: 'Sessions',   desc: 'Active user sessions', Icon: Key,                   },
-  { key: 'logs',     label: 'Audit Logs', desc: 'Admin activity trail', Icon: ClockCounterClockwise, badge: 'Beta' },
-  { key: 'backups',  label: 'Backups',    desc: 'Database snapshots',   Icon: Database,              badge: 'Beta' },
+  { key: 'sessions', label: 'Device Management', desc: 'System signed-in devices', Icon: Desktop,              },
+  { key: 'logs',     label: 'Audit Logs',        desc: 'Admin activity trail',     Icon: ClockCounterClockwise, badge: 'Beta' },
+  { key: 'backups',  label: 'Backups',           desc: 'Database snapshots',       Icon: Database,              badge: 'Beta' },
 ];
 
 function NavBtn({ sectionKey, label, desc, Icon, badge, activeSection, onSelect }) {
@@ -48,7 +48,11 @@ function NavBtn({ sectionKey, label, desc, Icon, badge, activeSection, onSelect 
           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
       }`}
     >
-      <Icon size={15} weight={isActive ? 'fill' : 'regular'} className="shrink-0 mt-0.5" />
+      {React.createElement(Icon, {
+        size: 15,
+        weight: isActive ? 'fill' : 'regular',
+        className: 'shrink-0 mt-0.5',
+      })}
       <span className="flex-1 min-w-0">
         <span className="flex items-center gap-1.5">
           <span className="text-sm font-medium leading-tight">{label}</span>

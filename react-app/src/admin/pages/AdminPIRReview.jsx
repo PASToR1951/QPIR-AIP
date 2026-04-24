@@ -175,10 +175,8 @@ export default function AdminPIRReview() {
           remarksSaved={remarksSaved}
           remarksSaving={remarksSaving}
           reviews={reviews}
-          saveObserverNotes={handleSaveObserverNotes}
           saveRemarks={handleSaveRemarks}
           onAdminRemarksChange={handleAdminRemarksChange}
-          onObserverNotesChange={handleObserverNotesChange}
           submittedBy={submittedBy}
           sub={sub}
           totalFinAcc={totalFinAcc}
@@ -192,6 +190,8 @@ export default function AdminPIRReview() {
           observerNotesError={observerNotesError}
           observerNotesSaved={observerNotesSaved}
           observerNotesSaving={observerNotesSaving}
+          onObserverNotesChange={handleObserverNotesChange}
+          saveObserverNotes={handleSaveObserverNotes}
           togglePresented={handleTogglePresented}
           pir={pir}
         />

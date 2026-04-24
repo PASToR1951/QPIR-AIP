@@ -33,16 +33,35 @@ export function usePirReviewActions({ id, isObserver }) {
     setObserverNotesError(null);
   }, []);
 
-  const handleAdminRemarksChange = useCallback((event) => {
-    setAdminRemarks(event.target.value);
-    setRemarksSaved(false);
-    setRemarksError(null);
-  }, []);
-
   const handleObserverNotesChange = useCallback((event) => {
     setObserverNotes(event.target.value);
     setObserverNotesSaved(false);
     setObserverNotesError(null);
+  }, []);
+
+  const handleSaveObserverNotes = useCallback(async () => {
+    if (!isObserver) return;
+    setObserverNotesSaving(true);
+    setObserverNotesError(null);
+    setObserverNotesSaved(false);
+    try {
+      await api.patch(`/api/admin/submissions/${id}/observer-notes`, {
+        type: 'pir',
+        notes: observerNotes,
+      });
+      setObserverNotesSaved(true);
+      setTimeout(() => setObserverNotesSaved(false), 2500);
+    } catch {
+      setObserverNotesError('Failed to save. Please try again.');
+    } finally {
+      setObserverNotesSaving(false);
+    }
+  }, [id, isObserver, observerNotes]);
+
+  const handleAdminRemarksChange = useCallback((event) => {
+    setAdminRemarks(event.target.value);
+    setRemarksSaved(false);
+    setRemarksError(null);
   }, []);
 
   const handleSaveRemarks = useCallback(async () => {
@@ -74,23 +93,6 @@ export function usePirReviewActions({ id, isObserver }) {
       setPresentedSaving(false);
     }
   }, [id, isObserver, presented]);
-
-  const handleSaveObserverNotes = useCallback(async () => {
-    if (!isObserver) return;
-    setObserverNotesSaving(true);
-    setObserverNotesSaved(false);
-    setObserverNotesError(null);
-    try {
-      const response = await api.patch(`/api/admin/submissions/${id}/observer-notes`, { type: 'pir', notes: observerNotes });
-      setObserverNotes(response.data.observer_notes ?? observerNotes);
-      setObserverNotesSaved(true);
-      setTimeout(() => setObserverNotesSaved(false), 2500);
-    } catch {
-      setObserverNotesError('Failed to save observer notes. Please try again.');
-    } finally {
-      setObserverNotesSaving(false);
-    }
-  }, [id, isObserver, observerNotes]);
 
   const handleAction = useCallback(async () => {
     if (isObserver) return;

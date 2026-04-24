@@ -13,6 +13,16 @@ const STATUS_PILLS = [
   { label: 'Expired', value: 'expired' },
   { label: 'Revoked', value: 'revoked' },
 ];
+const ROLE_OPTIONS = [
+  'School',
+  'Division Personnel',
+  'CES-SGOD',
+  'CES-ASDS',
+  'CES-CID',
+  'Cluster Coordinator',
+  'Admin',
+  'Observer',
+];
 const PAGE_SIZE = 25;
 
 function SessionStatusPill({ session }) {
@@ -27,6 +37,8 @@ function SessionStatusPill({ session }) {
 export default function AdminSessions() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [deviceFilter, setDeviceFilter] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [sessions, setSessions] = useState([]);
@@ -47,6 +59,8 @@ export default function AdminSessions() {
         params: {
           ...(search.trim() ? { search: search.trim() } : {}),
           ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+          ...(roleFilter !== 'all' ? { role: roleFilter } : {}),
+          ...(deviceFilter.trim() ? { device: deviceFilter.trim() } : {}),
           page,
           limit: PAGE_SIZE,
         },
@@ -64,15 +78,15 @@ export default function AdminSessions() {
       setSessions(rows);
       setTotal(totalCount);
     } catch (err) {
-      showToast(err.friendlyMessage ?? 'Failed to load sessions.', 'error');
+      showToast(err.friendlyMessage ?? 'Failed to load signed-in devices.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [page, search, showToast, statusFilter]);
+  }, [deviceFilter, page, roleFilter, search, showToast, statusFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter]);
+  }, [deviceFilter, roleFilter, search, statusFilter]);
 
   useEffect(() => {
     void loadSessions();
@@ -98,16 +112,16 @@ export default function AdminSessions() {
     try {
       if (confirmAction.type === 'single') {
         await api.delete(`/api/admin/sessions/${confirmAction.session.id}`);
-        showToast('Session revoked.');
+        showToast('Device session revoked.');
       } else {
         const { data } = await api.delete(`/api/admin/sessions/user/${confirmAction.user.id}`);
-        showToast(`${data.revoked} active session${data.revoked === 1 ? '' : 's'} revoked for ${confirmAction.user.name}.`);
+        showToast(`${data.revoked} active signed-in device${data.revoked === 1 ? '' : 's'} revoked for ${confirmAction.user.name}.`);
       }
 
       setConfirmAction(null);
       await loadSessions();
     } catch (err) {
-      showToast(err.friendlyMessage ?? 'Failed to revoke session.', 'error');
+      showToast(err.friendlyMessage ?? 'Failed to revoke signed-in device.', 'error');
       setConfirmAction(null);
     } finally {
       setActionLoading(false);
@@ -188,21 +202,43 @@ export default function AdminSessions() {
         <div className="flex flex-col gap-2 shrink-0">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">Active Session Monitoring</h2>
+              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">System Device Management</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {activeCount} active tracked session{activeCount === 1 ? '' : 's'} in the current results.
+                {activeCount} active signed-in device{activeCount === 1 ? '' : 's'} shown in the current results.
               </p>
             </div>
+          </div>
 
-            <div className="relative w-full max-w-md">
+          <div className="grid gap-2 md:grid-cols-[minmax(15rem,1fr)_13rem_minmax(12rem,16rem)]">
+            <div className="relative">
               <MagnifyingGlass size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search by name or email…"
+                placeholder="Search by name or email..."
                 className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-400 focus:outline-none dark:border-dark-border dark:bg-dark-surface dark:text-slate-100 dark:placeholder-slate-500"
               />
             </div>
+
+            <select
+              value={roleFilter}
+              onChange={(event) => setRoleFilter(event.target.value)}
+              aria-label="Filter by role"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 focus:border-indigo-400 focus:outline-none dark:border-dark-border dark:bg-dark-surface dark:text-slate-200"
+            >
+              <option value="all">All Roles</option>
+              {ROLE_OPTIONS.map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+
+            <input
+              value={deviceFilter}
+              onChange={(event) => setDeviceFilter(event.target.value)}
+              placeholder="Device, e.g. Chrome"
+              aria-label="Filter by device"
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-indigo-400 focus:outline-none dark:border-dark-border dark:bg-dark-surface dark:text-slate-100 dark:placeholder-slate-500"
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
@@ -233,7 +269,7 @@ export default function AdminSessions() {
               data={sessions}
               pageSize={PAGE_SIZE}
               fillHeight
-              emptyMessage="No sessions found."
+              emptyMessage="No signed-in devices found."
             />
             {total > 0 && (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -267,10 +303,10 @@ export default function AdminSessions() {
 
       <ConfirmModal
         open={!!confirmAction}
-        title={confirmAction?.type === 'bulk' ? 'Revoke All User Sessions' : 'Revoke Session'}
+        title={confirmAction?.type === 'bulk' ? 'Revoke All User Devices' : 'Revoke Device Session'}
         message={confirmAction?.type === 'bulk'
-          ? `Revoke every active session for ${confirmAction?.user?.name}?`
-          : `Revoke ${confirmAction?.session?.device_label || 'this session'} for ${confirmAction?.session?.user?.name}?`}
+          ? `Revoke every active signed-in device for ${confirmAction?.user?.name}?`
+          : `Revoke ${confirmAction?.session?.device_label || 'this device session'} for ${confirmAction?.session?.user?.name}?`}
         variant="danger"
         confirmLabel={confirmAction?.type === 'bulk' ? 'Revoke All' : 'Revoke'}
         onConfirm={handleConfirm}

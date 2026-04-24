@@ -38,22 +38,18 @@ export default defineConfig(({ mode }) => {
         ? {
             '/api': {
               target: apiProxyTarget,
-              changeOrigin: true,
               secure: false,
             },
             '/school-logos': {
               target: apiProxyTarget,
-              changeOrigin: true,
               secure: false,
             },
             '/cluster-logos': {
               target: apiProxyTarget,
-              changeOrigin: true,
               secure: false,
             },
             '/app-logo': {
               target: apiProxyTarget,
-              changeOrigin: true,
               secure: false,
             },
           }

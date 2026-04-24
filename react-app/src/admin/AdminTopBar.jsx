@@ -11,7 +11,7 @@ const PAGE_LABELS = {
   '/admin/deadlines': 'Deadlines',
   '/admin/reports': 'Reports',
   '/admin/consolidation-template': 'Consolidation',
-  '/admin/sessions': 'Sessions',
+  '/admin/sessions': 'Device Management',
   '/admin/settings': 'Settings',
 };
 
