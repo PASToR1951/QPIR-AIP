@@ -1,6 +1,8 @@
 import { Hono } from "hono";
-import { Prisma } from "@prisma/client";
+import pkg from "@prisma/client";
 import { prisma } from "../../../db/client.ts";
+
+const { Prisma } = pkg;
 import { getUserFromToken } from "../../../lib/auth.ts";
 import { safeParseInt } from "../../../lib/safeParseInt.ts";
 import { sanitizeObject } from "../../../lib/sanitize.ts";

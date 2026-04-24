@@ -84,11 +84,28 @@ function preloadForRole(role) {
 
 const isTokenObsolete = () => {
   if (auth.isExpired()) {
-    auth.clearSession();
+    void auth.expireSession();
     return true;
   }
   return false;
 };
+
+function isProtectedPath(pathname) {
+  return (
+    pathname === '/' ||
+    pathname === '/aip' ||
+    pathname === '/pir' ||
+    pathname === '/user-logs' ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/ces') ||
+    pathname.startsWith('/cluster-head')
+  );
+}
+
+function hasValidStoredSession() {
+  const user = auth.getUser();
+  return Boolean(user?.role) && !auth.isExpired();
+}
 
 // Route guards
 const ProtectedRoute = ({ children }) => {
@@ -207,7 +224,7 @@ const PIRRouteGuard = ({ children }) => {
       }
     };
     checkStatus();
-  }, [user?.id]);
+  }, [isDivisionPersonnel, user?.id, user?.school_id]);
 
   if (isLoading) {
     return (
@@ -229,6 +246,40 @@ const Spinner = () => (
     <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-pink-500 animate-spin" />
   </div>
 );
+
+function SessionBootstrap({ pathname, children }) {
+  const needsSession = isProtectedPath(pathname);
+  const [bootstrap, setBootstrap] = useState(() => ({
+    pathname,
+    ready: !needsSession || hasValidStoredSession(),
+  }));
+
+  const ready = bootstrap.pathname === pathname
+    ? bootstrap.ready
+    : (!needsSession || hasValidStoredSession());
+
+  useEffect(() => {
+    if (!needsSession || hasValidStoredSession()) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    auth.restoreSession()
+      .catch(() => {
+        auth.clearBrowserSession({ clearDrafts: false });
+      })
+      .finally(() => {
+        if (!cancelled) setBootstrap({ pathname, ready: true });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [needsSession, pathname]);
+
+  if (needsSession && !ready) return <Spinner />;
+  return children;
+}
 
 /**
  * All framer-motion-dependent route rendering lives here.
@@ -253,25 +304,27 @@ export default function AnimatedContent() {
   if (isAdminPath) {
     return (
       <MotionConfig reducedMotion={settings.reduceMotion ? 'always' : 'never'}>
-        <Suspense fallback={<Spinner />}>
-          <Routes location={location}>
-            <Route path="/admin" element={<AdminRouteGuard><AdminLayout /></AdminRouteGuard>}>
-              <Route index element={<AdminOverview />} />
-              <Route path="submissions" element={<AdminSubmissions />} />
-              <Route path="users" element={<AdminOnlyGuard><AdminUsers /></AdminOnlyGuard>} />
-              <Route path="schools" element={<AdminOnlyGuard><AdminSchools /></AdminOnlyGuard>} />
-              <Route path="programs" element={<AdminOnlyGuard><AdminPrograms /></AdminOnlyGuard>} />
-              <Route path="deadlines" element={<AdminOnlyGuard><AdminDeadlines /></AdminOnlyGuard>} />
-              <Route path="reports" element={<AdminOnlyGuard><AdminReports /></AdminOnlyGuard>} />
-              <Route path="consolidation-template" element={<AdminOnlyGuard><AdminConsolidationTemplate /></AdminOnlyGuard>} />
-              <Route path="sessions" element={<AdminOnlyGuard><AdminSessions /></AdminOnlyGuard>} />
-              <Route path="logs" element={<AdminOnlyGuard><AdminLogs /></AdminOnlyGuard>} />
-              <Route path="settings" element={<AdminOnlyGuard><AdminSettings /></AdminOnlyGuard>} />
-              <Route path="backups" element={<AdminOnlyGuard><AdminBackups /></AdminOnlyGuard>} />
-              <Route path="pirs/:id" element={<AdminPIRReview />} />
-            </Route>
-          </Routes>
-        </Suspense>
+        <SessionBootstrap pathname={location.pathname}>
+          <Suspense fallback={<Spinner />}>
+            <Routes location={location}>
+              <Route path="/admin" element={<AdminRouteGuard><AdminLayout /></AdminRouteGuard>}>
+                <Route index element={<AdminOverview />} />
+                <Route path="submissions" element={<AdminSubmissions />} />
+                <Route path="users" element={<AdminOnlyGuard><AdminUsers /></AdminOnlyGuard>} />
+                <Route path="schools" element={<AdminOnlyGuard><AdminSchools /></AdminOnlyGuard>} />
+                <Route path="programs" element={<AdminOnlyGuard><AdminPrograms /></AdminOnlyGuard>} />
+                <Route path="deadlines" element={<AdminOnlyGuard><AdminDeadlines /></AdminOnlyGuard>} />
+                <Route path="reports" element={<AdminOnlyGuard><AdminReports /></AdminOnlyGuard>} />
+                <Route path="consolidation-template" element={<AdminOnlyGuard><AdminConsolidationTemplate /></AdminOnlyGuard>} />
+                <Route path="sessions" element={<AdminOnlyGuard><AdminSessions /></AdminOnlyGuard>} />
+                <Route path="logs" element={<AdminOnlyGuard><AdminLogs /></AdminOnlyGuard>} />
+                <Route path="settings" element={<AdminOnlyGuard><AdminSettings /></AdminOnlyGuard>} />
+                <Route path="backups" element={<AdminOnlyGuard><AdminBackups /></AdminOnlyGuard>} />
+                <Route path="pirs/:id" element={<AdminPIRReview />} />
+              </Route>
+            </Routes>
+          </Suspense>
+        </SessionBootstrap>
         <OnboardingController />
         <PracticeModeController />
         <HelpLauncher />
@@ -285,9 +338,10 @@ export default function AnimatedContent() {
       {['/aip', '/pir'].includes(location.pathname) && (
         <FormBackground orb={formOrb} />
       )}
-      <Suspense fallback={<Spinner />}>
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname}>
+      <SessionBootstrap pathname={location.pathname}>
+        <Suspense fallback={<Spinner />}>
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
             <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
             <Route path="/auth/magic-link" element={<MagicLinkCallback />} />
@@ -338,9 +392,10 @@ export default function AnimatedContent() {
 
             {/* Catch-all 404 Route */}
             <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
-          </Routes>
-        </AnimatePresence>
-      </Suspense>
+            </Routes>
+          </AnimatePresence>
+        </Suspense>
+      </SessionBootstrap>
       <OnboardingController />
       <PracticeModeController />
       <HelpLauncher />

@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 
 const SESSION_EVENT = 'auth:session-updated';
+const LOGOUT_BLOCK_KEY = 'auth:explicitLogout';
+const EXPLICIT_LOGOUT_ERROR = 'EXPLICITLY_LOGGED_OUT';
+const SESSION_STORAGE_KEYS = ['token', 'user', 'tokenExpiry', 'idleExpiry', 'idleTimeoutSeconds'];
+const SENSITIVE_LOCAL_PREFIXES = ['aip_draft_', 'pir_draft_', 'onboarding:'];
+const SENSITIVE_SESSION_PREFIXES = ['onboarding:'];
 
 function parseStoredUser() {
   try {
@@ -15,15 +20,86 @@ function dispatchSessionUpdate(user) {
   window.dispatchEvent(new CustomEvent(SESSION_EVENT, { detail: user }));
 }
 
+function safeRemoveStorageKeys(storage, keys) {
+  try {
+    keys.forEach((key) => storage.removeItem(key));
+  } catch {
+    // Storage can fail in private browsing or hardened browser modes.
+  }
+}
+
+function safeRemoveByPrefix(storage, prefixes) {
+  try {
+    Object.keys(storage)
+      .filter((key) => prefixes.some((prefix) => key.startsWith(prefix)))
+      .forEach((key) => storage.removeItem(key));
+  } catch {
+    // Ignore storage failures; server-side session validation remains authoritative.
+  }
+}
+
+function setLogoutBlock() {
+  try {
+    localStorage.setItem(LOGOUT_BLOCK_KEY, String(Date.now()));
+  } catch {
+    // Non-critical; logout still clears the server cookie when the request succeeds.
+  }
+}
+
+function clearLogoutBlock() {
+  try {
+    localStorage.removeItem(LOGOUT_BLOCK_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function hasLogoutBlock() {
+  try {
+    return Boolean(localStorage.getItem(LOGOUT_BLOCK_KEY));
+  } catch {
+    return false;
+  }
+}
+
+function storeSessionMetadata({ expiresAt, idleExpiresAt, idleTimeoutSeconds }) {
+  sessionStorage.setItem('tokenExpiry', String(expiresAt));
+  if (idleExpiresAt) {
+    sessionStorage.setItem('idleExpiry', String(idleExpiresAt));
+  } else {
+    sessionStorage.removeItem('idleExpiry');
+  }
+  if (idleTimeoutSeconds) {
+    sessionStorage.setItem('idleTimeoutSeconds', String(idleTimeoutSeconds));
+  } else {
+    sessionStorage.removeItem('idleTimeoutSeconds');
+  }
+}
+
+function splitSessionResponse(payload) {
+  const { expiresAt, idleExpiresAt, idleTimeoutSeconds, ...user } = payload;
+  return {
+    user,
+    metadata: { expiresAt, idleExpiresAt, idleTimeoutSeconds },
+  };
+}
+
 export const auth = {
   getUser:    ()  => parseStoredUser(),
-  getExpiry:  ()  => parseInt(sessionStorage.getItem('tokenExpiry') || '0', 10),
+  getExpiry:  ()  => Number.parseInt(sessionStorage.getItem('tokenExpiry') || '0', 10) || 0,
+  getIdleExpiry: () => Number.parseInt(sessionStorage.getItem('idleExpiry') || '0', 10) || 0,
+  getIdleTimeoutSeconds: () => Number.parseInt(sessionStorage.getItem('idleTimeoutSeconds') || '0', 10) || 0,
   isExpired:  ()  => Date.now() / 1000 >= auth.getExpiry(),
   isObserver: () => auth.getUser()?.role === 'Observer',
   isAdminPanelRole: (role = auth.getUser()?.role) => ['Admin', 'Observer'].includes(role),
-  setSession: (user, exp) => {
+  setSession: (user, exp, metadata = {}) => {
+    clearLogoutBlock();
     sessionStorage.setItem('user', JSON.stringify(user));
-    sessionStorage.setItem('tokenExpiry', String(exp));
+    storeSessionMetadata({
+      expiresAt: exp,
+      idleExpiresAt: metadata.idleExpiresAt,
+      idleTimeoutSeconds: metadata.idleTimeoutSeconds,
+    });
     dispatchSessionUpdate(user);
   },
   refreshSession: async () => {
@@ -32,25 +108,53 @@ export const auth = {
     });
     if (!res.ok) throw new Error('SESSION_REFRESH_FAILED');
 
-    const { expiresAt, ...user } = await res.json();
-    auth.setSession(user, expiresAt);
+    const { user, metadata } = splitSessionResponse(await res.json());
+    auth.setSession(user, metadata.expiresAt, metadata);
     return user;
   },
-  clearSession: async () => {
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('tokenExpiry');
-    Object.keys(sessionStorage)
-      .filter((key) => key.startsWith('onboarding:loginPrompt:'))
-      .forEach((key) => sessionStorage.removeItem(key));
+  restoreSession: async () => {
+    if (hasLogoutBlock()) throw new Error(EXPLICIT_LOGOUT_ERROR);
+    return auth.refreshSession();
+  },
+  isExplicitLogoutError: (err) => err?.message === EXPLICIT_LOGOUT_ERROR,
+  clearBrowserSession: ({ clearDrafts = false } = {}) => {
+    safeRemoveStorageKeys(sessionStorage, SESSION_STORAGE_KEYS);
+    safeRemoveByPrefix(sessionStorage, SENSITIVE_SESSION_PREFIXES);
+    if (clearDrafts) {
+      safeRemoveByPrefix(localStorage, SENSITIVE_LOCAL_PREFIXES);
+    }
     dispatchSessionUpdate(null);
+  },
+  expireSession: async () => {
     try {
       await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
         method: 'POST', credentials: 'include'
       });
     } catch {
-      // Ignore network errors on logout
+      // The server may already consider the session invalid; local cleanup still applies.
     }
+    auth.clearBrowserSession({ clearDrafts: false });
+  },
+  logout: async ({ clearDrafts = true } = {}) => {
+    setLogoutBlock();
+    let logoutError = null;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+        method: 'POST', credentials: 'include'
+      });
+      if (!res.ok) throw new Error('LOGOUT_CONFIRMATION_FAILED');
+    } catch (err) {
+      logoutError = err;
+    } finally {
+      auth.clearBrowserSession({ clearDrafts });
+    }
+
+    if (logoutError) {
+      throw logoutError;
+    }
+  },
+  clearSession: async (options) => {
+    await auth.logout(options);
   }
 };
 

@@ -36,7 +36,7 @@ function isPrivateIpv4Host(hostname) {
 function getGoogleOAuthUnavailableReason() {
   const configuredHost = import.meta.env.VITE_PUBLIC_HOST || '';
   const browserHost = typeof window === 'undefined' ? '' : window.location.hostname;
-  const oauthHost = configuredHost || browserHost;
+  const oauthHost = browserHost || configuredHost;
 
   if (isPrivateIpv4Host(oauthHost)) {
     return 'Google sign-in is unavailable in local-network mode because Google blocks private-IP callback URLs. Use Email & Password for LAN testing.';
@@ -62,6 +62,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loginView, setLoginView] = useState(googleOAuthAvailable ? GOOGLE_VIEW : MANUAL_VIEW);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isShaking, setIsShaking] = useState(false);
   const { executeRecaptcha } = useGoogleReCaptcha();
@@ -75,15 +76,38 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const redirectAuthenticatedUser = (user) => {
+      if (!cancelled && user?.role) {
+        navigate(roleToDashboard(user.role), { replace: true });
+      }
+    };
+
     const user = auth.getUser();
 
-    if (!user?.role) return;
-    if (auth.isExpired()) {
-      void auth.clearSession();
-      return;
+    if (user?.role && !auth.isExpired()) {
+      redirectAuthenticatedUser(user);
+      return () => { cancelled = true; };
     }
 
-    navigate(roleToDashboard(user.role), { replace: true });
+    if (user?.role && auth.isExpired()) {
+      void auth.expireSession();
+      return () => { cancelled = true; };
+    }
+
+    auth.restoreSession()
+      .then(redirectAuthenticatedUser)
+      .catch((err) => {
+        auth.clearBrowserSession({ clearDrafts: false });
+        if (!cancelled && auth.isExplicitLogoutError(err)) {
+          setNotice('You signed out of this browser. Please sign in again to continue.');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   // Display error messages redirected from OAuth callbacks
@@ -92,9 +116,11 @@ export default function Login() {
     const errorCode = searchParams.get('error');
     if (msg) {
       setError(decodeURIComponent(msg));
+      setNotice('');
       setLoginView(MANUAL_VIEW);
     } else if (errorCode) {
       setError(getOAuthErrorMessage(errorCode));
+      setNotice('');
       setLoginView(MANUAL_VIEW);
     }
   }, [searchParams]);
@@ -163,6 +189,7 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setNotice('');
 
     const finalEmail = email.includes('@') ? email : `${email}@deped.gov.ph`;
 
@@ -170,7 +197,7 @@ export default function Login() {
     if (executeRecaptcha) {
       try {
         token = await executeRecaptcha('login');
-      } catch (err) {
+      } catch {
         shakeCard();
         setError('reCAPTCHA verification failed. Please check your connection.');
         setIsLoading(false);
@@ -186,7 +213,10 @@ export default function Login() {
       }, { withCredentials: true });
 
       // Use the user data returned by /login directly — no need for a second /me round trip.
-      auth.setSession(data.user, data.expiresAt);
+      auth.setSession(data.user, data.expiresAt, {
+        idleExpiresAt: data.idleExpiresAt,
+        idleTimeoutSeconds: data.idleTimeoutSeconds,
+      });
       navigate(roleToDashboard(data.user.role), { replace: true });
     } catch (err) {
       shakeCard();
@@ -330,6 +360,28 @@ export default function Login() {
             </div>
           )}
 
+          {notice && !error && (
+            <div className="mb-4 rounded-2xl overflow-hidden border border-indigo-200 dark:border-indigo-900/60 shadow-sm shadow-indigo-100/50 dark:shadow-none">
+              <div className="flex items-start gap-3 bg-indigo-50 dark:bg-indigo-950/30 px-4 py-3">
+                <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-500 dark:text-indigo-400">
+                  <AlertCircle size={15} weight="fill" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-0.5">Signed Out</p>
+                  <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium leading-snug">{notice}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNotice('')}
+                  className="flex-shrink-0 mt-0.5 text-indigo-300 dark:text-indigo-700 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+                  aria-label="Dismiss notice"
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-5 -mx-1 login-stagger-child" style={{ '--stagger-i': 4 }}>
             <div ref={panelShellRef} className="login-panel-shell">
               <div className={`login-panel-track ${loginView === MANUAL_VIEW ? 'login-panel-track--manual' : ''}`}>
@@ -371,7 +423,7 @@ export default function Login() {
                       className="text-xs font-medium text-indigo-600 dark:text-indigo-400 underline decoration-dotted underline-offset-4 transition-colors hover:text-indigo-700 dark:hover:text-indigo-300"
                     >
                       {googleOAuthAvailable
-                        ? 'Can&apos;t access your DepEd Google email? Sign in manually.'
+                        ? "Can't access your DepEd Google email? Sign in manually."
                         : 'Continue with Email & Password instead.'}
                     </button>
                   </div>

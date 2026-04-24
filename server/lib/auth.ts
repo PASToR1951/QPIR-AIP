@@ -5,6 +5,9 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../db/client.ts";
 import { JWT_SECRET } from "./config.ts";
 import {
+  getSessionIdleExpiresAt,
+  getSessionIdleTimeoutSeconds,
+  getSessionValidationFailure,
   hashSessionToken,
   SESSION_TOUCH_INTERVAL_MS,
 } from "./userSessions.ts";
@@ -15,9 +18,22 @@ export interface TokenPayload {
   school_id: number | null;
   cluster_id?: number | null;
   sid?: string;
+  sessionId?: number;
+  idleExpiresAt?: number;
+  idleTimeoutSeconds?: number;
 }
 
-const VALID_ROLES = ['School', 'Division Personnel', 'Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Pending', 'Observer'] as const;
+const VALID_ROLES = [
+  "School",
+  "Division Personnel",
+  "Admin",
+  "CES-SGOD",
+  "CES-ASDS",
+  "CES-CID",
+  "Cluster Coordinator",
+  "Pending",
+  "Observer",
+] as const;
 
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
@@ -27,19 +43,19 @@ function extractToken(
 ): string | undefined {
   let token: string | undefined;
 
-  if (typeof cOrHeader === 'string') {
+  if (typeof cOrHeader === "string") {
     if (cOrHeader.startsWith("Bearer ")) {
       token = cOrHeader.slice(7);
     } else {
       token = cOrHeader;
     }
-  } else if (cOrHeader && typeof cOrHeader.req === 'object') {
+  } else if (cOrHeader && typeof cOrHeader.req === "object") {
     // It's a Hono context
-    const authHeader = cOrHeader.req.header('Authorization');
+    const authHeader = cOrHeader.req.header("Authorization");
     if (authHeader?.startsWith("Bearer ")) {
       token = authHeader.slice(7);
     } else {
-      token = getCookie(cOrHeader, 'token');
+      token = getCookie(cOrHeader, "token");
     }
   }
 
@@ -53,7 +69,9 @@ export async function getUserFromToken(
   if (!token) return null;
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as TokenPayload;
+    const payload = jwt.verify(token, JWT_SECRET, {
+      algorithms: ["HS256"],
+    }) as TokenPayload;
     if (!Number.isInteger(payload.id) || typeof payload.role !== "string") {
       return null;
     }
@@ -66,39 +84,52 @@ export async function getUserFromToken(
       return null;
     }
 
-    if (!payload.sid) {
-      const user = await prisma.user.findUnique({
-        where: { id: payload.id },
-        select: { is_active: true },
-      });
-      return user?.is_active ? payload : null;
-    }
+    if (!payload.sid) return null;
 
+    const now = new Date();
     const session = await prisma.userSession.findUnique({
       where: { session_token: await hashSessionToken(payload.sid) },
       select: {
         id: true,
+        user_id: true,
         last_seen_at: true,
         expires_at: true,
         revoked_at: true,
-        user: { select: { is_active: true } },
+        user: { select: { is_active: true, role: true } },
       },
     });
 
-    if (!session || session.revoked_at || session.expires_at <= new Date() || !session.user.is_active) {
+    const failure = getSessionValidationFailure(session, payload, now);
+    if (failure === "idle_expired" && session && !session.revoked_at) {
+      await prisma.userSession.update({
+        where: { id: session.id },
+        data: { revoked_at: now },
+      }).catch(() => {});
+    }
+    if (failure || !session) {
       return null;
     }
 
-    if (
-      Date.now() - session.last_seen_at.getTime() >= SESSION_TOUCH_INTERVAL_MS
-    ) {
+    const shouldTouch = now.getTime() - session.last_seen_at.getTime() >=
+      SESSION_TOUCH_INTERVAL_MS;
+    const effectiveLastSeenAt = shouldTouch ? now : session.last_seen_at;
+
+    if (shouldTouch) {
       prisma.userSession.update({
         where: { id: session.id },
-        data: { last_seen_at: new Date() },
+        data: { last_seen_at: now },
       }).catch(() => {});
     }
 
-    return payload;
+    return {
+      ...payload,
+      sessionId: session.id,
+      idleExpiresAt: getSessionIdleExpiresAt(
+        effectiveLastSeenAt,
+        session.user.role,
+      ),
+      idleTimeoutSeconds: getSessionIdleTimeoutSeconds(session.user.role),
+    };
   } catch {
     return null;
   }

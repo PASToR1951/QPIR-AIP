@@ -348,3 +348,9 @@ Active beta — **Beta 2** (`v1.1.0-beta`, 2026-04-13).
 - OAuth SSO (Google only — Microsoft OAuth removed), HttpOnly cookie sessions, real-time notifications, announcements, audit logs, and privacy compliance are implemented.
 - School/cluster logo uploads, bundled cluster-logo fallbacks, CSV user import, and report/export workflows are complete.
 - See internal `ROADMAP.md` and `TODO.md` for full milestone tracking.
+
+---
+
+## Security Documentation
+
+- [Secure Session Restore and Logout Cleanup](docs/SECURE_SESSION_RESTORE_AND_LOGOUT.md) - documents the HttpOnly-cookie session restore flow, role-based idle timeouts, logout cleanup behavior, and Data Privacy Act of 2012 security rationale.

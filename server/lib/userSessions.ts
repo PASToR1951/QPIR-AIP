@@ -8,6 +8,10 @@ import { getClientIp } from "./clientIp.ts";
 
 export const SESSION_MAX_AGE_SECONDS = 86400;
 export const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+export const BROAD_ACCESS_IDLE_TIMEOUT_SECONDS = 15 * 60;
+export const DATA_ENTRY_IDLE_TIMEOUT_SECONDS = 30 * 60;
+
+const DATA_ENTRY_ROLES = new Set(["School", "Division Personnel"]);
 
 interface SessionUser {
   id: number;
@@ -15,6 +19,71 @@ interface SessionUser {
   school_id: number | null;
   cluster_id?: number | null;
   school?: { cluster_id?: number | null } | null;
+}
+
+interface SessionTokenClaim {
+  id: number;
+  role: string;
+}
+
+export type SessionValidationFailure =
+  | "missing"
+  | "revoked"
+  | "expired"
+  | "user_mismatch"
+  | "inactive_user"
+  | "role_mismatch"
+  | "idle_expired";
+
+export interface ValidatableSession {
+  user_id: number;
+  last_seen_at: Date;
+  expires_at: Date;
+  revoked_at: Date | null;
+  user: {
+    is_active: boolean;
+    role: string;
+  };
+}
+
+export function getSessionIdleTimeoutSeconds(role: string): number {
+  return DATA_ENTRY_ROLES.has(role)
+    ? DATA_ENTRY_IDLE_TIMEOUT_SECONDS
+    : BROAD_ACCESS_IDLE_TIMEOUT_SECONDS;
+}
+
+export function getSessionIdleExpiresAt(
+  lastSeenAt: Date,
+  role: string,
+): number {
+  return Math.floor(lastSeenAt.getTime() / 1000) +
+    getSessionIdleTimeoutSeconds(role);
+}
+
+export function isSessionIdleExpired(
+  lastSeenAt: Date,
+  role: string,
+  now = new Date(),
+): boolean {
+  return getSessionIdleExpiresAt(lastSeenAt, role) <=
+    Math.floor(now.getTime() / 1000);
+}
+
+export function getSessionValidationFailure(
+  session: ValidatableSession | null,
+  claim: SessionTokenClaim,
+  now = new Date(),
+): SessionValidationFailure | null {
+  if (!session) return "missing";
+  if (session.revoked_at) return "revoked";
+  if (session.expires_at <= now) return "expired";
+  if (session.user_id !== claim.id) return "user_mismatch";
+  if (!session.user.is_active) return "inactive_user";
+  if (session.user.role !== claim.role) return "role_mismatch";
+  if (isSessionIdleExpired(session.last_seen_at, session.user.role, now)) {
+    return "idle_expired";
+  }
+  return null;
 }
 
 function bytesToHex(bytes: Uint8Array): string {
@@ -52,9 +121,9 @@ function detectBrowser(userAgent: string): string | null {
 function detectPlatform(userAgent: string): string | null {
   if (/iphone/i.test(userAgent)) return "iPhone";
   if (/ipad/i.test(userAgent)) return "iPad";
-  if (/android/i.test(userAgent)) return /mobile/i.test(userAgent)
-    ? "Android phone"
-    : "Android tablet";
+  if (/android/i.test(userAgent)) {
+    return /mobile/i.test(userAgent) ? "Android phone" : "Android tablet";
+  }
   if (/windows/i.test(userAgent)) return "Windows";
   if (/mac os x|macintosh/i.test(userAgent)) return "Mac";
   if (/cros/i.test(userAgent)) return "ChromeOS";
@@ -77,9 +146,20 @@ function resolveClusterId(user: SessionUser): number | null {
 export async function createSessionCookie(
   c: Context,
   user: SessionUser,
-): Promise<{ expiresAt: number; sessionId: number; sid: string; token: string }> {
+): Promise<{
+  expiresAt: number;
+  idleExpiresAt: number;
+  idleTimeoutSeconds: number;
+  sessionId: number;
+  sid: string;
+  token: string;
+}> {
   const sid = randomHex(32);
-  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_MAX_AGE_SECONDS;
+  const now = new Date();
+  const nowSeconds = Math.floor(now.getTime() / 1000);
+  const idleTimeoutSeconds = getSessionIdleTimeoutSeconds(user.role);
+  const expiresAt = nowSeconds + SESSION_MAX_AGE_SECONDS;
+  const idleExpiresAt = nowSeconds + idleTimeoutSeconds;
   const token = jwt.sign(
     {
       id: user.id,
@@ -99,13 +179,21 @@ export async function createSessionCookie(
       user_agent: c.req.header("user-agent") ?? null,
       ip_address: getClientIp(c),
       device_label: deriveDeviceLabel(c.req.header("user-agent")),
+      last_seen_at: now,
       expires_at: new Date(expiresAt * 1000),
     },
     select: { id: true },
   });
 
   setCookie(c, "token", token, tokenCookieOptions(c));
-  return { expiresAt, sessionId: session.id, sid, token };
+  return {
+    expiresAt,
+    idleExpiresAt,
+    idleTimeoutSeconds,
+    sessionId: session.id,
+    sid,
+    token,
+  };
 }
 
 export async function revokeSessionBySid(

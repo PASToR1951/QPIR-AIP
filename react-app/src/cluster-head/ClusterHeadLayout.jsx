@@ -15,9 +15,14 @@ export default function ClusterHeadLayout() {
     hasSchool = !!u?.school_id;
   } catch { /* ignore */ }
 
-  const handleLogout = () => {
-    navigate('/login', { replace: true });
-    void auth.clearSession();
+  const handleLogout = async () => {
+    try {
+      await auth.logout({ clearDrafts: true });
+    } catch {
+      window.alert('This browser was cleared, but the server could not confirm logout. Please close the tab if this is a shared device.');
+    } finally {
+      navigate('/login', { replace: true });
+    }
   };
 
   return (

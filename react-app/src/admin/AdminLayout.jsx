@@ -15,7 +15,7 @@ export const AdminLayout = () => {
   const [notifications, setNotifications] = useState([]);
 
   const redirectToLogin = useCallback(() => {
-    void auth.clearSession();
+    auth.clearBrowserSession({ clearDrafts: false });
     navigate('/login', { replace: true });
   }, [navigate]);
 
@@ -122,9 +122,14 @@ export const AdminLayout = () => {
 
   const user = auth.getUser();
 
-  const handleLogout = () => {
-    navigate('/login', { replace: true });
-    void auth.clearSession();
+  const handleLogout = async () => {
+    try {
+      await auth.logout({ clearDrafts: true });
+    } catch {
+      window.alert('This browser was cleared, but the server could not confirm logout. Please close the tab if this is a shared device.');
+    } finally {
+      navigate('/login', { replace: true });
+    }
   };
 
   return (

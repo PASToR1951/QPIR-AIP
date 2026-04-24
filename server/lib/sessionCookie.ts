@@ -41,6 +41,7 @@ export function clearTokenCookieOptions(c: Context) {
   return {
     path: "/",
     secure,
+    httpOnly: true,
     sameSite: secure ? "None" : "Lax",
   } as const;
 }

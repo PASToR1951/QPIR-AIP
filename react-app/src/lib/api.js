@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getFriendlyError } from './errorMessages.js';
+import { auth } from './auth.js';
 
 export const API = import.meta.env.VITE_API_URL;
 
@@ -11,9 +12,7 @@ const api = axios.create({
 let redirectingForAuth = false;
 
 function clearStoredSession() {
-  sessionStorage.removeItem('token');
-  sessionStorage.removeItem('user');
-  sessionStorage.removeItem('tokenExpiry');
+  auth.clearBrowserSession({ clearDrafts: false });
 }
 
 api.interceptors.response.use(
