@@ -40,32 +40,36 @@ export function ClusterPIRSummary({ year }) {
   const togglePresented = async (pirId, schoolId, programId) => {
     if (!pirId) return;
     const key = `${schoolId}_${programId}`;
+    const currentCell = data?.matrix?.[key];
+    if (!currentCell) return;
+    const nextPresented = !currentCell.presented;
 
     setData((previousData) => {
       const cell = previousData.matrix[key];
-      const presented = !cell.presented;
       return {
         ...previousData,
         matrix: {
           ...previousData.matrix,
-          [key]: { ...cell, presented },
+          [key]: { ...cell, presented: nextPresented },
         },
         totals: {
           ...previousData.totals,
           [schoolId]: {
             ...previousData.totals[schoolId],
-            presented: previousData.totals[schoolId].presented + (presented ? 1 : -1),
+            presented: previousData.totals[schoolId].presented + (nextPresented ? 1 : -1),
           },
         },
       };
     });
 
     try {
-      await api.patch(`/api/admin/pirs/${pirId}/presented`, {});
+      await api.patch(`/api/admin/pirs/${pirId}/presented`, {
+        presented: nextPresented,
+      });
     } catch {
       setData((previousData) => {
         const cell = previousData.matrix[key];
-        const presented = !cell.presented;
+        const presented = !nextPresented;
         return {
           ...previousData,
           matrix: {

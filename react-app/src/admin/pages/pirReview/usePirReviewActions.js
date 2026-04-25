@@ -86,7 +86,10 @@ export function usePirReviewActions({ id, isObserver }) {
     setPresented(optimistic);
     setPresentedSaving(true);
     try {
-      await api.patch(`/api/admin/pirs/${id}/presented`);
+      const response = await api.patch(`/api/admin/pirs/${id}/presented`, {
+        presented: optimistic,
+      });
+      setPresented(Boolean(response.data.presented));
     } catch {
       setPresented(!optimistic);
     } finally {

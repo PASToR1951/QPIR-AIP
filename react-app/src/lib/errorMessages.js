@@ -31,6 +31,8 @@ const EXACT_MAP = {
     'A PIR for this quarter has already been submitted.',
   'A PIR has already been submitted for this program and quarter.':
     'A PIR for this program and quarter has already been submitted.',
+  'This PIR was returned for correction. Please update the returned PIR instead of submitting a new one.':
+    'This PIR was returned for correction. Open the returned PIR and submit your updates there.',
   'A record already exists for this request':
     'A submission already exists for this request. Duplicate entries are not allowed.',
   'Email already exists':
