@@ -4,9 +4,9 @@ import { prisma } from "../../../db/client.ts";
 
 const { Prisma } = pkg;
 import { getUserFromToken } from "../../../lib/auth.ts";
-import { safeParseInt } from "../../../lib/safeParseInt.ts";
 import { sanitizeObject } from "../../../lib/sanitize.ts";
 import { writeAuditLog } from "../shared/audit.ts";
+import { documentWhereFromRef } from "../shared/documentRefs.ts";
 import { canUpdateObserverNotes } from "../shared/observerAccess.ts";
 import { MAX_TEXT_LENGTH, validateTextLength } from "./validation.ts";
 
@@ -24,7 +24,7 @@ observerNotesRouter.patch("/submissions/:id/observer-notes", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const id = safeParseInt(c.req.param("id"), 0);
+  const ref = c.req.param("id");
   const body = sanitizeObject(await c.req.json());
   const type = typeof body.type === "string"
     ? body.type.toLowerCase()
@@ -41,12 +41,12 @@ observerNotesRouter.patch("/submissions/:id/observer-notes", async (c) => {
   if (type === "pir") {
     try {
       const pir = await prisma.pIR.update({
-        where: { id },
+        where: documentWhereFromRef(ref),
         data: { observer_notes: notes } as Parameters<
           typeof prisma.pIR.update
         >[0]["data"],
       });
-      await writeAuditLog(actor.id, "updated_observer_notes", "PIR", id, {
+      await writeAuditLog(actor.id, "updated_observer_notes", "PIR", pir.id, {
         actor_role: actor.role,
         notes_length: notes.length,
       }, { ctx: c });
@@ -63,12 +63,12 @@ observerNotesRouter.patch("/submissions/:id/observer-notes", async (c) => {
 
   try {
     const aip = await prisma.aIP.update({
-      where: { id },
+      where: documentWhereFromRef(ref),
       data: { observer_notes: notes } as Parameters<
         typeof prisma.aIP.update
       >[0]["data"],
     });
-    await writeAuditLog(actor.id, "updated_observer_notes", "AIP", id, {
+    await writeAuditLog(actor.id, "updated_observer_notes", "AIP", aip.id, {
       actor_role: actor.role,
       notes_length: notes.length,
     }, { ctx: c });

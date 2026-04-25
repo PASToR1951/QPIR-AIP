@@ -7,8 +7,8 @@ import {
 } from "../../../lib/advisoryLock.ts";
 import { getUserFromToken } from "../../../lib/auth.ts";
 import { HttpError } from "../../../lib/errors.ts";
-import { safeParseInt } from "../../../lib/safeParseInt.ts";
 import { writeAuditLog } from "../shared/audit.ts";
+import { documentWhereFromRef } from "../shared/documentRefs.ts";
 import {
   pushAIPEditApprovedNotification,
   pushAIPEditDeniedNotification,
@@ -24,10 +24,10 @@ aipEditRouter.patch(
     "Failed to approve edit request",
     async (c) => {
       const admin = (await getUserFromToken(c))!;
-      const id = safeParseInt(c.req.param("id"), 0);
+      const ref = c.req.param("id");
 
       const currentAip = await prisma.aIP.findUnique({
-        where: { id },
+        where: documentWhereFromRef(ref),
         select: {
           id: true,
           school_id: true,
@@ -37,6 +37,7 @@ aipEditRouter.patch(
         },
       });
       if (!currentAip) return c.json({ error: "AIP not found" }, 404);
+      const id = currentAip.id;
 
       const aip = await withAdvisoryLock(
         LOCK_NAMESPACE.AIP,
@@ -77,10 +78,10 @@ aipEditRouter.patch(
     "Failed to deny edit request",
     async (c) => {
       const admin = (await getUserFromToken(c))!;
-      const id = safeParseInt(c.req.param("id"), 0);
+      const ref = c.req.param("id");
 
       const currentAip = await prisma.aIP.findUnique({
-        where: { id },
+        where: documentWhereFromRef(ref),
         select: {
           id: true,
           school_id: true,
@@ -90,6 +91,7 @@ aipEditRouter.patch(
         },
       });
       if (!currentAip) return c.json({ error: "AIP not found" }, 404);
+      const id = currentAip.id;
 
       const aip = await withAdvisoryLock(
         LOCK_NAMESPACE.AIP,

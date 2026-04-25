@@ -10,7 +10,6 @@ import { getUserFromToken } from "../../lib/auth.ts";
 import { ConflictError, HttpError } from "../../lib/errors.ts";
 import { pushNotification } from "../../lib/notifStream.ts";
 import { normalizeQuarterLabel } from "../../lib/quarters.ts";
-import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { buildSubmittedBy } from "./shared/display.ts";
@@ -25,6 +24,7 @@ import {
   REVIEW_QUEUE_INCLUDE,
 } from "./shared/prismaSelects.ts";
 import { canReadPirRecord, pirReadableWhereFor } from "./shared/pirAccess.ts";
+import { documentWhereFromRef, publicDocumentRef } from "./shared/documentRefs.ts";
 import { adminAsyncHandler } from "./submissions/asyncHandler.ts";
 
 const pirReviewRoutes = new Hono();
@@ -39,12 +39,12 @@ const PIR_READABLE_ROLES = [
 ];
 
 async function withPirReviewLock<T>(
-  pirId: number,
-  fn: (tx: TxClient) => Promise<T>,
+  pirRef: string,
+  fn: (tx: TxClient, pirId: number) => Promise<T>,
 ): Promise<T> {
   const currentPir = await prisma.pIR.findUnique({
-    where: { id: pirId },
-    select: { aip_id: true, quarter: true },
+    where: documentWhereFromRef(pirRef),
+    select: { id: true, aip_id: true, quarter: true },
   });
   if (!currentPir) {
     throw new HttpError(404, "PIR not found", "NOT_FOUND");
@@ -52,7 +52,7 @@ async function withPirReviewLock<T>(
   return withAdvisoryLock(
     LOCK_NAMESPACE.PIR,
     pirResourceKeyFromRecord(currentPir),
-    fn,
+    (tx) => fn(tx, currentPir.id),
   );
 }
 
@@ -76,7 +76,8 @@ pirReviewRoutes.get("/pirs", async (c) => {
   });
 
   return c.json(pirs.map((pir: any) => ({
-    id: pir.id,
+    id: publicDocumentRef(pir),
+    internalId: pir.id,
     quarter: pir.quarter,
     status: pir.status,
     program: pir.aip.program.title,
@@ -99,9 +100,8 @@ pirReviewRoutes.get("/pirs/:id", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const pirId = safeParseInt(c.req.param("id"), 0);
   const pir = await prisma.pIR.findUnique({
-    where: { id: pirId },
+    where: documentWhereFromRef(c.req.param("id")),
     include: PIR_DETAIL_INCLUDE,
   });
   if (!pir) return c.json({ error: "PIR not found" }, 404);
@@ -119,7 +119,8 @@ pirReviewRoutes.get("/pirs/:id", async (c) => {
   }
 
   return c.json({
-    id: pir.id,
+    id: publicDocumentRef(pir as any),
+    internalId: pir.id,
     quarter: pir.quarter,
     status: pir.status,
     program: (pir as any).aip.program.title,
@@ -190,7 +191,8 @@ pirReviewRoutes.get("/ces/pirs", async (c) => {
   });
 
   return c.json(pirs.map((pir: any) => ({
-    id: pir.id,
+    id: publicDocumentRef(pir),
+    internalId: pir.id,
     quarter: pir.quarter,
     status: pir.status,
     program: pir.aip.program.title,
@@ -215,8 +217,10 @@ pirReviewRoutes.post(
       const tokenUser = await requireCES(c);
       if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-      const pirId = safeParseInt(c.req.param("id"), 0);
-      const pir = await withPirReviewLock(pirId, async (tx) => {
+      const pirRef = c.req.param("id") ?? "";
+      let pirId = 0;
+      const pir = await withPirReviewLock(pirRef, async (tx, lockedPirId) => {
+        pirId = lockedPirId;
         const lockedPir = await tx.pIR.findUnique({
           where: { id: pirId },
           include: { aip: { include: { program: true } } },
@@ -284,13 +288,15 @@ pirReviewRoutes.post(
       const tokenUser = await requireCES(c);
       if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-      const pirId = safeParseInt(c.req.param("id"), 0);
+      const pirRef = c.req.param("id") ?? "";
+      let pirId = 0;
       const { ces_remarks } = sanitizeObject(await c.req.json());
       if (ces_remarks && ces_remarks.length > 5000) {
         return c.json({ error: "Remarks cannot exceed 5000 characters" }, 400);
       }
 
-      const pir = await withPirReviewLock(pirId, async (tx) => {
+      const pir = await withPirReviewLock(pirRef, async (tx, lockedPirId) => {
+        pirId = lockedPirId;
         const lockedPir = await tx.pIR.findUnique({
           where: { id: pirId },
           include: { aip: { include: { program: true, school: true } } },
@@ -353,13 +359,15 @@ pirReviewRoutes.post(
       const tokenUser = await requireCES(c);
       if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-      const pirId = safeParseInt(c.req.param("id"), 0);
+      const pirRef = c.req.param("id") ?? "";
+      let pirId = 0;
       const { ces_remarks } = sanitizeObject(await c.req.json());
       if (ces_remarks && ces_remarks.length > 5000) {
         return c.json({ error: "Remarks cannot exceed 5000 characters" }, 400);
       }
 
-      const pir = await withPirReviewLock(pirId, async (tx) => {
+      const pir = await withPirReviewLock(pirRef, async (tx, lockedPirId) => {
+        pirId = lockedPirId;
         const lockedPir = await tx.pIR.findUnique({
           where: { id: pirId },
           include: { aip: { include: { program: true, school: true } } },
@@ -433,7 +441,8 @@ pirReviewRoutes.get("/cluster-head/pirs", async (c) => {
   });
 
   return c.json(pirs.map((pir: any) => ({
-    id: pir.id,
+    id: publicDocumentRef(pir),
+    internalId: pir.id,
     quarter: pir.quarter,
     status: pir.status,
     program: pir.aip.program.title,
@@ -460,8 +469,10 @@ pirReviewRoutes.post(
       const tokenUser = await requireClusterHead(c);
       if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-      const pirId = safeParseInt(c.req.param("id"), 0);
-      const pir = await withPirReviewLock(pirId, async (tx) => {
+      const pirRef = c.req.param("id") ?? "";
+      let pirId = 0;
+      const pir = await withPirReviewLock(pirRef, async (tx, lockedPirId) => {
+        pirId = lockedPirId;
         const lockedPir = await tx.pIR.findUnique({
           where: { id: pirId },
           include: { aip: { include: { program: true, school: true } } },
@@ -534,13 +545,15 @@ pirReviewRoutes.post(
       const tokenUser = await requireClusterHead(c);
       if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-      const pirId = safeParseInt(c.req.param("id"), 0);
+      const pirRef = c.req.param("id") ?? "";
+      let pirId = 0;
       const { remarks } = sanitizeObject(await c.req.json());
       if (remarks && remarks.length > 5000) {
         return c.json({ error: "Remarks cannot exceed 5000 characters" }, 400);
       }
 
-      const pir = await withPirReviewLock(pirId, async (tx) => {
+      const pir = await withPirReviewLock(pirRef, async (tx, lockedPirId) => {
+        pirId = lockedPirId;
         const lockedPir = await tx.pIR.findUnique({
           where: { id: pirId },
           include: {
@@ -627,13 +640,15 @@ pirReviewRoutes.post(
       const tokenUser = await requireClusterHead(c);
       if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-      const pirId = safeParseInt(c.req.param("id"), 0);
+      const pirRef = c.req.param("id") ?? "";
+      let pirId = 0;
       const { remarks } = sanitizeObject(await c.req.json());
       if (remarks && remarks.length > 5000) {
         return c.json({ error: "Remarks cannot exceed 5000 characters" }, 400);
       }
 
-      const pir = await withPirReviewLock(pirId, async (tx) => {
+      const pir = await withPirReviewLock(pirRef, async (tx, lockedPirId) => {
+        pirId = lockedPirId;
         const lockedPir = await tx.pIR.findUnique({
           where: { id: pirId },
           include: {

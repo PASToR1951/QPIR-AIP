@@ -27,6 +27,7 @@ type UserShape = {
 
 export type RawAIP = {
   id: number;
+  public_id: string;
   status: string;
   year: number;
   created_at: Date;
@@ -37,6 +38,7 @@ export type RawAIP = {
 
 export type RawPIR = {
   id: number;
+  public_id: string;
   status: string;
   quarter: string;
   created_at: Date;
@@ -53,7 +55,9 @@ export type RawPIR = {
 
 export function normalizeAIP(aip: RawAIP) {
   return {
-    id: aip.id,
+    id: aip.public_id,
+    internalId: aip.id,
+    ref: aip.public_id,
     type: "AIP" as const,
     status: aip.status,
     year: aip.year,
@@ -76,7 +80,9 @@ export function normalizeAIP(aip: RawAIP) {
 
 export function normalizePIR(pir: RawPIR) {
   return {
-    id: pir.id,
+    id: pir.public_id,
+    internalId: pir.id,
+    ref: pir.public_id,
     type: "PIR" as const,
     status: pir.status,
     year: pir.aip.year,

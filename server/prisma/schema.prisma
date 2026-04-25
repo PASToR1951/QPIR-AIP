@@ -189,6 +189,7 @@ model OAuthState {
 
 model AIP {
   id                  Int      @id @default(autoincrement())
+  public_id           String   @unique @default(cuid())
   school_id           Int?     // Nullable — Division Personnel AIPs have no school
   program_id          Int
   created_by_user_id  Int?     // Nullable for backward-compat; set on all new records
@@ -244,6 +245,7 @@ model AIPActivity {
 
 model PIR {
   id                          Int      @id @default(autoincrement())
+  public_id                   String   @unique @default(cuid())
   aip_id                      Int
   created_by_user_id          Int?     // Nullable for backward-compat; set on all new records
   quarter                     String   // "1st Quarter CY 2026", etc.

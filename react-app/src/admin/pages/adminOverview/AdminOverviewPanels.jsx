@@ -1,17 +1,46 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion as Motion } from 'framer-motion';
 import {
   ArrowRight,
   CaretDown,
+  CaretLeft,
+  CaretRight,
   CaretUp,
   ClockCounterClockwise,
-  Eye,
   Notification,
 } from '@phosphor-icons/react';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { fadeUp } from './chartTheme.js';
 import { relativeTime, InfoTip } from './overviewHelpers.jsx';
 import { PirClusterPanel } from './PirClusterPanel.jsx';
+
+const RECENT_SUBMISSIONS_PAGE_SIZE = 10;
+
+function TruncatedCellText({ value, className = '' }) {
+  const text = value || '—';
+
+  return (
+    <span className={`block truncate ${className}`} title={text}>
+      {text}
+    </span>
+  );
+}
+
+function formatQuarterLabel(quarter) {
+  if (!quarter) return 'Annual';
+
+  const text = String(quarter);
+  const existingShortLabel = text.match(/\bQ([1-4])\b/i);
+  if (existingShortLabel) return `Q${existingShortLabel[1]}`;
+
+  const ordinalQuarter = text.match(/\b([1-4])(?:st|nd|rd|th)\s+Quarter\b/i);
+  if (ordinalQuarter) return `Q${ordinalQuarter[1]}`;
+
+  const numericQuarter = text.match(/\bQuarter\s*([1-4])\b/i);
+  if (numericQuarter) return `Q${numericQuarter[1]}`;
+
+  return text;
+}
 
 export function AdminOverviewPanels({
   clusterSort,
@@ -21,6 +50,40 @@ export function AdminOverviewPanels({
   setClusterSort,
   sortedClusters,
 }) {
+  const [recentSubmissionPage, setRecentSubmissionPage] = useState(1);
+  const recentSubmissions = data?.recentSubmissions ?? [];
+  const recentSubmissionTotalPages = Math.max(
+    1,
+    Math.ceil(recentSubmissions.length / RECENT_SUBMISSIONS_PAGE_SIZE),
+  );
+  const recentSubmissionCurrentPage = Math.min(recentSubmissionPage, recentSubmissionTotalPages);
+  const recentSubmissionStart = (recentSubmissionCurrentPage - 1) * RECENT_SUBMISSIONS_PAGE_SIZE;
+  const paginatedRecentSubmissions = recentSubmissions.slice(
+    recentSubmissionStart,
+    recentSubmissionStart + RECENT_SUBMISSIONS_PAGE_SIZE,
+  );
+  const openSubmission = (submission) => {
+    const submissionType = submission.type?.toLowerCase();
+    const documentRef = submission.ref ?? submission.id;
+    if (submissionType === 'pir') {
+      navigate(`/admin/pirs/${documentRef}`);
+      return;
+    }
+
+    const params = new URLSearchParams({
+      type: submissionType || 'aip',
+      review: String(documentRef),
+    });
+    navigate(`/admin/submissions?${params}`, {
+      state: submission.year ? { filters: { year: submission.year } } : undefined,
+    });
+  };
+  const handleSubmissionRowKeyDown = (event, submission) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    openSubmission(submission);
+  };
+
   return (
     <Motion.div variants={fadeUp} className="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
       {data?.pirClusterStatus?.length > 0 && (
@@ -68,41 +131,112 @@ export function AdminOverviewPanels({
             <ArrowRight size={14} weight="bold" />
           </button>
         </div>
-        {data?.recentSubmissions?.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-dark-border">
-                  <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 whitespace-nowrap">School</th>
-                  <th className="hidden px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 whitespace-nowrap sm:table-cell">Program</th>
-                  <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 whitespace-nowrap">Type</th>
-                  <th className="hidden px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 whitespace-nowrap md:table-cell">Quarter</th>
-                  <th className="hidden px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 whitespace-nowrap sm:table-cell">Submitted</th>
-                  <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 whitespace-nowrap">Status</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-dark-border">
-                {data.recentSubmissions.map((submission, index) => (
-                  <tr key={index} className="transition-colors hover:bg-slate-50 dark:hover:bg-dark-border/20">
-                    <td className="max-w-[140px] truncate px-3 py-2.5 font-bold text-slate-800 dark:text-slate-200">{submission.school}</td>
-                    <td className="hidden max-w-[160px] truncate px-3 py-2.5 text-slate-600 dark:text-slate-400 sm:table-cell">{submission.program}</td>
-                    <td className="px-3 py-2.5"><StatusBadge status={submission.type} size="xs" /></td>
-                    <td className="hidden px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400 md:table-cell">{submission.quarter ?? '—'}</td>
-                    <td className="hidden px-3 py-2.5 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap sm:table-cell">{relativeTime(submission.submitted)}</td>
-                    <td className="px-3 py-2.5"><StatusBadge status={submission.status} size="xs" /></td>
-                    <td className="px-3 py-2.5">
-                      <button
-                        onClick={() => navigate(`/admin/submissions?review=${submission.id}`)}
-                        className="text-slate-400 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
-                      >
-                        <Eye size={17} />
-                      </button>
-                    </td>
+        {recentSubmissions.length > 0 ? (
+          <div>
+            <div className="overflow-hidden rounded-xl border border-slate-100 dark:border-dark-border">
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  <col className="w-[30%]" />
+                  <col className="w-[34%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[18%]" />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/70 dark:border-dark-border dark:bg-dark-bg/50">
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Owner</th>
+                    <th className="hidden px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 sm:table-cell">Program</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Details</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-dark-border">
+                  {paginatedRecentSubmissions.map((submission) => (
+                    <tr
+                      key={`${submission.type}-${submission.ref ?? submission.id}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openSubmission(submission)}
+                      onKeyDown={(event) => handleSubmissionRowKeyDown(event, submission)}
+                      className="cursor-pointer bg-white transition-colors hover:bg-indigo-50/50 focus:bg-indigo-50/50 focus:outline-none dark:bg-dark-surface dark:hover:bg-indigo-950/20 dark:focus:bg-indigo-950/20"
+                      aria-label={`Review ${submission.type} submission for ${submission.school}`}
+                    >
+                      <td className="min-w-0 px-3 py-3 font-bold text-slate-800 dark:text-slate-200">
+                        <TruncatedCellText value={submission.school} />
+                        <TruncatedCellText
+                          value={submission.program}
+                          className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400 sm:hidden"
+                        />
+                      </td>
+                      <td className="hidden min-w-0 px-3 py-3 text-slate-600 dark:text-slate-400 sm:table-cell">
+                        <TruncatedCellText value={submission.program} />
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex min-w-0 flex-col items-start gap-1">
+                          <div className="flex max-w-full items-center gap-1.5">
+                            <StatusBadge status={submission.type} size="xs" />
+                            <span
+                              className="rounded-lg bg-slate-100 px-1.5 py-0.5 text-[10px] font-black text-slate-500 dark:bg-dark-border dark:text-slate-400"
+                              title={submission.quarter ?? 'Annual'}
+                            >
+                              {formatQuarterLabel(submission.quarter)}
+                            </span>
+                          </div>
+                          <span className="block max-w-full truncate text-xs text-slate-400 dark:text-slate-500">
+                            {relativeTime(submission.submitted)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <span title={submission.status}>
+                          <StatusBadge status={submission.status} size="xs" />
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {recentSubmissions.length > RECENT_SUBMISSIONS_PAGE_SIZE && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="text-slate-500 dark:text-slate-400">
+                  Showing {recentSubmissionStart + 1}–{Math.min(recentSubmissionStart + RECENT_SUBMISSIONS_PAGE_SIZE, recentSubmissions.length)} of {recentSubmissions.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setRecentSubmissionPage((page) => Math.max(1, page - 1))}
+                    disabled={recentSubmissionCurrentPage === 1}
+                    className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-dark-border"
+                    aria-label="Previous recent submissions page"
+                  >
+                    <CaretLeft size={18} />
+                  </button>
+                  {Array.from({ length: recentSubmissionTotalPages }, (_, index) => {
+                    const page = index + 1;
+                    return (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setRecentSubmissionPage(page)}
+                        className={`h-8 w-8 rounded-lg text-sm font-bold transition-colors ${page === recentSubmissionCurrentPage ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-dark-border'}`}
+                        aria-current={page === recentSubmissionCurrentPage ? 'page' : undefined}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setRecentSubmissionPage((page) => Math.min(recentSubmissionTotalPages, page + 1))}
+                    disabled={recentSubmissionCurrentPage === recentSubmissionTotalPages}
+                    className="rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-dark-border"
+                    aria-label="Next recent submissions page"
+                  >
+                    <CaretRight size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <p className="py-8 text-center text-sm text-slate-400 dark:text-slate-600">No submissions yet.</p>

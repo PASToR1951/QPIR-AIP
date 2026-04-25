@@ -8,9 +8,9 @@ import {
 } from "../../../lib/advisoryLock.ts";
 import { getUserFromToken } from "../../../lib/auth.ts";
 import { HttpError } from "../../../lib/errors.ts";
-import { safeParseInt } from "../../../lib/safeParseInt.ts";
 import { sanitizeObject } from "../../../lib/sanitize.ts";
 import { writeAuditLog } from "../shared/audit.ts";
+import { documentWhereFromRef } from "../shared/documentRefs.ts";
 import { validateTextLength } from "./validation.ts";
 import { pushPIRRemarksNotification } from "./notifications.ts";
 import { adminAsyncHandler } from "./asyncHandler.ts";
@@ -37,7 +37,7 @@ pirActionsRouter.patch(
     "Failed to update PIR remarks",
     async (c) => {
       const admin = (await getUserFromToken(c))!;
-      const id = safeParseInt(c.req.param("id"), 0);
+      const ref = c.req.param("id");
       const { remarks } = sanitizeObject(await c.req.json());
 
       if (typeof remarks !== "string") {
@@ -48,10 +48,11 @@ pirActionsRouter.patch(
       if (lengthError) return c.json({ error: lengthError }, 400);
 
       const currentPir = await prisma.pIR.findUnique({
-        where: { id },
-        select: { aip_id: true, quarter: true },
+        where: documentWhereFromRef(ref),
+        select: { id: true, aip_id: true, quarter: true },
       });
       if (!currentPir) return c.json({ error: "PIR not found" }, 404);
+      const id = currentPir.id;
 
       const pir = await withAdvisoryLock(
         LOCK_NAMESPACE.PIR,
@@ -88,14 +89,17 @@ pirActionsRouter.patch(
     "Failed to update PIR presented status",
     async (c) => {
       const admin = (await getUserFromToken(c))!;
-      const id = safeParseInt(c.req.param("id"), 0);
+      const ref = c.req.param("id");
       const body = await readOptionalBody(c);
       if ("presented" in body && typeof body.presented !== "boolean") {
         return c.json({ error: "presented must be a boolean" }, 400);
       }
 
-      const pir = await prisma.pIR.findUnique({ where: { id } });
+      const pir = await prisma.pIR.findUnique({
+        where: documentWhereFromRef(ref),
+      });
       if (!pir) return c.json({ error: "PIR not found" }, 404);
+      const id = pir.id;
 
       const updated = await withAdvisoryLock(
         LOCK_NAMESPACE.PIR,
@@ -132,7 +136,7 @@ pirActionsRouter.patch(
     "Failed to update PIR activity notes",
     async (c) => {
       const admin = (await getUserFromToken(c))!;
-      const pirId = safeParseInt(c.req.param("id"), 0);
+      const pirRef = c.req.param("id");
       const { activity_review_id, notes } = sanitizeObject(await c.req.json());
 
       if (!activity_review_id || typeof notes !== "string") {
@@ -146,10 +150,11 @@ pirActionsRouter.patch(
       if (lengthError) return c.json({ error: lengthError }, 400);
 
       const currentPir = await prisma.pIR.findUnique({
-        where: { id: pirId },
-        select: { aip_id: true, quarter: true },
+        where: documentWhereFromRef(pirRef),
+        select: { id: true, aip_id: true, quarter: true },
       });
       if (!currentPir) return c.json({ error: "PIR not found" }, 404);
+      const pirId = currentPir.id;
 
       await withAdvisoryLock(
         LOCK_NAMESPACE.PIR,

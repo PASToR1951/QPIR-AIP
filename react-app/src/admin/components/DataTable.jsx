@@ -3,6 +3,11 @@ import { ArrowUp, ArrowDown, CaretLeft, CaretRight } from '@phosphor-icons/react
 import { EndOfListCue } from '../../components/ui/EndOfListCue.jsx';
 import { shouldShowEndOfListCue } from '../../components/ui/endOfListCue';
 
+const getRowRenderKey = (row, index) => {
+  if (row?.type != null && row?.id != null) return `${row.type}-${row.id}`;
+  return row?.id ?? index;
+};
+
 export const DataTable = ({
   columns,
   data,
@@ -110,7 +115,7 @@ export const DataTable = ({
             <div className="space-y-2">
               {pageData.map((row, i) => (
                 <div
-                  key={row.id ?? i}
+                  key={getRowRenderKey(row, i)}
                   id={highlightRowId != null && row.id === highlightRowId ? `row-${row.id}` : undefined}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                   className={`bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-3 transition-colors ${onRowClick ? 'cursor-pointer active:bg-slate-50 dark:active:bg-dark-border/30' : ''} ${getRowClassName ? getRowClassName(row) : ''}`}
@@ -200,7 +205,7 @@ export const DataTable = ({
               ) : (
                 pageData.map((row, i) => (
                   <tr
-                    key={row.id ?? i}
+                    key={getRowRenderKey(row, i)}
                     id={highlightRowId != null && row.id === highlightRowId ? `row-${row.id}` : undefined}
                     onClick={onRowClick ? () => onRowClick(row) : undefined}
                     onMouseEnter={onRowMouseEnter ? (e) => onRowMouseEnter(row, e) : undefined}

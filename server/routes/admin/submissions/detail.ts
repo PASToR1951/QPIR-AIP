@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { prisma } from "../../../db/client.ts";
 import { getUserFromToken } from "../../../lib/auth.ts";
-import { safeParseInt } from "../../../lib/safeParseInt.ts";
 import { writeAuditLog } from "../shared/audit.ts";
+import { documentWhereFromRef } from "../shared/documentRefs.ts";
 import {
   SUBMISSION_DETAIL_AIP_INCLUDE,
   SUBMISSION_DETAIL_PIR_INCLUDE,
@@ -13,12 +13,12 @@ export const detailRouter = new Hono();
 // GET /submissions/:id
 detailRouter.get("/submissions/:id", async (c) => {
   const actor = (await getUserFromToken(c))!;
-  const id = safeParseInt(c.req.param("id"), 0);
+  const ref = c.req.param("id");
   const type = c.req.query("type") || "aip";
 
   if (type === "pir") {
     const pir = await prisma.pIR.findUnique({
-      where: { id },
+      where: documentWhereFromRef(ref),
       include: SUBMISSION_DETAIL_PIR_INCLUDE,
     });
     if (!pir) return c.json({ error: "Not found" }, 404);
@@ -32,7 +32,7 @@ detailRouter.get("/submissions/:id", async (c) => {
   }
 
   const aip = await prisma.aIP.findUnique({
-    where: { id },
+    where: documentWhereFromRef(ref),
     include: SUBMISSION_DETAIL_AIP_INCLUDE,
   });
   if (!aip) return c.json({ error: "Not found" }, 404);

@@ -93,7 +93,9 @@ overviewRoutes.get("/overview", async (c) => {
       orderBy: { created_at: "desc" },
       select: {
         id: true,
+        public_id: true,
         status: true,
+        year: true,
         created_at: true,
         school: { select: { name: true } },
         program: { select: { title: true } },
@@ -115,6 +117,7 @@ overviewRoutes.get("/overview", async (c) => {
       orderBy: { created_at: "desc" },
       select: {
         id: true,
+        public_id: true,
         quarter: true,
         status: true,
         created_at: true,
@@ -122,6 +125,7 @@ overviewRoutes.get("/overview", async (c) => {
           select: {
             school: { select: { name: true } },
             program: { select: { title: true } },
+            year: true,
           },
         },
         created_by: {
@@ -289,21 +293,25 @@ overviewRoutes.get("/overview", async (c) => {
 
   const recentSubmissions = [
     ...recentAIPs.map((aip) => ({
-      id: aip.id,
+      id: aip.public_id,
+      ref: aip.public_id,
       type: "AIP",
       school: aip.school?.name ?? "Division",
       program: aip.program.title,
       quarter: null,
+      year: aip.year,
       submitted: aip.created_at,
       status: aip.status,
       submittedBy: buildSubmittedBy(aip.created_by),
     })),
     ...recentPIRs.map((pir) => ({
-      id: pir.id,
+      id: pir.public_id,
+      ref: pir.public_id,
       type: "PIR",
       school: pir.aip.school?.name ?? "Division",
       program: pir.aip.program.title,
       quarter: pir.quarter,
+      year: pir.aip.year,
       submitted: pir.created_at,
       status: pir.status,
       submittedBy: buildSubmittedBy(pir.created_by),

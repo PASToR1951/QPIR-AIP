@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { DownloadSimple, Funnel } from '@phosphor-icons/react';
 import { Spinner } from '../components/Spinner.jsx';
 import { DataTable } from '../components/DataTable.jsx';
@@ -18,6 +18,7 @@ import { buildSubmissionColumns } from './adminSubmissions/submissionColumns.jsx
 
 export default function AdminSubmissions() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab      = searchParams.get('type')  || 'all';
   const group    = searchParams.get('group') || 'flat';
@@ -28,8 +29,11 @@ export default function AdminSubmissions() {
   const setGroup = (key) => { setSearchParams(prev => { prev.set('group', key); return prev; }); };
 
   const [page, setPage]                     = useState(1);
-  const [filters, setFilters]               = useState({ cluster: null, school: null, program: null, quarter: null, year: new Date().getFullYear(), status: null });
-  const [showFilters, setShowFilters]       = useState(false);
+  const [filters, setFilters]               = useState(() => ({
+    cluster: null, school: null, program: null, quarter: null, year: new Date().getFullYear(), status: null,
+    ...(location.state?.filters ?? {}),
+  }));
+  const [showFilters, setShowFilters]       = useState(() => !!(location.state?.filters));
   const [selectedIds, setSelectedIds]       = useState([]);
   const [highlightRowId, setHighlightRowId] = useState(null);
   const [targetPage, setTargetPage]         = useState(1);
@@ -63,25 +67,17 @@ export default function AdminSubmissions() {
     if (modal.viewData) modal.syncViewDataStatus(status);
   };
 
-  const handleViewStatusChange = (status) => {
-    if (isObserver) return;
-    if (status === 'Returned') {
-      const currentStatus = modal.viewData?.status ?? modal.viewItem?.status;
-      if (!actions.canChangeSubmissionStatus({ status: currentStatus })) { showToast(`${currentStatus} submissions cannot be returned.`, 'error'); return; }
-      actions.setReturnItem({ ...modal.viewItem, status: currentStatus });
-      actions.setReturnFeedback(''); actions.setReturnFeedbackError('');
-      modal.closeView(); return;
-    }
-    handleStatusUpdate(modal.viewItem.id, modal.viewItem.type, status);
-  };
-
   const handleBulkApprove = () =>
     actions.handleBulkApprove(submissions, selectedIds, setSelectedIds, isObserver);
 
   // Auto-open entity when navigating from a notification or deep-link (?review=<id>)
   useEffect(() => {
     if (!reviewId || submissions.length === 0) return;
-    const idx = submissions.findIndex(s => s.id === Number(reviewId));
+    const numericReviewId = Number(reviewId);
+    const idx = submissions.findIndex(s =>
+      String(s.id) === String(reviewId) ||
+      (Number.isFinite(numericReviewId) && s.internalId === numericReviewId)
+    );
     if (idx === -1) return;
     const row = submissions[idx];
     setSearchParams(prev => { prev.delete('review'); return prev; }, { replace: true });
