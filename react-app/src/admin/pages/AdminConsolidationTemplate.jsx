@@ -5,6 +5,8 @@ import {
   FloppyDisk,
   CheckCircle,
   WarningCircle,
+  PencilSimple,
+  Database,
 } from '@phosphor-icons/react';
 import api from '../../lib/api.js';
 import { Spinner } from '../components/Spinner.jsx';
@@ -135,9 +137,17 @@ const AdminConsolidationTemplate = () => {
       setPrograms(programsRes.status === 'fulfilled' ? (programsRes.value.data || []) : []);
 
       if (notesRes.status === 'fulfilled') {
+        const autoRemarks = { ...(notesRes.value.data.auto_remarks || {}) };
         const noteMap = {};
         for (const note of (notesRes.value.data.notes || [])) {
-          noteMap[note.program_id] = note;
+          noteMap[note.program_id] = {
+            ...note,
+            management_response: note.management_response || autoRemarks[note.program_id] || '',
+          };
+          delete autoRemarks[note.program_id];
+        }
+        for (const [pid, autoRemark] of Object.entries(autoRemarks)) {
+          noteMap[Number(pid)] = { program_id: Number(pid), management_response: autoRemark };
         }
         setNotes(noteMap);
       }
@@ -302,6 +312,7 @@ const AdminConsolidationTemplate = () => {
 
   return (
     <div className="flex min-h-full w-full flex-col gap-3">
+      {/* Toast */}
       {toast && (
         <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium ${toast.type === 'success'
             ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
@@ -312,138 +323,140 @@ const AdminConsolidationTemplate = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 dark:border-white/[0.06] bg-white/65 dark:bg-dark-surface/45 backdrop-blur-md px-3 py-3 shadow-sm shadow-slate-200/40 dark:shadow-none md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-xl bg-slate-100 dark:bg-white/[0.06] p-1">
-            {Object.entries(VIEW_MODES).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => handleViewModeChange(value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  viewMode === value
-                    ? 'bg-white text-indigo-600 shadow-sm dark:bg-white/10 dark:text-indigo-300'
-                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {viewMode === 'division' ? (
-            <div className="inline-flex rounded-xl bg-indigo-50 dark:bg-indigo-500/10 p-1">
-              {FUNCTIONAL_DIVISIONS.map((division) => (
+      {/* Toolbar */}
+      <div className="flex flex-col gap-2 rounded-2xl border border-slate-200/70 dark:border-white/[0.06] bg-white/65 dark:bg-dark-surface/45 backdrop-blur-md px-3 py-2.5 shadow-sm shadow-slate-200/40 dark:shadow-none">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Left: scope controls */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* View mode toggle */}
+            <div className="inline-flex rounded-xl bg-slate-100 dark:bg-white/[0.06] p-1">
+              {Object.entries(VIEW_MODES).map(([value, label]) => (
                 <button
-                  key={division}
+                  key={value}
                   type="button"
-                  onClick={() => handleDivisionChange(division)}
+                  onClick={() => handleViewModeChange(value)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                    activeDivision === division
-                      ? 'bg-white text-indigo-700 shadow-sm dark:bg-white/10 dark:text-indigo-300'
-                      : 'text-indigo-700/75 hover:text-indigo-800 dark:text-indigo-300/70 dark:hover:text-indigo-200'
+                    viewMode === value
+                      ? 'bg-white text-indigo-600 shadow-sm dark:bg-white/10 dark:text-indigo-300'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
-                  {division}
+                  {label}
                 </button>
               ))}
             </div>
-          ) : (
-            <>
-              <select
-                value={selectedClusterId}
-                onChange={handleClusterChange}
-                className="h-9 min-w-[180px] px-3 bg-white/80 dark:bg-dark-surface/70 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-              >
-                <option value="">Select cluster</option>
-                {clusters.map((cluster) => (
-                  <option key={cluster.id} value={cluster.id}>
-                    {cluster.name ?? `Cluster ${cluster.cluster_number}`}
-                  </option>
+
+            {/* Division / School scope */}
+            {viewMode === 'division' ? (
+              <div className="inline-flex rounded-xl bg-indigo-50 dark:bg-indigo-500/10 p-1">
+                {FUNCTIONAL_DIVISIONS.map((division) => (
+                  <button
+                    key={division}
+                    type="button"
+                    onClick={() => handleDivisionChange(division)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                      activeDivision === division
+                        ? 'bg-white text-indigo-700 shadow-sm dark:bg-white/10 dark:text-indigo-300'
+                        : 'text-indigo-700/75 hover:text-indigo-800 dark:text-indigo-300/70 dark:hover:text-indigo-200'
+                    }`}
+                  >
+                    {division}
+                  </button>
                 ))}
-              </select>
-              <select
-                value={selectedSchoolId}
-                onChange={handleSchoolChange}
-                disabled={!selectedClusterId}
-                className="h-9 min-w-[220px] px-3 bg-white/80 dark:bg-dark-surface/70 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-60"
-              >
-                <option value="">All schools in cluster</option>
-                {schoolOptions.map((school) => (
-                  <option key={school.id} value={school.id}>
-                    {school.abbreviation ? `${school.abbreviation} — ${school.name}` : school.name}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
-          <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-white/[0.06] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-300">
-            {scopeLabel}
-          </span>
-          <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-white/[0.06] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-300">
-            {QUARTER_LABELS[quarter]} {year || defaultYear}
-          </span>
-          {hasUnsavedChanges && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-300">
-              <WarningCircle size={13} weight="bold" />
-              Saving
+              </div>
+            ) : (
+              <>
+                <select
+                  value={selectedClusterId}
+                  onChange={handleClusterChange}
+                  className="h-8 min-w-[160px] px-3 bg-white/80 dark:bg-dark-surface/70 dark:text-slate-200 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                >
+                  <option value="">Select cluster</option>
+                  {clusters.map((cluster) => (
+                    <option key={cluster.id} value={cluster.id}>
+                      {cluster.name ?? `Cluster ${cluster.cluster_number}`}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedSchoolId}
+                  onChange={handleSchoolChange}
+                  disabled={!selectedClusterId}
+                  className="h-8 min-w-[200px] px-3 bg-white/80 dark:bg-dark-surface/70 dark:text-slate-200 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-50"
+                >
+                  <option value="">All schools in cluster</option>
+                  {schoolOptions.map((school) => (
+                    <option key={school.id} value={school.id}>
+                      {school.abbreviation ? `${school.abbreviation} — ${school.name}` : school.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            {/* Scope & period badges */}
+            <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-white/[0.06] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+              {scopeLabel}
             </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Period selectors */}
-          <select
-            value={year}
-            onChange={e => handlePeriodChange(Number(e.target.value), quarter)}
-            className="h-9 px-3 bg-white/80 dark:bg-dark-surface/70 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-          >
-            {yearOptions.map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
-          <select
-            value={quarter}
-            onChange={e => handlePeriodChange(year, Number(e.target.value))}
-            className="h-9 px-3 bg-white/80 dark:bg-dark-surface/70 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-          >
-            {[1, 2, 3, 4].map(q => (
-              <option key={q} value={q}>{QUARTER_LABELS[q]}</option>
-            ))}
-          </select>
-
-          {/* Search */}
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
-              <MagnifyingGlass size={16} weight="bold" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search programs..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="h-9 pl-9 pr-3 bg-white/80 dark:bg-dark-surface/70 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full sm:w-52 md:w-56"
-            />
+            <span className="inline-flex items-center rounded-lg bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
+              {QUARTER_LABELS[quarter]} {year || defaultYear}
+            </span>
           </div>
 
-          {/* Save indicator */}
-          <div className="flex h-9 items-center gap-2 px-3 rounded-xl font-bold text-xs bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 cursor-default">
-            {hasUnsavedChanges ? (
-              <Spinner size="sm" />
-            ) : (
-              <FloppyDisk size={16} weight="regular" />
-            )}
-            {hasUnsavedChanges ? 'Saving...' : 'Auto-saved'}
+          {/* Right: period + search + save */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={year}
+              onChange={e => handlePeriodChange(Number(e.target.value), quarter)}
+              className="h-8 px-2.5 bg-white/80 dark:bg-dark-surface/70 dark:text-slate-200 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            >
+              {yearOptions.map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            <select
+              value={quarter}
+              onChange={e => handlePeriodChange(year, Number(e.target.value))}
+              className="h-8 px-2.5 bg-white/80 dark:bg-dark-surface/70 dark:text-slate-200 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            >
+              {[1, 2, 3, 4].map(q => (
+                <option key={q} value={q}>{QUARTER_LABELS[q]}</option>
+              ))}
+            </select>
+
+            <div className="relative group">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
+                <MagnifyingGlass size={14} weight="bold" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search programs…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="h-8 pl-8 pr-3 bg-white/80 dark:bg-dark-surface/70 dark:text-slate-200 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-44 md:w-52"
+              />
+            </div>
+
+            <div className={`flex h-8 items-center gap-1.5 px-3 rounded-xl font-bold text-xs cursor-default transition-colors ${
+              hasUnsavedChanges
+                ? 'bg-amber-500/10 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300'
+                : 'bg-emerald-500/10 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+            }`}>
+              {hasUnsavedChanges ? (
+                <><Spinner size="sm" />Saving…</>
+              ) : (
+                <><FloppyDisk size={13} weight="bold" />Saved</>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Spreadsheet */}
-      <div className="relative group flex-1">
-        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 rounded-[2.5rem] blur opacity-30 group-hover:opacity-50 transition duration-1000" />
-        <div className="relative bg-white/80 dark:bg-dark-surface/80 backdrop-blur-xl border border-white/60 dark:border-white/[0.08] rounded-[2rem] overflow-hidden shadow-xl shadow-slate-200/40 dark:shadow-none flex flex-col min-h-[520px] h-[calc(100dvh-13rem)] md:h-[calc(100dvh-11rem)]">
+      <div className="relative flex-1">
+        <div className="relative bg-white/80 dark:bg-dark-surface/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.07] rounded-2xl overflow-hidden shadow-lg shadow-slate-200/30 dark:shadow-none flex flex-col min-h-[520px] h-[calc(100dvh-12rem)] md:h-[calc(100dvh-10.5rem)]">
 
-          {/* Loading / error states */}
+          {/* Loading */}
           {loading && (
             <div className="flex-1 flex items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
               <Spinner />
@@ -451,6 +464,7 @@ const AdminConsolidationTemplate = () => {
             </div>
           )}
 
+          {/* Error */}
           {!loading && error && (
             <div className="flex-1 flex items-center justify-center px-8">
               <div className="text-center space-y-2">
@@ -460,29 +474,74 @@ const AdminConsolidationTemplate = () => {
             </div>
           )}
 
+          {/* Table */}
           {!loading && !error && (
             <div className="flex-1 overflow-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse min-w-[1320px]">
-                <thead className="sticky top-0 z-20 bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xl shadow-sm">
+              <table className="w-full text-left border-collapse min-w-[1400px]">
+                <thead className="sticky top-0 z-20 backdrop-blur-xl">
+
+                  {/* Column group labels */}
+                  <tr className="border-b border-slate-200 dark:border-white/[0.06]">
+                    <th
+                      colSpan={5}
+                      className="px-4 py-1.5 bg-slate-100/95 dark:bg-slate-800/95"
+                    >
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        <Database size={11} weight="bold" />
+                        Source Data
+                      </span>
+                    </th>
+                    <th
+                      colSpan={4}
+                      className="px-4 py-1.5 bg-indigo-50/80 dark:bg-indigo-950/40 border-l-2 border-indigo-300 dark:border-indigo-600/60"
+                    >
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
+                        <PencilSimple size={11} weight="bold" />
+                        Admin Analysis
+                      </span>
+                    </th>
+                  </tr>
+
+                  {/* Column headers */}
                   <tr>
-                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-white/[0.05] w-12 text-center bg-slate-200/50 dark:bg-white/[0.02]">No.</th>
-                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-white/[0.05] w-64 bg-slate-200/50 dark:bg-white/[0.02]">Program</th>
-                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-white/[0.05] w-36 bg-slate-200/50 dark:bg-white/[0.02]">
+                    {/* Read-only headers */}
+                    <th className="sticky left-0 z-30 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-white/[0.06] w-10 text-center bg-slate-100/95 dark:bg-slate-800/95">
+                      #
+                    </th>
+                    <th className="sticky left-10 z-30 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-white/[0.06] w-64 bg-slate-100/95 dark:bg-slate-800/95">
+                      Program
+                    </th>
+                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-r border-slate-200 dark:border-white/[0.06] w-32 bg-slate-100/95 dark:bg-slate-800/95">
                       {viewMode === 'division' ? 'Scope' : viewMode === 'school' && selectedSchool ? 'School' : 'Schools'}
                     </th>
-                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-white/[0.05] w-28 text-center bg-slate-200/50 dark:bg-white/[0.02]">PIRs</th>
-                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-white/[0.05] w-32 text-center bg-slate-200/50 dark:bg-white/[0.02]">Accomp. %</th>
-                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 border-b border-r border-slate-200 dark:border-white/[0.05] w-32 text-center">TA Provided %</th>
-                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 border-b border-r border-slate-200 dark:border-white/[0.05] min-w-[200px]">Gaps</th>
-                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 border-b border-r border-slate-200 dark:border-white/[0.05] min-w-[200px]">Recommendations</th>
-                    <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 border-b border-slate-200 dark:border-white/[0.05] min-w-[200px]">Mgmt Response</th>
+                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-r border-slate-200 dark:border-white/[0.06] w-20 text-center bg-slate-100/95 dark:bg-slate-800/95">
+                      PIRs
+                    </th>
+                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-r border-slate-200 dark:border-white/[0.06] w-28 text-center bg-slate-100/95 dark:bg-slate-800/95">
+                      Accomp. %
+                    </th>
+
+                    {/* Editable headers */}
+                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 border-b border-r border-l-2 border-slate-200 dark:border-white/[0.06] border-l-indigo-300 dark:border-l-indigo-600/60 w-28 text-center bg-indigo-50/80 dark:bg-indigo-950/30">
+                      TA %
+                    </th>
+                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 border-b border-r border-slate-200 dark:border-white/[0.06] min-w-[220px] bg-indigo-50/80 dark:bg-indigo-950/30">
+                      Gaps
+                    </th>
+                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 border-b border-r border-slate-200 dark:border-white/[0.06] min-w-[220px] bg-indigo-50/80 dark:bg-indigo-950/30">
+                      Recommendations
+                    </th>
+                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 border-b border-slate-200 dark:border-white/[0.06] min-w-[220px] bg-indigo-50/80 dark:bg-indigo-950/30">
+                      Mgmt Response
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-white/[0.05] bg-white dark:bg-transparent">
+
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                   <AnimatePresence mode="popLayout">
                     {visibleRows.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-12 text-center text-sm text-slate-400 dark:text-slate-500">
+                        <td colSpan={9} className="px-4 py-16 text-center text-sm text-slate-400 dark:text-slate-500">
                           No programs found for this scope in {QUARTER_LABELS[quarter]} {year || defaultYear}.
                         </td>
                       </tr>
@@ -494,75 +553,80 @@ const AdminConsolidationTemplate = () => {
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                           key={`row-${row.program_id}`}
-                          className="hover:bg-indigo-50/30 dark:hover:bg-white/[0.02] transition-colors"
+                          className="group/row hover:bg-slate-50/80 dark:hover:bg-white/[0.025] transition-colors"
                         >
-                          {/* Read-only */}
-                          <td className="px-4 py-2 text-xs font-medium text-slate-400 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-white/[0.01]">
+                          {/* Read-only cells */}
+                          <td className="sticky left-0 z-10 px-3 py-3 text-[11px] font-semibold text-slate-400 dark:text-slate-500 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/90 dark:bg-slate-800/80 group-hover/row:bg-slate-100/80 dark:group-hover/row:bg-slate-800/90 transition-colors">
                             {idx + 1}
                           </td>
-                          <td className="px-4 py-2 border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-white/[0.01]">
-                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 line-clamp-2">
+                          <td className="sticky left-10 z-10 px-4 py-3 border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/90 dark:bg-slate-800/80 group-hover/row:bg-slate-100/80 dark:group-hover/row:bg-slate-800/90 transition-colors">
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-100 leading-snug line-clamp-2">
                               {row.program}
                             </span>
                           </td>
-                          <td className="px-4 py-2 border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-white/[0.01]">
-                            <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                          <td className="px-4 py-3 border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-slate-800/40">
+                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                               {row.program_owners}
                             </span>
                           </td>
-                          <td className="px-4 py-2 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-white/[0.01]">
-                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                              {row.pir_count}
-                            </span>
+                          <td className="px-4 py-3 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-slate-800/40">
+                            {row.pir_count > 0 ? (
+                              <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-slate-200/80 dark:bg-white/[0.08] text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                                {row.pir_count}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+                            )}
                           </td>
-                          <td className="px-4 py-2 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-white/[0.01]">
-                            <span className={`text-xs font-bold ${row.accomplishment_rate === null
-                                ? 'text-slate-400'
-                                : row.accomplishment_rate >= 75
-                                  ? 'text-emerald-600 dark:text-emerald-400'
-                                  : 'text-amber-600 dark:text-amber-400'
+                          <td className="px-4 py-3 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-slate-800/40">
+                            {row.accomplishment_rate !== null ? (
+                              <span className={`inline-flex items-center justify-center h-5 px-2 rounded-md text-[11px] font-black ${
+                                row.accomplishment_rate >= 75
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                                  : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
                               }`}>
-                              {row.accomplishment_rate !== null
-                                ? `${Number(row.accomplishment_rate).toFixed(1)}%`
-                                : '—'}
-                            </span>
+                                {Number(row.accomplishment_rate).toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+                            )}
                           </td>
 
-                          {/* Editable */}
-                          <td className="p-0 border-r border-slate-100 dark:border-white/[0.05]">
+                          {/* Editable cells */}
+                          <td className="p-0 border-r border-l-2 border-slate-100 dark:border-white/[0.05] border-l-indigo-200 dark:border-l-indigo-700/40 bg-indigo-50/20 dark:bg-indigo-950/20">
                             <input
                               type="text"
                               value={row.ta_schools_pct}
                               onChange={e => handleCellChange(row.program_id, 'ta_schools_pct', e.target.value)}
                               placeholder="e.g. 80%"
-                              className="w-full h-full min-h-[48px] px-4 py-2 text-sm text-center text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 focus:bg-indigo-50/50 dark:focus:bg-indigo-500/10 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                              className="w-full h-full min-h-[56px] px-4 py-3 text-sm text-center font-semibold text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                             />
                           </td>
-                          <td className="p-0 border-r border-slate-100 dark:border-white/[0.05]">
+                          <td className="p-0 border-r border-slate-100 dark:border-white/[0.05] bg-indigo-50/20 dark:bg-indigo-950/20">
                             <textarea
                               value={row.gaps}
                               onChange={e => handleCellChange(row.program_id, 'gaps', e.target.value)}
-                              placeholder="Enter gaps..."
+                              placeholder="Enter gaps…"
                               rows={2}
-                              className="w-full h-full min-h-[48px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 focus:bg-indigo-50/50 dark:focus:bg-indigo-500/10 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
+                              className="w-full h-full min-h-[56px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
                             />
                           </td>
-                          <td className="p-0 border-r border-slate-100 dark:border-white/[0.05]">
+                          <td className="p-0 border-r border-slate-100 dark:border-white/[0.05] bg-indigo-50/20 dark:bg-indigo-950/20">
                             <textarea
                               value={row.recommendations}
                               onChange={e => handleCellChange(row.program_id, 'recommendations', e.target.value)}
-                              placeholder="Enter recommendations..."
+                              placeholder="Enter recommendations…"
                               rows={2}
-                              className="w-full h-full min-h-[48px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 focus:bg-indigo-50/50 dark:focus:bg-indigo-500/10 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
+                              className="w-full h-full min-h-[56px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
                             />
                           </td>
-                          <td className="p-0">
+                          <td className="p-0 bg-indigo-50/20 dark:bg-indigo-950/20">
                             <textarea
                               value={row.management_response}
                               onChange={e => handleCellChange(row.program_id, 'management_response', e.target.value)}
-                              placeholder="Enter management response..."
+                              placeholder="Enter management response…"
                               rows={2}
-                              className="w-full h-full min-h-[48px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 focus:bg-indigo-50/50 dark:focus:bg-indigo-500/10 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
+                              className="w-full h-full min-h-[56px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
                             />
                           </td>
                         </Motion.tr>
@@ -576,20 +640,26 @@ const AdminConsolidationTemplate = () => {
 
           {/* Footer */}
           {!loading && !error && (
-            <div className="p-3 bg-slate-50 dark:bg-white/[0.02] border-t border-slate-200 dark:border-white/[0.05] flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle size={14} className="text-emerald-500" />
-                  Edits auto-saved to database
+            <div className="px-4 py-2 bg-slate-50/80 dark:bg-white/[0.02] border-t border-slate-200 dark:border-white/[0.05] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3 text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-500">
+                  <CheckCircle size={13} weight="fill" />
+                  Auto-saved
                 </span>
-                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-                <span>{visibleRows.length} program{visibleRows.length !== 1 ? 's' : ''} in view</span>
-                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+                <span className="w-px h-3 bg-slate-200 dark:bg-white/[0.08]" />
+                <span>{visibleRows.length} program{visibleRows.length !== 1 ? 's' : ''}</span>
+                <span className="w-px h-3 bg-slate-200 dark:bg-white/[0.08]" />
                 <span>{scopeLabel}</span>
-                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-                <span className="text-indigo-500 font-semibold">
+                <span className="w-px h-3 bg-slate-200 dark:bg-white/[0.08]" />
+                <span className="font-bold text-indigo-500 dark:text-indigo-400">
                   {QUARTER_LABELS[quarter]} {year}
                 </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-300 dark:text-slate-600">
+                <span className="w-2 h-2 rounded-sm bg-indigo-200 dark:bg-indigo-800/60 inline-block" />
+                Editable
+                <span className="w-2 h-2 rounded-sm bg-slate-200 dark:bg-slate-700/60 inline-block ml-2" />
+                Read-only
               </div>
             </div>
           )}

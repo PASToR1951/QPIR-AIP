@@ -45,14 +45,18 @@ export function useAdminOverviewData() {
   ), [data?.pirQuarterly]);
 
   const pieData = useMemo(() => (
-    (data?.clusterCompliance ?? []).map((entry, index) => ({
-      id: entry.name,
-      label: entry.name,
-      value: entry.compliant,
-      color: CHART_COLORS[index % CHART_COLORS.length],
-      total: entry.total,
-      pct: entry.pct,
-    }))
+    [...(data?.clusterCompliance ?? [])]
+      .sort((a, b) => a.cluster_number - b.cluster_number)
+      .map((entry, index) => ({
+        id: entry.name,
+        label: `Cluster ${entry.cluster_number}`,
+        clusterId: entry.id,
+        clusterNumber: entry.cluster_number,
+        value: entry.compliant,
+        color: CHART_COLORS[index % CHART_COLORS.length],
+        total: entry.total,
+        pct: entry.pct,
+      }))
   ), [data?.clusterCompliance]);
 
   const sectionData = data?.divisionSections ?? [];

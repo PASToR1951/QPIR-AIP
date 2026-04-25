@@ -29,11 +29,39 @@ consolidationNotesRoutes.get("/consolidation-notes", async (c) => {
     return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
   }
 
+  const QUARTER_PREFIXES: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
+  const quarterPrefix = QUARTER_PREFIXES[quarter];
+
   try {
-    const notes = await prisma.consolidationNote.findMany({
-      where: { year, quarter },
-    });
-    return c.json({ notes });
+    const [notes, pirRemarks] = await Promise.all([
+      prisma.consolidationNote.findMany({ where: { year, quarter } }),
+      prisma.pIR.findMany({
+        where: {
+          aip: { year },
+          quarter: { startsWith: quarterPrefix },
+          ces_remarks: { not: null },
+        },
+        select: {
+          ces_remarks: true,
+          aip: {
+            select: {
+              program_id: true,
+              school: { select: { abbreviation: true, name: true } },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const auto_remarks: Record<number, string> = {};
+    for (const pir of pirRemarks) {
+      const pid = pir.aip.program_id;
+      const school = pir.aip.school?.abbreviation || pir.aip.school?.name || "Division";
+      const line = `${school}: ${pir.ces_remarks!.trim()}`;
+      auto_remarks[pid] = auto_remarks[pid] ? `${auto_remarks[pid]}\n\n${line}` : line;
+    }
+
+    return c.json({ notes, auto_remarks });
   } catch (e) {
     console.error('[consolidation-notes GET]', e);
     return c.json({ error: 'Internal server error' }, 500);

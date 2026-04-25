@@ -16,6 +16,7 @@ export default function AdminPIRReview() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isObserver = auth.isObserver();
+  const isAdmin = auth.getUser()?.role === 'Admin';
 
   const [pir, setPir] = useState(null);
   const [sub, setSub] = useState(null);
@@ -126,7 +127,7 @@ export default function AdminPIRReview() {
     totalFlags,
     totalPhysAcc,
     totalPhysTarget,
-  } = buildPirReviewDerived({ id, pir, sub, isObserver });
+  } = buildPirReviewDerived({ id, pir, sub, isObserver, isAdmin });
 
   const TABS = [
     { key: 'overview',    label: 'Overview' },

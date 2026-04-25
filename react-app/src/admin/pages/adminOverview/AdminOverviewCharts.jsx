@@ -1,8 +1,7 @@
-import React from 'react';
+import { useState } from 'react';
 import { motion as Motion } from 'framer-motion';
-import { Buildings, ChartBar, ChartDonut } from '@phosphor-icons/react';
-import { ResponsivePie } from '@nivo/pie';
-import { BAR_COLORS, DIVISION_COLORS, fadeUp } from './chartTheme.js';
+import { Buildings, ChartBar, ChartDonut, ArrowRight } from '@phosphor-icons/react';
+import { BAR_COLORS, DIVISION_COLORS, PIR_QUARTERLY_KEYS, DIVISION_KEYS, fadeUp } from './chartTheme.js';
 import { QuarterlyStatusChart } from './QuarterlyStatusChart.jsx';
 import { InfoTip } from './overviewHelpers.jsx';
 
@@ -12,60 +11,127 @@ const SECTION_ACCENTS = {
     thisQ: 'text-indigo-600 dark:text-indigo-400',
     dot: 'bg-indigo-400',
     count: 'text-indigo-700 dark:text-indigo-400',
+    bar: '#6366f1',
   },
   CID: {
     badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-500/20',
     thisQ: 'text-emerald-600 dark:text-emerald-400',
     dot: 'bg-emerald-400',
     count: 'text-emerald-700 dark:text-emerald-400',
+    bar: '#10b981',
   },
   OSDS: {
     badge: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-500/20',
     thisQ: 'text-amber-600 dark:text-amber-400',
     dot: 'bg-amber-400',
     count: 'text-amber-700 dark:text-amber-400',
+    bar: '#f59e0b',
   },
 };
 
-function DivisionAipRow({ data }) {
-  if (!data?.length) return null;
+function statusBadge(pct) {
+  if (pct >= 100) return { label: 'All Filed', cls: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-500/20' };
+  if (pct > 0)    return { label: 'Partial',   cls: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-500/20' };
+  return            { label: 'None',      cls: 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-500/20' };
+}
+
+function pctColor(pct) {
+  if (pct >= 80) return 'text-emerald-600 dark:text-emerald-400';
+  if (pct >= 50) return 'text-amber-600 dark:text-amber-400';
+  return 'text-rose-600 dark:text-rose-400';
+}
+
+function TabToggle({ value, onChange, options }) {
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-slate-100 pt-3 dark:border-dark-border/60">
-      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Division</span>
-      {data.map((s) => {
-        const accent = SECTION_ACCENTS[s.key] ?? SECTION_ACCENTS.OSDS;
-        return (
-          <div key={s.key} className="flex items-center gap-1.5">
-            <span className={`h-2 w-2 shrink-0 rounded-full ${accent.dot}`} />
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{s.label}</span>
-            <span className={`text-[11px] font-black ${accent.count}`}>{s.withAip}/{s.totalPrograms}</span>
-          </div>
-        );
-      })}
+    <div className="flex items-center rounded-lg bg-slate-100 p-0.5 dark:bg-dark-border/40">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          className={`rounded-md px-2.5 py-1 text-[11px] font-bold transition-colors ${
+            value === opt.value
+              ? 'bg-white text-indigo-700 shadow-sm dark:bg-dark-surface dark:text-indigo-300'
+              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   );
 }
 
-function DivisionRow({ sectionData }) {
-  if (!sectionData?.length) return null;
+function ClusterRow({ item, onClick }) {
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-slate-100 pt-3 dark:border-dark-border/60">
-      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Division</span>
-      {sectionData.map((s) => {
-        const accent = SECTION_ACCENTS[s.key] ?? SECTION_ACCENTS.OSDS;
-        return (
-          <div key={s.key} className="flex items-center gap-1.5">
-            <span className={`h-2 w-2 shrink-0 rounded-full ${accent.dot}`} />
-            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{s.label}</span>
-            <span className={`text-[11px] font-black ${accent.count}`}>{s.total}</span>
-          </div>
-        );
-      })}
-    </div>
+    <button
+      onClick={onClick}
+      className="group flex w-full items-center gap-2 rounded-lg px-2 py-[5px] text-left transition-colors hover:bg-slate-50 dark:hover:bg-dark-border/30"
+    >
+      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
+      <span className="w-14 shrink-0 text-[11px] font-bold text-slate-600 dark:text-slate-300">{item.label}</span>
+      <div className="flex flex-1 items-center gap-2 min-w-0">
+        <div className="relative flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-dark-border/50 overflow-hidden">
+          <div
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{ width: `${item.pct ?? 0}%`, background: item.color }}
+          />
+        </div>
+        <span className="shrink-0 text-[10px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+          {item.value}/{item.total}
+        </span>
+      </div>
+      <ArrowRight
+        size={11}
+        weight="bold"
+        className="shrink-0 text-slate-300 transition-colors group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-400"
+      />
+    </button>
   );
 }
 
-export function AdminOverviewCharts({ isDark, nivoTheme, pieData, quarterData, sectionData = [], divisionAipCompliance = [] }) {
+function DivisionRow({ item, onClick }) {
+  const accent = SECTION_ACCENTS[item.key] ?? SECTION_ACCENTS.OSDS;
+  const badge = statusBadge(item.pct ?? 0);
+  return (
+    <button
+      onClick={onClick}
+      className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-dark-border/30"
+    >
+      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${accent.dot}`} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-tight">{item.label}</span>
+        <span className="truncate text-[9px] text-slate-400 dark:text-slate-500">{item.full}</span>
+      </div>
+      <span className={`shrink-0 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ${badge.cls}`}>
+        {badge.label}
+      </span>
+      <span className={`shrink-0 text-[11px] font-black tabular-nums ${pctColor(item.pct ?? 0)}`}>
+        {item.withAip}/{item.totalPrograms}
+      </span>
+      <ArrowRight
+        size={13}
+        weight="bold"
+        className="shrink-0 text-slate-300 transition-colors group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-400"
+      />
+    </button>
+  );
+}
+
+export function AdminOverviewCharts({ pieData, quarterData, sectionData = [], divisionAipCompliance = [], navigate }) {
+  const [viewMode, setViewMode] = useState('status');
+  const [aipView, setAipView] = useState('cluster');
+
+  const legendKeys = viewMode === 'status' ? PIR_QUARTERLY_KEYS : DIVISION_KEYS;
+  const legendColors = viewMode === 'status' ? BAR_COLORS : DIVISION_COLORS;
+
+  const handleClusterClick = (item) => {
+    navigate(`/admin/submissions?type=AIP`, { state: { filters: { cluster: item.clusterId } } });
+  };
+
+  const handleDivisionClick = () => {
+    navigate('/admin/submissions?type=AIP');
+  };
+
   return (
     <>
       <Motion.div variants={fadeUp} className="flex items-center gap-4 px-1">
@@ -73,134 +139,80 @@ export function AdminOverviewCharts({ isDark, nivoTheme, pieData, quarterData, s
         <span className="h-px flex-1 bg-slate-200 dark:bg-dark-border/60" />
       </Motion.div>
 
-      <Motion.div variants={fadeUp} className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-dark-border dark:bg-dark-surface">
-          <div className="mb-4 flex items-center gap-2">
+      <Motion.div variants={fadeUp} className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* PIR Quarterly Progress */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-dark-border dark:bg-dark-surface lg:col-span-2">
+          <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
               <ChartBar size={17} weight="bold" />
             </div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">PIR Quarterly Progress</h3>
+            <h3 className="flex-1 text-sm font-black text-slate-900 dark:text-slate-100">PIR Quarterly Progress</h3>
+            <TabToggle
+              value={viewMode}
+              onChange={setViewMode}
+              options={[{ value: 'status', label: 'By Status' }, { value: 'division', label: 'By Division' }]}
+            />
           </div>
-          <QuarterlyStatusChart data={quarterData} />
+          <div>
+            <QuarterlyStatusChart data={quarterData} viewMode={viewMode} />
+          </div>
           <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1.5">
-            {Object.entries(BAR_COLORS).map(([key, color]) => (
+            {legendKeys.map((key) => (
               <div key={key} className="flex items-center gap-1.5">
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: legendColors[key] }} />
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{key}</span>
               </div>
             ))}
           </div>
-          <div className="mt-1.5 flex flex-wrap justify-center gap-x-5 gap-y-1.5">
-            {Object.entries(DIVISION_COLORS).map(([key, color]) => (
-              <div key={key} className="flex items-center gap-1.5">
-                <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: color }} />
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{key}</span>
-              </div>
-            ))}
-          </div>
-          <DivisionRow sectionData={sectionData} />
         </div>
 
+        {/* AIP Compliance */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-dark-border dark:bg-dark-surface">
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-3 flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
               <ChartDonut size={17} weight="bold" />
             </div>
-            <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">AIP Compliance by Cluster</h3>
+            <h3 className="flex-1 text-sm font-black text-slate-900 dark:text-slate-100">AIP Filed</h3>
+            <TabToggle
+              value={aipView}
+              onChange={setAipView}
+              options={[{ value: 'cluster', label: 'Cluster' }, { value: 'division', label: 'Division' }]}
+            />
           </div>
-          {pieData.length > 0 ? (
-            <>
-              <div style={{ height: 200, position: 'relative' }}>
-                <ResponsivePie
-                  data={pieData}
-                  margin={{ top: 12, right: 12, bottom: 12, left: 12 }}
-                  innerRadius={0.62}
-                  padAngle={2}
-                  cornerRadius={4}
-                  colors={{ datum: 'data.color' }}
-                  theme={nivoTheme}
-                  enableArcLinkLabels={false}
-                  arcLabelsSkipAngle={20}
-                  arcLabelsTextColor="#ffffff"
-                  tooltip={({ datum }) => (
-                    <div style={{
-                      background: isDark ? '#262421' : '#ffffff',
-                      border: `1px solid ${isDark ? '#413D37' : '#e2e8f0'}`,
-                      borderRadius: 10,
-                      padding: '8px 12px',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: isDark ? '#e2e8f0' : '#1e293b',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-                    }}>
-                      <strong style={{ color: datum.color }}>{datum.label}</strong>
-                      <div style={{ marginTop: 2, color: isDark ? '#94a3b8' : '#64748b' }}>
-                        {datum.data.value}/{datum.data.total} schools ({datum.data.pct}%)
-                      </div>
-                    </div>
-                  )}
-                  animate
-                  motionConfig="gentle"
-                />
-                {sectionData.length > 0 && (
-                  <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                    <ResponsivePie
-                      data={sectionData.filter((s) => s.total > 0).map((s) => ({
-                        id: s.key,
-                        label: s.label,
-                        value: s.total,
-                        color: DIVISION_COLORS[s.key],
-                      }))}
-                      margin={{ top: 12, right: 12, bottom: 12, left: 12 }}
-                      innerRadius={0.3}
-                      outerRadius={0.55}
-                      padAngle={3}
-                      cornerRadius={3}
-                      colors={{ datum: 'data.color' }}
-                      theme={nivoTheme}
-                      enableArcLinkLabels={false}
-                      arcLabelsSkipAngle={30}
-                      arcLabelsTextColor="#ffffff"
-                      tooltip={({ datum }) => (
-                        <div style={{
-                          background: isDark ? '#262421' : '#ffffff',
-                          border: `1px solid ${isDark ? '#413D37' : '#e2e8f0'}`,
-                          borderRadius: 10,
-                          padding: '8px 12px',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: isDark ? '#e2e8f0' : '#1e293b',
-                          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-                        }}>
-                          <strong style={{ color: datum.color }}>{datum.label}</strong>
-                          <div style={{ marginTop: 2, color: isDark ? '#94a3b8' : '#64748b' }}>
-                            {datum.value} PIR{datum.value !== 1 ? 's' : ''}
-                          </div>
-                        </div>
-                      )}
-                      animate
-                      motionConfig="gentle"
-                    />
-                  </div>
-                )}
+
+          {aipView === 'cluster' ? (
+            pieData.length > 0 ? (
+              <div className="h-[220px] overflow-y-auto -mx-1 px-1">
+                <div className="flex flex-col">
+                  {pieData.map((item) => (
+                    <ClusterRow key={item.id} item={item} onClick={() => handleClusterClick(item)} />
+                  ))}
+                </div>
               </div>
-              <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
-                {pieData.map((item) => (
-                  <div key={item.id} className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{item.label}</span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">({item.value}/{item.total})</span>
-                  </div>
-                ))}
-              </div>
-            </>
+            ) : (
+              <div className="flex h-[220px] items-center justify-center text-sm text-slate-400 dark:text-slate-600">No data</div>
+            )
           ) : (
-            <div className="flex h-52 items-center justify-center text-sm text-slate-400 dark:text-slate-600">No data</div>
+            divisionAipCompliance.length > 0 ? (
+              <div className="h-[220px] overflow-y-auto -mx-1 px-1">
+                <div className="flex flex-col gap-0.5">
+                  {divisionAipCompliance.map((item) => (
+                    <DivisionRow key={item.key} item={item} onClick={handleDivisionClick} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex h-[220px] items-center justify-center text-sm text-slate-400 dark:text-slate-600">No data</div>
+            )
           )}
-          <DivisionAipRow data={divisionAipCompliance} />
+
+          <p className="mt-3 border-t border-slate-100 pt-3 text-[9px] text-slate-400 dark:border-dark-border/60 dark:text-slate-500">
+            Click a row to view its AIP submissions
+          </p>
         </div>
       </Motion.div>
 
+      {/* Division Sections */}
       <Motion.div variants={fadeUp} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-dark-border dark:bg-dark-surface sm:p-5">
         <div className="mb-4 flex items-start gap-3">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
@@ -238,11 +250,13 @@ export function AdminOverviewCharts({ isDark, nivoTheme, pieData, quarterData, s
                   <div className="grid grid-cols-2 border-t border-slate-100 dark:border-dark-border/60">
                     <div className="flex flex-col gap-0.5 border-r border-b border-slate-100 px-5 py-3 dark:border-dark-border/60">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Pending</span>
-                      <span className="text-xl font-black text-slate-800 dark:text-slate-100">{section.pending}</span>
+                      <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 normal-case tracking-normal">awaiting CES review</span>
+                      <span className="mt-0.5 text-xl font-black text-slate-800 dark:text-slate-100">{section.pending}</span>
                     </div>
                     <div className="flex flex-col gap-0.5 border-b border-slate-100 px-5 py-3 dark:border-dark-border/60">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">In Review</span>
-                      <span className="text-xl font-black text-slate-800 dark:text-slate-100">{section.inReview}</span>
+                      <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 normal-case tracking-normal">with Cluster Head / Admin</span>
+                      <span className="mt-0.5 text-xl font-black text-slate-800 dark:text-slate-100">{section.inReview}</span>
                     </div>
                     <div className="flex flex-col gap-0.5 border-r border-slate-100 px-5 py-3 dark:border-dark-border/60">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Approved</span>

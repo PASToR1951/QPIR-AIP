@@ -146,6 +146,7 @@ export default function AdminOverview() {
                 divisionAipCompliance={divisionAipCompliance}
                 isDark={isDark}
                 nivoTheme={nivoTheme}
+                navigate={navigate}
                 pieData={pieData}
                 quarterData={quarterData}
                 sectionData={sectionData}
