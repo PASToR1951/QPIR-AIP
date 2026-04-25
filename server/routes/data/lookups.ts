@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { prisma } from "../../db/client.ts";
+import { normalizeQuarterLabel } from "../../lib/quarters.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
+import { sanitizeString } from "../../lib/sanitize.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
 import {
@@ -9,10 +11,7 @@ import {
   fetchProgramByTitle,
 } from "./shared/lookups.ts";
 import { serializeIndicators } from "./shared/normalize.ts";
-import type {
-  AIPWithActivities,
-  DataRouteEnv,
-} from "./shared/types.ts";
+import type { AIPWithActivities, DataRouteEnv } from "./shared/types.ts";
 
 const lookupsRoutes = new Hono<{ Variables: DataRouteEnv }>();
 
@@ -154,7 +153,9 @@ lookupsRoutes.get(
         outcome: template.outcome,
         target_code: template.target_code,
         target_description: template.target_description,
-        indicators: serializeTemplateIndicators(template.indicators as any[] ?? []),
+        indicators: serializeTemplateIndicators(
+          template.indicators as any[] ?? [],
+        ),
       });
     },
   ),
@@ -224,8 +225,15 @@ lookupsRoutes.get(
         2020,
         2100,
       );
-      const quarter = c.req.query("quarter") || null;
-      const filedStatuses = ["Submitted", "Under Review", "Approved", "Returned"];
+      const quarter = c.req.query("quarter")
+        ? normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
+        : null;
+      const filedStatuses = [
+        "Submitted",
+        "Under Review",
+        "Approved",
+        "Returned",
+      ];
 
       const pirs = tokenUser.role === "School" && tokenUser.school_id
         ? await prisma.pIR.findMany({
@@ -283,7 +291,9 @@ lookupsRoutes.get(
         return c.json({ error: "Forbidden" }, 403);
       }
 
-      const aipCount = await prisma.aIP.count({ where: { school_id: schoolId, year } });
+      const aipCount = await prisma.aIP.count({
+        where: { school_id: schoolId, year },
+      });
       return c.json({ hasAIP: aipCount > 0, count: aipCount });
     },
   ),
@@ -408,7 +418,10 @@ lookupsRoutes.get(
       );
 
       if (!programTitle && !programId) {
-        return c.json({ error: "program_title or program_id is required" }, 400);
+        return c.json(
+          { error: "program_title or program_id is required" },
+          400,
+        );
       }
 
       const program = await fetchProgramByReference(programId, programTitle);
@@ -427,7 +440,11 @@ lookupsRoutes.get(
         0,
       );
       const fundSources = [
-        ...new Set(aip.activities.map((activity) => activity.budget_source).filter(Boolean)),
+        ...new Set(
+          aip.activities.map((activity) => activity.budget_source).filter(
+            Boolean,
+          ),
+        ),
       ].join(" / ");
 
       return c.json({

@@ -1,23 +1,40 @@
 import { Hono } from "hono";
 import { prisma } from "../../db/client.ts";
-import { getCESRoleForDivisionPIR, CES_ROLES } from "../../lib/routing.ts";
+import { CES_ROLES, getCESRoleForDivisionPIR } from "../../lib/routing.ts";
 import { logger } from "../../lib/logger.ts";
 import { pushNotifications } from "../../lib/notifStream.ts";
 import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
-import { getAuthedUser, requireAuth, verifySchoolCluster } from "./shared/guards.ts";
+import {
+  getAuthedUser,
+  requireAuth,
+  verifySchoolCluster,
+} from "./shared/guards.ts";
 import { writeUserLog } from "../../lib/userActivityLog.ts";
 import { getClientIp } from "../../lib/clientIp.ts";
-import { fetchAIPForUser, fetchPIRForUser, fetchProgramByTitle } from "./shared/lookups.ts";
+import {
+  LOCK_NAMESPACE,
+  pirResourceKey,
+  pirResourceKeyFromRecord,
+  withAdvisoryLock,
+} from "../../lib/advisoryLock.ts";
+import { ConflictError, HttpError } from "../../lib/errors.ts";
+import { isPrismaUniqueConflictWithoutTarget } from "../../lib/prismaErrors.ts";
+import { normalizeQuarterLabel } from "../../lib/quarters.ts";
+import {
+  fetchAIPForUser,
+  fetchPIRForUser,
+  fetchProgramByTitle,
+} from "./shared/lookups.ts";
 import {
   transformActivityReviews,
   transformFactors,
   validateBudgetAmount,
 } from "./shared/normalize.ts";
 import type {
-  AIPWithProgramSchoolClusterActivities,
   AIPWithProgramSchool,
+  AIPWithProgramSchoolClusterActivities,
   DataRouteEnv,
   PIRWithReviewActivitiesAndFactors,
 } from "./shared/types.ts";
@@ -53,7 +70,11 @@ async function validateQuarterSubmissionWindow(
     where: { year_quarter: { year, quarter: quarterNum } },
   });
 
-  const deadline = buildDeadline(year, quarterNum, deadlineRecord?.date ?? undefined);
+  const deadline = buildDeadline(
+    year,
+    quarterNum,
+    deadlineRecord?.date ?? undefined,
+  );
   const graceDays = deadlineRecord?.grace_period_days ?? 0;
   const graceEnd = new Date(deadline.getTime() + graceDays * 86400000);
   graceEnd.setHours(23, 59, 59, 999);
@@ -79,6 +100,19 @@ async function validateQuarterSubmissionWindow(
   return null;
 }
 
+async function mapTargetlessUniqueConflict<T>(
+  operation: Promise<T>,
+): Promise<T> {
+  try {
+    return await operation;
+  } catch (error) {
+    if (isPrismaUniqueConflictWithoutTarget(error)) {
+      throw new ConflictError("A record already exists for this request");
+    }
+    throw error;
+  }
+}
+
 pirRoutes.use("/pirs", requireAuth());
 pirRoutes.use("/pirs/*", requireAuth());
 
@@ -90,7 +124,9 @@ pirRoutes.get(
     async (c) => {
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title") || "";
-      const quarter = c.req.query("quarter") || "";
+      const quarter = normalizeQuarterLabel(
+        sanitizeString(c.req.query("quarter") || ""),
+      );
 
       if (!programTitle || !quarter) {
         return c.json(
@@ -120,10 +156,15 @@ pirRoutes.get(
         factors: true,
       }) as PIRWithReviewActivitiesAndFactors | null;
       if (!pir) {
-        return c.json({ error: "No submitted PIR found for this quarter" }, 404);
+        return c.json(
+          { error: "No submitted PIR found for this quarter" },
+          404,
+        );
       }
 
-      if (tokenUser.role === "School" && aip.school_id !== tokenUser.school_id) {
+      if (
+        tokenUser.role === "School" && aip.school_id !== tokenUser.school_id
+      ) {
         return c.json({ error: "Forbidden" }, 403);
       }
       if (
@@ -164,18 +205,20 @@ pirRoutes.get(
         budgetFromDivision: pir.budget_from_division,
         budgetFromCoPSF: pir.budget_from_co_psf,
         functionalDivision: pir.functional_division ?? null,
-        indicatorQuarterlyTargets: pir.indicator_quarterly_targets as any[] ?? [],
+        indicatorQuarterlyTargets: pir.indicator_quarterly_targets as any[] ??
+          [],
         actionItems: pir.action_items as any[] ?? [],
         activities: pir.activity_reviews.map((review) => ({
           id: review.id,
           name: review.aip_activity?.activity_name ?? "",
-          implementation_period: review.aip_activity?.implementation_period ?? "",
+          implementation_period: review.aip_activity?.implementation_period ??
+            "",
           period_start_month: review.aip_activity?.period_start_month ?? null,
           period_end_month: review.aip_activity?.period_end_month ?? null,
           complied: review.complied,
           actualTasksConducted: review.actual_tasks_conducted ?? "",
-          contributoryIndicators:
-            review.contributory_performance_indicators ?? "",
+          contributoryIndicators: review.contributory_performance_indicators ??
+            "",
           movsExpectedOutputs: review.movs_expected_outputs ?? "",
           adjustments: review.adjustments ?? "",
           isUnplanned: review.is_unplanned ?? false,
@@ -216,7 +259,7 @@ pirRoutes.post(
       if (clusterErr) return c.json({ error: clusterErr }, 403);
 
       const cleanProgramTitle = sanitizeString(program_title);
-      const cleanQuarter = sanitizeString(quarter);
+      const cleanQuarter = normalizeQuarterLabel(sanitizeString(quarter));
 
       const program = await fetchProgramByTitle(cleanProgramTitle);
       if (!program) return c.json({ error: "Resource not found" }, 404);
@@ -246,7 +289,8 @@ pirRoutes.post(
       if (!aip) return c.json({ error: "Resource not found" }, 404);
 
       if (
-        (tokenUser.role === "Division Personnel" || CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])) &&
+        (tokenUser.role === "Division Personnel" ||
+          CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])) &&
         aip.created_by_user_id !== tokenUser.id
       ) {
         return c.json({ error: "Access denied" }, 403);
@@ -259,7 +303,8 @@ pirRoutes.post(
       } catch {
         return c.json(
           {
-            error: "Invalid budget_from_division: must be a non-negative number",
+            error:
+              "Invalid budget_from_division: must be a non-negative number",
           },
           400,
         );
@@ -268,74 +313,88 @@ pirRoutes.post(
         pirBudgetPsf = validateBudgetAmount(budget_from_co_psf);
       } catch {
         return c.json(
-          { error: "Invalid budget_from_co_psf: must be a non-negative number" },
+          {
+            error: "Invalid budget_from_co_psf: must be a non-negative number",
+          },
           400,
         );
       }
 
       const factorData = transformFactors(factors);
       const reviewData = transformActivityReviews(activity_reviews);
-      const existingDraft = await fetchPIRForUser(aip.id, cleanQuarter);
-      const inProgressStatuses = [
-        "For CES Review",
-        "For Cluster Head Review",
-        "For Admin Review",
-        "Under Review",
-      ];
+      const nextStatus = aip.school_id !== null &&
+          tokenUser.role !== "Cluster Coordinator"
+        ? "For Cluster Head Review"
+        : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
+        ? "For Admin Review"
+        : "For CES Review";
+      const resource = pirResourceKey(aip.id, cleanQuarter);
+      const pir = await mapTargetlessUniqueConflict(
+        withAdvisoryLock(
+          LOCK_NAMESPACE.PIR,
+          resource,
+          async (tx) => {
+            const existingDraft = await fetchPIRForUser(
+              aip.id,
+              cleanQuarter,
+              undefined,
+              tx,
+            );
 
-      if (existingDraft && inProgressStatuses.includes(existingDraft.status)) {
-        return c.json(
-          {
-            error: "A PIR has already been submitted for this program and quarter.",
-          },
-          409,
-        );
-      }
+            if (existingDraft && existingDraft.status !== "Draft") {
+              if (existingDraft.status === "Returned") {
+                throw new ConflictError(
+                  "This PIR was returned for correction. Please update the returned PIR instead of submitting a new one.",
+                );
+              }
+              throw new ConflictError(
+                "A PIR has already been submitted for this program and quarter.",
+              );
+            }
 
-      let pir;
-      if (existingDraft && existingDraft.status === "Draft") {
-        await prisma.pIRActivityReview.deleteMany({ where: { pir_id: existingDraft.id } });
-        await prisma.pIRFactor.deleteMany({ where: { pir_id: existingDraft.id } });
-        pir = await prisma.pIR.update({
-          where: { id: existingDraft.id },
-          data: {
-            program_owner,
-            budget_from_division: pirBudgetDiv,
-            budget_from_co_psf: pirBudgetPsf,
-            functional_division: functional_division ?? null,
-            indicator_quarterly_targets: indicator_quarterly_targets ?? [],
-            action_items: action_items ?? [],
-            status: aip.school_id !== null && tokenUser.role !== "Cluster Coordinator"
-              ? "For Cluster Head Review"
-              : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
-              ? "For Admin Review"
-              : "For CES Review",
-            factors: { create: factorData },
-            activity_reviews: { create: reviewData },
+            if (existingDraft) {
+              await tx.pIRActivityReview.deleteMany({
+                where: { pir_id: existingDraft.id },
+              });
+              await tx.pIRFactor.deleteMany({
+                where: { pir_id: existingDraft.id },
+              });
+              return tx.pIR.update({
+                where: { id: existingDraft.id },
+                data: {
+                  program_owner,
+                  budget_from_division: pirBudgetDiv,
+                  budget_from_co_psf: pirBudgetPsf,
+                  functional_division: functional_division ?? null,
+                  indicator_quarterly_targets: indicator_quarterly_targets ??
+                    [],
+                  action_items: action_items ?? [],
+                  status: nextStatus,
+                  factors: { create: factorData },
+                  activity_reviews: { create: reviewData },
+                },
+              });
+            }
+
+            return tx.pIR.create({
+              data: {
+                aip_id: aip.id,
+                created_by_user_id: tokenUser.id,
+                quarter: cleanQuarter,
+                program_owner,
+                budget_from_division: pirBudgetDiv,
+                budget_from_co_psf: pirBudgetPsf,
+                functional_division: functional_division ?? null,
+                indicator_quarterly_targets: indicator_quarterly_targets ?? [],
+                action_items: action_items ?? [],
+                status: nextStatus,
+                factors: { create: factorData },
+                activity_reviews: { create: reviewData },
+              },
+            });
           },
-        });
-      } else {
-        pir = await prisma.pIR.create({
-          data: {
-            aip_id: aip.id,
-            created_by_user_id: tokenUser.id,
-            quarter: cleanQuarter,
-            program_owner,
-            budget_from_division: pirBudgetDiv,
-            budget_from_co_psf: pirBudgetPsf,
-            functional_division: functional_division ?? null,
-            indicator_quarterly_targets: indicator_quarterly_targets ?? [],
-            action_items: action_items ?? [],
-            status: aip.school_id !== null && tokenUser.role !== "Cluster Coordinator"
-              ? "For Cluster Head Review"
-              : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
-              ? "For Admin Review"
-              : "For CES Review",
-            factors: { create: factorData },
-            activity_reviews: { create: reviewData },
-          },
-        });
-      }
+        ),
+      );
 
       let submitterLabel: string;
       if (aip.school?.name) {
@@ -345,7 +404,9 @@ pirRoutes.post(
           where: { id: tokenUser.id },
           select: { name: true, email: true },
         });
-        submitterLabel = sanitizeString(submitter?.name ?? submitter?.email ?? "A user");
+        submitterLabel = sanitizeString(
+          submitter?.name ?? submitter?.email ?? "A user",
+        );
       }
 
       const pirAdmins = await prisma.user.findMany({
@@ -370,7 +431,9 @@ pirRoutes.post(
           select: { id: true },
         });
         reviewerIds = cesCID.map((user: { id: number }) => user.id);
-      } else if (CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])) {
+      } else if (
+        CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
+      ) {
         // CES-submitted PIRs go directly to Admin — no intermediate reviewer to notify
         reviewerIds = [];
       } else {
@@ -382,10 +445,12 @@ pirRoutes.post(
         reviewerIds = cesUsers.map((user: { id: number }) => user.id);
       }
 
-      const notifyIds = [...new Set([
-        ...reviewerIds,
-        ...pirAdmins.map((user: { id: number }) => user.id),
-      ])];
+      const notifyIds = [
+        ...new Set([
+          ...reviewerIds,
+          ...pirAdmins.map((user: { id: number }) => user.id),
+        ]),
+      ];
       if (notifyIds.length > 0) {
         const pirNotifs = await prisma.notification.createManyAndReturn({
           data: notifyIds.map((userId) => ({
@@ -401,7 +466,14 @@ pirRoutes.post(
         pushNotifications(pirNotifs);
       }
 
-      writeUserLog({ userId: tokenUser.id, action: "pir_submit", entityType: "PIR", entityId: pir.id, details: { programTitle: cleanProgramTitle, quarter: cleanQuarter }, ipAddress: getClientIp(c) });
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "pir_submit",
+        entityType: "PIR",
+        entityId: pir.id,
+        details: { programTitle: cleanProgramTitle, quarter: cleanQuarter },
+        ipAddress: getClientIp(c),
+      });
       return c.json({ message: "PIR created successfully", pir });
     },
   ),
@@ -423,23 +495,6 @@ pirRoutes.put(
       const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
       if (!pir) return c.json({ error: "PIR not found" }, 404);
 
-      if (pir.created_by_user_id === null || pir.created_by_user_id !== tokenUser.id) {
-        return c.json({ error: "Forbidden" }, 403);
-      }
-      if (
-        pir.status !== "For CES Review" &&
-        pir.status !== "For Cluster Head Review" &&
-        pir.status !== "Returned"
-      ) {
-        return c.json(
-          {
-            error:
-              "This PIR can no longer be edited — it is currently under review.",
-          },
-          409,
-        );
-      }
-
       const body = sanitizeObject(await c.req.json());
       const {
         program_owner,
@@ -459,7 +514,8 @@ pirRoutes.put(
       } catch {
         return c.json(
           {
-            error: "Invalid budget_from_division: must be a non-negative number",
+            error:
+              "Invalid budget_from_division: must be a non-negative number",
           },
           400,
         );
@@ -468,40 +524,79 @@ pirRoutes.put(
         putBudgetPsf = validateBudgetAmount(budget_from_co_psf);
       } catch {
         return c.json(
-          { error: "Invalid budget_from_co_psf: must be a non-negative number" },
+          {
+            error: "Invalid budget_from_co_psf: must be a non-negative number",
+          },
           400,
         );
       }
 
       const factorData = transformFactors(factors);
       const reviewData = transformActivityReviews(activity_reviews);
-      const pirAip = await prisma.aIP.findUnique({
-        where: { id: pir.aip_id },
-        select: { school_id: true },
-      });
-      const resubmitStatus = pirAip?.school_id !== null && tokenUser.role !== "Cluster Coordinator"
-        ? "For Cluster Head Review"
-        : "For CES Review";
+      const resource = pirResourceKeyFromRecord(pir);
 
-      await prisma.pIRActivityReview.deleteMany({ where: { pir_id: pirId } });
-      await prisma.pIRFactor.deleteMany({ where: { pir_id: pirId } });
+      const updated = await withAdvisoryLock(
+        LOCK_NAMESPACE.PIR,
+        resource,
+        async (tx) => {
+          const lockedPir = await tx.pIR.findUnique({ where: { id: pirId } });
+          if (!lockedPir) {
+            throw new HttpError(404, "PIR not found", "NOT_FOUND");
+          }
 
-      const updated = await prisma.pIR.update({
-        where: { id: pirId },
-        data: {
-          program_owner,
-          budget_from_division: putBudgetDiv,
-          budget_from_co_psf: putBudgetPsf,
-          functional_division: functional_division ?? null,
-          indicator_quarterly_targets: indicator_quarterly_targets ?? [],
-          action_items: action_items ?? [],
-          status: resubmitStatus,
-          factors: { create: factorData },
-          activity_reviews: { create: reviewData },
+          if (
+            lockedPir.created_by_user_id === null ||
+            lockedPir.created_by_user_id !== tokenUser.id
+          ) {
+            throw new HttpError(403, "Forbidden", "FORBIDDEN");
+          }
+          if (
+            lockedPir.status !== "For CES Review" &&
+            lockedPir.status !== "For Cluster Head Review" &&
+            lockedPir.status !== "Returned"
+          ) {
+            throw new ConflictError(
+              "This PIR can no longer be edited — it is currently under review.",
+            );
+          }
+
+          const pirAip = await tx.aIP.findUnique({
+            where: { id: lockedPir.aip_id },
+            select: { school_id: true },
+          });
+          const resubmitStatus = pirAip?.school_id !== null &&
+              tokenUser.role !== "Cluster Coordinator"
+            ? "For Cluster Head Review"
+            : "For CES Review";
+
+          await tx.pIRActivityReview.deleteMany({ where: { pir_id: pirId } });
+          await tx.pIRFactor.deleteMany({ where: { pir_id: pirId } });
+
+          return tx.pIR.update({
+            where: { id: pirId },
+            data: {
+              program_owner,
+              budget_from_division: putBudgetDiv,
+              budget_from_co_psf: putBudgetPsf,
+              functional_division: functional_division ?? null,
+              indicator_quarterly_targets: indicator_quarterly_targets ?? [],
+              action_items: action_items ?? [],
+              status: resubmitStatus,
+              factors: { create: factorData },
+              activity_reviews: { create: reviewData },
+            },
+          });
         },
-      });
+      );
 
-      writeUserLog({ userId: tokenUser.id, action: "pir_update", entityType: "PIR", entityId: pirId, details: { quarter: pir.quarter }, ipAddress: getClientIp(c) });
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "pir_update",
+        entityType: "PIR",
+        entityId: pirId,
+        details: { quarter: pir.quarter },
+        ipAddress: getClientIp(c),
+      });
       return c.json({ message: "PIR updated successfully", pir: updated });
     },
   ),
@@ -520,25 +615,42 @@ pirRoutes.delete(
       const pir = await prisma.pIR.findUnique({ where: { id: pirId } });
       if (!pir) return c.json({ error: "PIR not found" }, 404);
 
-      if (pir.created_by_user_id === null || pir.created_by_user_id !== tokenUser.id) {
-        return c.json({ error: "Forbidden" }, 403);
-      }
-      if (
-        pir.status !== "For CES Review" &&
-        pir.status !== "For Cluster Head Review" &&
-        pir.status !== "Returned"
-      ) {
-        return c.json(
-          {
-            error:
-              "This PIR can no longer be deleted — it is currently under review.",
-          },
-          409,
-        );
-      }
+      await withAdvisoryLock(
+        LOCK_NAMESPACE.PIR,
+        pirResourceKeyFromRecord(pir),
+        async (tx) => {
+          const lockedPir = await tx.pIR.findUnique({ where: { id: pirId } });
+          if (!lockedPir) {
+            throw new HttpError(404, "PIR not found", "NOT_FOUND");
+          }
 
-      await prisma.pIR.delete({ where: { id: pirId } });
-      writeUserLog({ userId: tokenUser.id, action: "pir_delete", entityType: "PIR", entityId: pirId, details: { quarter: pir.quarter }, ipAddress: getClientIp(c) });
+          if (
+            lockedPir.created_by_user_id === null ||
+            lockedPir.created_by_user_id !== tokenUser.id
+          ) {
+            throw new HttpError(403, "Forbidden", "FORBIDDEN");
+          }
+          if (
+            lockedPir.status !== "For CES Review" &&
+            lockedPir.status !== "For Cluster Head Review" &&
+            lockedPir.status !== "Returned"
+          ) {
+            throw new ConflictError(
+              "This PIR can no longer be deleted — it is currently under review.",
+            );
+          }
+
+          await tx.pIR.delete({ where: { id: pirId } });
+        },
+      );
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "pir_delete",
+        entityType: "PIR",
+        entityId: pirId,
+        details: { quarter: pir.quarter },
+        ipAddress: getClientIp(c),
+      });
       return c.json({ message: "PIR deleted successfully" });
     },
   ),

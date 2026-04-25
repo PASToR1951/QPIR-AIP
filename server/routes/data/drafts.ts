@@ -1,5 +1,17 @@
 import { Hono } from "hono";
 import { prisma } from "../../db/client.ts";
+import {
+  aipResourceKey,
+  aipResourceKeyFromRecord,
+  LOCK_NAMESPACE,
+  pirResourceKey,
+  pirResourceKeyFromRecord,
+  withAdvisoryLock,
+  withAdvisoryLocks,
+} from "../../lib/advisoryLock.ts";
+import { ConflictError } from "../../lib/errors.ts";
+import { isPrismaUniqueConflictWithoutTarget } from "../../lib/prismaErrors.ts";
+import { normalizeQuarterLabel } from "../../lib/quarters.ts";
 import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
@@ -47,6 +59,19 @@ function resolveTargetDescription(
     : "";
 }
 
+async function mapTargetlessUniqueConflict<T>(
+  operation: Promise<T>,
+): Promise<T> {
+  try {
+    return await operation;
+  } catch (error) {
+    if (isPrismaUniqueConflictWithoutTarget(error)) {
+      throw new ConflictError("A record already exists for this request");
+    }
+    throw error;
+  }
+}
+
 draftsRoutes.use("/aips/draft", requireAuth());
 draftsRoutes.use("/pirs/draft", requireAuth());
 
@@ -76,36 +101,31 @@ draftsRoutes.post(
       } = body;
 
       if (!program_title && safeParseInt(program_id, 0) === 0) {
-        return c.json({ error: "program_id or program_title is required" }, 400);
+        return c.json(
+          { error: "program_id or program_title is required" },
+          400,
+        );
       }
 
       const cleanProgramTitle = sanitizeString(program_title);
-      const program = await fetchProgramByReference(program_id, cleanProgramTitle);
+      const program = await fetchProgramByReference(
+        program_id,
+        cleanProgramTitle,
+      );
       if (!program) return c.json({ error: "Resource not found" }, 404);
 
       const year = safeParseInt(rawYear, new Date().getFullYear(), 2020, 2100);
-      const schoolId = tokenUser.role === "School" ? tokenUser.school_id : null;
-
-      const existing = await fetchAIPForUser(tokenUser, program.id, year, {
-        activities: true,
-      }) as AIPWithActivities | null;
-
-      if (existing && existing.status !== "Draft") {
-        return c.json(
-          { error: "An AIP has already been submitted for this program and year" },
-          409,
-        );
-      }
-      if (existing && existing.archived) {
-        return c.json(
-          { error: "This AIP has been archived and cannot be modified" },
-          409,
-        );
-      }
+      const schoolId = (tokenUser.role === "School" ||
+          tokenUser.role === "Cluster Coordinator")
+        ? tokenUser.school_id
+        : null;
 
       const aipData = {
         outcome: outcome || "",
-        target_description: resolveTargetDescription(target_description, indicators),
+        target_description: resolveTargetDescription(
+          target_description,
+          indicators,
+        ),
         sip_title: sip_title || "",
         project_coordinator: project_coordinator || "",
         objectives: objectives || [],
@@ -130,30 +150,61 @@ draftsRoutes.post(
 
       const activityData = transformAIPActivities(activities);
 
-      let aip;
-      if (existing) {
-        await prisma.aIPActivity.deleteMany({ where: { aip_id: existing.id } });
-        aip = await prisma.aIP.update({
-          where: { id: existing.id },
-          data: {
-            ...aipData,
-            activities: { create: activityData },
+      const resource = aipResourceKey(tokenUser, schoolId, program.id, year);
+      const aip = await mapTargetlessUniqueConflict(
+        withAdvisoryLock(
+          LOCK_NAMESPACE.AIP,
+          resource,
+          async (tx) => {
+            const existing = await fetchAIPForUser(
+              tokenUser,
+              program.id,
+              year,
+              {
+                activities: true,
+              },
+              tx,
+            ) as AIPWithActivities | null;
+
+            if (existing?.archived) {
+              throw new ConflictError(
+                "This AIP has been archived and cannot be modified",
+              );
+            }
+            if (existing && existing.status !== "Draft") {
+              throw new ConflictError(
+                "An AIP has already been submitted for this program and year",
+              );
+            }
+
+            if (existing) {
+              await tx.aIPActivity.deleteMany({
+                where: { aip_id: existing.id },
+              });
+              return tx.aIP.update({
+                where: { id: existing.id },
+                data: {
+                  ...aipData,
+                  activities: { create: activityData },
+                },
+                include: { activities: true },
+              });
+            }
+
+            return tx.aIP.create({
+              data: {
+                school_id: schoolId,
+                program_id: program.id,
+                created_by_user_id: tokenUser.id,
+                year,
+                ...aipData,
+                activities: { create: activityData },
+              },
+              include: { activities: true },
+            });
           },
-          include: { activities: true },
-        });
-      } else {
-        aip = await prisma.aIP.create({
-          data: {
-            school_id: schoolId,
-            program_id: program.id,
-            created_by_user_id: tokenUser.id,
-            year,
-            ...aipData,
-            activities: { create: activityData },
-          },
-          include: { activities: true },
-        });
-      }
+        ),
+      );
 
       return c.json({ message: "Draft saved successfully", aip });
     },
@@ -216,7 +267,8 @@ draftsRoutes.get(
       const draftData = {
         programId: aip.program_id,
         outcome: aip.outcome,
-        targetDescription: aip.target_description || indicators[0]?.description || "",
+        targetDescription: aip.target_description ||
+          indicators[0]?.description || "",
         year: String(aip.year),
         depedProgram: aip.program.title,
         sipTitle: aip.sip_title,
@@ -275,7 +327,34 @@ draftsRoutes.delete(
         if (program) where.program_id = program.id;
       }
 
-      await prisma.aIP.deleteMany({ where });
+      const drafts = await prisma.aIP.findMany({
+        where,
+        select: {
+          id: true,
+          school_id: true,
+          created_by_user_id: true,
+          program_id: true,
+          year: true,
+        },
+        orderBy: { id: "asc" },
+      });
+
+      if (drafts.length > 0) {
+        await withAdvisoryLocks(
+          drafts.map((draft) => ({
+            namespace: LOCK_NAMESPACE.AIP,
+            resource: aipResourceKeyFromRecord(draft),
+          })),
+          async (tx) => {
+            await tx.aIP.deleteMany({
+              where: {
+                id: { in: drafts.map((draft) => draft.id) },
+                status: "Draft",
+              },
+            });
+          },
+        );
+      }
       return c.json({ message: "Draft deleted" });
     },
   ),
@@ -310,7 +389,7 @@ draftsRoutes.post(
       }
 
       const sanitizedTitle = sanitizeString(program_title);
-      const sanitizedQuarter = sanitizeString(quarter);
+      const sanitizedQuarter = normalizeQuarterLabel(sanitizeString(quarter));
       if (!sanitizedTitle || !sanitizedQuarter) {
         return c.json(
           { error: "program_title and quarter are required" },
@@ -331,14 +410,6 @@ draftsRoutes.post(
       }) as AIPWithActivities | null;
       if (!aip) return c.json({ error: "Resource not found" }, 404);
 
-      const existing = await fetchPIRForUser(aip.id, sanitizedQuarter);
-      if (existing && existing.status !== "Draft") {
-        return c.json(
-          { error: "A PIR has already been submitted for this quarter" },
-          409,
-        );
-      }
-
       let budgetDiv: number;
       let budgetPsf: number;
       try {
@@ -346,7 +417,8 @@ draftsRoutes.post(
       } catch {
         return c.json(
           {
-            error: "Invalid budget_from_division: must be a non-negative number",
+            error:
+              "Invalid budget_from_division: must be a non-negative number",
           },
           400,
         );
@@ -355,7 +427,9 @@ draftsRoutes.post(
         budgetPsf = validateBudgetAmount(budget_from_co_psf);
       } catch {
         return c.json(
-          { error: "Invalid budget_from_co_psf: must be a non-negative number" },
+          {
+            error: "Invalid budget_from_co_psf: must be a non-negative number",
+          },
           400,
         );
       }
@@ -373,30 +447,52 @@ draftsRoutes.post(
       const factorData = transformFactors(factors);
       const reviewData = transformActivityReviews(activity_reviews);
 
-      let pir;
-      if (existing) {
-        await prisma.pIRActivityReview.deleteMany({ where: { pir_id: existing.id } });
-        await prisma.pIRFactor.deleteMany({ where: { pir_id: existing.id } });
-        pir = await prisma.pIR.update({
-          where: { id: existing.id },
-          data: {
-            ...pirData,
-            factors: { create: factorData },
-            activity_reviews: { create: reviewData },
+      const resource = pirResourceKey(aip.id, sanitizedQuarter);
+      const pir = await mapTargetlessUniqueConflict(
+        withAdvisoryLock(
+          LOCK_NAMESPACE.PIR,
+          resource,
+          async (tx) => {
+            const existing = await fetchPIRForUser(
+              aip.id,
+              sanitizedQuarter,
+              undefined,
+              tx,
+            );
+            if (existing && existing.status !== "Draft") {
+              throw new ConflictError(
+                "A PIR has already been submitted for this quarter",
+              );
+            }
+
+            if (existing) {
+              await tx.pIRActivityReview.deleteMany({
+                where: { pir_id: existing.id },
+              });
+              await tx.pIRFactor.deleteMany({ where: { pir_id: existing.id } });
+              return tx.pIR.update({
+                where: { id: existing.id },
+                data: {
+                  ...pirData,
+                  factors: { create: factorData },
+                  activity_reviews: { create: reviewData },
+                },
+              });
+            }
+
+            return tx.pIR.create({
+              data: {
+                aip_id: aip.id,
+                created_by_user_id: tokenUser.id,
+                quarter: sanitizedQuarter,
+                ...pirData,
+                factors: { create: factorData },
+                activity_reviews: { create: reviewData },
+              },
+            });
           },
-        });
-      } else {
-        pir = await prisma.pIR.create({
-          data: {
-            aip_id: aip.id,
-            created_by_user_id: tokenUser.id,
-            quarter: sanitizedQuarter,
-            ...pirData,
-            factors: { create: factorData },
-            activity_reviews: { create: reviewData },
-          },
-        });
-      }
+        ),
+      );
 
       return c.json({ message: "PIR draft saved successfully", pir });
     },
@@ -411,7 +507,9 @@ draftsRoutes.get(
     async (c) => {
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title");
-      const quarter = c.req.query("quarter");
+      const quarter = c.req.query("quarter")
+        ? normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
+        : undefined;
 
       if (!programTitle) {
         const aipWhere = tokenUser.role === "School" && tokenUser.school_id
@@ -474,8 +572,8 @@ draftsRoutes.get(
           budgetFromDivision: String(typedPir.budget_from_division ?? 0),
           budgetFromCoPSF: String(typedPir.budget_from_co_psf ?? 0),
           functionalDivision: typedPir.functional_division ?? null,
-          indicatorQuarterlyTargets: typedPir.indicator_quarterly_targets as
-            any[] ?? [],
+          indicatorQuarterlyTargets:
+            typedPir.indicator_quarterly_targets as any[] ?? [],
           actionItems: typedPir.action_items as any[] ?? [],
           activities: typedPir.activity_reviews.map((review) => ({
             aip_activity_id: review.aip_activity_id,
@@ -508,7 +606,9 @@ draftsRoutes.delete(
     async (c) => {
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title");
-      const quarter = c.req.query("quarter");
+      const quarter = c.req.query("quarter")
+        ? normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
+        : undefined;
 
       if (!programTitle || !quarter) {
         return c.json(
@@ -530,7 +630,18 @@ draftsRoutes.delete(
 
       const pir = await fetchPIRForUser(aip.id, quarter);
       if (pir && pir.status === "Draft") {
-        await prisma.pIR.delete({ where: { id: pir.id } });
+        await withAdvisoryLock(
+          LOCK_NAMESPACE.PIR,
+          pirResourceKeyFromRecord(pir),
+          async (tx) => {
+            const lockedPir = await tx.pIR.findUnique({
+              where: { id: pir.id },
+            });
+            if (lockedPir?.status === "Draft") {
+              await tx.pIR.delete({ where: { id: pir.id } });
+            }
+          },
+        );
       }
 
       return c.json({ message: "Draft deleted" });

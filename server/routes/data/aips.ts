@@ -5,9 +5,21 @@ import { pushNotification, pushNotifications } from "../../lib/notifStream.ts";
 import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
-import { getAuthedUser, requireAuth, verifySchoolCluster } from "./shared/guards.ts";
+import {
+  getAuthedUser,
+  requireAuth,
+  verifySchoolCluster,
+} from "./shared/guards.ts";
 import { writeUserLog } from "../../lib/userActivityLog.ts";
 import { getClientIp } from "../../lib/clientIp.ts";
+import {
+  aipResourceKey,
+  aipResourceKeyFromRecord,
+  LOCK_NAMESPACE,
+  withAdvisoryLock,
+} from "../../lib/advisoryLock.ts";
+import { ConflictError, HttpError } from "../../lib/errors.ts";
+import { isPrismaUniqueConflictWithoutTarget } from "../../lib/prismaErrors.ts";
 import { fetchAIPForUser, fetchProgramByReference } from "./shared/lookups.ts";
 import { CES_ROLES } from "../../lib/routing.ts";
 import {
@@ -57,6 +69,19 @@ function hasInvalidActivityBudget(
   return false;
 }
 
+async function mapTargetlessUniqueConflict<T>(
+  operation: Promise<T>,
+): Promise<T> {
+  try {
+    return await operation;
+  } catch (error) {
+    if (isPrismaUniqueConflictWithoutTarget(error)) {
+      throw new ConflictError("A record already exists for this request");
+    }
+    throw error;
+  }
+}
+
 aipRoutes.use("/aips", requireAuth());
 aipRoutes.use("/aips/*", requireAuth());
 
@@ -77,7 +102,10 @@ aipRoutes.get(
       );
 
       if (!programTitle && safeParseInt(programId, 0) === 0) {
-        return c.json({ error: "program_id or program_title is required" }, 400);
+        return c.json(
+          { error: "program_id or program_title is required" },
+          400,
+        );
       }
 
       const program = await fetchProgramByReference(programId, programTitle);
@@ -105,7 +133,8 @@ aipRoutes.get(
         isSchoolOwned: aip.school_id !== null,
         depedProgram: aip.program.title,
         outcome: aip.outcome,
-        targetDescription: aip.target_description || indicators[0]?.description || "",
+        targetDescription: aip.target_description ||
+          indicators[0]?.description || "",
         sipTitle: aip.sip_title,
         projectCoord: aip.project_coordinator,
         objectives: aip.objectives,
@@ -148,7 +177,10 @@ aipRoutes.delete(
       );
 
       if (!programTitle && safeParseInt(programId, 0) === 0) {
-        return c.json({ error: "program_id or program_title is required" }, 400);
+        return c.json(
+          { error: "program_id or program_title is required" },
+          400,
+        );
       }
 
       const program = await fetchProgramByReference(programId, programTitle);
@@ -159,21 +191,46 @@ aipRoutes.delete(
       const aip = await fetchAIPForUser(tokenUser, program.id, year);
       if (!aip) return c.json({ error: "AIP not found" }, 404);
 
-      const deletableStatuses = ["Draft", "Returned"];
-      if (!deletableStatuses.includes(aip.status)) {
-        logger.warn("AIP deletion blocked by status", {
-          aipId: aip.id,
-          status: aip.status,
-          userId: tokenUser.id,
-        });
-        return c.json(
-          { error: "This AIP cannot be deleted in its current state." },
-          403,
-        );
-      }
+      await withAdvisoryLock(
+        LOCK_NAMESPACE.AIP,
+        aipResourceKeyFromRecord(aip),
+        async (tx) => {
+          const lockedAip = await fetchAIPForUser(
+            tokenUser,
+            program.id,
+            year,
+            undefined,
+            tx,
+          );
+          if (!lockedAip) {
+            throw new HttpError(404, "AIP not found", "NOT_FOUND");
+          }
 
-      await prisma.aIP.delete({ where: { id: aip.id } });
-      writeUserLog({ userId: tokenUser.id, action: "aip_delete", entityType: "AIP", entityId: aip.id, details: { programTitle: program.title, year }, ipAddress: getClientIp(c) });
+          const deletableStatuses = ["Draft", "Returned"];
+          if (!deletableStatuses.includes(lockedAip.status)) {
+            logger.warn("AIP deletion blocked by status", {
+              aipId: lockedAip.id,
+              status: lockedAip.status,
+              userId: tokenUser.id,
+            });
+            throw new HttpError(
+              403,
+              "This AIP cannot be deleted in its current state.",
+              "FORBIDDEN",
+            );
+          }
+
+          await tx.aIP.delete({ where: { id: lockedAip.id } });
+        },
+      );
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "aip_delete",
+        entityType: "AIP",
+        entityId: aip.id,
+        details: { programTitle: program.title, year },
+        ipAddress: getClientIp(c),
+      });
       return c.json({ message: "AIP deleted successfully" });
     },
   ),
@@ -208,13 +265,19 @@ aipRoutes.post(
       } = body;
 
       if (!program_title && safeParseInt(program_id, 0) === 0) {
-        return c.json({ error: "program_id or program_title is required" }, 400);
+        return c.json(
+          { error: "program_id or program_title is required" },
+          400,
+        );
       }
 
       const program = await fetchProgramByReference(program_id, program_title);
       if (!program) return c.json({ error: "Resource not found" }, 404);
 
-      if (tokenUser.role === "Division Personnel" || CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])) {
+      if (
+        tokenUser.role === "Division Personnel" ||
+        CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
+      ) {
         const assigned = await prisma.user.findFirst({
           where: {
             id: tokenUser.id,
@@ -229,14 +292,23 @@ aipRoutes.post(
         }
       }
 
-      const schoolId = (tokenUser.role === "School" || tokenUser.role === "Cluster Coordinator")
+      const schoolId = (tokenUser.role === "School" ||
+          tokenUser.role === "Cluster Coordinator")
         ? tokenUser.school_id
         : null;
-      const parsedYear = safeParseInt(year, new Date().getFullYear(), 2020, 2100);
+      const parsedYear = safeParseInt(
+        year,
+        new Date().getFullYear(),
+        2020,
+        2100,
+      );
 
       const aipFields = {
         outcome,
-        target_description: resolveTargetDescription(target_description, indicators),
+        target_description: resolveTargetDescription(
+          target_description,
+          indicators,
+        ),
         sip_title,
         project_coordinator,
         objectives,
@@ -256,46 +328,74 @@ aipRoutes.post(
       }
 
       const activityFields = transformAIPActivities(activities);
-      const existingDraft = await fetchAIPForUser(tokenUser, program.id, parsedYear);
+      const resource = aipResourceKey(
+        tokenUser,
+        schoolId,
+        program.id,
+        parsedYear,
+      );
+      const aip = await mapTargetlessUniqueConflict(
+        withAdvisoryLock(
+          LOCK_NAMESPACE.AIP,
+          resource,
+          async (tx) => {
+            const existingDraft = await fetchAIPForUser(
+              tokenUser,
+              program.id,
+              parsedYear,
+              undefined,
+              tx,
+            );
 
-      let aip;
-      if (existingDraft && (
-          existingDraft.status === "Draft" || existingDraft.status === "Returned"
-        )) {
-        await prisma.aIPActivity.deleteMany({ where: { aip_id: existingDraft.id } });
-        aip = await prisma.aIP.update({
-          where: { id: existingDraft.id },
-          data: {
-            ...aipFields,
-            activities: { create: activityFields },
+            if (existingDraft?.archived) {
+              throw new ConflictError(
+                "This AIP has been archived and cannot be modified",
+              );
+            }
+
+            if (
+              existingDraft && (
+                existingDraft.status === "Draft" ||
+                existingDraft.status === "Returned"
+              )
+            ) {
+              await tx.aIPActivity.deleteMany({
+                where: { aip_id: existingDraft.id },
+              });
+              return tx.aIP.update({
+                where: { id: existingDraft.id },
+                data: {
+                  ...aipFields,
+                  activities: { create: activityFields },
+                },
+                include: { activities: true },
+              });
+            }
+
+            if (existingDraft) {
+              logger.warn("AIP creation blocked — record already exists", {
+                status: existingDraft.status,
+                userId: tokenUser.id,
+              });
+              throw new ConflictError(
+                "A record already exists for this request",
+              );
+            }
+
+            return tx.aIP.create({
+              data: {
+                school_id: schoolId,
+                program_id: program.id,
+                created_by_user_id: tokenUser.id,
+                year: parsedYear,
+                ...aipFields,
+                activities: { create: activityFields },
+              },
+              include: { activities: true },
+            });
           },
-          include: { activities: true },
-        });
-      } else if (existingDraft) {
-        if (existingDraft.archived) {
-          return c.json(
-            { error: "This AIP has been archived and cannot be modified" },
-            409,
-          );
-        }
-        logger.warn("AIP creation blocked — record already exists", {
-          status: existingDraft.status,
-          userId: tokenUser.id,
-        });
-        return c.json({ error: "A record already exists for this request" }, 409);
-      } else {
-        aip = await prisma.aIP.create({
-          data: {
-            school_id: schoolId,
-            program_id: program.id,
-            created_by_user_id: tokenUser.id,
-            year: parsedYear,
-            ...aipFields,
-            activities: { create: activityFields },
-          },
-          include: { activities: true },
-        });
-      }
+        ),
+      );
 
       let schoolLabel: string;
       if (aip.school_id) {
@@ -349,7 +449,14 @@ aipRoutes.post(
       });
       pushNotification(submitterNotif);
 
-      writeUserLog({ userId: tokenUser.id, action: "aip_submit", entityType: "AIP", entityId: aip.id, details: { programTitle: program.title, year: parsedYear }, ipAddress: getClientIp(c) });
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "aip_submit",
+        entityType: "AIP",
+        entityId: aip.id,
+        details: { programTitle: program.title, year: parsedYear },
+        ipAddress: getClientIp(c),
+      });
       return c.json({ message: "AIP created successfully", aip });
     },
   ),
@@ -370,17 +477,6 @@ aipRoutes.put(
         include: { program: true },
       });
       if (!aip) return c.json({ error: "AIP not found" }, 404);
-
-      const isOwner = aip.created_by_user_id === tokenUser.id ||
-        (tokenUser.school_id != null && aip.school_id === tokenUser.school_id);
-      if (!isOwner) return c.json({ error: "Forbidden" }, 403);
-
-      if (aip.status !== "Returned") {
-        return c.json(
-          { error: "This AIP can no longer be edited in its current state. Please request edit permission." },
-          409,
-        );
-      }
 
       const body = sanitizeObject(await c.req.json());
       const {
@@ -405,28 +501,63 @@ aipRoutes.put(
       }
 
       const activityFields = transformAIPActivities(activities);
+      const resource = aipResourceKeyFromRecord(aip);
 
-      await prisma.aIPActivity.deleteMany({ where: { aip_id: aipId } });
-      const updated = await prisma.aIP.update({
-        where: { id: aipId },
-        data: {
-          outcome,
-          target_description: resolveTargetDescription(target_description, indicators),
-          sip_title,
-          project_coordinator,
-          objectives,
-          indicators: normalizeIndicators(indicators),
-          prepared_by_name: prepared_by_name || "",
-          prepared_by_title: prepared_by_title || "",
-          approved_by_name: approved_by_name || "",
-          approved_by_title: approved_by_title || "",
-          status: "Approved",
-          activities: { create: activityFields },
+      const updated = await withAdvisoryLock(
+        LOCK_NAMESPACE.AIP,
+        resource,
+        async (tx) => {
+          const lockedAip = await tx.aIP.findUnique({
+            where: { id: aipId },
+          });
+          if (!lockedAip) {
+            throw new HttpError(404, "AIP not found", "NOT_FOUND");
+          }
+
+          const isOwner = lockedAip.created_by_user_id === tokenUser.id ||
+            (tokenUser.school_id != null &&
+              lockedAip.school_id === tokenUser.school_id);
+          if (!isOwner) throw new HttpError(403, "Forbidden", "FORBIDDEN");
+
+          if (lockedAip.status !== "Returned") {
+            throw new ConflictError(
+              "This AIP can no longer be edited in its current state. Please request edit permission.",
+            );
+          }
+
+          await tx.aIPActivity.deleteMany({ where: { aip_id: aipId } });
+          return tx.aIP.update({
+            where: { id: aipId },
+            data: {
+              outcome,
+              target_description: resolveTargetDescription(
+                target_description,
+                indicators,
+              ),
+              sip_title,
+              project_coordinator,
+              objectives,
+              indicators: normalizeIndicators(indicators),
+              prepared_by_name: prepared_by_name || "",
+              prepared_by_title: prepared_by_title || "",
+              approved_by_name: approved_by_name || "",
+              approved_by_title: approved_by_title || "",
+              status: "Approved",
+              activities: { create: activityFields },
+            },
+            include: { activities: true },
+          });
         },
-        include: { activities: true },
-      });
+      );
 
-      writeUserLog({ userId: tokenUser.id, action: "aip_update", entityType: "AIP", entityId: aipId, details: { programTitle: aip.program.title, year: aip.year }, ipAddress: getClientIp(c) });
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "aip_update",
+        entityType: "AIP",
+        entityId: aipId,
+        details: { programTitle: aip.program.title, year: aip.year },
+        ipAddress: getClientIp(c),
+      });
       return c.json({ message: "AIP updated successfully", aip: updated });
     },
   ),
@@ -447,49 +578,67 @@ aipRoutes.post(
 
       if (!aip) return c.json({ error: "AIP not found" }, 404);
 
-      const isOwner = aip.created_by_user_id === tokenUser.id ||
-        (tokenUser.school_id != null && aip.school_id === tokenUser.school_id);
-      if (!isOwner) {
-        return c.json(
-          { error: "Not authorized to request edit for this AIP" },
-          403,
-        );
-      }
-
-      if (aip.status !== "Approved") {
-        return c.json(
-          { error: "Edit requests can only be made for Approved AIPs" },
-          409,
-        );
-      }
-
       const MAX_EDIT_REQUESTS = 3;
-      if (((aip as any).edit_request_count ?? 0) >= MAX_EDIT_REQUESTS) {
-        return c.json(
-          { error: "You have reached the maximum number of edit requests (3) for this AIP." },
-          409,
-        );
-      }
+      const updatedAip = await withAdvisoryLock(
+        LOCK_NAMESPACE.AIP,
+        aipResourceKeyFromRecord(aip),
+        async (tx) => {
+          const lockedAip = await tx.aIP.findUnique({
+            where: { id: aipId },
+            include: { program: true, school: true },
+          });
+          if (!lockedAip) {
+            throw new HttpError(404, "AIP not found", "NOT_FOUND");
+          }
+
+          const isOwner = lockedAip.created_by_user_id === tokenUser.id ||
+            (tokenUser.school_id != null &&
+              lockedAip.school_id === tokenUser.school_id);
+          if (!isOwner) {
+            throw new HttpError(
+              403,
+              "Not authorized to request edit for this AIP",
+              "FORBIDDEN",
+            );
+          }
+
+          if (lockedAip.status !== "Approved") {
+            throw new ConflictError(
+              "Edit requests can only be made for Approved AIPs",
+            );
+          }
+
+          if (
+            ((lockedAip as any).edit_request_count ?? 0) >= MAX_EDIT_REQUESTS
+          ) {
+            throw new ConflictError(
+              "You have reached the maximum number of edit requests (3) for this AIP.",
+            );
+          }
+
+          return (tx.aIP as any).update({
+            where: { id: aipId },
+            data: {
+              edit_requested: true,
+              edit_requested_at: new Date(),
+              edit_request_count: { increment: 1 },
+            },
+            include: { program: true, school: true },
+          }) as Promise<AIPWithProgramSchool>;
+        },
+      );
 
       let requesterLabel: string;
-      if (aip.school) {
-        requesterLabel = aip.school.name;
+      if (updatedAip.school) {
+        requesterLabel = updatedAip.school.name;
       } else {
         const requester = await prisma.user.findUnique({
           where: { id: tokenUser.id },
           select: { name: true, email: true },
         });
-        requesterLabel = requester?.name ?? requester?.email ?? "Division Personnel";
+        requesterLabel = requester?.name ?? requester?.email ??
+          "Division Personnel";
       }
-
-      await (prisma.aIP as any).update({
-        where: { id: aipId },
-        data: {
-          edit_requested: true,
-          edit_requested_at: new Date(),
-          edit_request_count: { increment: 1 },
-        },
-      });
 
       const admins = await prisma.user.findMany({
         where: { role: "Admin" },
@@ -501,7 +650,7 @@ aipRoutes.post(
             user_id: admin.id,
             title: "Edit Request — AIP",
             message:
-              `${requesterLabel} is requesting permission to edit their AIP for ${aip.program.title} (FY ${aip.year}).`,
+              `${requesterLabel} is requesting permission to edit their AIP for ${updatedAip.program.title} (FY ${updatedAip.year}).`,
             type: "aip_edit_requested",
             entity_id: aipId,
             entity_type: "aip",
@@ -510,7 +659,17 @@ aipRoutes.post(
         pushNotifications(editNotifs);
       }
 
-      writeUserLog({ userId: tokenUser.id, action: "aip_edit_request", entityType: "AIP", entityId: aipId, details: { programTitle: aip.program.title, year: aip.year }, ipAddress: getClientIp(c) });
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "aip_edit_request",
+        entityType: "AIP",
+        entityId: aipId,
+        details: {
+          programTitle: updatedAip.program.title,
+          year: updatedAip.year,
+        },
+        ipAddress: getClientIp(c),
+      });
       return c.json({ message: "Edit request sent to admin" });
     },
   ),
@@ -530,25 +689,44 @@ aipRoutes.post(
 
       if (!aip) return c.json({ error: "AIP not found" }, 404);
 
-      const isOwner = aip.created_by_user_id === tokenUser.id ||
-        (tokenUser.school_id != null && aip.school_id === tokenUser.school_id);
-      if (!isOwner) {
-        return c.json(
-          { error: "Not authorized to cancel this edit request" },
-          403,
-        );
-      }
+      await withAdvisoryLock(
+        LOCK_NAMESPACE.AIP,
+        aipResourceKeyFromRecord(aip),
+        async (tx) => {
+          const lockedAip = await tx.aIP.findUnique({ where: { id: aipId } });
+          if (!lockedAip) {
+            throw new HttpError(404, "AIP not found", "NOT_FOUND");
+          }
 
-      if (!aip.edit_requested) {
-        return c.json({ error: "No pending edit request" }, 409);
-      }
+          const isOwner = lockedAip.created_by_user_id === tokenUser.id ||
+            (tokenUser.school_id != null &&
+              lockedAip.school_id === tokenUser.school_id);
+          if (!isOwner) {
+            throw new HttpError(
+              403,
+              "Not authorized to cancel this edit request",
+              "FORBIDDEN",
+            );
+          }
 
-      await prisma.aIP.update({
-        where: { id: aipId },
-        data: { edit_requested: false, edit_requested_at: null },
+          if (!lockedAip.edit_requested) {
+            throw new ConflictError("No pending edit request");
+          }
+
+          await tx.aIP.update({
+            where: { id: aipId },
+            data: { edit_requested: false, edit_requested_at: null },
+          });
+        },
+      );
+
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "aip_cancel_edit_request",
+        entityType: "AIP",
+        entityId: aipId,
+        ipAddress: getClientIp(c),
       });
-
-      writeUserLog({ userId: tokenUser.id, action: "aip_cancel_edit_request", entityType: "AIP", entityId: aipId, ipAddress: getClientIp(c) });
       return c.json({ message: "Edit request cancelled" });
     },
   ),
