@@ -1,15 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { XCircle, Desktop, SignOut, ShieldCheck } from '@phosphor-icons/react';
 import api from '../../lib/api.js';
 import { ConfirmationModal } from './ConfirmationModal.jsx';
 import { SESSION_STATUS_STYLES, formatSessionDate, getSessionStatus, isSessionRevocable } from '../../lib/sessionDevices.js';
 
+const MotionDiv = motion.div;
+
 function StatusPill({ session }) {
   const status = getSessionStatus(session);
   return (
     <span className={`inline-flex items-center rounded-lg px-2 py-1 text-xs font-bold ${SESSION_STATUS_STYLES[status]}`}>
       {status}
+    </span>
+  );
+}
+
+function DetailPill({ label, value }) {
+  return (
+    <span className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-dark-border dark:bg-dark-base/80">
+      <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        {label}
+      </span>
+      <span className="mt-0.5 block truncate text-xs font-bold text-slate-600 dark:text-slate-300">
+        {value}
+      </span>
     </span>
   );
 }
@@ -70,36 +86,42 @@ export default function MyDevicesModal({ open, onClose }) {
     }
   };
 
-  return (
+  const modal = (
     <>
       <AnimatePresence>
         {open && (
-          <div className="fixed inset-0 z-[120]">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
-              onClick={onClose}
-            />
-
+          <MotionDiv
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] overflow-y-auto"
+            style={{
+              background:
+                'radial-gradient(circle at center, rgba(248, 250, 252, 0.22) 0%, rgba(15, 23, 42, 0.24) 68%, rgba(15, 23, 42, 0.36) 100%)',
+              backdropFilter: 'blur(24px) saturate(1.12) brightness(0.96)',
+              WebkitBackdropFilter: 'blur(24px) saturate(1.12) brightness(0.96)',
+              boxShadow: 'inset 0 0 130px rgba(15, 23, 42, 0.24)',
+            }}
+            onClick={onClose}
+          >
             <div className="relative z-10 flex min-h-full items-center justify-center p-4 sm:p-6">
-              <motion.div
+              <MotionDiv
                 initial={{ opacity: 0, scale: 0.96, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.96, y: 12 }}
                 transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="flex w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_64px_-8px_rgba(0,0,0,0.18)] dark:border-dark-border dark:bg-dark-surface dark:shadow-[0_24px_64px_-8px_rgba(0,0,0,0.5)]"
+                onClick={(event) => event.stopPropagation()}
+                className="flex w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-white bg-white shadow-[0_28px_90px_-16px_rgba(2,6,23,0.45)] ring-1 ring-slate-950/5 dark:border-dark-border dark:bg-dark-surface dark:shadow-[0_28px_90px_-16px_rgba(0,0,0,0.72)]"
               >
                 <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-dark-border">
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500">My Devices</p>
-                    <h3 className="mt-1 text-xl font-black text-slate-900 dark:text-slate-100">Manage Signed-In Devices</h3>
+                    <h3 className="mt-1 text-xl font-black text-slate-900 dark:text-slate-100">Manage signed-in devices</h3>
                     <p className="mt-2 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-                      Review the browsers that still have access to your account. Use the regular logout button for this current device.
+                      Active browser sessions tied to your account. Sign out anything you do not recognize; use Logout for this device.
                     </p>
                   </div>
-                  <button onClick={onClose} className="text-slate-300 transition-colors hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-300">
+                  <button onClick={onClose} className="rounded-full bg-slate-100 p-1 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 dark:bg-dark-base dark:text-slate-500 dark:hover:text-slate-300">
                     <XCircle size={24} weight="fill" />
                   </button>
                 </div>
@@ -111,18 +133,23 @@ export default function MyDevicesModal({ open, onClose }) {
                         <ShieldCheck size={20} weight="fill" />
                       </div>
                       <div>
-                        <p className="text-sm font-black text-slate-900 dark:text-slate-100">Other Active Devices</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {otherRevocableSessions.length} device{otherRevocableSessions.length === 1 ? '' : 's'} can still access your account.
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-black text-slate-900 dark:text-slate-100">Other active devices</p>
+                          <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                            {otherRevocableSessions.length} active
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          Signed-in browsers excluding this device.
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => setConfirmAction({ type: 'all' })}
                       disabled={otherRevocableSessions.length === 0 || working}
-                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
+                      className="whitespace-nowrap rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
                     >
-                      Sign Out All Other Devices
+                      Sign out other devices
                     </button>
                   </div>
 
@@ -149,10 +176,10 @@ export default function MyDevicesModal({ open, onClose }) {
                       </div>
                     ) : (
                       sessions.map((session) => (
-                        <div key={session.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 dark:border-dark-border dark:bg-dark-surface">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
+                        <div key={session.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-dark-border dark:bg-dark-surface">
+                          <div className="flex flex-col gap-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex min-w-0 flex-wrap items-center gap-2">
                                 <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 dark:bg-dark-base dark:text-slate-300">
                                   <Desktop size={18} />
                                 </div>
@@ -171,32 +198,32 @@ export default function MyDevicesModal({ open, onClose }) {
                                 </div>
                               </div>
 
-                              <div className="mt-3 grid gap-2 text-xs text-slate-500 dark:text-slate-400 sm:grid-cols-3">
-                                <span>Signed in: {formatSessionDate(session.created_at)}</span>
-                                <span>Last seen: {formatSessionDate(session.last_seen_at)}</span>
-                                <span>Expires: {formatSessionDate(session.expires_at)}</span>
-                              </div>
+                              {!session.is_current && isSessionRevocable(session) && (
+                                <button
+                                  onClick={() => setConfirmAction({ type: 'single', session })}
+                                  disabled={working}
+                                  className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                                >
+                                  <SignOut size={16} />
+                                  Sign Out
+                                </button>
+                              )}
                             </div>
 
-                            {!session.is_current && isSessionRevocable(session) && (
-                              <button
-                                onClick={() => setConfirmAction({ type: 'single', session })}
-                                disabled={working}
-                                className="inline-flex items-center gap-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/40"
-                              >
-                                <SignOut size={16} />
-                                Sign Out
-                              </button>
-                            )}
+                            <div className="grid gap-2 sm:grid-cols-3">
+                              <DetailPill label="Signed in" value={formatSessionDate(session.created_at)} />
+                              <DetailPill label="Last seen" value={formatSessionDate(session.last_seen_at)} />
+                              <DetailPill label="Expires" value={formatSessionDate(session.expires_at)} />
+                            </div>
                           </div>
                         </div>
                       ))
                     )}
                   </div>
                 </div>
-              </motion.div>
+              </MotionDiv>
             </div>
-          </div>
+          </MotionDiv>
         )}
       </AnimatePresence>
 
@@ -213,4 +240,7 @@ export default function MyDevicesModal({ open, onClose }) {
       />
     </>
   );
+
+  if (typeof document === 'undefined') return modal;
+  return createPortal(modal, document.body);
 }

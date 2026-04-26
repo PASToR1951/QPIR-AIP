@@ -42,6 +42,19 @@ function formatQuarterLabel(quarter) {
   return text;
 }
 
+function getSubmissionOwner(submission) {
+  const schoolOwner = submission.school && submission.school !== 'Division'
+    ? submission.school
+    : null;
+  return submission.owner || schoolOwner || submission.submittedBy || submission.school || '—';
+}
+
+function getDocumentTypeTextClass(type) {
+  if (type === 'PIR') return 'text-blue-700 dark:text-blue-300';
+  if (type === 'AIP') return 'text-pink-700 dark:text-pink-300';
+  return 'text-slate-700 dark:text-slate-100';
+}
+
 export function AdminOverviewPanels({
   clusterSort,
   currentQuarter,
@@ -133,66 +146,88 @@ export function AdminOverviewPanels({
         </div>
         {recentSubmissions.length > 0 ? (
           <div>
-            <div className="overflow-hidden rounded-xl border border-slate-100 dark:border-dark-border">
+            <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-dark-border">
               <table className="w-full table-fixed text-sm">
                 <colgroup>
-                  <col className="w-[30%]" />
+                  <col className="w-[28%]" />
                   <col className="w-[34%]" />
                   <col className="w-[18%]" />
-                  <col className="w-[18%]" />
+                  <col className="w-[20%]" />
                 </colgroup>
                 <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50/70 dark:border-dark-border dark:bg-dark-bg/50">
-                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Owner</th>
-                    <th className="hidden px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 sm:table-cell">Program</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Details</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</th>
+                  <tr className="border-b border-slate-200 bg-slate-100 dark:border-dark-border dark:bg-dark-base">
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">Owner</th>
+                    <th className="hidden px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-200 sm:table-cell">Program</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">Details</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-black uppercase tracking-wide text-slate-700 dark:text-slate-200">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50 dark:divide-dark-border">
-                  {paginatedRecentSubmissions.map((submission) => (
-                    <tr
-                      key={`${submission.type}-${submission.ref ?? submission.id}`}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => openSubmission(submission)}
-                      onKeyDown={(event) => handleSubmissionRowKeyDown(event, submission)}
-                      className="cursor-pointer bg-white transition-colors hover:bg-indigo-50/50 focus:bg-indigo-50/50 focus:outline-none dark:bg-dark-surface dark:hover:bg-indigo-950/20 dark:focus:bg-indigo-950/20"
-                      aria-label={`Review ${submission.type} submission for ${submission.school}`}
-                    >
-                      <td className="min-w-0 px-3 py-3 font-bold text-slate-800 dark:text-slate-200">
-                        <TruncatedCellText value={submission.school} />
-                        <TruncatedCellText
-                          value={submission.program}
-                          className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400 sm:hidden"
-                        />
-                      </td>
-                      <td className="hidden min-w-0 px-3 py-3 text-slate-600 dark:text-slate-400 sm:table-cell">
-                        <TruncatedCellText value={submission.program} />
-                      </td>
+                <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
+                  {paginatedRecentSubmissions.map((submission) => {
+                    const owner = getSubmissionOwner(submission);
+                    const ownerType = submission.ownerType && submission.ownerType !== 'School'
+                      ? submission.ownerType
+                      : null;
+
+                    return (
+                      <tr
+                        key={`${submission.type}-${submission.ref ?? submission.id}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openSubmission(submission)}
+                        onKeyDown={(event) => handleSubmissionRowKeyDown(event, submission)}
+                        className="cursor-pointer bg-white transition-colors hover:bg-indigo-50/50 focus:bg-indigo-50/50 focus:outline-none dark:bg-dark-surface dark:hover:bg-dark-base dark:focus:bg-dark-base"
+                        aria-label={`Review ${submission.type} submission for ${owner}`}
+                      >
+                        <td className="min-w-0 px-3 py-3 font-black text-slate-900 dark:text-slate-100">
+                          <TruncatedCellText value={owner} />
+                          {ownerType && (
+                            <TruncatedCellText
+                              value={ownerType}
+                              className="mt-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-300"
+                            />
+                          )}
+                          <TruncatedCellText
+                            value={submission.program}
+                            className="mt-1 text-xs font-semibold text-slate-600 dark:text-slate-300 sm:hidden"
+                          />
+                        </td>
+                        <td className="hidden min-w-0 px-3 py-3 font-semibold text-slate-700 dark:text-slate-200 sm:table-cell">
+                          <TruncatedCellText value={submission.program} />
+                        </td>
                       <td className="px-3 py-3">
-                        <div className="flex min-w-0 flex-col items-start gap-1">
-                          <div className="flex max-w-full items-center gap-1.5">
-                            <StatusBadge status={submission.type} size="xs" />
+                          <div className="flex min-w-0 flex-col items-start gap-1.5">
+                            <span className="inline-flex max-w-full items-center overflow-hidden rounded-lg bg-slate-100 px-1.5 py-0.5 text-[10px] font-black dark:bg-dark-border">
+                              <span className={`truncate ${getDocumentTypeTextClass(submission.type)}`}>
+                                {submission.type}
+                              </span>
+                              <span className="px-1 text-slate-400 dark:text-slate-500">•</span>
+                              <span
+                                className="truncate text-slate-700 dark:text-slate-100"
+                                title={submission.quarter ?? 'Annual'}
+                              >
+                                {formatQuarterLabel(submission.quarter)}
+                              </span>
+                            </span>
                             <span
-                              className="rounded-lg bg-slate-100 px-1.5 py-0.5 text-[10px] font-black text-slate-500 dark:bg-dark-border dark:text-slate-400"
-                              title={submission.quarter ?? 'Annual'}
+                              className="block max-w-full truncate rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:border-dark-border dark:bg-dark-surface dark:text-slate-300"
+                              title={new Date(submission.submitted).toLocaleString('en-PH', {
+                                dateStyle: 'medium',
+                                timeStyle: 'short',
+                              })}
                             >
-                              {formatQuarterLabel(submission.quarter)}
+                              {relativeTime(submission.submitted)}
                             </span>
                           </div>
-                          <span className="block max-w-full truncate text-xs text-slate-400 dark:text-slate-500">
-                            {relativeTime(submission.submitted)}
+                        </td>
+                        <td className="px-3 py-3">
+                          <span title={submission.status}>
+                            <StatusBadge status={submission.status} size="xs" />
                           </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span title={submission.status}>
-                          <StatusBadge status={submission.status} size="xs" />
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

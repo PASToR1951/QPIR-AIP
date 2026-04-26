@@ -315,7 +315,7 @@ export default function AnimatedContent() {
                 <Route path="programs" element={<AdminOnlyGuard><AdminPrograms /></AdminOnlyGuard>} />
                 <Route path="deadlines" element={<AdminOnlyGuard><AdminDeadlines /></AdminOnlyGuard>} />
                 <Route path="reports" element={<AdminOnlyGuard><AdminReports /></AdminOnlyGuard>} />
-                <Route path="consolidation-template" element={<AdminOnlyGuard><AdminConsolidationTemplate /></AdminOnlyGuard>} />
+                <Route path="consolidation-template" element={<AdminConsolidationTemplate />} />
                 <Route path="sessions" element={<AdminOnlyGuard><AdminSessions /></AdminOnlyGuard>} />
                 <Route path="logs" element={<AdminOnlyGuard><AdminLogs /></AdminOnlyGuard>} />
                 <Route path="settings" element={<AdminOnlyGuard><AdminSettings /></AdminOnlyGuard>} />

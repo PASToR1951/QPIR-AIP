@@ -1,9 +1,8 @@
 import { getValidationFlags, pct } from './pirReviewUtils.js';
 
-export function buildPirReviewDerived({ id, pir, sub, isObserver, isAdmin }) {
+export function buildPirReviewDerived({ pir, sub }) {
   const reviews = sub?.activity_reviews ?? [];
   const allAipActivities = sub?.aip?.activities ?? [];
-  const pirId = pir?.id ?? id;
 
   const metCount = reviews.filter((review) => (pct(review.physical_accomplished, review.physical_target) ?? 0) >= 80).length;
   const partialCount = reviews.filter((review) => {
@@ -34,7 +33,6 @@ export function buildPirReviewDerived({ id, pir, sub, isObserver, isAdmin }) {
   const program = pir?.program ?? '—';
   const quarter = pir?.quarter ?? '—';
   const status = pir?.status ?? '—';
-  const canAct = !isObserver && !isAdmin && status !== 'Approved' && status !== 'Returned';
   const factors = pir?.factors ?? {};
 
   const createdBy = sub?.created_by;
@@ -50,7 +48,6 @@ export function buildPirReviewDerived({ id, pir, sub, isObserver, isAdmin }) {
 
   return {
     allAipActivities,
-    canAct,
     clusterLogo,
     clusterNumber,
     factors,
@@ -60,7 +57,6 @@ export function buildPirReviewDerived({ id, pir, sub, isObserver, isAdmin }) {
     overallFinPct,
     overallPhysPct,
     partialCount,
-    pirId,
     program,
     quarter,
     reviews,

@@ -6,7 +6,6 @@ const VALID_ROLES = new Set([
   'CES-ASDS',
   'CES-CID',
   'Cluster Coordinator',
-  'Observer',
 ]);
 
 const SYSTEM_ROLES = new Set([
@@ -15,7 +14,6 @@ const SYSTEM_ROLES = new Set([
   'CES-ASDS',
   'CES-CID',
   'Cluster Coordinator',
-  'Observer',
 ]);
 
 export function parseCSV(text) {
@@ -77,5 +75,4 @@ export const EXAMPLE_CSV = `email,role,name,first_name,last_name,middle_initial,
 juan.delacruz@deped.gov.ph,Division Personnel,,Juan,Dela Cruz,D,,,2;5
 juan.delacruz001@deped.gov.ph,Division Personnel,,Juan,Dela Cruz,A,,,3
 maria.santos@deped.gov.ph,Cluster Coordinator,Maria Santos,,,,,7,
-ces.head@deped.gov.ph,CES-SGOD,Rowena Flores,,,,,,
-observer@deped.gov.ph,Observer,Monitoring Observer,,,,,,`;
+ces.head@deped.gov.ph,CES-SGOD,Rowena Flores,,,,,,`;

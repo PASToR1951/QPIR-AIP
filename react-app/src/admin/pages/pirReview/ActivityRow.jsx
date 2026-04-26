@@ -3,13 +3,9 @@ import { CaretDown, CaretRight } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { calculateGap, fmt, fmtPeso, getValidationFlags } from './pirReviewUtils.js';
 import { FlagChip } from './ui.jsx';
-import { useActivityNotes } from './useActivityNotes.js';
 
-export function ActivityRow({ review, pirId, onSaveNotes, measureText, canEditNotes = true }) {
+export function ActivityRow({ review, measureText }) {
   const [expanded, setExpanded] = useState(false);
-  const { notes, setNotes, saving, saved, saveError, handleBlur } = useActivityNotes({
-    review, pirId, onSaveNotes, canEditNotes,
-  });
 
   const physGap = calculateGap(review.physical_target, review.physical_accomplished);
   const finGap  = calculateGap(review.financial_target, review.financial_accomplished);
@@ -77,27 +73,11 @@ export function ActivityRow({ review, pirId, onSaveNotes, measureText, canEditNo
             <span className="text-xs text-slate-300 dark:text-slate-600 italic">—</span>
           )}
         </td>
-        <td className="px-3 py-3 min-w-[160px]">
-          <div className="relative">
-            <textarea
-              value={notes}
-              onChange={e => { setNotes(e.target.value); }}
-              onBlur={handleBlur}
-              rows={2}
-              readOnly={!canEditNotes}
-              placeholder={canEditNotes ? 'Add remarks…' : 'No admin remarks.'}
-              className="w-full px-2 py-1.5 text-xs bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-lg resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-accent transition-colors read-only:cursor-default"
-            />
-            {saving    && <span className="absolute right-2 bottom-2 text-[10px] text-slate-400">Saving…</span>}
-            {saved     && <span className="absolute right-2 bottom-2 text-[10px] text-emerald-500">Saved</span>}
-            {saveError && <span className="absolute right-2 bottom-2 text-[10px] text-red-500">Failed</span>}
-          </div>
-        </td>
       </tr>
       {expanded && aip && (
         <tr className="bg-indigo-50/60 dark:bg-indigo-950/10 border-b border-indigo-100 dark:border-indigo-900/30">
           <td />
-          <td colSpan={10} className="px-4 py-3">
+          <td colSpan={9} className="px-4 py-3">
             <p className="text-[10px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2">AIP Reference</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div>

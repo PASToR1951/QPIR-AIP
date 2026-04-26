@@ -12,6 +12,8 @@ const SECTION_ACCENTS = {
     dot: 'bg-indigo-400',
     count: 'text-indigo-700 dark:text-indigo-400',
     bar: '#6366f1',
+    headerBg: 'bg-indigo-50/60 dark:bg-indigo-950/20',
+    label: 'text-indigo-700 dark:text-indigo-300',
   },
   CID: {
     badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-500/20',
@@ -19,6 +21,8 @@ const SECTION_ACCENTS = {
     dot: 'bg-emerald-400',
     count: 'text-emerald-700 dark:text-emerald-400',
     bar: '#10b981',
+    headerBg: 'bg-emerald-50/60 dark:bg-emerald-950/20',
+    label: 'text-emerald-700 dark:text-emerald-300',
   },
   OSDS: {
     badge: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-500/20',
@@ -26,6 +30,8 @@ const SECTION_ACCENTS = {
     dot: 'bg-amber-400',
     count: 'text-amber-700 dark:text-amber-400',
     bar: '#f59e0b',
+    headerBg: 'bg-amber-50/60 dark:bg-amber-950/20',
+    label: 'text-amber-700 dark:text-amber-300',
   },
 };
 
@@ -65,18 +71,18 @@ function ClusterRow({ item, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="group flex w-full items-center gap-2 rounded-lg px-2 py-[5px] text-left transition-colors hover:bg-slate-50 dark:hover:bg-dark-border/30"
+      className="group flex h-full min-h-0 w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-dark-border/30"
     >
       <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
-      <span className="w-14 shrink-0 text-[11px] font-bold text-slate-600 dark:text-slate-300">{item.label}</span>
-      <div className="flex flex-1 items-center gap-2 min-w-0">
+      <span className="w-[4.25rem] shrink-0 truncate text-[11px] font-bold leading-none text-slate-600 dark:text-slate-300">{item.label}</span>
+      <div className="flex min-w-0 flex-1 items-center gap-1.5">
         <div className="relative flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-dark-border/50 overflow-hidden">
           <div
             className="absolute inset-y-0 left-0 rounded-full"
             style={{ width: `${item.pct ?? 0}%`, background: item.color }}
           />
         </div>
-        <span className="shrink-0 text-[10px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+        <span className="w-8 shrink-0 text-right text-[10px] font-bold leading-none text-slate-400 dark:text-slate-500 tabular-nums">
           {item.value}/{item.total}
         </span>
       </div>
@@ -125,11 +131,15 @@ export function AdminOverviewCharts({ pieData, quarterData, sectionData = [], di
   const legendColors = viewMode === 'status' ? BAR_COLORS : DIVISION_COLORS;
 
   const handleClusterClick = (item) => {
-    navigate(`/admin/submissions?type=AIP`, { state: { filters: { cluster: item.clusterId } } });
+    const params = new URLSearchParams({
+      type: 'aip',
+      cluster: String(item.clusterId),
+    });
+    navigate(`/admin/submissions?${params}`);
   };
 
   const handleDivisionClick = () => {
-    navigate('/admin/submissions?type=AIP');
+    navigate('/admin/submissions?type=aip');
   };
 
   return (
@@ -182,8 +192,11 @@ export function AdminOverviewCharts({ pieData, quarterData, sectionData = [], di
 
           {aipView === 'cluster' ? (
             pieData.length > 0 ? (
-              <div className="h-[220px] overflow-y-auto -mx-1 px-1">
-                <div className="flex flex-col">
+              <div className="h-[220px] overflow-hidden -mx-1 px-1">
+                <div
+                  className="grid h-full gap-0.5"
+                  style={{ gridTemplateRows: `repeat(${pieData.length}, minmax(0, 1fr))` }}
+                >
                   {pieData.map((item) => (
                     <ClusterRow key={item.id} item={item} onClick={() => handleClusterClick(item)} />
                   ))}
@@ -213,7 +226,7 @@ export function AdminOverviewCharts({ pieData, quarterData, sectionData = [], di
       </Motion.div>
 
       {/* Division Sections */}
-      <Motion.div variants={fadeUp} className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-dark-border dark:bg-dark-surface sm:p-5">
+      <Motion.div variants={fadeUp} className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 dark:border-dark-border dark:bg-dark-surface sm:p-5">
         <div className="mb-4 flex items-start gap-3">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400">
             <Buildings size={17} weight="bold" />
@@ -233,10 +246,11 @@ export function AdminOverviewCharts({ pieData, quarterData, sectionData = [], di
                 <div
                   key={section.key}
                   className="group overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg dark:border-dark-border dark:bg-dark-surface"
+                  style={{ borderTopWidth: '3px', borderTopColor: accent.bar }}
                 >
-                  <div className="flex items-start justify-between px-5 py-4">
+                  <div className={`flex items-start justify-between px-5 py-4 ${accent.headerBg}`}>
                     <div>
-                      <p className="text-sm font-black leading-tight text-slate-900 dark:text-slate-100">{section.label}</p>
+                      <p className={`text-sm font-black leading-tight ${accent.label}`}>{section.label}</p>
                       <p className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">{section.full}</p>
                       <p className="mt-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                         {section.programCount} program{section.programCount === 1 ? '' : 's'}

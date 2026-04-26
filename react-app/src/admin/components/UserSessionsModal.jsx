@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../../lib/api.js';
+import { auth } from '../../lib/auth.js';
 import { Spinner } from './Spinner.jsx';
 import { DataTable } from './DataTable.jsx';
 import { FormModal } from './FormModal.jsx';
@@ -21,6 +22,8 @@ export function UserSessionsModal({ open, user, onClose, showToast }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [error, setError] = useState('');
+  const currentUser = auth.getUser();
+  const isCurrentUser = Number(user?.id) === Number(currentUser?.id);
 
   const loadSessions = useCallback(async () => {
     if (!user?.id) return;
@@ -48,6 +51,10 @@ export function UserSessionsModal({ open, user, onClose, showToast }) {
     () => sessions.filter((session) => isSessionRevocable(session)),
     [sessions],
   );
+  const revocableSessions = useMemo(
+    () => activeSessions.filter((session) => !session.is_current),
+    [activeSessions],
+  );
 
   const displayName = user?.name || user?.email || 'this user';
 
@@ -61,7 +68,8 @@ export function UserSessionsModal({ open, user, onClose, showToast }) {
         showToast?.('Session revoked.');
       } else if (confirmAction.type === 'all') {
         const { data } = await api.delete(`/api/admin/sessions/user/${user.id}`);
-        showToast?.(`${data.revoked} active session${data.revoked === 1 ? '' : 's'} revoked.`);
+        const sessionLabel = data.currentSessionSkipped ? 'other active session' : 'active session';
+        showToast?.(`${data.revoked} ${sessionLabel}${data.revoked === 1 ? '' : 's'} revoked.`);
       }
 
       setConfirmAction(null);
@@ -78,7 +86,16 @@ export function UserSessionsModal({ open, user, onClose, showToast }) {
     {
       key: 'device_label',
       label: 'Device',
-      render: (value) => <span className="font-bold text-slate-900 dark:text-slate-100">{value || 'Unknown device'}</span>,
+      render: (value, row) => (
+        <div className="flex flex-col gap-1">
+          <span className="font-bold text-slate-900 dark:text-slate-100">{value || 'Unknown device'}</span>
+          {row.is_current && (
+            <span className="w-fit rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+              This device
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: 'ip_address',
@@ -105,7 +122,9 @@ export function UserSessionsModal({ open, user, onClose, showToast }) {
       label: 'Actions',
       render: (_, row) => (
         <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-          {isSessionRevocable(row) ? (
+          {row.is_current ? (
+            <span className="text-xs font-bold text-slate-400 dark:text-slate-500">Use logout</span>
+          ) : isSessionRevocable(row) ? (
             <button
               onClick={() => setConfirmAction({ type: 'single', session: row })}
               className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/40"
@@ -129,8 +148,8 @@ export function UserSessionsModal({ open, user, onClose, showToast }) {
         onSave={() => setConfirmAction({ type: 'all' })}
         onCancel={onClose}
         loading={actionLoading}
-        saveLabel="Revoke All Sessions"
-        saveDisabled={activeSessions.length === 0}
+        saveLabel={isCurrentUser ? 'Revoke Other Sessions' : 'Revoke All Sessions'}
+        saveDisabled={(isCurrentUser ? revocableSessions : activeSessions).length === 0}
         wide
       >
         <div className="space-y-4">
@@ -163,10 +182,14 @@ export function UserSessionsModal({ open, user, onClose, showToast }) {
         open={!!confirmAction}
         title={confirmAction?.type === 'all' ? 'Revoke All Sessions' : 'Revoke Session'}
         message={confirmAction?.type === 'all'
-          ? `Revoke every active session for ${displayName}? They will need to sign in again on those devices.`
+          ? isCurrentUser
+            ? `Revoke every other active session for ${displayName}? This current browser will stay signed in.`
+            : `Revoke every active session for ${displayName}? They will need to sign in again on those devices.`
           : `Revoke ${confirmAction?.session?.device_label || 'this session'} for ${displayName}?`}
         variant="danger"
-        confirmLabel={confirmAction?.type === 'all' ? 'Revoke All' : 'Revoke'}
+        confirmLabel={confirmAction?.type === 'all'
+          ? isCurrentUser ? 'Revoke Other' : 'Revoke All'
+          : 'Revoke'}
         onConfirm={handleConfirm}
         onCancel={() => setConfirmAction(null)}
         loading={actionLoading}

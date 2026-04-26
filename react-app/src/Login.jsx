@@ -213,10 +213,7 @@ export default function Login() {
       }, { withCredentials: true });
 
       // Use the user data returned by /login directly — no need for a second /me round trip.
-      auth.setSession(data.user, data.expiresAt, {
-        idleExpiresAt: data.idleExpiresAt,
-        idleTimeoutSeconds: data.idleTimeoutSeconds,
-      });
+      auth.setSession(data.user, data.expiresAt);
       navigate(roleToDashboard(data.user.role), { replace: true });
     } catch (err) {
       shakeCard();

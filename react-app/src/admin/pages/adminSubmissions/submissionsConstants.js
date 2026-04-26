@@ -1,18 +1,3 @@
-export const TERM_OPTIONS = [
-  { type: 'Trimester', label: 'Trimester', periodCount: 3 },
-  { type: 'Quarterly', label: 'Quarterly', periodCount: 4 },
-  { type: 'Bimester', label: 'Bimester', periodCount: 2 },
-];
-
-export const MONTHS = [
-  { value: 1, label: 'January' }, { value: 2, label: 'February' },
-  { value: 3, label: 'March' }, { value: 4, label: 'April' },
-  { value: 5, label: 'May' }, { value: 6, label: 'June' },
-  { value: 7, label: 'July' }, { value: 8, label: 'August' },
-  { value: 9, label: 'September' }, { value: 10, label: 'October' },
-  { value: 11, label: 'November' }, { value: 12, label: 'December' },
-];
-
 export const STATUS_OPTIONS = [
   'Submitted', 'Under Review', 'For CES Review', 'For Cluster Head Review', 'Approved', 'Returned',
 ];
@@ -29,20 +14,38 @@ export const YEAR_OPTIONS = [currentYear - 2, currentYear - 1, currentYear, curr
   .map(y => ({ value: y, label: String(y) }));
 
 export const GROUP_OPTIONS = [
-  { key: 'flat',    label: 'Default' },
-  { key: 'cluster', label: 'By Cluster' },
-  { key: 'school',  label: 'By School' },
-  { key: 'user',    label: 'By Submitter' },
-  { key: 'quarter', label: 'By Quarter' },
-  { key: 'status',  label: 'By Status' },
+  { key: 'flat',     label: 'Default' },
+  { key: 'cluster',  label: 'By Cluster' },
+  { key: 'school',   label: 'By School' },
+  { key: 'user',     label: 'By Submitter' },
+  { key: 'quarter',  label: 'By Quarter' },
+  { key: 'status',   label: 'By Status' },
+  { key: 'division', label: 'By Division' },
 ];
+
+const DIVISION_ORDER = ['SGOD', 'CID', 'OSDS'];
 
 export function groupSubmissions(data, groupKey) {
   if (groupKey === 'flat') return null;
+
+  if (groupKey === 'division') {
+    const divisionRows = data.filter(r => !r.schoolId);
+    const map = new Map();
+    for (const row of divisionRows) {
+      const k = row.division ?? '—';
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(row);
+    }
+    return DIVISION_ORDER
+      .filter(d => map.has(d))
+      .concat([...map.keys()].filter(k => !DIVISION_ORDER.includes(k)))
+      .map(key => ({ groupKey: key, rows: map.get(key) }));
+  }
+
   const keyFn = {
     cluster: r => r.cluster || '—',
     school:  r => r.school  || '—',
-    user:    r => r.submittedBy || '—',
+    user:    r => r.schoolId ? (r.schoolHead || r.submittedBy || '—') : (r.submittedBy || '—'),
     quarter: r => r.quarter || '— (AIP)',
     status:  r => r.status,
   }[groupKey];

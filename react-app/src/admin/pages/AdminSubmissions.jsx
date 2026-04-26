@@ -7,7 +7,6 @@ import { HIGHLIGHT_DURATION_MS, TOAST_DURATION_MS } from '../../constants.js';
 import { auth } from '../../lib/auth.js';
 import { GROUP_OPTIONS, groupSubmissions } from './adminSubmissions/submissionsConstants.js';
 import { useSubmissionsData } from './adminSubmissions/useSubmissionsData.js';
-import { useTermConfig } from './adminSubmissions/useTermConfig.js';
 import { useSubmissionActions } from './adminSubmissions/useSubmissionActions.js';
 import { useSubmissionModal } from './adminSubmissions/useSubmissionModal.js';
 import { useSubmissionExport } from './adminSubmissions/useSubmissionExport.js';
@@ -16,24 +15,90 @@ import { SubmissionDetailModal } from './adminSubmissions/SubmissionDetailModal.
 import { SubmissionModals } from './adminSubmissions/SubmissionModals.jsx';
 import { buildSubmissionColumns } from './adminSubmissions/submissionColumns.jsx';
 
+const VALID_TABS = new Set(['all', 'aip', 'pir']);
+const FILTER_PARAM_KEYS = ['cluster', 'school', 'program', 'quarter', 'year', 'status'];
+
+const defaultFilters = () => ({
+  cluster: null,
+  school: null,
+  program: null,
+  quarter: null,
+  year: new Date().getFullYear(),
+  status: null,
+});
+
+const toPositiveInt = (value) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const normalizeTab = (value) => {
+  const normalized = String(value || 'all').toLowerCase();
+  return VALID_TABS.has(normalized) ? normalized : 'all';
+};
+
+const normalizeFilterPatch = (patch = {}) => {
+  const next = {};
+  if ('cluster' in patch) next.cluster = toPositiveInt(patch.cluster);
+  if ('school' in patch) next.school = toPositiveInt(patch.school);
+  if ('program' in patch) next.program = toPositiveInt(patch.program);
+  if ('quarter' in patch) next.quarter = patch.quarter || null;
+  if ('year' in patch) next.year = patch.year == null ? null : toPositiveInt(patch.year);
+  if ('status' in patch) next.status = patch.status || null;
+  return next;
+};
+
+const readFilterParams = (searchParams) => {
+  const patch = {};
+  FILTER_PARAM_KEYS.forEach((key) => {
+    if (searchParams.has(key)) patch[key] = searchParams.get(key);
+  });
+  return normalizeFilterPatch(patch);
+};
+
+const hasFilterParams = (searchParams) =>
+  FILTER_PARAM_KEYS.some((key) => searchParams.has(key));
+
+const normalizeFilters = (filters) => ({
+  ...defaultFilters(),
+  ...normalizeFilterPatch(filters),
+});
+
+const filtersEqual = (left, right) =>
+  FILTER_PARAM_KEYS.every((key) => left[key] === right[key]);
+
+const writeFilterParams = (searchParams, filters) => {
+  const next = new URLSearchParams(searchParams);
+  FILTER_PARAM_KEYS.forEach((key) => next.delete(key));
+  FILTER_PARAM_KEYS.forEach((key) => {
+    if (key === 'year' && filters.year == null) {
+      next.set(key, 'all');
+      return;
+    }
+    if (filters[key] != null && filters[key] !== '') next.set(key, String(filters[key]));
+  });
+  return next;
+};
+
 export default function AdminSubmissions() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab      = searchParams.get('type')  || 'all';
+  const tab      = normalizeTab(searchParams.get('type'));
   const group    = searchParams.get('group') || 'flat';
   const reviewId = searchParams.get('review');
   const isObserver = auth.isObserver();
 
-  const setTab   = (key) => { setSearchParams(prev => { prev.set('type',  key); return prev; }); setPage(1); setHighlightRowId(null); };
-  const setGroup = (key) => { setSearchParams(prev => { prev.set('group', key); return prev; }); };
+  const setTab   = (key) => { setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('type',  key); return next; }); setPage(1); setHighlightRowId(null); };
+  const setGroup = (key) => { setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('group', key); return next; }); };
 
   const [page, setPage]                     = useState(1);
   const [filters, setFilters]               = useState(() => ({
-    cluster: null, school: null, program: null, quarter: null, year: new Date().getFullYear(), status: null,
-    ...(location.state?.filters ?? {}),
+    ...defaultFilters(),
+    ...normalizeFilterPatch(location.state?.filters ?? {}),
+    ...readFilterParams(searchParams),
   }));
-  const [showFilters, setShowFilters]       = useState(() => !!(location.state?.filters));
+  const [showFilters, setShowFilters]       = useState(() => !!(location.state?.filters) || hasFilterParams(searchParams));
   const [selectedIds, setSelectedIds]       = useState([]);
   const [highlightRowId, setHighlightRowId] = useState(null);
   const [targetPage, setTargetPage]         = useState(1);
@@ -47,28 +112,48 @@ export default function AdminSubmissions() {
   };
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
 
+  useEffect(() => {
+    const nextFilters = hasFilterParams(searchParams)
+      ? normalizeFilters(readFilterParams(searchParams))
+      : location.state?.filters
+        ? normalizeFilters(location.state.filters)
+        : defaultFilters();
+    if (!filtersEqual(filters, nextFilters)) {
+      setFilters(nextFilters);
+      setSelectedIds([]);
+    }
+    if (hasFilterParams(searchParams) || location.state?.filters) setShowFilters(true);
+    setPage(1);
+  }, [searchParams, location.state]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const updateFilters = (updater) => {
+    const nextFilters = normalizeFilters(typeof updater === 'function' ? updater(filters) : updater);
+    setFilters(nextFilters);
+    setSelectedIds([]);
+    setPage(1);
+    setSearchParams(prev => writeFilterParams(prev, nextFilters), { replace: true });
+  };
+
   const { submissions, totals, loading, fetchError, fetchSubmissions, clusters, schools, programs } =
     useSubmissionsData({ tab, filters, page });
 
-  const termConfig = useTermConfig({ isObserver, navigate, searchParams });
-  const actions    = useSubmissionActions({ fetchSubmissions, showToast });
+  const actions    = useSubmissionActions({ fetchSubmissions, showToast, isObserver });
   const modal      = useSubmissionModal({
     isObserver,
-    handleStatusUpdate: actions.handleStatusUpdate,
     fetchSubmissions,
     setActionError: actions.setActionError,
     showToast,
   });
   const { downloadRef, handleExportCSV, handleExportXLSX } = useSubmissionExport({ tab, filters });
 
-  // Wrap handleStatusUpdate to sync viewData when called (e.g. auto-Under-Review)
+  // Wrap handleStatusUpdate to sync the open detail view after AIP status changes.
   const handleStatusUpdate = async (id, type, status, feedback = '') => {
     await actions.handleStatusUpdate(id, type, status, feedback);
     if (modal.viewData) modal.syncViewDataStatus(status);
   };
 
   const handleBulkApprove = () =>
-    actions.handleBulkApprove(submissions, selectedIds, setSelectedIds, isObserver);
+    actions.handleBulkApprove(submissions, selectedIds, setSelectedIds);
 
   // Auto-open entity when navigating from a notification or deep-link (?review=<id>)
   useEffect(() => {
@@ -101,7 +186,7 @@ export default function AdminSubmissions() {
   ];
 
   const columns = buildSubmissionColumns({
-    isObserver, navigate,
+    navigate,
     onView: modal.openView, onApprove: actions.setApproveItem,
     onReturn: (row) => { actions.setReturnItem(row); actions.setReturnFeedback(''); actions.setReturnFeedbackError(''); },
     onExportPDF: modal.handleExportPDF,
@@ -168,8 +253,7 @@ export default function AdminSubmissions() {
         {showFilters && (
           <SubmissionsFilterBar
             clusters={clusters} schools={schools} programs={programs}
-            filters={filters} setFilters={setFilters}
-            isObserver={isObserver} termConfig={termConfig}
+            filters={filters} setFilters={updateFilters}
           />
         )}
 
@@ -214,11 +298,6 @@ export default function AdminSubmissions() {
         viewItem={modal.viewItem} viewData={modal.viewData} viewLoading={modal.viewLoading}
         isObserver={isObserver} onClose={modal.closeView} onExportPDF={modal.handleExportPDF}
         editActionLoading={modal.editActionLoading} onEditAction={modal.handleEditAction}
-        observerNotes={modal.observerNotes} setObserverNotes={modal.setObserverNotes}
-        observerNotesSaving={modal.observerNotesSaving}
-        observerNotesSaved={modal.observerNotesSaved}
-        observerNotesError={modal.observerNotesError}
-        onObserverNotesSave={modal.handleObserverNotesSave}
         canDownloadSubmission={actions.canDownloadSubmission}
       />
     </>

@@ -57,7 +57,7 @@ export const PIRDocument = ({
             {/* Header */}
             <GovDocHeader
                 documentTitle="Quarterly Program Implementation Review (AIP-PIR)"
-                documentSubtitle="Quarterly Division Monitoring Evaluation and Adjustment"
+                documentSubtitle="Quarterly Program Implementation Review"
                 badge={quarter}
             />
 
@@ -243,7 +243,7 @@ export const PIRDocument = ({
 
             {/* Section E: Action Items */}
             <div className="mb-6 relative rounded-xl p-4 -mx-4 print:p-0 print:mx-0">
-                <h2 className="font-black text-sm mb-4 uppercase tracking-widest border-l-4 border-black pl-3">E. Action Items / Ways Forward</h2>
+                <h2 className="font-black text-sm mb-4 uppercase tracking-widest border-l-4 border-black pl-3">Action Items / Ways Forward</h2>
                 <table className="w-full border-collapse text-[9px] border border-black">
                     <thead>
                         <tr className="font-black bg-slate-50 uppercase text-center print:bg-transparent">

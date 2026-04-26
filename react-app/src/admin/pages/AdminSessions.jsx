@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MagnifyingGlass, CheckCircle, Users, CaretLeft, CaretRight } from '@phosphor-icons/react';
 import { Spinner } from '../components/Spinner.jsx';
 import api from '../../lib/api.js';
+import { auth } from '../../lib/auth.js';
 import { DataTable } from '../components/DataTable.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
@@ -46,6 +47,7 @@ export default function AdminSessions() {
   const [actionLoading, setActionLoading] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [toast, setToast] = useState(null);
+  const currentUser = auth.getUser();
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
@@ -115,7 +117,8 @@ export default function AdminSessions() {
         showToast('Device session revoked.');
       } else {
         const { data } = await api.delete(`/api/admin/sessions/user/${confirmAction.user.id}`);
-        showToast(`${data.revoked} active signed-in device${data.revoked === 1 ? '' : 's'} revoked for ${confirmAction.user.name}.`);
+        const deviceLabel = data.currentSessionSkipped ? 'other active signed-in device' : 'active signed-in device';
+        showToast(`${data.revoked} ${deviceLabel}${data.revoked === 1 ? '' : 's'} revoked for ${confirmAction.user.name}.`);
       }
 
       setConfirmAction(null);
@@ -146,7 +149,16 @@ export default function AdminSessions() {
     {
       key: 'device_label',
       label: 'Device',
-      render: (value) => <span className="text-sm text-slate-600 dark:text-slate-300">{value || 'Unknown device'}</span>,
+      render: (value, row) => (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm text-slate-600 dark:text-slate-300">{value || 'Unknown device'}</span>
+          {row.is_current && (
+            <span className="w-fit rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+              This device
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: 'ip_address',
@@ -173,7 +185,9 @@ export default function AdminSessions() {
       label: 'Actions',
       render: (_, row) => (
         <div className="flex items-center gap-2">
-          {isSessionRevocable(row) ? (
+          {row.is_current ? (
+            <span className="text-xs font-bold text-slate-400 dark:text-slate-500">Use logout</span>
+          ) : isSessionRevocable(row) ? (
             <button
               onClick={() => setConfirmAction({ type: 'single', session: row })}
               className="rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-bold text-rose-600 transition-colors hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-300 dark:hover:bg-rose-950/40"
@@ -188,7 +202,7 @@ export default function AdminSessions() {
             className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 dark:bg-dark-border dark:text-slate-300 dark:hover:bg-dark-border/80"
           >
             <Users size={14} />
-            Revoke All
+            {Number(row.user?.id) === Number(currentUser?.id) ? 'Revoke Other' : 'Revoke All'}
           </button>
         </div>
       ),
@@ -305,10 +319,14 @@ export default function AdminSessions() {
         open={!!confirmAction}
         title={confirmAction?.type === 'bulk' ? 'Revoke All User Devices' : 'Revoke Device Session'}
         message={confirmAction?.type === 'bulk'
-          ? `Revoke every active signed-in device for ${confirmAction?.user?.name}?`
+          ? Number(confirmAction?.user?.id) === Number(currentUser?.id)
+            ? `Revoke every other active signed-in device for ${confirmAction?.user?.name}? This current browser will stay signed in.`
+            : `Revoke every active signed-in device for ${confirmAction?.user?.name}?`
           : `Revoke ${confirmAction?.session?.device_label || 'this device session'} for ${confirmAction?.session?.user?.name}?`}
         variant="danger"
-        confirmLabel={confirmAction?.type === 'bulk' ? 'Revoke All' : 'Revoke'}
+        confirmLabel={confirmAction?.type === 'bulk'
+          ? Number(confirmAction?.user?.id) === Number(currentUser?.id) ? 'Revoke Other' : 'Revoke All'
+          : 'Revoke'}
         onConfirm={handleConfirm}
         onCancel={() => setConfirmAction(null)}
         loading={actionLoading}

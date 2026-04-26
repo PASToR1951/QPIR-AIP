@@ -1,13 +1,8 @@
 import { useMemo } from 'react';
 import { fmt, fmtPeso, getValidationFlags, pct } from './pirReviewUtils.js';
 import { FlagChip, RateBar } from './ui.jsx';
-import { useActivityNotes } from './useActivityNotes.js';
 
-function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes, measureText, canEditNotes = true }) {
-  const { notes, setNotes, saving, saved, saveError, handleBlur } = useActivityNotes({
-    review, pirId, onSaveNotes, canEditNotes,
-  });
-
+function SidePIRCard({ review, flags, physPct, finPct, measureText }) {
   const gapTextHeight = useMemo(() => {
     if (!review.actions_to_address_gap) return 0;
     return measureText(review.actions_to_address_gap, 280).height;
@@ -40,20 +35,6 @@ function SidePIRCard({ review, flags, physPct, finPct, pirId, onSaveNotes, measu
           Gap actions: {review.actions_to_address_gap}
         </p>
       )}
-      <div className="relative">
-        <textarea
-          value={notes}
-          onChange={e => { setNotes(e.target.value); }}
-          onBlur={handleBlur}
-          rows={2}
-          readOnly={!canEditNotes}
-          placeholder={canEditNotes ? 'Admin notes…' : 'No admin notes.'}
-          className="w-full px-2 py-1.5 text-xs bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-lg resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-accent transition-colors read-only:cursor-default"
-        />
-        {saving    && <span className="absolute right-2 bottom-2 text-[10px] text-slate-400">Saving…</span>}
-        {saved     && <span className="absolute right-2 bottom-2 text-[10px] text-emerald-500">Saved</span>}
-        {saveError && <span className="absolute right-2 bottom-2 text-[10px] text-red-500">Failed</span>}
-      </div>
     </div>
   );
 }
@@ -77,7 +58,7 @@ function SideAIPCard({ activity, greyed = false }) {
   );
 }
 
-export function SideBySideView({ reviews, allAipActivities, pirId, onSaveNotes, measureText, canEditNotes = true }) {
+export function SideBySideView({ reviews, allAipActivities, measureText }) {
   const reviewedIds = new Set(reviews.map(r => r.aip_activity_id));
   const unreviewed  = allAipActivities.filter(a => !reviewedIds.has(a.id));
 
@@ -93,7 +74,7 @@ export function SideBySideView({ reviews, allAipActivities, pirId, onSaveNotes, 
           const finPct  = pct(review.financial_accomplished, review.financial_target);
           return (
             <SidePIRCard key={review.id} review={review} flags={flags} physPct={physPct} finPct={finPct}
-              pirId={pirId} onSaveNotes={onSaveNotes} measureText={measureText} canEditNotes={canEditNotes} />
+              measureText={measureText} />
           );
         })}
       </div>

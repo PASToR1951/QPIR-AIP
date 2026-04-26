@@ -44,10 +44,7 @@ export default function MagicLinkCallback() {
           throw new Error(payload?.error || 'Magic link could not be completed.');
         }
 
-        auth.setSession(payload.user, payload.expiresAt, {
-          idleExpiresAt: payload.idleExpiresAt,
-          idleTimeoutSeconds: payload.idleTimeoutSeconds,
-        });
+        auth.setSession(payload.user, payload.expiresAt);
         navigate(redirect || roleToDashboard(payload.user?.role), { replace: true });
       })
       .catch((error) => {

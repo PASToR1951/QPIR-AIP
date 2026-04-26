@@ -33,10 +33,23 @@ export default function AdminUsers() {
   const [importOpen, setImportOpen] = useState(false);
   const [editUser, setEditUser] = useState(null);
   const [deleteUser, setDeleteUser] = useState(null);
+  const [deleteConfirmCode, setDeleteConfirmCode] = useState(null);
   const [toggleUser, setToggleUser] = useState(null);
   const [resetUser, setResetUser] = useState(null);
   const [tempPassword, setTempPassword] = useState(null);
   const [sessionUser, setSessionUser] = useState(null);
+
+  const openDeleteUser = useCallback((user) => {
+    setDeleteUser(user);
+    if (user?.role === 'Admin') {
+      const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*';
+      const bytes = crypto.getRandomValues(new Uint8Array(10));
+      const code = Array.from(bytes).map(b => charset[b % charset.length]).join('');
+      setDeleteConfirmCode(code);
+    } else {
+      setDeleteConfirmCode(null);
+    }
+  }, []);
 
   const showToast = useCallback((msg, type = 'success') => {
     setToast({ msg, type });
@@ -62,7 +75,7 @@ export default function AdminUsers() {
     onManageSessions: (row) => setSessionUser(row),
     onResetPassword: (row) => setResetUser(row),
     onToggle: (row) => setToggleUser(row),
-    onDelete: (row) => setDeleteUser(row),
+    onDelete: (row) => openDeleteUser(row),
     showProgTooltip,
     hideProgTooltip,
   });
@@ -142,10 +155,16 @@ export default function AdminUsers() {
       </FormModal>
 
       <ConfirmModal open={!!deleteUser} title="Delete User"
-        message={`Permanently delete ${userDisplayName(deleteUser) || deleteUser?.email}? Their submissions will be preserved.`}
+        message={
+          deleteUser?.role === 'Admin'
+            ? `Permanently delete the Admin account "${userDisplayName(deleteUser) || deleteUser?.email}"? This action cannot be undone.`
+            : `Permanently delete ${userDisplayName(deleteUser) || deleteUser?.email}? Their submissions will be preserved.`
+        }
         variant="danger" confirmLabel="Delete"
-        onConfirm={async () => { await handleDelete(deleteUser); setDeleteUser(null); }}
-        onCancel={() => setDeleteUser(null)} loading={actionLoading} />
+        requireConfirmText={deleteConfirmCode}
+        onConfirm={async () => { await handleDelete(deleteUser); setDeleteUser(null); setDeleteConfirmCode(null); }}
+        onCancel={() => { setDeleteUser(null); setDeleteConfirmCode(null); }}
+        loading={actionLoading} />
 
       <ConfirmModal open={!!toggleUser}
         title={toggleUser?.is_active ? 'Disable User' : 'Enable User'}
@@ -174,7 +193,7 @@ export default function AdminUsers() {
         onEdit={() => { const u = viewUser; setViewUser(null); openEdit(u); }}
         onResetPassword={async (userId) => { const r = await api.post(`/api/admin/users/${userId}/reset-password`); return r.data.temporaryPassword; }}
         onToggle={() => { const u = viewUser; setViewUser(null); setToggleUser(u); }}
-        onDelete={() => { const u = viewUser; setViewUser(null); setDeleteUser(u); }}
+        onDelete={() => { const u = viewUser; setViewUser(null); openDeleteUser(u); }}
       />
 
       {toast && (

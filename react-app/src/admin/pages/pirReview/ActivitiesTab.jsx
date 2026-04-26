@@ -5,10 +5,7 @@ import { SideBySideView } from './SideBySideView.jsx';
 
 export function ActivitiesTab({
   allAipActivities,
-  canEditNotes,
-  handleSaveNotes,
   measureText,
-  pirId,
   reviews,
   setViewMode,
   viewMode,
@@ -51,8 +48,7 @@ export function ActivitiesTab({
                 <th colSpan={2} className="border-r border-slate-200 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-500 dark:border-dark-border">Target</th>
                 <th colSpan={2} className="border-r border-slate-200 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-500 dark:border-dark-border">Accomplishment</th>
                 <th colSpan={2} className="border-r border-slate-200 bg-slate-100/50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-slate-500 dark:border-dark-border dark:bg-dark-base/50">Gap (%)</th>
-                <th rowSpan={2} className="border-r border-slate-200 px-3 py-2.5 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:border-dark-border">Actions to Address Gap</th>
-                <th rowSpan={2} className="px-3 py-2.5 text-left text-[11px] font-black uppercase tracking-wide text-slate-500">Admin Remarks</th>
+                <th rowSpan={2} className="px-3 py-2.5 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:border-dark-border">Actions to Address Gap</th>
               </tr>
               <tr className="border-b border-slate-200 bg-white text-center dark:border-dark-border dark:bg-dark-surface">
                 <th className="border-r border-slate-200 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:border-dark-border">Physical</th>
@@ -68,10 +64,7 @@ export function ActivitiesTab({
                 <ActivityRow
                   key={review.id}
                   review={review}
-                  pirId={pirId}
-                  onSaveNotes={handleSaveNotes}
                   measureText={measureText}
-                  canEditNotes={canEditNotes}
                 />
               ))}
             </tbody>
@@ -95,10 +88,7 @@ export function ActivitiesTab({
         <SideBySideView
           reviews={reviews}
           allAipActivities={allAipActivities}
-          pirId={pirId}
-          onSaveNotes={handleSaveNotes}
           measureText={measureText}
-          canEditNotes={canEditNotes}
         />
       )}
     </div>

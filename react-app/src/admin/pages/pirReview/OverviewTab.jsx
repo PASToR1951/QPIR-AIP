@@ -1,24 +1,13 @@
 import React from 'react';
-import { FloppyDisk, NotePencil, Stamp, Warning, ChartBar, Checks, ListDashes } from '@phosphor-icons/react';
+import { Stamp, Warning, ChartBar, Checks, ListDashes } from '@phosphor-icons/react';
 import { FlagChip, MetaField, RateBar, StatCard } from './ui.jsx';
 import { fmt, fmtPeso, relativeDate, getValidationFlags } from './pirReviewUtils.js';
 
 export function OverviewTab({
-  adminRemarks,
-  isObserver,
   metCount,
   overallFinPct,
   overallPhysPct,
-  presented,
-  presentedSaving,
-  remarksError,
-  remarksSaved,
-  remarksSaving,
   reviews,
-  saveObserverNotes,
-  saveRemarks,
-  onAdminRemarksChange,
-  onObserverNotesChange,
   submittedBy,
   sub,
   totalFinAcc,
@@ -28,11 +17,6 @@ export function OverviewTab({
   totalPhysTarget,
   lowCount,
   partialCount,
-  observerNotes,
-  observerNotesError,
-  observerNotesSaved,
-  observerNotesSaving,
-  togglePresented,
   pir,
 }) {
   return (
@@ -97,87 +81,13 @@ export function OverviewTab({
       {(pir?.cesReviewer || pir?.cesNotedAt || pir?.cesRemarks) && (
         <div className="rounded-2xl border border-teal-200 bg-teal-50 p-5 dark:border-teal-700/40 dark:bg-teal-950/10">
           <p className="mb-3 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-400">
-            <Stamp size={14} /> CES Review History
+            <Stamp size={14} /> Official Review Response
           </p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {pir.cesReviewer && <MetaField label="Reviewer" value={pir.cesReviewer} />}
             {pir.cesNotedAt && <MetaField label="Noted At" value={relativeDate(pir.cesNotedAt)} />}
-            {pir.cesRemarks && <MetaField label="CES Remarks" value={pir.cesRemarks} />}
+            {pir.cesRemarks && <MetaField label="Remarks" value={pir.cesRemarks} />}
           </div>
-        </div>
-      )}
-
-      {!isObserver && (
-        <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 dark:border-dark-border dark:bg-dark-surface">
-          <div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Presented</p>
-            <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">Mark whether this PIR was presented at the division level.</p>
-          </div>
-          <button
-            onClick={togglePresented}
-            disabled={presentedSaving}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-60 ${presented ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-dark-border'}`}
-            role="switch"
-            aria-checked={presented}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${presented ? 'translate-x-6' : 'translate-x-1'}`} />
-          </button>
-        </div>
-      )}
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-dark-border dark:bg-dark-surface">
-        <label className="mb-3 flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500">
-          <NotePencil size={14} className="text-accent" /> Admin Remarks
-        </label>
-        <textarea
-          value={adminRemarks}
-          onChange={onAdminRemarksChange}
-          rows={4}
-          readOnly={isObserver}
-          placeholder={isObserver ? 'No admin remarks yet.' : 'Write official remarks for this PIR submission…'}
-          className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:border-accent focus:outline-none transition-colors dark:border-dark-border dark:bg-dark-base dark:text-slate-200 read-only:cursor-default"
-        />
-        {remarksError && <p className="mt-1.5 text-xs text-red-500">{remarksError}</p>}
-        {remarksSaved && <p className="mt-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">Remarks saved.</p>}
-        {!isObserver && (
-          <div className="mt-3 flex justify-end">
-            <button
-              onClick={saveRemarks}
-              disabled={remarksSaving}
-              className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-              <FloppyDisk size={16} /> {remarksSaving ? 'Saving…' : 'Save Remarks'}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {(isObserver || observerNotes) && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-dark-border dark:bg-dark-surface">
-          <label className="mb-3 flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-500">
-            <NotePencil size={14} className="text-indigo-500" /> Observer Notes
-          </label>
-          <textarea
-            value={observerNotes}
-            onChange={onObserverNotesChange}
-            rows={4}
-            readOnly={!isObserver}
-            placeholder={isObserver ? 'Add observer-only notes for monitoring…' : 'No observer notes yet.'}
-            className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:border-indigo-400 focus:outline-none transition-colors dark:border-dark-border dark:bg-dark-base dark:text-slate-200 read-only:cursor-default"
-          />
-          {observerNotesError && <p className="mt-1.5 text-xs text-red-500">{observerNotesError}</p>}
-          {observerNotesSaved && <p className="mt-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">Observer notes saved.</p>}
-          {isObserver && (
-            <div className="mt-3 flex justify-end">
-              <button
-                onClick={saveObserverNotes}
-                disabled={observerNotesSaving}
-                className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
-              >
-                <FloppyDisk size={16} /> {observerNotesSaving ? 'Saving…' : 'Save Notes'}
-              </button>
-            </div>
-          )}
         </div>
       )}
 

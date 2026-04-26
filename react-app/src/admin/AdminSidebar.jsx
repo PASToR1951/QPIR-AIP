@@ -36,7 +36,7 @@ const NAV_GROUPS = [
   {
     label: 'Analytics',
     items: [
-      { to: '/admin/consolidation-template', label: 'Consolidation', icon: Table, adminOnly: true, preload: () => import('./pages/AdminConsolidationTemplate.jsx') },
+      { to: '/admin/consolidation-template', label: 'Consolidation', icon: Table, preload: () => import('./pages/AdminConsolidationTemplate.jsx') },
     ],
   },
   {
@@ -94,7 +94,7 @@ function CollapsibleSubmissions({ onNavigate }) {
   const location = useLocation();
   const isOnSubmissions = location.pathname === '/admin/submissions';
   const [open, setOpen] = useState(isOnSubmissions);
-  const activeType = new URLSearchParams(location.search).get('type') || 'all';
+  const activeType = (new URLSearchParams(location.search).get('type') || 'all').toLowerCase();
 
   useEffect(() => { if (isOnSubmissions) setOpen(true); }, [isOnSubmissions]);
 
@@ -302,7 +302,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
     }))
     .filter(group => {
       if (!isObserver) return true;
-      return group.label === 'Monitoring' || group.label === 'Submissions & Data';
+      return group.label === 'Monitoring' || group.label === 'Submissions & Data' || group.label === 'Analytics';
     });
 
   const initials = (user?.name || 'A')

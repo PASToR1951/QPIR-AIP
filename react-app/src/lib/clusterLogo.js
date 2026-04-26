@@ -8,7 +8,7 @@ export function getClusterLogoPath(clusterNumber) {
 export function getUploadedLogoUrl(src) {
   if (!src) return null;
   if (/^(https?:|data:|blob:)/.test(src)) return src;
-  if (src.startsWith('/school-logos/') || src.startsWith('/cluster-logos/')) {
+  if (src.startsWith('/school-logos/') || src.startsWith('/cluster-logos/') || src.startsWith('/app-logo/')) {
     return `${API_BASE}${src}`;
   }
   return src;

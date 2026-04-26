@@ -1,9 +1,8 @@
 import React from 'react';
 import { SearchableSelect } from '../../components/SearchableSelect.jsx';
-import { TermConfigPanel } from './TermConfigPanel.jsx';
 import { QUARTER_OPTIONS, YEAR_OPTIONS, STATUS_OPTIONS } from './submissionsConstants.js';
 
-export function SubmissionsFilterBar({ clusters, schools, programs, filters, setFilters, isObserver, termConfig }) {
+export function SubmissionsFilterBar({ clusters, schools, programs, filters, setFilters }) {
   const clearFilters = () =>
     setFilters({ cluster: null, school: null, program: null, quarter: null, year: null, status: null });
 
@@ -49,7 +48,6 @@ export function SubmissionsFilterBar({ clusters, schools, programs, filters, set
         />
       </div>
       <button onClick={clearFilters} className="mt-3 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">Clear filters</button>
-      {!isObserver && <TermConfigPanel {...termConfig} />}
     </div>
   );
 }

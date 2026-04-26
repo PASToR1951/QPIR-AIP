@@ -1,5 +1,5 @@
 import React from 'react';
-import { XCircle, DownloadSimple, LockKeyOpen, LockKey, FloppyDisk } from '@phosphor-icons/react';
+import { XCircle, DownloadSimple, LockKeyOpen, LockKey } from '@phosphor-icons/react';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { Spinner } from '../../components/Spinner.jsx';
 import { getProjectTerminology } from '../../../lib/projectTerminology.js';
@@ -8,9 +8,6 @@ export function SubmissionDetailModal({
   viewItem, viewData, viewLoading,
   isObserver, onClose, onExportPDF,
   editActionLoading, onEditAction,
-  observerNotes, setObserverNotes,
-  observerNotesSaving, observerNotesSaved, observerNotesError,
-  onObserverNotesSave,
   canDownloadSubmission,
 }) {
   if (!viewItem) return null;
@@ -82,36 +79,6 @@ export function SubmissionDetailModal({
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {(isObserver || observerNotes) && (
-                <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
-                  <label className="block text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3">
-                    Observer Notes
-                  </label>
-                  <textarea
-                    value={observerNotes}
-                    onChange={e => { setObserverNotes(e.target.value); }}
-                    rows={4}
-                    readOnly={!isObserver}
-                    placeholder={isObserver ? 'Add observer-only notes for monitoring…' : 'No observer notes yet.'}
-                    className="w-full px-3 py-2.5 text-sm bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl resize-none text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-400 transition-colors read-only:cursor-default"
-                  />
-                  {observerNotesError && <p className="mt-1.5 text-xs text-red-500">{observerNotesError}</p>}
-                  {observerNotesSaved && <p className="mt-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">Observer notes saved.</p>}
-                  {isObserver && (
-                    <div className="flex justify-end mt-3">
-                      <button
-                        onClick={onObserverNotesSave}
-                        disabled={observerNotesSaving}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                      >
-                        <FloppyDisk size={16} />
-                        {observerNotesSaving ? 'Saving…' : 'Save Notes'}
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

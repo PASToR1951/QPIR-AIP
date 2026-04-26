@@ -62,44 +62,30 @@ function hasLogoutBlock() {
   }
 }
 
-function storeSessionMetadata({ expiresAt, idleExpiresAt, idleTimeoutSeconds }) {
+function storeSessionMetadata({ expiresAt }) {
   sessionStorage.setItem('tokenExpiry', String(expiresAt));
-  if (idleExpiresAt) {
-    sessionStorage.setItem('idleExpiry', String(idleExpiresAt));
-  } else {
-    sessionStorage.removeItem('idleExpiry');
-  }
-  if (idleTimeoutSeconds) {
-    sessionStorage.setItem('idleTimeoutSeconds', String(idleTimeoutSeconds));
-  } else {
-    sessionStorage.removeItem('idleTimeoutSeconds');
-  }
+  sessionStorage.removeItem('idleExpiry');
+  sessionStorage.removeItem('idleTimeoutSeconds');
 }
 
 function splitSessionResponse(payload) {
-  const { expiresAt, idleExpiresAt, idleTimeoutSeconds, ...user } = payload;
+  const { expiresAt, ...user } = payload;
   return {
     user,
-    metadata: { expiresAt, idleExpiresAt, idleTimeoutSeconds },
+    metadata: { expiresAt },
   };
 }
 
 export const auth = {
   getUser:    ()  => parseStoredUser(),
   getExpiry:  ()  => Number.parseInt(sessionStorage.getItem('tokenExpiry') || '0', 10) || 0,
-  getIdleExpiry: () => Number.parseInt(sessionStorage.getItem('idleExpiry') || '0', 10) || 0,
-  getIdleTimeoutSeconds: () => Number.parseInt(sessionStorage.getItem('idleTimeoutSeconds') || '0', 10) || 0,
   isExpired:  ()  => Date.now() / 1000 >= auth.getExpiry(),
   isObserver: () => auth.getUser()?.role === 'Observer',
   isAdminPanelRole: (role = auth.getUser()?.role) => ['Admin', 'Observer'].includes(role),
-  setSession: (user, exp, metadata = {}) => {
+  setSession: (user, exp) => {
     clearLogoutBlock();
     sessionStorage.setItem('user', JSON.stringify(user));
-    storeSessionMetadata({
-      expiresAt: exp,
-      idleExpiresAt: metadata.idleExpiresAt,
-      idleTimeoutSeconds: metadata.idleTimeoutSeconds,
-    });
+    storeSessionMetadata({ expiresAt: exp });
     dispatchSessionUpdate(user);
   },
   refreshSession: async () => {
@@ -109,7 +95,7 @@ export const auth = {
     if (!res.ok) throw new Error('SESSION_REFRESH_FAILED');
 
     const { user, metadata } = splitSessionResponse(await res.json());
-    auth.setSession(user, metadata.expiresAt, metadata);
+    auth.setSession(user, metadata.expiresAt);
     return user;
   },
   restoreSession: async () => {

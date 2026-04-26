@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import api from '../../../lib/api.js';
 
-export function useSubmissionActions({ fetchSubmissions, showToast }) {
+export function useSubmissionActions({ fetchSubmissions, showToast, isObserver }) {
   const [approveItem, setApproveItem]               = useState(null);
   const [returnItem, setReturnItem]                 = useState(null);
   const [returnFeedback, setReturnFeedback]         = useState('');
@@ -9,8 +9,11 @@ export function useSubmissionActions({ fetchSubmissions, showToast }) {
   const [actionLoading, setActionLoading]           = useState(false);
   const [actionError, setActionError]               = useState(null);
 
-  const canChangeSubmissionStatus = (item) =>
-    item?.status !== 'Approved' && item?.status !== 'Returned';
+  const canChangeSubmissionStatus = (item) => {
+    if (isObserver) return false;
+    if (item?.type === 'PIR') return false;
+    return item?.status !== 'Approved' && item?.status !== 'Returned';
+  };
 
   const canDownloadSubmission = (item) => item?.status !== 'Returned';
 
@@ -38,7 +41,7 @@ export function useSubmissionActions({ fetchSubmissions, showToast }) {
     }
   };
 
-  const handleBulkApprove = async (submissions, selectedIds, setSelectedIds, isObserver) => {
+  const handleBulkApprove = async (submissions, selectedIds, setSelectedIds) => {
     if (isObserver || !selectedIds.length) return;
     setActionLoading(true);
     try {

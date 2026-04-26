@@ -33,8 +33,8 @@ export function PasteStep({ csvText, setCsvText, parseError }) {
               <tbody className="text-slate-700 dark:text-slate-300 divide-y divide-slate-100 dark:divide-dark-border">
                 {[
                   ['email', 'All roles', 'Must end @deped.gov.ph'],
-                  ['role', 'All roles', 'School | Division Personnel | Admin | CES-SGOD | CES-ASDS | CES-CID | Cluster Coordinator | Observer'],
-                  ['name', 'Admin, CES-*, Cluster Coordinator, Observer', 'Full display name'],
+                  ['role', 'All roles', 'School | Division Personnel | Admin | CES-SGOD | CES-ASDS | CES-CID | Cluster Coordinator'],
+                  ['name', 'Admin, CES-*, Cluster Coordinator', 'Full display name'],
                   ['first_name', 'Division Personnel', 'Given name'],
                   ['last_name', 'Division Personnel', 'Surname'],
                   ['middle_initial', 'Division Personnel', 'Optional (e.g. "D")'],

@@ -1,9 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Warning, Trash, XCircle } from '@phosphor-icons/react';
 
-export const ConfirmModal = ({ open, title, message, variant = 'danger', confirmLabel = 'Confirm', cancelLabel = 'Cancel', onConfirm, onCancel, loading = false }) => {
+export const ConfirmModal = ({
+  open,
+  title,
+  message,
+  variant = 'danger',
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  onConfirm,
+  onCancel,
+  loading = false,
+  requireConfirmText = null, // if set, user must type this exact string to enable confirm
+}) => {
   const isDanger = variant === 'danger';
+  const [typed, setTyped] = useState('');
+
+  useEffect(() => {
+    if (!open) setTyped('');
+  }, [open]);
+
+  const confirmBlocked = requireConfirmText !== null && typed !== requireConfirmText;
 
   return (
     <AnimatePresence>
@@ -34,14 +52,36 @@ export const ConfirmModal = ({ open, title, message, variant = 'danger', confirm
               <h3 className="text-lg font-black text-slate-900 dark:text-slate-100 mb-2">{title}</h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">{message}</p>
 
+              {requireConfirmText !== null && (
+                <div className="mb-6">
+                  <p className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+                    Type the code below to confirm
+                  </p>
+                  <div className="flex items-center justify-center px-4 py-2.5 mb-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/50 select-all">
+                    <span className="font-mono text-lg font-black tracking-[0.25em] text-rose-600 dark:text-rose-400">
+                      {requireConfirmText}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={typed}
+                    onChange={e => setTyped(e.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="w-full px-3 py-2 text-sm font-mono bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-500/20 transition-all"
+                    placeholder="Enter code exactly as shown"
+                  />
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-3 justify-end">
                 <button onClick={onCancel} className="px-4 py-2 text-sm font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors">
                   {cancelLabel}
                 </button>
                 <button
                   onClick={onConfirm}
-                  disabled={loading}
-                  className={`px-4 py-2 text-sm font-bold text-white rounded-xl transition-colors disabled:opacity-60 shadow-sm ${isDanger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                  disabled={loading || confirmBlocked}
+                  className={`px-4 py-2 text-sm font-bold text-white rounded-xl transition-colors disabled:opacity-40 shadow-sm ${isDanger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
                 >
                   {loading ? 'Processing…' : confirmLabel}
                 </button>

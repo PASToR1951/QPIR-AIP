@@ -7,8 +7,12 @@ import {
   WarningCircle,
   PencilSimple,
   Database,
+  Lock,
+  ArrowsOut,
+  ArrowsIn,
 } from '@phosphor-icons/react';
 import api from '../../lib/api.js';
+import { useUser } from '../../lib/auth.js';
 import { Spinner } from '../components/Spinner.jsx';
 import { useReportYears } from './adminReports/useReportYears.js';
 
@@ -46,8 +50,19 @@ function isProgramEligibleForSchool(program, school) {
   return false;
 }
 
+// Returns the set of fields a given role may write
+function getEditableFields(role) {
+  if (role === 'Admin') return new Set(['gaps', 'recommendations', 'management_response']);
+  if (role === 'Observer') return new Set(['management_response']);
+  return new Set();
+}
+
 const AdminConsolidationTemplate = () => {
   const { year: defaultYear, quarter: defaultQuarter } = getCurrentQuarterAndYear();
+
+  const currentUser = useUser();
+  const editableFields = useMemo(() => getEditableFields(currentUser?.role), [currentUser?.role]);
+  const canEdit = useCallback((field) => editableFields.has(field), [editableFields]);
 
   const { year, setYear, availableYears } = useReportYears();
   const [quarter, setQuarter] = useState(defaultQuarter);
@@ -65,6 +80,7 @@ const AdminConsolidationTemplate = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [toast, setToast] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const debounceTimers = useRef({});
   const yearOptions = availableYears.length > 0 ? availableYears : [year || defaultYear];
   const schoolScopeClusterId = viewMode === 'school' && selectedClusterId ? Number(selectedClusterId) : null;
@@ -137,17 +153,18 @@ const AdminConsolidationTemplate = () => {
       setPrograms(programsRes.status === 'fulfilled' ? (programsRes.value.data || []) : []);
 
       if (notesRes.status === 'fulfilled') {
-        const autoRemarks = { ...(notesRes.value.data.auto_remarks || {}) };
+        // auto_recommendations come from CES remarks on PIRs — pre-fill Recommendations column
+        const autoRecs = { ...(notesRes.value.data.auto_recommendations || {}) };
         const noteMap = {};
         for (const note of (notesRes.value.data.notes || [])) {
           noteMap[note.program_id] = {
             ...note,
-            management_response: note.management_response || autoRemarks[note.program_id] || '',
+            recommendations: note.recommendations || autoRecs[note.program_id] || '',
           };
-          delete autoRemarks[note.program_id];
+          delete autoRecs[note.program_id];
         }
-        for (const [pid, autoRemark] of Object.entries(autoRemarks)) {
-          noteMap[Number(pid)] = { program_id: Number(pid), management_response: autoRemark };
+        for (const [pid, autoRec] of Object.entries(autoRecs)) {
+          noteMap[Number(pid)] = { program_id: Number(pid), recommendations: autoRec };
         }
         setNotes(noteMap);
       }
@@ -168,6 +185,13 @@ const AdminConsolidationTemplate = () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handler = (e) => { if (e.key === 'Escape') setIsFullscreen(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isFullscreen]);
 
   const schoolOptions = useMemo(() => {
     if (!selectedClusterId) return [];
@@ -204,40 +228,32 @@ const AdminConsolidationTemplate = () => {
     for (const group of reportGroups) {
       rateMap[group.id] = {
         physicalRate: group.physicalRate,
-        schoolCount: group.schoolCount,
-        pirCount: group.pirCount,
+        taSchoolsCount: group.taSchoolsCount ?? 0,
+        taSchoolsTotal: group.taSchoolsTotal ?? 0,
       };
     }
 
     return scopedPrograms.map((program) => ({
       program_id: program.id,
       program: program.title,
-      program_owners: viewMode === 'school' && selectedSchool
-        ? (selectedSchool.abbreviation || selectedSchool.name)
-        : rateMap[program.id]
-          ? `${rateMap[program.id].schoolCount} school${rateMap[program.id].schoolCount !== 1 ? 's' : ''}`
-          : viewMode === 'division'
-            ? 'Division Office'
-            : '—',
-      pir_count: rateMap[program.id]?.pirCount ?? 0,
       accomplishment_rate: rateMap[program.id]?.physicalRate ?? null,
-      ta_schools_pct: notes[program.id]?.ta_schools_pct ?? '',
+      taSchoolsCount: rateMap[program.id]?.taSchoolsCount ?? 0,
+      taSchoolsTotal: rateMap[program.id]?.taSchoolsTotal ?? 0,
       gaps: notes[program.id]?.gaps ?? '',
       recommendations: notes[program.id]?.recommendations ?? '',
       management_response: notes[program.id]?.management_response ?? '',
     }));
-  }, [scopedPrograms, reportGroups, notes, viewMode, selectedSchool]);
+  }, [scopedPrograms, reportGroups, notes]);
 
   const visibleRows = useMemo(() => {
     if (!searchQuery) return rows;
     const q = searchQuery.toLowerCase();
-    return rows.filter(row =>
-      row.program.toLowerCase().includes(q) ||
-      row.program_owners.toLowerCase().includes(q)
-    );
+    return rows.filter(row => row.program.toLowerCase().includes(q));
   }, [rows, searchQuery]);
 
   const handleCellChange = useCallback((program_id, field, value) => {
+    if (!canEdit(field)) return;
+
     setNotes(prev => ({
       ...prev,
       [program_id]: { ...(prev[program_id] || {}), [field]: value, program_id },
@@ -261,7 +277,7 @@ const AdminConsolidationTemplate = () => {
         debounceTimers.current[key] = null;
       }
     }, DEBOUNCE_MS);
-  }, [year, quarter, showToast]);
+  }, [year, quarter, showToast, canEdit]);
 
   const handlePeriodChange = (newYear, newQuarter) => {
     Object.values(debounceTimers.current).forEach(t => clearTimeout(t));
@@ -310,8 +326,13 @@ const AdminConsolidationTemplate = () => {
         ? clusters.find((cluster) => String(cluster.id) === String(selectedClusterId))?.name || 'Selected cluster'
         : 'All schools';
 
+  const editableColCount = ['gaps', 'recommendations', 'management_response'].filter(f => canEdit(f)).length;
+
   return (
-    <div className="flex min-h-full w-full flex-col gap-3">
+    <div className={isFullscreen
+      ? 'fixed inset-0 z-50 flex flex-col gap-3 p-3 bg-white/[0.97] dark:bg-[#0f1117]/[0.97] backdrop-blur-xl'
+      : 'flex min-h-full w-full flex-col gap-3'
+    }>
       {/* Toast */}
       {toast && (
         <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium ${toast.type === 'success'
@@ -394,16 +415,9 @@ const AdminConsolidationTemplate = () => {
               </>
             )}
 
-            {/* Scope & period badges */}
-            <span className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-white/[0.06] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-300">
-              {scopeLabel}
-            </span>
-            <span className="inline-flex items-center rounded-lg bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
-              {QUARTER_LABELS[quarter]} {year || defaultYear}
-            </span>
           </div>
 
-          {/* Right: period + search + save */}
+          {/* Right: period + search + save indicator */}
           <div className="flex items-center gap-2 flex-wrap">
             <select
               value={year}
@@ -437,26 +451,38 @@ const AdminConsolidationTemplate = () => {
               />
             </div>
 
-            <div className={`flex h-8 items-center gap-1.5 px-3 rounded-xl font-bold text-xs cursor-default transition-colors ${
-              hasUnsavedChanges
-                ? 'bg-amber-500/10 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300'
-                : 'bg-emerald-500/10 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-            }`}>
-              {hasUnsavedChanges ? (
-                <><Spinner size="sm" />Saving…</>
-              ) : (
-                <><FloppyDisk size={13} weight="bold" />Saved</>
-              )}
-            </div>
+            {editableFields.size > 0 && (
+              <div className={`flex h-8 items-center gap-1.5 px-3 rounded-xl font-bold text-xs cursor-default transition-colors ${
+                hasUnsavedChanges
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-300'
+                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+              }`}>
+                {hasUnsavedChanges ? (
+                  <><Spinner size="sm" />Saving…</>
+                ) : (
+                  <><FloppyDisk size={13} weight="bold" />Saved</>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsFullscreen(f => !f)}
+              title={isFullscreen ? 'Exit full screen (Esc)' : 'Full screen'}
+              className="h-8 w-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-white/[0.06] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-white/[0.1] transition-colors"
+            >
+              {isFullscreen ? <ArrowsIn size={15} weight="bold" /> : <ArrowsOut size={15} weight="bold" />}
+            </button>
           </div>
         </div>
       </div>
 
       {/* Spreadsheet */}
-      <div className="relative flex-1">
-        <div className="relative bg-white/80 dark:bg-dark-surface/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.07] rounded-2xl overflow-hidden shadow-lg shadow-slate-200/30 dark:shadow-none flex flex-col min-h-[520px] h-[calc(100dvh-12rem)] md:h-[calc(100dvh-10.5rem)]">
+      <div className={`relative ${isFullscreen ? 'flex-1 flex flex-col min-h-0' : 'flex-1'}`}>
+        <div className={`relative bg-white/80 dark:bg-dark-surface/80 backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.07] rounded-2xl overflow-hidden shadow-lg shadow-slate-200/30 dark:shadow-none flex flex-col ${
+          isFullscreen ? 'flex-1' : 'min-h-[520px] h-[calc(100dvh-12rem)] md:h-[calc(100dvh-10.5rem)]'
+        }`}>
 
-          {/* Loading */}
           {loading && (
             <div className="flex-1 flex items-center justify-center gap-3 text-slate-500 dark:text-slate-400">
               <Spinner />
@@ -464,7 +490,6 @@ const AdminConsolidationTemplate = () => {
             </div>
           )}
 
-          {/* Error */}
           {!loading && error && (
             <div className="flex-1 flex items-center justify-center px-8">
               <div className="text-center space-y-2">
@@ -474,7 +499,6 @@ const AdminConsolidationTemplate = () => {
             </div>
           )}
 
-          {/* Table */}
           {!loading && !error && (
             <div className="flex-1 overflow-auto custom-scrollbar">
               <table className="w-full text-left border-collapse min-w-[1400px]">
@@ -482,56 +506,76 @@ const AdminConsolidationTemplate = () => {
 
                   {/* Column group labels */}
                   <tr className="border-b border-slate-200 dark:border-white/[0.06]">
-                    <th
-                      colSpan={5}
-                      className="px-4 py-1.5 bg-slate-100/95 dark:bg-slate-800/95"
-                    >
+                    {/* Source data: #, Program, Accomp.%, TA Schools = 4 cols */}
+                    <th colSpan={4} className="px-4 py-1.5 bg-slate-100/95 dark:bg-slate-800/95">
                       <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                         <Database size={11} weight="bold" />
                         Source Data
                       </span>
                     </th>
-                    <th
-                      colSpan={4}
-                      className="px-4 py-1.5 bg-indigo-50/80 dark:bg-indigo-950/40 border-l-2 border-indigo-300 dark:border-indigo-600/60"
-                    >
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
-                        <PencilSimple size={11} weight="bold" />
-                        Admin Analysis
-                      </span>
-                    </th>
+                    {/* Read-only review columns (Observer: gaps + recommendations) */}
+                    {3 - editableColCount > 0 && (
+                      <th
+                        colSpan={3 - editableColCount}
+                        className="px-4 py-1.5 bg-slate-100/95 dark:bg-slate-800/95 border-l border-slate-200 dark:border-white/[0.06]"
+                      >
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                          <Lock size={11} weight="bold" />
+                          Read-only
+                        </span>
+                      </th>
+                    )}
+                    {/* Editable review columns */}
+                    {editableColCount > 0 && (
+                      <th
+                        colSpan={editableColCount}
+                        className="px-4 py-1.5 bg-indigo-50/80 dark:bg-indigo-950/40 border-l-2 border-indigo-300 dark:border-indigo-600/60"
+                      >
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
+                          <PencilSimple size={11} weight="bold" />
+                          Review Notes
+                        </span>
+                      </th>
+                    )}
                   </tr>
 
                   {/* Column headers */}
                   <tr>
-                    {/* Read-only headers */}
                     <th className="sticky left-0 z-30 px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-white/[0.06] w-10 text-center bg-slate-100/95 dark:bg-slate-800/95">
                       #
                     </th>
                     <th className="sticky left-10 z-30 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 border-b border-r border-slate-200 dark:border-white/[0.06] w-64 bg-slate-100/95 dark:bg-slate-800/95">
                       Program
                     </th>
-                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-r border-slate-200 dark:border-white/[0.06] w-32 bg-slate-100/95 dark:bg-slate-800/95">
-                      {viewMode === 'division' ? 'Scope' : viewMode === 'school' && selectedSchool ? 'School' : 'Schools'}
-                    </th>
-                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-r border-slate-200 dark:border-white/[0.06] w-20 text-center bg-slate-100/95 dark:bg-slate-800/95">
-                      PIRs
-                    </th>
                     <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-r border-slate-200 dark:border-white/[0.06] w-28 text-center bg-slate-100/95 dark:bg-slate-800/95">
                       Accomp. %
                     </th>
-
-                    {/* Editable headers */}
-                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 border-b border-r border-l-2 border-slate-200 dark:border-white/[0.06] border-l-indigo-300 dark:border-l-indigo-600/60 w-28 text-center bg-indigo-50/80 dark:bg-indigo-950/30">
-                      TA %
+                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-r border-slate-200 dark:border-white/[0.06] w-36 text-center bg-slate-100/95 dark:bg-slate-800/95">
+                      TA Schools
                     </th>
-                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 border-b border-r border-slate-200 dark:border-white/[0.06] min-w-[220px] bg-indigo-50/80 dark:bg-indigo-950/30">
+
+                    {/* Gaps — editable for Admin, read-only for Observer */}
+                    <th className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border-b border-r border-slate-200 dark:border-white/[0.06] min-w-[220px] ${
+                      canEdit('gaps')
+                        ? 'text-indigo-500 dark:text-indigo-400 border-l-2 border-l-indigo-300 dark:border-l-indigo-600/60 bg-indigo-50/80 dark:bg-indigo-950/30'
+                        : 'text-slate-400 dark:text-slate-500 bg-slate-100/95 dark:bg-slate-800/95'
+                    }`}>
                       Gaps
                     </th>
-                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 border-b border-r border-slate-200 dark:border-white/[0.06] min-w-[220px] bg-indigo-50/80 dark:bg-indigo-950/30">
+                    {/* Recommendations — editable (Admin) or read-only (Observer) */}
+                    <th className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border-b border-r border-slate-200 dark:border-white/[0.06] min-w-[220px] ${
+                      canEdit('recommendations')
+                        ? 'text-indigo-500 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/30'
+                        : 'text-slate-400 dark:text-slate-500 bg-slate-100/95 dark:bg-slate-800/95'
+                    }`}>
                       Recommendations
                     </th>
-                    <th className="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 border-b border-slate-200 dark:border-white/[0.06] min-w-[220px] bg-indigo-50/80 dark:bg-indigo-950/30">
+                    {/* Management Response — editable (Admin + Observer) */}
+                    <th className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border-b border-slate-200 dark:border-white/[0.06] min-w-[220px] ${
+                      canEdit('management_response')
+                        ? 'text-indigo-500 dark:text-indigo-400 border-l-2 border-l-indigo-300 dark:border-l-indigo-600/60 bg-indigo-50/80 dark:bg-indigo-950/30'
+                        : 'text-slate-400 dark:text-slate-500 bg-slate-100/95 dark:bg-slate-800/95'
+                    }`}>
                       Mgmt Response
                     </th>
                   </tr>
@@ -541,96 +585,108 @@ const AdminConsolidationTemplate = () => {
                   <AnimatePresence mode="popLayout">
                     {visibleRows.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-4 py-16 text-center text-sm text-slate-400 dark:text-slate-500">
+                        <td colSpan={7} className="px-4 py-16 text-center text-sm text-slate-400 dark:text-slate-500">
                           No programs found for this scope in {QUARTER_LABELS[quarter]} {year || defaultYear}.
                         </td>
                       </tr>
                     ) : (
-                      visibleRows.map((row, idx) => (
-                        <Motion.tr
-                          layout
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          key={`row-${row.program_id}`}
-                          className="group/row hover:bg-slate-50/80 dark:hover:bg-white/[0.025] transition-colors"
-                        >
-                          {/* Read-only cells */}
-                          <td className="sticky left-0 z-10 px-3 py-3 text-[11px] font-semibold text-slate-400 dark:text-slate-500 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/90 dark:bg-slate-800/80 group-hover/row:bg-slate-100/80 dark:group-hover/row:bg-slate-800/90 transition-colors">
-                            {idx + 1}
-                          </td>
-                          <td className="sticky left-10 z-10 px-4 py-3 border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/90 dark:bg-slate-800/80 group-hover/row:bg-slate-100/80 dark:group-hover/row:bg-slate-800/90 transition-colors">
-                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-100 leading-snug line-clamp-2">
-                              {row.program}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-slate-800/40">
-                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                              {row.program_owners}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-slate-800/40">
-                            {row.pir_count > 0 ? (
-                              <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 rounded-md bg-slate-200/80 dark:bg-white/[0.08] text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                                {row.pir_count}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-slate-800/40">
-                            {row.accomplishment_rate !== null ? (
-                              <span className={`inline-flex items-center justify-center h-5 px-2 rounded-md text-[11px] font-black ${
-                                row.accomplishment_rate >= 75
-                                  ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                                  : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
-                              }`}>
-                                {Number(row.accomplishment_rate).toFixed(1)}%
-                              </span>
-                            ) : (
-                              <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
-                            )}
-                          </td>
+                      visibleRows.map((row, idx) => {
+                        const taDisplay = row.taSchoolsTotal > 0
+                          ? `${Math.round((row.taSchoolsCount / row.taSchoolsTotal) * 100)}% (${row.taSchoolsCount}/${row.taSchoolsTotal})`
+                          : row.taSchoolsCount > 0
+                            ? `${row.taSchoolsCount} PIR${row.taSchoolsCount !== 1 ? 's' : ''}`
+                            : '—';
 
-                          {/* Editable cells */}
-                          <td className="p-0 border-r border-l-2 border-slate-100 dark:border-white/[0.05] border-l-indigo-200 dark:border-l-indigo-700/40 bg-indigo-50/20 dark:bg-indigo-950/20">
-                            <input
-                              type="text"
-                              value={row.ta_schools_pct}
-                              onChange={e => handleCellChange(row.program_id, 'ta_schools_pct', e.target.value)}
-                              placeholder="e.g. 80%"
-                              className="w-full h-full min-h-[56px] px-4 py-3 text-sm text-center font-semibold text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                            />
-                          </td>
-                          <td className="p-0 border-r border-slate-100 dark:border-white/[0.05] bg-indigo-50/20 dark:bg-indigo-950/20">
-                            <textarea
-                              value={row.gaps}
-                              onChange={e => handleCellChange(row.program_id, 'gaps', e.target.value)}
-                              placeholder="Enter gaps…"
-                              rows={2}
-                              className="w-full h-full min-h-[56px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
-                            />
-                          </td>
-                          <td className="p-0 border-r border-slate-100 dark:border-white/[0.05] bg-indigo-50/20 dark:bg-indigo-950/20">
-                            <textarea
-                              value={row.recommendations}
-                              onChange={e => handleCellChange(row.program_id, 'recommendations', e.target.value)}
-                              placeholder="Enter recommendations…"
-                              rows={2}
-                              className="w-full h-full min-h-[56px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
-                            />
-                          </td>
-                          <td className="p-0 bg-indigo-50/20 dark:bg-indigo-950/20">
-                            <textarea
-                              value={row.management_response}
-                              onChange={e => handleCellChange(row.program_id, 'management_response', e.target.value)}
-                              placeholder="Enter management response…"
-                              rows={2}
-                              className="w-full h-full min-h-[56px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
-                            />
-                          </td>
-                        </Motion.tr>
-                      ))
+                        return (
+                          <Motion.tr
+                            layout
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            key={`row-${row.program_id}`}
+                            className="group/row hover:bg-slate-50/80 dark:hover:bg-white/[0.025] transition-colors"
+                          >
+                            <td className="sticky left-0 z-10 px-3 py-3 text-[11px] font-semibold text-slate-400 dark:text-slate-500 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/90 dark:bg-slate-800/80 group-hover/row:bg-slate-100/80 dark:group-hover/row:bg-slate-800/90 transition-colors">
+                              {idx + 1}
+                            </td>
+                            <td className="sticky left-10 z-10 px-4 py-3 border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/90 dark:bg-slate-800/80 group-hover/row:bg-slate-100/80 dark:group-hover/row:bg-slate-800/90 transition-colors">
+                              <span className="text-sm font-semibold text-slate-700 dark:text-slate-100 leading-snug line-clamp-2">
+                                {row.program}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-slate-800/40">
+                              {row.accomplishment_rate !== null ? (
+                                <span className={`inline-flex items-center justify-center h-5 px-2 rounded-md text-[11px] font-black ${
+                                  row.accomplishment_rate >= 75
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                                    : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                                }`}>
+                                  {Number(row.accomplishment_rate).toFixed(1)}%
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+                              )}
+                            </td>
+                            {/* TA Schools — read-only, computed from PIR data */}
+                            <td className="px-4 py-3 text-center border-r border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-slate-800/40">
+                              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                {taDisplay}
+                              </span>
+                            </td>
+
+                            {/* Gaps — Admin editable, Observer read-only */}
+                            <td className={`p-0 border-r border-slate-100 dark:border-white/[0.05] ${canEdit('gaps') ? 'bg-indigo-50/20 dark:bg-indigo-950/20' : 'bg-slate-50/30 dark:bg-slate-800/20'}`}>
+                              {canEdit('gaps') ? (
+                                <textarea
+                                  value={row.gaps}
+                                  onChange={e => handleCellChange(row.program_id, 'gaps', e.target.value)}
+                                  placeholder="Enter gaps…"
+                                  rows={2}
+                                  className="w-full h-full min-h-[56px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
+                                />
+                              ) : (
+                                <div className="min-h-[56px] px-4 py-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
+                                  {row.gaps || <span className="text-slate-300 dark:text-slate-600">—</span>}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Recommendations */}
+                            <td className={`p-0 border-r border-slate-100 dark:border-white/[0.05] ${canEdit('recommendations') ? 'bg-indigo-50/20 dark:bg-indigo-950/20' : 'bg-slate-50/30 dark:bg-slate-800/20'}`}>
+                              {canEdit('recommendations') ? (
+                                <textarea
+                                  value={row.recommendations}
+                                  onChange={e => handleCellChange(row.program_id, 'recommendations', e.target.value)}
+                                  placeholder="Enter recommendations…"
+                                  rows={2}
+                                  className="w-full h-full min-h-[56px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
+                                />
+                              ) : (
+                                <div className="min-h-[56px] px-4 py-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
+                                  {row.recommendations || <span className="text-slate-300 dark:text-slate-600">—</span>}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Management Response */}
+                            <td className={`p-0 ${canEdit('management_response') ? 'bg-indigo-50/20 dark:bg-indigo-950/20' : 'bg-slate-50/30 dark:bg-slate-800/20'}`}>
+                              {canEdit('management_response') ? (
+                                <textarea
+                                  value={row.management_response}
+                                  onChange={e => handleCellChange(row.program_id, 'management_response', e.target.value)}
+                                  placeholder="Enter management response…"
+                                  rows={2}
+                                  className="w-full h-full min-h-[56px] px-4 py-3 text-xs text-slate-700 dark:text-slate-200 bg-transparent border-none focus:ring-2 focus:ring-inset focus:ring-indigo-400 dark:focus:ring-indigo-500 focus:bg-indigo-50 dark:focus:bg-indigo-900/30 outline-none transition-all resize-none placeholder:text-slate-300 dark:placeholder:text-slate-600 leading-relaxed"
+                                />
+                              ) : (
+                                <div className="min-h-[56px] px-4 py-3 text-xs text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
+                                  {row.management_response || <span className="text-slate-300 dark:text-slate-600">—</span>}
+                                </div>
+                              )}
+                            </td>
+                          </Motion.tr>
+                        );
+                      })
                     )}
                   </AnimatePresence>
                 </tbody>
@@ -642,11 +698,15 @@ const AdminConsolidationTemplate = () => {
           {!loading && !error && (
             <div className="px-4 py-2 bg-slate-50/80 dark:bg-white/[0.02] border-t border-slate-200 dark:border-white/[0.05] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3 text-[11px] font-medium text-slate-400 dark:text-slate-500">
-                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-500">
-                  <CheckCircle size={13} weight="fill" />
-                  Auto-saved
-                </span>
-                <span className="w-px h-3 bg-slate-200 dark:bg-white/[0.08]" />
+                {editableFields.size > 0 && (
+                  <>
+                    <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-500">
+                      <CheckCircle size={13} weight="fill" />
+                      Auto-saved
+                    </span>
+                    <span className="w-px h-3 bg-slate-200 dark:bg-white/[0.08]" />
+                  </>
+                )}
                 <span>{visibleRows.length} program{visibleRows.length !== 1 ? 's' : ''}</span>
                 <span className="w-px h-3 bg-slate-200 dark:bg-white/[0.08]" />
                 <span>{scopeLabel}</span>
@@ -655,11 +715,17 @@ const AdminConsolidationTemplate = () => {
                   {QUARTER_LABELS[quarter]} {year}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-300 dark:text-slate-600">
-                <span className="w-2 h-2 rounded-sm bg-indigo-200 dark:bg-indigo-800/60 inline-block" />
-                Editable
-                <span className="w-2 h-2 rounded-sm bg-slate-200 dark:bg-slate-700/60 inline-block ml-2" />
-                Read-only
+              <div className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-wide text-slate-300 dark:text-slate-600">
+                {editableFields.size > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-sm bg-indigo-200 dark:bg-indigo-800/60 inline-block" />
+                    Editable by you
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-sm bg-slate-200 dark:bg-slate-700/60 inline-block" />
+                  Read-only
+                </span>
               </div>
             </div>
           )}
