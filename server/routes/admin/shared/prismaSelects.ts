@@ -26,15 +26,24 @@ export const REVIEW_QUEUE_INCLUDE = {
   },
 } as const;
 
+const SCHOOL_HEAD_SELECT = {
+  select: { first_name: true, last_name: true, middle_initial: true, name: true },
+  where: { role: "School" },
+  take: 1,
+} as const;
+
 export const AIP_SUBMISSION_INCLUDE = {
-  school: { include: { cluster: true } },
+  school: { include: { cluster: true, users: SCHOOL_HEAD_SELECT } },
   program: true,
   created_by: true,
 } as const;
 
 export const PIR_SUBMISSION_INCLUDE = {
   aip: {
-    include: { school: { include: { cluster: true } }, program: true },
+    include: {
+      school: { include: { cluster: true, users: SCHOOL_HEAD_SELECT } },
+      program: true,
+    },
   },
   created_by: true,
 } as const;

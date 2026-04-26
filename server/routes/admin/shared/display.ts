@@ -12,7 +12,7 @@ export function buildSubmittedBy(
     | undefined,
 ): string {
   if (!user) return "—";
-  if (user.role === "Division Personnel" && user.first_name && user.last_name) {
+  if (user.first_name && user.last_name) {
     const middleInitial = user.middle_initial ? ` ${user.middle_initial}.` : "";
     return `${user.first_name}${middleInitial} ${user.last_name}`;
   }
