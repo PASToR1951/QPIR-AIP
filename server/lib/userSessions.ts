@@ -8,10 +8,6 @@ import { getClientIp } from "./clientIp.ts";
 
 export const SESSION_MAX_AGE_SECONDS = 86400;
 export const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
-export const BROAD_ACCESS_IDLE_TIMEOUT_SECONDS = 15 * 60;
-export const DATA_ENTRY_IDLE_TIMEOUT_SECONDS = 30 * 60;
-
-const DATA_ENTRY_ROLES = new Set(["School", "Division Personnel"]);
 
 interface SessionUser {
   id: number;
@@ -32,8 +28,7 @@ export type SessionValidationFailure =
   | "expired"
   | "user_mismatch"
   | "inactive_user"
-  | "role_mismatch"
-  | "idle_expired";
+  | "role_mismatch";
 
 export interface ValidatableSession {
   user_id: number;
@@ -44,29 +39,6 @@ export interface ValidatableSession {
     is_active: boolean;
     role: string;
   };
-}
-
-export function getSessionIdleTimeoutSeconds(role: string): number {
-  return DATA_ENTRY_ROLES.has(role)
-    ? DATA_ENTRY_IDLE_TIMEOUT_SECONDS
-    : BROAD_ACCESS_IDLE_TIMEOUT_SECONDS;
-}
-
-export function getSessionIdleExpiresAt(
-  lastSeenAt: Date,
-  role: string,
-): number {
-  return Math.floor(lastSeenAt.getTime() / 1000) +
-    getSessionIdleTimeoutSeconds(role);
-}
-
-export function isSessionIdleExpired(
-  lastSeenAt: Date,
-  role: string,
-  now = new Date(),
-): boolean {
-  return getSessionIdleExpiresAt(lastSeenAt, role) <=
-    Math.floor(now.getTime() / 1000);
 }
 
 export function getSessionValidationFailure(
@@ -80,9 +52,6 @@ export function getSessionValidationFailure(
   if (session.user_id !== claim.id) return "user_mismatch";
   if (!session.user.is_active) return "inactive_user";
   if (session.user.role !== claim.role) return "role_mismatch";
-  if (isSessionIdleExpired(session.last_seen_at, session.user.role, now)) {
-    return "idle_expired";
-  }
   return null;
 }
 
@@ -148,8 +117,6 @@ export async function createSessionCookie(
   user: SessionUser,
 ): Promise<{
   expiresAt: number;
-  idleExpiresAt: number;
-  idleTimeoutSeconds: number;
   sessionId: number;
   sid: string;
   token: string;
@@ -157,9 +124,7 @@ export async function createSessionCookie(
   const sid = randomHex(32);
   const now = new Date();
   const nowSeconds = Math.floor(now.getTime() / 1000);
-  const idleTimeoutSeconds = getSessionIdleTimeoutSeconds(user.role);
   const expiresAt = nowSeconds + SESSION_MAX_AGE_SECONDS;
-  const idleExpiresAt = nowSeconds + idleTimeoutSeconds;
   const token = jwt.sign(
     {
       id: user.id,
@@ -188,8 +153,6 @@ export async function createSessionCookie(
   setCookie(c, "token", token, tokenCookieOptions(c));
   return {
     expiresAt,
-    idleExpiresAt,
-    idleTimeoutSeconds,
     sessionId: session.id,
     sid,
     token,

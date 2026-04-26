@@ -5,9 +5,6 @@ Deno.env.set(
 );
 
 const {
-  BROAD_ACCESS_IDLE_TIMEOUT_SECONDS,
-  DATA_ENTRY_IDLE_TIMEOUT_SECONDS,
-  getSessionIdleTimeoutSeconds,
   getSessionValidationFailure,
 } = await import("./userSessions.ts");
 
@@ -57,39 +54,6 @@ function buildSession(
     ...overrides,
   };
 }
-
-Deno.test("getSessionIdleTimeoutSeconds uses stricter limits for broad-access roles", () => {
-  assertEquals(
-    getSessionIdleTimeoutSeconds("Admin"),
-    BROAD_ACCESS_IDLE_TIMEOUT_SECONDS,
-    "Admin should use the broad-access idle timeout",
-  );
-  assertEquals(
-    getSessionIdleTimeoutSeconds("Observer"),
-    BROAD_ACCESS_IDLE_TIMEOUT_SECONDS,
-    "Observer should use the broad-access idle timeout",
-  );
-  assertEquals(
-    getSessionIdleTimeoutSeconds("CES-SGOD"),
-    BROAD_ACCESS_IDLE_TIMEOUT_SECONDS,
-    "CES roles should use the broad-access idle timeout",
-  );
-  assertEquals(
-    getSessionIdleTimeoutSeconds("Cluster Coordinator"),
-    BROAD_ACCESS_IDLE_TIMEOUT_SECONDS,
-    "Cluster Coordinator should use the broad-access idle timeout",
-  );
-  assertEquals(
-    getSessionIdleTimeoutSeconds("School"),
-    DATA_ENTRY_IDLE_TIMEOUT_SECONDS,
-    "School should use the regular data-entry idle timeout",
-  );
-  assertEquals(
-    getSessionIdleTimeoutSeconds("Division Personnel"),
-    DATA_ENTRY_IDLE_TIMEOUT_SECONDS,
-    "Division Personnel should use the regular data-entry idle timeout",
-  );
-});
 
 Deno.test("getSessionValidationFailure accepts an active matching session", () => {
   assertEquals(
@@ -147,29 +111,14 @@ Deno.test("getSessionValidationFailure rejects role-mismatched claims", () => {
   );
 });
 
-Deno.test("getSessionValidationFailure rejects idle-expired broad-access sessions", () => {
+Deno.test("getSessionValidationFailure accepts sessions regardless of idle age", () => {
   assertEquals(
     getSessionValidationFailure(
-      buildSession({ last_seen_at: minutesAgo(15) }),
+      buildSession({ last_seen_at: minutesAgo(12 * 60) }),
       { id: 10, role: "Admin" },
       NOW,
     ),
-    "idle_expired",
-    "Admin sessions should idle-expire after 15 minutes",
-  );
-});
-
-Deno.test("getSessionValidationFailure rejects idle-expired regular sessions", () => {
-  assertEquals(
-    getSessionValidationFailure(
-      buildSession({
-        last_seen_at: minutesAgo(30),
-        user: { is_active: true, role: "School" },
-      }),
-      { id: 10, role: "School" },
-      NOW,
-    ),
-    "idle_expired",
-    "School sessions should idle-expire after 30 minutes",
+    null,
+    "sessions should stay valid until absolute expiry, revocation, or account changes",
   );
 });

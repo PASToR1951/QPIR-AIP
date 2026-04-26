@@ -5,8 +5,6 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../db/client.ts";
 import { JWT_SECRET } from "./config.ts";
 import {
-  getSessionIdleExpiresAt,
-  getSessionIdleTimeoutSeconds,
   getSessionValidationFailure,
   hashSessionToken,
   SESSION_TOUCH_INTERVAL_MS,
@@ -19,8 +17,6 @@ export interface TokenPayload {
   cluster_id?: number | null;
   sid?: string;
   sessionId?: number;
-  idleExpiresAt?: number;
-  idleTimeoutSeconds?: number;
 }
 
 const VALID_ROLES = [
@@ -100,19 +96,12 @@ export async function getUserFromToken(
     });
 
     const failure = getSessionValidationFailure(session, payload, now);
-    if (failure === "idle_expired" && session && !session.revoked_at) {
-      await prisma.userSession.update({
-        where: { id: session.id },
-        data: { revoked_at: now },
-      }).catch(() => {});
-    }
     if (failure || !session) {
       return null;
     }
 
     const shouldTouch = now.getTime() - session.last_seen_at.getTime() >=
       SESSION_TOUCH_INTERVAL_MS;
-    const effectiveLastSeenAt = shouldTouch ? now : session.last_seen_at;
 
     if (shouldTouch) {
       prisma.userSession.update({
@@ -124,11 +113,6 @@ export async function getUserFromToken(
     return {
       ...payload,
       sessionId: session.id,
-      idleExpiresAt: getSessionIdleExpiresAt(
-        effectiveLastSeenAt,
-        session.user.role,
-      ),
-      idleTimeoutSeconds: getSessionIdleTimeoutSeconds(session.user.role),
     };
   } catch {
     return null;

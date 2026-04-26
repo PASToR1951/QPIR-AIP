@@ -125,19 +125,16 @@ async function completeSessionLogin(
   user: Record<string, unknown>,
   message = "Login successful",
 ) {
-  const { expiresAt, idleExpiresAt, idleTimeoutSeconds } =
-    await createSessionCookie(c, {
-      id: Number(user.id),
-      role: String(user.role),
-      school_id: (user.school_id as number | null | undefined) ?? null,
-      cluster_id: (user.cluster_id as number | null | undefined) ?? null,
-      school: user.school as { cluster_id?: number | null } | null | undefined,
-    });
+  const { expiresAt } = await createSessionCookie(c, {
+    id: Number(user.id),
+    role: String(user.role),
+    school_id: (user.school_id as number | null | undefined) ?? null,
+    cluster_id: (user.cluster_id as number | null | undefined) ?? null,
+    school: user.school as { cluster_id?: number | null } | null | undefined,
+  });
   return c.json({
     message,
     expiresAt,
-    idleExpiresAt,
-    idleTimeoutSeconds,
     user: buildSessionUserPayload(user),
   });
 }
@@ -390,8 +387,6 @@ authRoutes.get("/me", async (c) => {
       must_change_password: user.must_change_password,
       ...buildOnboardingPayload(user as Record<string, unknown>),
       expiresAt,
-      idleExpiresAt: tokenUser.idleExpiresAt ?? expiresAt,
-      idleTimeoutSeconds: tokenUser.idleTimeoutSeconds ?? null,
     });
   } catch (error) {
     logger.error("GET /me failed", error);
