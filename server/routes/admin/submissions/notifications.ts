@@ -127,32 +127,6 @@ export async function pushAIPStatusNotification(
   pushNotification(created);
 }
 
-// ── PIR remarks notification ───────────────────────────────────────────────
-
-export async function pushPIRRemarksNotification(
-  pir: {
-    id: number;
-    quarter: string;
-    created_by_user_id: number | null;
-    aip: { program: { title: string }; school?: { name: string } | null };
-  },
-) {
-  if (!pir.created_by_user_id) return;
-  const school = pir.aip.school?.name ?? "your school";
-  const created = await prisma.notification.create({
-    data: {
-      user_id: pir.created_by_user_id,
-      title: "Remarks Added to Your PIR",
-      message:
-        `An admin has added remarks to your PIR for ${pir.aip.program.title} (${pir.quarter}) from ${school}.`,
-      type: "remarked",
-      entity_id: pir.id,
-      entity_type: "pir",
-    },
-  });
-  pushNotification(created);
-}
-
 // ── AIP edit-request notifications ────────────────────────────────────────
 
 export async function pushAIPEditApprovedNotification(aip: {

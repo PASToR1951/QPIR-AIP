@@ -32,10 +32,12 @@ listRouter.get("/submissions", async (c) => {
       pirWhere,
     } = buildSubmissionFilters(c);
 
-    const [aipTotal, pirTotal] = await Promise.all([
+    const [aipTotal, pirTotal, divisionConfig] = await Promise.all([
       prisma.aIP.count({ where: aipWhere }),
       prisma.pIR.count({ where: pirWhere }),
+      prisma.divisionConfig.findFirst({ select: { app_logo: true } }),
     ]);
+    const divisionLogo = divisionConfig?.app_logo ?? null;
 
     let aips: unknown[] = [];
     if (!type || type === "aip" || type === "all") {
@@ -59,8 +61,8 @@ listRouter.get("/submissions", async (c) => {
       });
     }
 
-    const normalizedAIPs = (aips as RawAIP[]).map(normalizeAIP);
-    const normalizedPIRs = (pirs as RawPIR[]).map(normalizePIR);
+    const normalizedAIPs = (aips as RawAIP[]).map(a => normalizeAIP(a, divisionLogo));
+    const normalizedPIRs = (pirs as RawPIR[]).map(p => normalizePIR(p, divisionLogo));
 
     const combined = [...normalizedAIPs, ...normalizedPIRs].sort(
       (a, b) =>

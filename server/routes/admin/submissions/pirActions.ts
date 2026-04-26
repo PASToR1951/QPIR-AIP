@@ -11,8 +11,6 @@ import { HttpError } from "../../../lib/errors.ts";
 import { sanitizeObject } from "../../../lib/sanitize.ts";
 import { writeAuditLog } from "../shared/audit.ts";
 import { documentWhereFromRef } from "../shared/documentRefs.ts";
-import { validateTextLength } from "./validation.ts";
-import { pushPIRRemarksNotification } from "./notifications.ts";
 import { adminAsyncHandler } from "./asyncHandler.ts";
 import { resolvePresentedValue } from "./presented.ts";
 
@@ -29,58 +27,6 @@ async function readOptionalBody(c: Context) {
     throw new HttpError(400, "Invalid JSON body", "BAD_REQUEST");
   }
 }
-
-pirActionsRouter.patch(
-  "/pirs/:id/remarks",
-  adminAsyncHandler(
-    "PATCH PIR remarks failed",
-    "Failed to update PIR remarks",
-    async (c) => {
-      const admin = (await getUserFromToken(c))!;
-      const ref = c.req.param("id");
-      const { remarks } = sanitizeObject(await c.req.json());
-
-      if (typeof remarks !== "string") {
-        return c.json({ error: "remarks must be a string" }, 400);
-      }
-
-      const lengthError = validateTextLength(remarks, "Remarks");
-      if (lengthError) return c.json({ error: lengthError }, 400);
-
-      const currentPir = await prisma.pIR.findUnique({
-        where: documentWhereFromRef(ref),
-        select: { id: true, aip_id: true, quarter: true },
-      });
-      if (!currentPir) return c.json({ error: "PIR not found" }, 404);
-      const id = currentPir.id;
-
-      const pir = await withAdvisoryLock(
-        LOCK_NAMESPACE.PIR,
-        pirResourceKeyFromRecord(currentPir),
-        async (tx) => {
-          const existingPir = await tx.pIR.findUnique({ where: { id } });
-          if (!existingPir) {
-            throw new HttpError(404, "PIR not found", "NOT_FOUND");
-          }
-          return tx.pIR.update({
-            where: { id },
-            data: { remarks },
-            include: { aip: { include: { program: true, school: true } } },
-          });
-        },
-      );
-
-      if (remarks.trim()) {
-        await pushPIRRemarksNotification(pir);
-      }
-
-      await writeAuditLog(admin.id, "update_remarks", "PIR", id, { remarks }, {
-        ctx: c,
-      });
-      return c.json({ success: true, remarks: pir.remarks });
-    },
-  ),
-);
 
 pirActionsRouter.patch(
   "/pirs/:id/presented",
@@ -125,54 +71,6 @@ pirActionsRouter.patch(
       }, { ctx: c });
 
       return c.json({ success: true, presented: updated.presented });
-    },
-  ),
-);
-
-pirActionsRouter.patch(
-  "/pirs/:id/activity-notes",
-  adminAsyncHandler(
-    "PATCH PIR activity notes failed",
-    "Failed to update PIR activity notes",
-    async (c) => {
-      const admin = (await getUserFromToken(c))!;
-      const pirRef = c.req.param("id");
-      const { activity_review_id, notes } = sanitizeObject(await c.req.json());
-
-      if (!activity_review_id || typeof notes !== "string") {
-        return c.json(
-          { error: "activity_review_id and notes are required" },
-          400,
-        );
-      }
-
-      const lengthError = validateTextLength(notes, "Notes");
-      if (lengthError) return c.json({ error: lengthError }, 400);
-
-      const currentPir = await prisma.pIR.findUnique({
-        where: documentWhereFromRef(pirRef),
-        select: { id: true, aip_id: true, quarter: true },
-      });
-      if (!currentPir) return c.json({ error: "PIR not found" }, 404);
-      const pirId = currentPir.id;
-
-      await withAdvisoryLock(
-        LOCK_NAMESPACE.PIR,
-        pirResourceKeyFromRecord(currentPir),
-        async (tx) => {
-          await tx.pIRActivityReview.update({
-            where: { id: activity_review_id },
-            data: { admin_notes: notes },
-          });
-        },
-      );
-
-      await writeAuditLog(admin.id, "update_activity_notes", "PIR", pirId, {
-        activity_review_id,
-        notes,
-      }, { ctx: c });
-
-      return c.json({ ok: true });
     },
   ),
 );

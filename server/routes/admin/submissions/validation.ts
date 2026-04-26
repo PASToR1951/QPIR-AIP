@@ -22,18 +22,3 @@ export function validateTextLength(
     ? `${fieldName} cannot exceed ${MAX_TEXT_LENGTH} characters`
     : null;
 }
-
-// ── Remarks merge ──────────────────────────────────────────────────────────
-// When a status change carries optional feedback and the PIR already has
-// remarks, we merge rather than overwrite so no prior text is lost.
-
-export function mergeRemarks(
-  existing: string,
-  incoming: string,
-): string | undefined {
-  if (!incoming) return undefined;
-  if (!existing || existing === incoming || existing.includes(incoming)) {
-    return existing || incoming;
-  }
-  return `${existing}\n\n${incoming}`;
-}

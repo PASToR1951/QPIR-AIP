@@ -14,6 +14,7 @@ type SchoolShape = {
   name: string;
   logo?: string | null;
   cluster?: ClusterShape;
+  users?: UserShape[];
 } | null;
 
 type UserShape = {
@@ -31,6 +32,7 @@ export type RawAIP = {
   status: string;
   year: number;
   created_at: Date;
+  division?: string | null;
   school?: SchoolShape;
   program: { id: number; title: string };
   created_by?: UserShape;
@@ -42,9 +44,9 @@ export type RawPIR = {
   status: string;
   quarter: string;
   created_at: Date;
-  remarks?: string | null;
   aip: {
     year: number;
+    division?: string | null;
     school?: SchoolShape;
     program: { id: number; title: string };
   };
@@ -53,7 +55,8 @@ export type RawPIR = {
 
 // ── Normalizers ────────────────────────────────────────────────────────────
 
-export function normalizeAIP(aip: RawAIP) {
+export function normalizeAIP(aip: RawAIP, divisionLogo: string | null = null) {
+  const schoolId = aip.school?.id ?? null;
   return {
     id: aip.public_id,
     internalId: aip.id,
@@ -62,7 +65,10 @@ export function normalizeAIP(aip: RawAIP) {
     status: aip.status,
     year: aip.year,
     quarter: null,
-    schoolId: aip.school?.id ?? null,
+    schoolId,
+    divisionLogo: schoolId ? null : divisionLogo,
+    division: aip.division ?? null,
+    schoolHead: aip.school?.users?.[0] ? buildSubmittedBy(aip.school.users[0]) : null,
     school: aip.school?.name ?? "Division",
     schoolLogo: aip.school?.logo ?? null,
     cluster: aip.school?.cluster
@@ -78,7 +84,8 @@ export function normalizeAIP(aip: RawAIP) {
   };
 }
 
-export function normalizePIR(pir: RawPIR) {
+export function normalizePIR(pir: RawPIR, divisionLogo: string | null = null) {
+  const schoolId = pir.aip.school?.id ?? null;
   return {
     id: pir.public_id,
     internalId: pir.id,
@@ -87,7 +94,10 @@ export function normalizePIR(pir: RawPIR) {
     status: pir.status,
     year: pir.aip.year,
     quarter: pir.quarter,
-    schoolId: pir.aip.school?.id ?? null,
+    schoolId,
+    divisionLogo: schoolId ? null : divisionLogo,
+    division: pir.aip.division ?? null,
+    schoolHead: pir.aip.school?.users?.[0] ? buildSubmittedBy(pir.aip.school.users[0]) : null,
     school: pir.aip.school?.name ?? "Division",
     schoolLogo: pir.aip.school?.logo ?? null,
     cluster: pir.aip.school?.cluster
@@ -100,6 +110,5 @@ export function normalizePIR(pir: RawPIR) {
     programId: pir.aip.program.id,
     dateSubmitted: pir.created_at,
     submittedBy: buildSubmittedBy(pir.created_by),
-    has_remarks: !!(pir.remarks && pir.remarks.trim()),
   };
 }

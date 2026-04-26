@@ -5,7 +5,6 @@ import {
 } from "./shared/guards.ts";
 import { listRouter } from "./submissions/list.ts";
 import { detailRouter } from "./submissions/detail.ts";
-import { observerNotesRouter } from "./submissions/observerNotes.ts";
 import { statusRouter } from "./submissions/status.ts";
 import { aipEditRouter } from "./submissions/aipEdit.ts";
 import { pirActionsRouter } from "./submissions/pirActions.ts";
@@ -18,20 +17,16 @@ export const adminRoutes = new Hono();
 observerRoutes.use("/submissions", adminOrObserverOnly);
 observerRoutes.use("/submissions/export", adminOrObserverOnly);
 observerRoutes.use("/submissions/:id", adminOrObserverOnly);
-observerRoutes.use("/submissions/:id/observer-notes", adminOrObserverOnly);
 
 adminRoutes.use("/submissions/:id/status", adminOnly);
 adminRoutes.use("/aips/:id/approve-edit", adminOnly);
 adminRoutes.use("/aips/:id/deny-edit", adminOnly);
-adminRoutes.use("/pirs/:id/remarks", adminOnly);
 adminRoutes.use("/pirs/:id/presented", adminOnly);
-adminRoutes.use("/pirs/:id/activity-notes", adminOnly);
 
 // ── Route handler mounts ───────────────────────────────────────────────────
 
 observerRoutes.route("/", listRouter);
 observerRoutes.route("/", detailRouter);
-observerRoutes.route("/", observerNotesRouter);
 
 adminRoutes.route("/", statusRouter);
 adminRoutes.route("/", aipEditRouter);
