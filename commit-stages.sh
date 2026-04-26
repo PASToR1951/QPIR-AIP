@@ -5,14 +5,14 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMIT_BATCH="$REPO_ROOT/commit-batch.sh"
 
 WAVE_ORDER=(
-  "root"
-  "server-migrations"
-  "server-infra"
-  "server-data"
-  "server-admin"
+  "schema"
+  "server-sessions"
+  "server-admin-shared"
+  "server-admin-routes"
+  "server-admin-submissions"
   "frontend"
-  "server-tests"
   "docs"
+  "root"
 )
 
 SUMMARY_ITEMS=()
@@ -32,14 +32,14 @@ Commits the working tree in predefined waves and delegates each wave to
 commit-batch.sh so every category gets its own batch note and commit.
 
 Default waves:
-  root               repository-root commit tooling and cleanup
-  server-migrations  server/prisma/migrations
-  server-infra       shared server libraries and concurrency primitives
-  server-data        user data routes and shared data-route helpers
-  server-admin       admin submission/review routes
-  frontend           react-app UI/API caller changes
-  server-tests       Deno tests and guarded DB integration coverage
-  docs               targeted documentation updates
+  schema                 prisma schema cleanup and migration purges
+  server-sessions        session library and auth route hardening
+  server-admin-shared    admin shared guards, display, and selects
+  server-admin-routes    core admin routes: overview, sessions, users, PIR review
+  server-admin-submissions  admin submissions route cleanup
+  frontend               frontend admin UI and PIR review overhaul
+  docs                   session restore and logout documentation
+  root                   root tooling: commit-stages.sh update
 
 Options:
   --wave NAME        Commit only this wave. Can be repeated.
@@ -75,14 +75,14 @@ require_value() {
 
 wave_title() {
   case "$1" in
-    root) printf 'root commit tooling and cleanup' ;;
-    server-migrations) printf 'Prisma migration updates' ;;
-    server-infra) printf 'server concurrency infrastructure' ;;
-    server-data) printf 'data-route concurrency hardening' ;;
-    server-admin) printf 'admin-route concurrency hardening' ;;
-    frontend) printf 'frontend idempotent caller updates' ;;
-    server-tests) printf 'server concurrency test coverage' ;;
-    docs) printf 'targeted concurrency documentation' ;;
+    schema)                 printf 'schema cleanup and migration purges' ;;
+    server-sessions)        printf 'session library and auth route hardening' ;;
+    server-admin-shared)    printf 'admin shared guards, display, and selects cleanup' ;;
+    server-admin-routes)    printf 'core admin routes: overview, sessions, users, PIR review' ;;
+    server-admin-submissions) printf 'admin submissions route cleanup' ;;
+    frontend)               printf 'frontend admin UI and PIR review overhaul' ;;
+    docs)                   printf 'session restore and logout documentation' ;;
+    root)                   printf 'root tooling: commit-stages.sh for this release cycle' ;;
     *) die "Unknown wave: $1" ;;
   esac
 }
@@ -96,68 +96,61 @@ wave_commit_message() {
   fi
 
   case "$wave" in
-    root) printf 'chore(tooling): add categorized commit batching' ;;
-    server-migrations) printf 'chore(db): commit migration wave' ;;
-    server-infra) printf 'feat(server): add concurrency hardening primitives' ;;
-    server-data) printf 'fix(data): serialize AIP and PIR writes' ;;
-    server-admin) printf 'fix(admin): coordinate submission review writes' ;;
-    frontend) printf 'fix(frontend): send explicit PIR presented values' ;;
-    server-tests) printf 'test(server): cover AIP and PIR concurrency hardening' ;;
-    docs) printf 'docs(concurrency): document advisory lock hardening' ;;
+    schema)                   printf 'chore(db): purge observer review notes and consolidation TA columns' ;;
+    server-sessions)          printf 'feat(server): harden session restore and multi-device logout' ;;
+    server-admin-shared)      printf 'refactor(admin): remove observer access helper, update guards and selects' ;;
+    server-admin-routes)      printf 'refactor(admin): clean up overview, sessions, users, consolidation, and PIR review routes' ;;
+    server-admin-submissions) printf 'refactor(admin): remove observer notes from submissions, clean up list and validation' ;;
+    frontend)                 printf 'feat(frontend): overhaul admin submissions, PIR review, and session management UI' ;;
+    docs)                     printf 'docs(sessions): add SECURE_SESSION_RESTORE_AND_LOGOUT guide' ;;
+    root)                     printf 'chore(tooling): update commit-stages.sh for session and admin overhaul waves' ;;
     *) die "Unknown wave: $wave" ;;
   esac
 }
 
 wave_paths() {
   case "$1" in
-    root)
-      printf '%s\n' '.' ':(top,exclude)react-app/**' ':(top,exclude)server/**' ':(top,exclude)docs/**'
-      ;;
-    server-migrations)
-      printf '%s\n' 'server/prisma/migrations'
-      ;;
-    server-infra)
+    schema)
       printf '%s\n' \
-        'server/lib/advisoryLock.ts' \
-        'server/lib/errors.ts' \
-        'server/lib/prismaErrors.ts' \
-        'server/lib/quarters.ts'
+        'server/prisma/schema.prisma' \
+        'server/prisma/migrations'
       ;;
-    server-data)
+    server-sessions)
       printf '%s\n' \
-        'server/routes/data/aips.ts' \
-        'server/routes/data/drafts.ts' \
-        'server/routes/data/lookups.ts' \
-        'server/routes/data/pirs.ts' \
-        'server/routes/data/shared/asyncHandler.ts' \
-        'server/routes/data/shared/lookups.ts'
+        'server/lib/auth.ts' \
+        'server/lib/userSessions.ts' \
+        'server/lib/userSessions.test.ts' \
+        'server/routes/auth.ts'
       ;;
-    server-admin)
+    server-admin-shared)
       printf '%s\n' \
+        'server/routes/admin/shared'
+      ;;
+    server-admin-routes)
+      printf '%s\n' \
+        'server/routes/admin/consolidationNotes.ts' \
+        'server/routes/admin/logs/actionCatalog.ts' \
+        'server/routes/admin/overview.ts' \
         'server/routes/admin/pirReview.ts' \
-        'server/routes/admin/submissions/aipEdit.ts' \
-        'server/routes/admin/submissions/asyncHandler.ts' \
-        'server/routes/admin/submissions/pirActions.ts' \
-        'server/routes/admin/submissions/presented.ts' \
-        'server/routes/admin/submissions/status.ts'
+        'server/routes/admin/security.test.ts' \
+        'server/routes/admin/sessions.ts' \
+        'server/routes/admin/users.ts'
+      ;;
+    server-admin-submissions)
+      printf '%s\n' \
+        'server/routes/admin/submissions.ts' \
+        'server/routes/admin/submissions'
       ;;
     frontend)
       printf '%s\n' \
-        'react-app/src/admin/pages/adminReports/ClusterPIRSummary.jsx' \
-        'react-app/src/admin/pages/pirReview/usePirReviewActions.js' \
-        'react-app/src/lib/errorMessages.js'
-      ;;
-    server-tests)
-      printf '%s\n' \
-        'server/concurrency.integration.test.ts' \
-        'server/lib/advisoryLock.test.ts' \
-        'server/lib/prismaErrors.test.ts' \
-        'server/lib/quarters.test.ts' \
-        'server/routes/admin/submissions/pirActions.test.ts' \
-        'server/routes/data/shared/asyncHandler.test.ts'
+        'react-app/src'
       ;;
     docs)
-      printf '%s\n'
+      printf '%s\n' \
+        'docs/SECURE_SESSION_RESTORE_AND_LOGOUT.md'
+      ;;
+    root)
+      printf '%s\n' '.' ':(top,exclude)react-app/**' ':(top,exclude)server/**' ':(top,exclude)docs/**'
       ;;
     *)
       die "Unknown wave: $1"
@@ -167,12 +160,6 @@ wave_paths() {
 
 wave_force_paths() {
   case "$1" in
-    root)
-      printf '%s\n' 'commit-batch.sh'
-      ;;
-    docs)
-      printf '%s\n' 'docs/CONCURRENCY_AND_RACE_CONDITIONS.md'
-      ;;
     *)
       printf '%s\n'
       ;;
@@ -181,43 +168,46 @@ wave_force_paths() {
 
 wave_summary() {
   case "$1" in
-    root)
+    schema)
       printf '%s\n' \
-        'Added the missing commit-batch.sh helper for scoped staging, batch-note generation, duplicate-note protection, and detailed commit message bodies.' \
-        'Split commit-stages.sh into concurrency-focused waves so tooling, server infrastructure, data routes, admin routes, frontend callers, tests, and docs can land separately.'
+        'Removed the AdminObserverReviewNote model and committed its purge migration.' \
+        'Dropped the consolidation TA-schools percentage columns no longer referenced in the UI.'
       ;;
-    server-migrations)
+    server-sessions)
       printf '%s\n' \
-        'Captured Prisma migration changes separately so schema movement stays isolated from runtime logic.'
+        'Updated session library to support secure session restore and explicit multi-device logout.' \
+        'Hardened auth route token validation and session cookie handling.'
       ;;
-    server-infra)
+    server-admin-shared)
       printf '%s\n' \
-        'Added shared HttpError/ConflictError handling, known Prisma P2002 conflict parsing, PostgreSQL advisory-lock helpers, and canonical quarter normalization support.' \
-        'Centralized AIP/PIR resource-key generation so user and admin write paths coordinate on the same hashed lock identities.'
+        'Deleted observerAccess helper now that observer review notes are removed.' \
+        'Updated shared guards and Prisma selects to match the cleaned-up schema.'
       ;;
-    server-data)
+    server-admin-routes)
       printf '%s\n' \
-        'Wrapped AIP/PIR submit, draft, update, and draft-delete flows in transaction-scoped advisory locks keyed from the actual uniqueness rules.' \
-        'Moved existence checks, status decisions, parent writes, and child delete/recreate sequences inside the same transaction while preserving post-commit side effects.'
+        'Updated admin overview, sessions, users, consolidation notes, and PIR review routes.' \
+        'Cleaned up action catalog log entries; updated security tests.'
       ;;
-    server-admin)
+    server-admin-submissions)
       printf '%s\n' \
-        'Coordinated admin status, remarks, presentation, edit-permission, and activity-note writes with the same AIP/PIR resource locks used by data routes.' \
-        'Kept existing last-write-wins admin status behavior while making returned/edit and remarks mutations atomic under the relevant lock.'
+        'Deleted the observerNotes submission handler; removed the feature end-to-end.' \
+        'Updated list, normalizer, notification, and validation modules.'
       ;;
     frontend)
       printf '%s\n' \
-        'Updated PIR presented callers to send explicit desired boolean values so the admin API can behave idempotently under concurrent writes.' \
-        'Adjusted frontend error messaging around expected concurrency conflicts.'
-      ;;
-    server-tests)
-      printf '%s\n' \
-        'Added Deno coverage for advisory resource keys, Prisma P2002 target parsing, async handler error mapping, quarter canonicalization, and presented toggle compatibility.' \
-        'Added guarded DB-backed concurrency integration coverage for duplicate submit/draft races, delete/recreate rollback behavior, returned/status races, and explicit presented writes.'
+        'Replaced PIRReviewActionModal with inline PIR review actions; added PIRFullFormView for side-by-side review.' \
+        'Removed TermConfigPanel and useTermConfig; simplified submission filters and column config.' \
+        'Added UserSessionsModal for multi-device session display and revocation.' \
+        'Updated Login, MagicLinkCallback, and AnimatedContent for session restore flow.'
       ;;
     docs)
       printf '%s\n' \
-        'Documented the AIP/PIR advisory-lock implementation, quarter normalization caveat, workflow asymmetry, known empirical follow-ups, and rollback-test coverage expectations.'
+        'Added SECURE_SESSION_RESTORE_AND_LOGOUT.md documenting the secure session restore and explicit logout flows.'
+      ;;
+    root)
+      printf '%s\n' \
+        'Updated commit-stages.sh wave definitions to match the current session management and admin overhaul work.' \
+        'Updated README.md to reflect the current release state.'
       ;;
     *)
       die "Unknown wave: $1"
@@ -227,39 +217,45 @@ wave_summary() {
 
 wave_handoff() {
   case "$1" in
-    root)
+    schema)
       printf '%s\n' \
-        'Use COMMIT_BATCH_LLM_RUN=1 ./commit-stages.sh --dry-run before real categorized commits to verify each wave scope.' \
-        'The root wave intentionally force-adds commit-batch.sh because the repository ignore rules hide that helper by default.' \
-        'The docs wave intentionally force-adds only docs/CONCURRENCY_AND_RACE_CONDITIONS.md because docs/ is broadly ignored.'
+        'Review the two new migration files for correctness; confirm Prisma client was regenerated after schema change.' \
+        'Verify no remaining references to AdminObserverReviewNote or consolidation TA percentage fields in server code.'
       ;;
-    server-migrations)
+    server-sessions)
       printf '%s\n' \
-        'Confirm migration notes and generated Prisma artifacts separately if a future schema migration appears in this wave.'
+        'Review userSessions test coverage and the new session restore behavior end-to-end.' \
+        'Confirm cookie SameSite and HttpOnly settings are correct in both dev and production environments.'
       ;;
-    server-infra)
+    server-admin-shared)
       printf '%s\n' \
-        'Document advisory-lock namespaces, hash collision behavior as false serialization, and supported P2002 meta.target shapes.'
+        'Grep for any remaining observerAccess imports in admin routes before declaring the cleanup complete.' \
+        'Verify guards.ts and prismaSelects.ts compile cleanly after the schema change.'
       ;;
-    server-data)
+    server-admin-routes)
       printf '%s\n' \
-        'Document user-facing 409 behavior for duplicate AIP/PIR create races and the canonical PIR quarter storage rule.'
+        'Run security.test.ts and confirm all refactored routes have passing coverage.' \
+        'Review the PIR review route for any references to the removed observer notes types.'
       ;;
-    server-admin)
+    server-admin-submissions)
       printf '%s\n' \
-        'Document that admin status writes preserve current last-write-wins semantics while sharing AIP/PIR locks with user writes.'
+        'Confirm all observer-note endpoints have been removed from admin submissions routing.' \
+        'Verify submission list, normalizer, and notification modules reflect the updated schema selects.'
       ;;
     frontend)
       printf '%s\n' \
-        'Mention that presented updates now prefer explicit set semantics while the backend still supports the legacy empty-body toggle.'
-      ;;
-    server-tests)
-      printf '%s\n' \
-        'Record which tests are unit-only and which guarded integration tests require AIP_PIR_CONCURRENCY_DB_TESTS plus database credentials.'
+        'Verify PIR review, submissions filter, and multi-device session flows in the browser before the next release.' \
+        'Confirm that deleted components (PIRReviewActionModal, TermConfigPanel, useTermConfig, useActivityNotes, usePirReviewActions) have no remaining imports.'
       ;;
     docs)
       printf '%s\n' \
-        'Use the concurrency document as the source-of-truth note for future README, system docs, and implementation review updates.'
+        'Incorporate the new session doc into USER_MANUAL.md and FAQ.md in the next documentation pass.' \
+        'Cross-reference from README.md once the root wave lands.'
+      ;;
+    root)
+      printf '%s\n' \
+        'This commit-stages.sh covers the current session-and-admin-overhaul cycle. Update wave definitions at the start of the next release.' \
+        'Verify README.md version badge and highlights section match the CHANGELOG entry.'
       ;;
     *)
       die "Unknown wave: $1"
@@ -333,7 +329,7 @@ print_waves() {
   local wave
 
   for wave in "${WAVE_ORDER[@]}"; do
-    printf '%-20s %s\n' "$wave" "$(wave_title "$wave")"
+    printf '%-28s %s\n' "$wave" "$(wave_title "$wave")"
   done
 }
 

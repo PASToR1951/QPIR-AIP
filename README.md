@@ -310,9 +310,7 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `PATCH` | `/api/admin/aips/:id/deny-edit` | Deny an AIP edit request |
 | `GET` | `/api/admin/pirs` | Admin PIR list |
 | `GET` | `/api/admin/pirs/:id` | PIR detail |
-| `PATCH` | `/api/admin/pirs/:id/remarks` | Save admin PIR remarks |
 | `PATCH` | `/api/admin/pirs/:id/presented` | Toggle PIR presented status |
-| `PATCH` | `/api/admin/pirs/:id/activity-notes` | Save per-activity review notes |
 | `GET` | `/api/admin/ces/pirs` | CES review queue |
 | `POST` | `/api/admin/ces/pirs/:id/start-review` | Mark a PIR as actively reviewed by CES |
 | `POST` | `/api/admin/ces/pirs/:id/note` | CES approve/note action |
@@ -353,4 +351,4 @@ Active beta — **Beta 2** (`v1.1.0-beta`, 2026-04-13).
 
 ## Security Documentation
 
-- [Secure Session Restore and Logout Cleanup](docs/SECURE_SESSION_RESTORE_AND_LOGOUT.md) - documents the HttpOnly-cookie session restore flow, role-based idle timeouts, logout cleanup behavior, and Data Privacy Act of 2012 security rationale.
+- [Secure Session Restore and Logout Cleanup](docs/SECURE_SESSION_RESTORE_AND_LOGOUT.md) - documents the HttpOnly-cookie session restore flow, device revocation, logout cleanup behavior, and Data Privacy Act of 2012 security rationale.
