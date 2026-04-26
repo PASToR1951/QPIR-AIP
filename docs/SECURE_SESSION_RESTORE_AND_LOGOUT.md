@@ -2,7 +2,7 @@
 
 ## Summary
 
-The application restores signed-in users across tab, browser, and device restarts only while the server-side session remains valid. Authentication secrets stay out of JavaScript-accessible storage. Session validity is enforced by the backend through the HttpOnly JWT cookie, the `user_sessions` record, absolute expiry, role-based idle expiry, revocation state, role matching, and active-user checks.
+The application restores signed-in users across tab, browser, and device restarts only while the server-side session remains valid. Authentication secrets stay out of JavaScript-accessible storage. Session validity is enforced by the backend through the HttpOnly JWT cookie, the `user_sessions` record, absolute expiry, revocation state, role matching, and active-user checks.
 
 Logout is treated as a security boundary. The backend revokes the current session and expires the HttpOnly cookie, while the frontend clears app-managed browser state, including local AIP and PIR drafts. The app does not store plaintext credentials or bearer tokens in browser storage, and it does not claim to remove entries from browser password managers.
 
@@ -13,22 +13,9 @@ This change supports the Data Privacy Act of 2012 expectation that personal data
 | Policy | Value |
 | --- | --- |
 | Absolute session lifetime | 24 hours |
-| Broad-access idle timeout | 15 minutes |
-| Regular data-entry idle timeout | 30 minutes |
+| Idle timeout | None; users remain signed in until absolute expiry or revocation |
 | Token storage | HttpOnly cookie only |
 | JavaScript auth storage | Non-secret user and expiry metadata only |
-
-Broad-access roles use the 15-minute idle timeout:
-
-- `Admin`
-- `Observer`
-- CES roles
-- `Cluster Coordinator`
-
-Regular data-entry roles use the 30-minute idle timeout:
-
-- `School`
-- `Division Personnel`
 
 ## Backend Behavior
 
@@ -40,16 +27,13 @@ Regular data-entry roles use the 30-minute idle timeout:
 - the session role no longer matches the token role;
 - the session has been revoked;
 - the session has passed its absolute expiry;
-- the session has passed its role-based idle expiry;
 - the user is inactive.
 
-When a session is idle-expired, the server marks the current `user_sessions` row revoked before returning `401`. Active sessions periodically update `last_seen_at` so the idle window can move forward without rewriting the session on every request.
+Active sessions periodically update `last_seen_at` so device-management views can show recent activity without rewriting the session on every request. `last_seen_at` is no longer used to invalidate sessions.
 
 `GET /api/auth/me` returns only non-secret metadata needed by the frontend:
 
 - `expiresAt`
-- `idleExpiresAt`
-- `idleTimeoutSeconds`
 
 ## Frontend Behavior
 
@@ -65,6 +49,7 @@ After the server confirms logout, the frontend clears:
 
 - auth and session metadata from `sessionStorage`;
 - legacy `token` keys;
+- legacy idle-expiry metadata;
 - onboarding and session prompt keys;
 - local `aip_draft_*` and `pir_draft_*` drafts;
 - per-user local onboarding cache keys.
@@ -77,9 +62,7 @@ If server logout fails because of a network or server issue, the UI warns that l
 
 Backend checks:
 
-- role-based idle timeout selection;
 - active session validation;
-- idle-expired session revocation;
 - absolute-expired session rejection;
 - revoked session rejection;
 - inactive-user rejection;
@@ -89,9 +72,8 @@ Backend checks:
 Frontend checks:
 
 - login, refresh page, and remain signed in;
-- close and reopen browser within the absolute and idle windows, then restore session;
-- broad-access user idles for 15 minutes and is redirected on next request;
-- School or Division Personnel user idles for 30 minutes and is redirected on next request;
+- close and reopen browser within the absolute session lifetime, then restore session;
+- users remain signed in after periods of inactivity while the absolute session is still valid;
 - logout removes app-managed browser session data and local AIP/PIR drafts;
 - reload after logout does not restore the session;
 - externally revoked sessions return `401` and return the user to login.
