@@ -165,7 +165,7 @@ export default function PIRFormEditor({
     if (appMode === 'readonly') {
         return (
             <>
-                <FormHeader title="Quarterly Performance Review" programName={profile.program} onBack={onBack} theme="blue" />
+                <FormHeader title="Quarterly Program Implementation Review" programName={profile.program} onBack={onBack} theme="blue" />
                 <div className="min-h-screen bg-slate-50 font-sans dark:bg-dark-base print:bg-white">
                     <div className="mx-auto max-w-5xl px-4 pb-4 pt-8 print:hidden">
                         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/30">
@@ -261,7 +261,7 @@ export default function PIRFormEditor({
     return (
         <div className="relative flex min-h-screen flex-col bg-slate-50 font-sans text-slate-800 dark:bg-dark-base dark:text-slate-100 print:bg-white print:text-black">
             <FormHeader
-                title={submission.isEditing ? 'Edit Submitted PIR' : 'Quarterly Performance Review'}
+                title={submission.isEditing ? 'Edit Submitted PIR' : 'Quarterly Programs Implementation Review'}
                 programName={profile.program}
                 onSave={submission.isEditing ? undefined : onSaveForLater}
                 onBack={onBack}
@@ -354,7 +354,7 @@ export default function PIRFormEditor({
                 {appMode === 'wizard' && (
                     <div className="mb-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-md dark:border-dark-border dark:bg-dark-surface">
                         <FormBoxHeader
-                            title="Quarterly Performance Review"
+                            title="Quarterly Program Implementation Review"
                             badge={quarterString}
                             compact={true}
                         />
@@ -364,7 +364,7 @@ export default function PIRFormEditor({
                 <div className="relative rounded-[2.5rem] border border-slate-200 bg-white p-6 shadow-xl dark:border-dark-border dark:bg-dark-surface md:p-12">
                     {appMode === 'full' && (
                         <FormBoxHeader
-                            title="Quarterly Performance Review"
+                            title="Quarterly Program Implmentation Review"
                             subtitle="Division Monitoring Evaluation and Adjustment"
                             badge={quarterString}
                         />

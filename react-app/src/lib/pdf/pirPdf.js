@@ -57,7 +57,7 @@ export async function generatePIRPdf(data) {
 
   let y = drawGovHeader(pdf, sealData, {
     title: 'Quarterly Program Implementation Review (AIP-PIR)',
-    subtitle: 'Quarterly Division Monitoring Evaluation and Adjustment',
+    subtitle: 'Quarterly Program Implementation Review',
     badge: quarter,
   });
 
@@ -141,10 +141,10 @@ export async function generatePIRPdf(data) {
     body: indicatorTargets.length === 0
       ? [['No indicators specified.', '', '']]
       : indicatorTargets.map((indicator) => [
-          indicator.description || '',
-          indicator.annual_target ? `${indicator.annual_target}%` : '-%',
-          indicator.quarterly_target ? `${indicator.quarterly_target}%` : '-%',
-        ]),
+        indicator.description || '',
+        indicator.annual_target ? `${indicator.annual_target}%` : '-%',
+        indicator.quarterly_target ? `${indicator.quarterly_target}%` : '-%',
+      ]),
   });
   y = pdf.lastAutoTable.finalY + 5;
 
@@ -306,7 +306,7 @@ export async function generatePIRPdf(data) {
 
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(FONT_SIZES.md);
-  pdf.text('E. ACTION ITEMS / WAYS FORWARD', MARGIN.left, y);
+  pdf.text('ACTION ITEMS / WAYS FORWARD', MARGIN.left, y);
   y += 3;
 
   pdf.autoTable({
@@ -338,11 +338,11 @@ export async function generatePIRPdf(data) {
     body: actionItems.length === 0
       ? [['', 'No action items.', '', '']]
       : actionItems.map((item, index) => [
-          String(index + 1),
-          item.action || '',
-          item.response_asds || '',
-          item.response_sds || '',
-        ]),
+        String(index + 1),
+        item.action || '',
+        item.response_asds || '',
+        item.response_sds || '',
+      ]),
   });
   y = pdf.lastAutoTable.finalY + 4;
 
