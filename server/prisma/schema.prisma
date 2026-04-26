@@ -208,7 +208,6 @@ model AIP {
   edit_requested      Boolean  @default(false)       // true while user is waiting for admin to unlock
   edit_requested_at   DateTime?                     // when the last edit request was sent
   edit_request_count  Int      @default(0)          // lifetime count of edit requests (max 3)
-  observer_notes      String?
   archived            Boolean  @default(false)
   archived_at         DateTime?
   deleted_at          DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
@@ -259,8 +258,6 @@ model PIR {
   // Shape: [{action: string, response_asds: string, response_sds: string}]
   status                      String   @default("For CES Review") // "Draft" | "For CES Review" | "For Cluster Head Review" | "Under Review" | "Approved" | "Returned"
   deleted_at                  DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
-  remarks                     String?  // Admin remarks/annotations on this PIR
-  observer_notes              String?
   presented                   Boolean  @default(false) // Admin-toggled: whether school presented this PIR
   // CES review tracking
   ces_reviewer_id             Int?
@@ -297,8 +294,6 @@ model PIRActivityReview {
   physical_accomplished                Decimal  @default(0.0)
   financial_accomplished               Decimal  @default(0.0)
   actions_to_address_gap               String?
-  admin_notes                          String?  // Admin per-activity evaluation notes
-
   // Relations
   pir                    PIR          @relation(fields: [pir_id], references: [id], onDelete: Cascade)
   aip_activity           AIPActivity? @relation(fields: [aip_activity_id], references: [id], onDelete: Cascade)
@@ -325,7 +320,6 @@ model ConsolidationNote {
   year                Int
   quarter             Int
   program_id          Int
-  ta_schools_pct      String?
   gaps                String?
   recommendations     String?
   management_response String?
