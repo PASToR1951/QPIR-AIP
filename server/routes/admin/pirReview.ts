@@ -136,9 +136,6 @@ pirReviewRoutes.get("/pirs/:id", async (c) => {
     cesReviewer: (pir as any).ces_reviewer?.name ?? null,
     cesNotedAt: (pir as any).ces_noted_at ?? null,
     cesRemarks: (pir as any).ces_remarks ?? null,
-    presented: (pir as any).presented ?? false,
-    adminRemarks: (pir as any).remarks ?? null,
-    observerNotes: (pir as any).observer_notes ?? "",
     activities: pir.activity_reviews.map((review: any) => ({
       id: review.id,
       name: review.aip_activity?.activity_name ?? "",
@@ -154,7 +151,6 @@ pirReviewRoutes.get("/pirs/:id", async (c) => {
       physAcc: review.physical_accomplished,
       finAcc: review.financial_accomplished,
       actions: review.actions_to_address_gap ?? "",
-      adminNotes: review.admin_notes ?? "",
     })),
     factors: factorsMap,
   });

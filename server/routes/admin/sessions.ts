@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { prisma } from "../../db/client.ts";
 import { getUserFromToken } from "../../lib/auth.ts";
 import {
+  hashSessionToken,
   revokeAllUserSessions,
   revokeSessionById,
 } from "../../lib/userSessions.ts";
@@ -78,6 +79,7 @@ function serializeAdminSession(
     last_seen_at: Date;
     expires_at: Date;
     revoked_at: Date | null;
+    session_token: string;
     user: {
       id: number;
       role: string;
@@ -88,6 +90,7 @@ function serializeAdminSession(
       last_name: string | null;
     };
   },
+  currentSessionToken: string | null,
 ) {
   return {
     id: session.id,
@@ -103,10 +106,15 @@ function serializeAdminSession(
     last_seen_at: session.last_seen_at.toISOString(),
     expires_at: session.expires_at.toISOString(),
     revoked_at: session.revoked_at?.toISOString() ?? null,
+    is_current: currentSessionToken === session.session_token,
   };
 }
 
 sessionsRoutes.get("/sessions", async (c) => {
+  const admin = (await getUserFromToken(c))!;
+  const currentSessionToken = admin.sid
+    ? await hashSessionToken(admin.sid)
+    : null;
   const search = c.req.query("search")?.trim();
   const role = c.req.query("role")?.trim();
   const device = c.req.query("device")?.trim();
@@ -135,6 +143,7 @@ sessionsRoutes.get("/sessions", async (c) => {
       last_seen_at: true,
       expires_at: true,
       revoked_at: true,
+      session_token: true,
       user: {
         select: {
           id: true,
@@ -158,7 +167,11 @@ sessionsRoutes.get("/sessions", async (c) => {
     c.header("X-Total-Count", String(total ?? sessions.length));
   }
 
-  return c.json(sessions.map(serializeAdminSession));
+  return c.json(
+    sessions.map((session) =>
+      serializeAdminSession(session, currentSessionToken)
+    ),
+  );
 });
 
 sessionsRoutes.delete("/sessions/user/:userId", async (c) => {
@@ -180,14 +193,19 @@ sessionsRoutes.delete("/sessions/user/:userId", async (c) => {
   });
   if (!user) return c.json({ error: "User not found" }, 404);
 
-  const revoked = await revokeAllUserSessions(userId, { revokedBy: admin.id });
+  const shouldKeepCurrentSession = userId === admin.id;
+  const revoked = await revokeAllUserSessions(userId, {
+    revokedBy: admin.id,
+    exceptSid: shouldKeepCurrentSession ? admin.sid : null,
+  });
   await writeAuditLog(admin.id, "revoked_user_sessions", "User", userId, {
     revoked_count: revoked,
     target_email: user.email,
     target_name: buildSubmittedBy(user),
+    current_session_skipped: shouldKeepCurrentSession,
   }, { ctx: c });
 
-  return c.json({ revoked });
+  return c.json({ revoked, currentSessionSkipped: shouldKeepCurrentSession });
 });
 
 sessionsRoutes.delete("/sessions/:id", async (c) => {
@@ -203,6 +221,7 @@ sessionsRoutes.delete("/sessions/:id", async (c) => {
       device_label: true,
       ip_address: true,
       revoked_at: true,
+      session_token: true,
       user: {
         select: {
           id: true,
@@ -217,6 +236,16 @@ sessionsRoutes.delete("/sessions/:id", async (c) => {
     },
   });
   if (!session) return c.json({ error: "Session not found" }, 404);
+
+  if (admin.sid) {
+    const currentSessionToken = await hashSessionToken(admin.sid);
+    if (session.session_token === currentSessionToken) {
+      return c.json(
+        { error: "Use logout to end the current device session." },
+        400,
+      );
+    }
+  }
 
   if (!session.revoked_at) {
     await revokeSessionById(session.id, admin.id);

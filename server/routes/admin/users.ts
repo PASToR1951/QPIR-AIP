@@ -283,6 +283,13 @@ usersRoutes.post("/users", async (c) => {
     return c.json({ error: "Minimum 6 characters required" }, 400);
   }
 
+  if (role === OBSERVER_ROLE) {
+    return c.json(
+      { error: "The Observer role cannot be created directly. Assign it to an existing account via the edit form." },
+      409,
+    );
+  }
+
   const cesError = await validateCesSingleton(role);
   if (cesError) return c.json({ error: cesError }, 409);
 
@@ -381,6 +388,10 @@ usersRoutes.post("/users/import", async (c) => {
     }
 
     const role = row.role as string;
+    if (role === OBSERVER_ROLE) {
+      errors.push({ email, reason: "Observer role cannot be created via bulk import. Assign it to an existing account." });
+      continue;
+    }
     if (SYSTEM_ROLES.has(role) && !(row.name as string)?.trim()) {
       errors.push({ email, reason: `"name" is required for role "${role}"` });
       continue;
@@ -509,6 +520,15 @@ usersRoutes.patch("/users/:id", async (c) => {
   if (role !== undefined) {
     const cesError = await validateCesSingleton(role, id);
     if (cesError) return c.json({ error: cesError }, 409);
+
+    if (role === OBSERVER_ROLE) {
+      const observerCount = await prisma.user.count({
+        where: { role: OBSERVER_ROLE, NOT: { id } },
+      });
+      if (observerCount > 0) {
+        return c.json({ error: "An Observer account already exists. Only one Observer is allowed." }, 409);
+      }
+    }
   }
 
   if (nextRole === "School" && nextSchoolId != null) {

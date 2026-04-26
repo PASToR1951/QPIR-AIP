@@ -292,30 +292,40 @@ overviewRoutes.get("/overview", async (c) => {
   );
 
   const recentSubmissions = [
-    ...recentAIPs.map((aip) => ({
-      id: aip.public_id,
-      ref: aip.public_id,
-      type: "AIP",
-      school: aip.school?.name ?? "Division",
-      program: aip.program.title,
-      quarter: null,
-      year: aip.year,
-      submitted: aip.created_at,
-      status: aip.status,
-      submittedBy: buildSubmittedBy(aip.created_by),
-    })),
-    ...recentPIRs.map((pir) => ({
-      id: pir.public_id,
-      ref: pir.public_id,
-      type: "PIR",
-      school: pir.aip.school?.name ?? "Division",
-      program: pir.aip.program.title,
-      quarter: pir.quarter,
-      year: pir.aip.year,
-      submitted: pir.created_at,
-      status: pir.status,
-      submittedBy: buildSubmittedBy(pir.created_by),
-    })),
+    ...recentAIPs.map((aip) => {
+      const submittedBy = buildSubmittedBy(aip.created_by);
+      return {
+        id: aip.public_id,
+        ref: aip.public_id,
+        type: "AIP",
+        school: aip.school?.name ?? "Division",
+        owner: aip.school?.name ?? submittedBy,
+        ownerType: aip.school?.name ? "School" : "Program Owner",
+        program: aip.program.title,
+        quarter: null,
+        year: aip.year,
+        submitted: aip.created_at,
+        status: aip.status,
+        submittedBy,
+      };
+    }),
+    ...recentPIRs.map((pir) => {
+      const submittedBy = buildSubmittedBy(pir.created_by);
+      return {
+        id: pir.public_id,
+        ref: pir.public_id,
+        type: "PIR",
+        school: pir.aip.school?.name ?? "Division",
+        owner: pir.aip.school?.name ?? submittedBy,
+        ownerType: pir.aip.school?.name ? "School" : "Program Owner",
+        program: pir.aip.program.title,
+        quarter: pir.quarter,
+        year: pir.aip.year,
+        submitted: pir.created_at,
+        status: pir.status,
+        submittedBy,
+      };
+    }),
   ]
     .sort((a, b) => {
       if (a.type !== b.type) return a.type === "PIR" ? -1 : 1;

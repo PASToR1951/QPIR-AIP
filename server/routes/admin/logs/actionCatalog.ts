@@ -46,10 +46,7 @@ const CATALOG: Record<string, EntryDef> = {
   cluster_head_noted_pir:       { label: "Cluster Head Noted PIR",      category: "submission",   severity: "notice",   icon: "CheckCircle",         color: "emerald" },
   cluster_head_returned_pir:    { label: "Cluster Head Returned PIR",   category: "submission",   severity: "warn",     icon: "ArrowUUpLeft",        color: "amber"   },
   read_pir:                     { label: "Viewed PIR",                  category: "submission",   severity: "info",     icon: "Eye",                 color: "slate"   },
-  update_remarks:               { label: "Updated PIR Remarks",         category: "submission",   severity: "notice",   icon: "NotePencil",          color: "indigo"  },
   toggle_presented:             { label: "Toggled PIR Presented",       category: "submission",   severity: "notice",   icon: "Checks",              color: "blue"    },
-  update_activity_notes:        { label: "Updated Activity Notes",      category: "submission",   severity: "notice",   icon: "NotePencil",          color: "indigo"  },
-  updated_observer_notes:       { label: "Updated Observer Notes",      category: "submission",   severity: "notice",   icon: "NotePencil",          color: "indigo"  },
 
   // user
   created_user:                 { label: "Created User",                category: "user",         severity: "notice",   icon: "UserPlus",            color: "emerald" },
@@ -155,7 +152,7 @@ function inferSeverity(action: string): AdminLogSeverity {
 function inferCategory(action: string): AdminLogCategory {
   const n = action.toLowerCase();
   if (n.includes("login") || n.includes("logout") || n.includes("password")) return "auth";
-  if (n.includes("aip") || n.includes("pir") || n.includes("remarks") || n.includes("observer_notes") || n.includes("presented")) return "submission";
+  if (n.includes("aip") || n.includes("pir") || n.includes("remarks") || n.includes("presented")) return "submission";
   if (n.includes("user") || n.includes("session")) return "user";
   if (n.includes("school") || n.includes("cluster") || n.includes("program")) return "organization";
   if (n.includes("export")) return "export";
