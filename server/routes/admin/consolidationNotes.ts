@@ -16,8 +16,7 @@ const READ_ROLES = new Set(["Admin", "Observer"]);
 // Field → roles that may write that field
 const FIELD_WRITE_ROLES: Record<string, Set<string>> = {
   gaps: new Set(["Admin"]),
-  recommendations: new Set(["Admin"]),
-  management_response: new Set(["Admin", "Observer"]),
+  management_response: new Set(["Observer"]),
 };
 
 function parseYearQuarter(c: { req: { query: (k: string) => string | undefined } }) {
@@ -137,6 +136,7 @@ consolidationNotesRoutes.get("/consolidation-notes", async (c) => {
   if (year < 2020 || year > 2100) return c.json({ error: "Invalid year (must be 2020–2100)" }, 400);
   if (!isValidQuarter(quarter) || quarter === 0) return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
 
+  const schoolId = parseOptionalPositiveInt(c.req.query("school"));
   const quarterPrefix = QUARTER_PREFIXES[quarter];
 
   try {
@@ -144,7 +144,7 @@ consolidationNotesRoutes.get("/consolidation-notes", async (c) => {
       prisma.consolidationNote.findMany({ where: { year, quarter } }),
       prisma.pIR.findMany({
         where: {
-          aip: { year },
+          aip: { year, ...(schoolId ? { school_id: schoolId } : {}) },
           quarter: { startsWith: quarterPrefix },
           ces_remarks: { not: null },
         },
