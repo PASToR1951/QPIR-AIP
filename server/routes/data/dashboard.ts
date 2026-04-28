@@ -58,21 +58,30 @@ dashboardRoutes.get(
     "Failed to fetch history",
     async (c) => {
       const tokenUser = getAuthedUser(c);
-      const aipWhere = tokenUser.role === "School" && tokenUser.school_id
-        ? { school_id: tokenUser.school_id, status: { not: "Draft" } }
-        : {
-          created_by_user_id: tokenUser.id,
-          school_id: null,
-          status: { not: "Draft" },
-        };
+      const baseWhere = tokenUser.role === "School" && tokenUser.school_id
+        ? { school_id: tokenUser.school_id }
+        : { created_by_user_id: tokenUser.id, school_id: null };
+
+      const aipWhere = {
+        ...baseWhere,
+        OR: [
+          { deleted_at: null, status: { not: "Draft" } },
+          { deleted_at: { not: null } },
+        ],
+      };
 
       const aips = await (prisma.aIP as any).findMany({
         where: aipWhere,
         include: {
           program: { select: { title: true, abbreviation: true } },
           pirs: {
-            where: { status: { not: "Draft" } },
-            select: { id: true, quarter: true, status: true, created_at: true },
+            where: {
+              OR: [
+                { deleted_at: null, status: { not: "Draft" } },
+                { deleted_at: { not: null } },
+              ],
+            },
+            select: { id: true, quarter: true, status: true, created_at: true, deleted_at: true },
             orderBy: { created_at: "asc" },
           },
         },
@@ -85,9 +94,10 @@ dashboardRoutes.get(
         yearMap.get(aip.year)!.push({
           id: aip.id,
           programId: aip.program_id,
-          program: aip.program.title,
-          abbreviation: aip.program.abbreviation ?? null,
+          program: aip.program?.title ?? null,
+          abbreviation: aip.program?.abbreviation ?? null,
           status: aip.status,
+          deletedAt: aip.deleted_at ?? null,
           editRequested: aip.edit_requested ?? false,
           editRequestCount: (aip as any).edit_request_count ?? 0,
           archived: aip.archived ?? false,
@@ -96,6 +106,7 @@ dashboardRoutes.get(
             id: pir.id,
             quarter: pir.quarter,
             status: pir.status,
+            deletedAt: pir.deleted_at ?? null,
           })),
         });
       }

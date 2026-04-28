@@ -462,6 +462,62 @@ aipRoutes.post(
   ),
 );
 
+aipRoutes.delete(
+  "/aips/:id",
+  asyncHandler(
+    "Failed to delete AIP",
+    "Failed to delete AIP",
+    async (c) => {
+      const tokenUser = getAuthedUser(c);
+      if (tokenUser.role === "Admin") {
+        return c.json({ error: "Forbidden" }, 403);
+      }
+
+      const aipId = safeParseInt(c.req.param("id"), 0);
+      if (aipId === 0) return c.json({ error: "Invalid AIP id" }, 400);
+
+      const aip = await prisma.aIP.findUnique({
+        where: { id: aipId },
+        include: { program: true },
+      });
+      if (!aip) return c.json({ error: "AIP not found" }, 404);
+
+      await withAdvisoryLock(
+        LOCK_NAMESPACE.AIP,
+        aipResourceKeyFromRecord(aip),
+        async (tx) => {
+          const lockedAip = await tx.aIP.findUnique({ where: { id: aipId } });
+          if (!lockedAip) throw new HttpError(404, "AIP not found", "NOT_FOUND");
+
+          const isOwner =
+            (tokenUser.school_id != null && lockedAip.school_id === tokenUser.school_id) ||
+            lockedAip.created_by_user_id === tokenUser.id;
+          if (!isOwner) throw new HttpError(403, "Forbidden", "FORBIDDEN");
+
+          if (lockedAip.deleted_at) {
+            throw new ConflictError("This AIP has already been deleted.");
+          }
+
+          await (tx.aIP as any).update({
+            where: { id: aipId },
+            data: { deleted_at: new Date() },
+          });
+        },
+      );
+
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "aip_delete",
+        entityType: "AIP",
+        entityId: aipId,
+        details: { programTitle: aip.program?.title ?? "Unknown", year: aip.year },
+        ipAddress: getClientIp(c),
+      });
+      return c.json({ message: "AIP deleted successfully" });
+    },
+  ),
+);
+
 aipRoutes.put(
   "/aips/:id",
   asyncHandler(

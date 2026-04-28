@@ -198,6 +198,7 @@ pirRoutes.get(
       return c.json({
         id: pir.id,
         status: pir.status,
+        cesRemarks: pir.ces_remarks ?? null,
         quarter: pir.quarter,
         program: aip.program.title,
         school: aip.school?.name ?? "Division",
@@ -609,6 +610,10 @@ pirRoutes.delete(
     "Failed to delete PIR",
     async (c) => {
       const tokenUser = getAuthedUser(c);
+      if (tokenUser.role === "Admin") {
+        return c.json({ error: "Forbidden" }, 403);
+      }
+
       const pirId = safeParseInt(c.req.param("id"), 0);
       if (pirId === 0) return c.json({ error: "Invalid PIR id" }, 400);
 
@@ -620,29 +625,32 @@ pirRoutes.delete(
         pirResourceKeyFromRecord(pir),
         async (tx) => {
           const lockedPir = await tx.pIR.findUnique({ where: { id: pirId } });
-          if (!lockedPir) {
-            throw new HttpError(404, "PIR not found", "NOT_FOUND");
-          }
+          if (!lockedPir) throw new HttpError(404, "PIR not found", "NOT_FOUND");
 
-          if (
-            lockedPir.created_by_user_id === null ||
-            lockedPir.created_by_user_id !== tokenUser.id
-          ) {
+          const pirAip = await tx.aIP.findUnique({
+            where: { id: lockedPir.aip_id },
+            select: { school_id: true },
+          });
+
+          const isSchoolOwner = tokenUser.school_id != null &&
+            pirAip?.school_id === tokenUser.school_id;
+          const isCreator = lockedPir.created_by_user_id !== null &&
+            lockedPir.created_by_user_id === tokenUser.id;
+          if (!isSchoolOwner && !isCreator) {
             throw new HttpError(403, "Forbidden", "FORBIDDEN");
           }
-          if (
-            lockedPir.status !== "For CES Review" &&
-            lockedPir.status !== "For Cluster Head Review" &&
-            lockedPir.status !== "Returned"
-          ) {
-            throw new ConflictError(
-              "This PIR can no longer be deleted — it is currently under review.",
-            );
+
+          if ((lockedPir as any).deleted_at) {
+            throw new ConflictError("This PIR has already been deleted.");
           }
 
-          await tx.pIR.delete({ where: { id: pirId } });
+          await (tx.pIR as any).update({
+            where: { id: pirId },
+            data: { deleted_at: new Date() },
+          });
         },
       );
+
       writeUserLog({
         userId: tokenUser.id,
         action: "pir_delete",
