@@ -10,6 +10,7 @@ WAVE_ORDER=(
   "server-admin-shared"
   "server-admin-routes"
   "server-admin-submissions"
+  "server-data"
   "frontend"
   "docs"
   "root"
@@ -37,7 +38,8 @@ Default waves:
   server-admin-shared    admin shared guards, display, and selects
   server-admin-routes    core admin routes: overview, sessions, users, PIR review
   server-admin-submissions  admin submissions route cleanup
-  frontend               frontend admin UI and PIR review overhaul
+  server-data            soft delete and history for AIPs and PIRs
+  frontend               frontend visual design, table layout, and logo assets
   docs                   session restore and logout documentation
   root                   root tooling: commit-stages.sh update
 
@@ -80,7 +82,8 @@ wave_title() {
     server-admin-shared)    printf 'admin shared guards, display, and selects cleanup' ;;
     server-admin-routes)    printf 'core admin routes: overview, sessions, users, PIR review' ;;
     server-admin-submissions) printf 'admin submissions route cleanup' ;;
-    frontend)               printf 'frontend admin UI and PIR review overhaul' ;;
+    server-data)            printf 'soft delete and history for AIPs and PIRs' ;;
+    frontend)               printf 'frontend visual design, table layout, and logo assets' ;;
     docs)                   printf 'session restore and logout documentation' ;;
     root)                   printf 'root tooling: commit-stages.sh for this release cycle' ;;
     *) die "Unknown wave: $1" ;;
@@ -101,7 +104,8 @@ wave_commit_message() {
     server-admin-shared)      printf 'refactor(admin): remove observer access helper, update guards and selects' ;;
     server-admin-routes)      printf 'refactor(admin): clean up overview, sessions, users, consolidation, and PIR review routes' ;;
     server-admin-submissions) printf 'refactor(admin): remove observer notes from submissions, clean up list and validation' ;;
-    frontend)                 printf 'feat(frontend): overhaul admin submissions, PIR review, and session management UI' ;;
+    server-data)              printf 'feat(server): soft delete for AIPs and PIRs' ;;
+    frontend)                 printf 'feat(frontend): improve visual design, table layout, and logo assets' ;;
     docs)                     printf 'docs(sessions): add SECURE_SESSION_RESTORE_AND_LOGOUT guide' ;;
     root)                     printf 'chore(tooling): update commit-stages.sh for session and admin overhaul waves' ;;
     *) die "Unknown wave: $wave" ;;
@@ -141,9 +145,16 @@ wave_paths() {
         'server/routes/admin/submissions.ts' \
         'server/routes/admin/submissions'
       ;;
+    server-data)
+      printf '%s\n' \
+        'server/routes/data/aips.ts' \
+        'server/routes/data/dashboard.ts' \
+        'server/routes/data/pirs.ts'
+      ;;
     frontend)
       printf '%s\n' \
-        'react-app/src'
+        'react-app/src' \
+        'react-app/public'
       ;;
     docs)
       printf '%s\n' \
@@ -193,12 +204,16 @@ wave_summary() {
         'Deleted the observerNotes submission handler; removed the feature end-to-end.' \
         'Updated list, normalizer, notification, and validation modules.'
       ;;
+    server-data)
+      printf '%s\n' \
+        'Implemented soft deletion for AIPs and PIRs using deleted_at timestamp.' \
+        'Updated dashboard data queries to fetch soft-deleted items for history view.'
+      ;;
     frontend)
       printf '%s\n' \
-        'Replaced PIRReviewActionModal with inline PIR review actions; added PIRFullFormView for side-by-side review.' \
-        'Removed TermConfigPanel and useTermConfig; simplified submission filters and column config.' \
-        'Added UserSessionsModal for multi-device session display and revocation.' \
-        'Updated Login, MagicLinkCallback, and AnimatedContent for session restore flow.'
+        'Implemented glassmorphic UI and Framer Motion micro-animations for PIR workflow.' \
+        'Resolved PIR form table layout issues to enforce landscape orientation and fix column widths.' \
+        'Replaced blurry logos with high-quality WebP assets in public directory.'
       ;;
     docs)
       printf '%s\n' \
@@ -242,10 +257,15 @@ wave_handoff() {
         'Confirm all observer-note endpoints have been removed from admin submissions routing.' \
         'Verify submission list, normalizer, and notification modules reflect the updated schema selects.'
       ;;
+    server-data)
+      printf '%s\n' \
+        'Verify soft deletion cascades correctly or is handled properly in relation to dependencies.' \
+        'Ensure soft-deleted records do not accidentally appear in active lists.'
+      ;;
     frontend)
       printf '%s\n' \
-        'Verify PIR review, submissions filter, and multi-device session flows in the browser before the next release.' \
-        'Confirm that deleted components (PIRReviewActionModal, TermConfigPanel, useTermConfig, useActivityNotes, usePirReviewActions) have no remaining imports.'
+        'Verify PIR form landscape layout renders correctly on smaller screens.' \
+        'Confirm logo assets load correctly across different network conditions.'
       ;;
     docs)
       printf '%s\n' \
