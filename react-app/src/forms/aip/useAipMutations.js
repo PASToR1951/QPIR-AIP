@@ -78,12 +78,12 @@ export function useAipMutations({
     const handleDeleteSubmission = useCallback(() => {
         shell.openModal({
             type: 'warning', title: 'Delete Submission?',
-            message: 'This will permanently delete your submitted AIP. This action cannot be undone. Are you sure you want to proceed?',
+            message: 'The document will be marked as deleted and remain in your submission history for audit purposes. This cannot be undone.',
             confirmText: 'Yes, Delete',
             onConfirm: async () => {
                 shell.closeModal();
                 try {
-                    await api.delete('/api/aips', { params: buildProgramParams(profile.depedProgram, { year: profile.year }) });
+                    await api.delete(`/api/aips/${submission.aipId}`);
                     setCompletedPrograms((prev) => prev.filter((p) => p !== profile.depedProgram));
                     setReturnedPrograms((prev)  => prev.filter((p) => p !== profile.depedProgram));
                     setDraftPrograms((prev)      => prev.filter((p) => p !== profile.depedProgram));
@@ -95,7 +95,7 @@ export function useAipMutations({
                 }
             },
         });
-    }, [buildProgramParams, profile.depedProgram, profile.year, setCompletedPrograms, setDraftPrograms, setReturnedPrograms, setSearchParams, shell, showToast]);
+    }, [profile.depedProgram, setCompletedPrograms, setDraftPrograms, setReturnedPrograms, setSearchParams, shell, showToast, submission.aipId]);
 
     const handleRequestRemoveActivity = useCallback((activityId) => {
         const activity = state.activities.find((a) => a.id === activityId);

@@ -6,6 +6,38 @@ import { SchoolAvatar } from '../../ui/SchoolAvatar.jsx';
 import { useFormShellContext } from '../../../forms/shared/formShellContext.jsx';
 import { selectBudget, selectProfile, usePirDispatch, usePirSelector } from '../../../forms/pir/pirContext.jsx';
 
+function formatWithCommas(value) {
+    if (!value && value !== 0) return '';
+    const str = String(value);
+    const [integer, decimal] = str.split('.');
+    const formatted = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return decimal !== undefined ? `${formatted}.${decimal}` : formatted;
+}
+
+function BudgetInput({ label, value, onChange }) {
+    const [focused, setFocused] = React.useState(false);
+    return (
+        <div className="flex flex-col gap-1.5 w-full group text-left">
+            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest select-none transition-colors group-focus-within:text-blue-600">
+                {label}
+            </label>
+            <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400 dark:text-slate-500 pointer-events-none select-none">₱</span>
+                <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={focused ? value : formatWithCommas(value)}
+                    onChange={(e) => onChange(e.target.value.replace(/,/g, '').replace(/[^0-9.]/g, ''))}
+                    onFocus={() => setFocused(true)}
+                    onBlur={() => setFocused(false)}
+                    className="w-full border border-slate-200 dark:border-dark-border focus:ring-2 focus:border-blue-400 focus:ring-blue-500/20 transition-all rounded-xl pl-8 pr-4 py-3 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 bg-white dark:bg-dark-surface shadow-sm font-mono"
+                />
+            </div>
+        </div>
+    );
+}
+
 function LockedField({ label, value }) {
     return (
         <div className="flex flex-col gap-1.5">
@@ -88,14 +120,14 @@ export default React.memo(function PIRProfileSection({
                     </div>
                 </div>
 
-                <Input theme="blue" label="Budget — From Division" placeholder="₱ 0.00" inputMode="decimal" value={budget.fromDivision} onChange={(e) => dispatch({ type: 'SET_BUDGET_FIELD', payload: { field: 'fromDivision', value: e.target.value.replace(/[^0-9.]/g, '') } })} />
+                <BudgetInput label="Budget — From Division" value={budget.fromDivision} onChange={(v) => dispatch({ type: 'SET_BUDGET_FIELD', payload: { field: 'fromDivision', value: v } })} />
 
                 {profile.ownerLocked
                     ? <LockedField label={isDivisionPersonnel ? "Program Owner" : "Coordinator"} value={profile.owner} />
                     : <Input theme="blue" label={isDivisionPersonnel ? "Program Owner" : "Coordinator"} placeholder={isDivisionPersonnel ? "Name of owner" : "Name of coordinator"} value={profile.owner} onChange={(e) => dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'owner', value: e.target.value } })} />
                 }
 
-                <Input theme="blue" label="Budget — From CO-PSF" placeholder="₱ 0.00" inputMode="decimal" value={budget.fromCoPSF} onChange={(e) => dispatch({ type: 'SET_BUDGET_FIELD', payload: { field: 'fromCoPSF', value: e.target.value.replace(/[^0-9.]/g, '') } })} />
+                <BudgetInput label="Budget — From CO-PSF" value={budget.fromCoPSF} onChange={(v) => dispatch({ type: 'SET_BUDGET_FIELD', payload: { field: 'fromCoPSF', value: v } })} />
             </div>
         </div>
     );

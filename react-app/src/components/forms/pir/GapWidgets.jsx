@@ -1,5 +1,5 @@
 import React from 'react';
-import { WIZARD_PANEL_CLASSNAME, MOBILE_NUMBER_PANEL_CLASSNAME, sanitizeDecimalInput } from './pirMeStyles.jsx';
+import { WIZARD_PANEL_CLASSNAME, MOBILE_NUMBER_PANEL_CLASSNAME, sanitizeDecimalInput, CommaNumberInput } from './pirMeStyles.jsx';
 
 /** Inline text summary: "Physical Gap: -2.50%" with color */
 export function GapSummary({ label, value }) {
@@ -24,12 +24,12 @@ export function GapPanel({ title, colorClass, targetValue, accomplishedValue, ga
             <div className="grid grid-cols-2 gap-3">
                 <div className={WIZARD_PANEL_CLASSNAME}>
                     <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Target</label>
-                    <input type="number" inputMode="decimal" placeholder="0" value={targetValue} onChange={onTargetChange}
+                    <CommaNumberInput value={targetValue} onChange={onTargetChange}
                         className="w-full bg-transparent font-mono text-base font-semibold text-slate-800 outline-none dark:text-slate-100" />
                 </div>
                 <div className={WIZARD_PANEL_CLASSNAME}>
                     <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Accomplished</label>
-                    <input type="number" inputMode="decimal" placeholder="0" value={accomplishedValue} onChange={onAccomplishedChange}
+                    <CommaNumberInput value={accomplishedValue} onChange={onAccomplishedChange}
                         className="w-full bg-transparent font-mono text-base font-semibold text-slate-800 outline-none dark:text-slate-100" />
                 </div>
             </div>
@@ -57,7 +57,7 @@ export function MobileGapInputs({ activity, calculateGap, handleActivityChange }
                 {fields.map(({ label, field }) => (
                     <div key={field} className={MOBILE_NUMBER_PANEL_CLASSNAME}>
                         <label className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">{label}</label>
-                        <input type="number" inputMode="decimal"
+                        <CommaNumberInput
                             className="w-full bg-transparent font-mono text-sm font-semibold text-slate-800 outline-none dark:text-slate-100"
                             value={activity[field]}
                             onChange={(e) => handleActivityChange(activity.id, field, sanitizeDecimalInput(e.target.value))}

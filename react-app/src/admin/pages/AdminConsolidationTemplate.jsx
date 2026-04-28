@@ -52,7 +52,7 @@ function isProgramEligibleForSchool(program, school) {
 
 // Returns the set of fields a given role may write
 function getEditableFields(role) {
-  if (role === 'Admin') return new Set(['gaps', 'recommendations', 'management_response']);
+  if (role === 'Admin') return new Set(['gaps']);
   if (role === 'Observer') return new Set(['management_response']);
   return new Set();
 }
@@ -134,7 +134,7 @@ const AdminConsolidationTemplate = () => {
       const [reportRes, programsRes, notesRes] = await Promise.allSettled([
         api.get(`/api/admin/reports/consolidation?${params}`),
         api.get('/api/admin/programs'),
-        api.get(`/api/admin/consolidation-notes?year=${year}&quarter=${quarter}`),
+        api.get(`/api/admin/consolidation-notes?year=${year}&quarter=${quarter}${schoolScopeSchoolId ? `&school=${schoolScopeSchoolId}` : ''}`),
       ]);
 
       if (cancelled) return;
@@ -297,7 +297,10 @@ const AdminConsolidationTemplate = () => {
     if (nextMode === 'division') {
       setSelectedSchoolId('');
     } else if (!selectedClusterId && clusters.length > 0) {
-      setSelectedClusterId(String(clusters[0].id));
+      const firstCluster = clusters[0];
+      setSelectedClusterId(String(firstCluster.id));
+      const firstSchool = schools.find((s) => s.cluster_id === firstCluster.id);
+      setSelectedSchoolId(firstSchool ? String(firstSchool.id) : '');
     }
   };
 
@@ -308,8 +311,10 @@ const AdminConsolidationTemplate = () => {
   const handleClusterChange = (event) => {
     setLoading(true);
     setError(null);
-    setSelectedClusterId(event.target.value);
-    setSelectedSchoolId('');
+    const newClusterId = event.target.value;
+    setSelectedClusterId(newClusterId);
+    const firstSchool = schools.find((s) => String(s.cluster_id) === newClusterId);
+    setSelectedSchoolId(firstSchool ? String(firstSchool.id) : '');
   };
 
   const handleSchoolChange = (event) => {
@@ -405,7 +410,6 @@ const AdminConsolidationTemplate = () => {
                   disabled={!selectedClusterId}
                   className="h-8 min-w-[200px] px-3 bg-white/80 dark:bg-dark-surface/70 dark:text-slate-200 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-50"
                 >
-                  <option value="">All schools in cluster</option>
                   {schoolOptions.map((school) => (
                     <option key={school.id} value={school.id}>
                       {school.abbreviation ? `${school.abbreviation} — ${school.name}` : school.name}

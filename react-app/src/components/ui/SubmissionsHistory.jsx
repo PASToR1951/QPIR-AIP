@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ClockCounterClockwise, CaretDown, CaretUp, Eye, SpinnerGap, Tray, PencilSimple, CheckCircle, Warning, X } from '@phosphor-icons/react';
+import { ClockCounterClockwise, CaretDown, CaretUp, Eye, SpinnerGap, Tray, PencilSimple, CheckCircle, Warning, X, TrashSimple, FileX } from '@phosphor-icons/react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
@@ -44,6 +44,11 @@ export default function SubmissionsHistory() {
   const [cancelConfirmId, setCancelConfirmId] = useState(null);
   const [cancelingEditId, setCancelingEditId] = useState(null);
 
+  const [confirmDeleteAipId, setConfirmDeleteAipId] = useState(null);
+  const [confirmDeletePirId, setConfirmDeletePirId] = useState(null);
+  const [deletingAipId, setDeletingAipId] = useState(null);
+  const [deletingPirId, setDeletingPirId] = useState(null);
+
   const [supervisorName, setSupervisorName] = useState('');
   const [supervisorTitle, setSupervisorTitle] = useState('');
 
@@ -58,7 +63,8 @@ export default function SubmissionsHistory() {
     const heights = {};
     for (const yearEntry of history) {
       for (const aip of yearEntry.aips) {
-        const titleWidth = measureText(aip.abbreviation ?? aip.program).lineCount * 20;
+        const label = aip.abbreviation ?? aip.program ?? 'Not Found';
+        const titleWidth = measureText(label).lineCount * 20;
         const pirCount = aip.pirs.length;
         const pirHeight = pirCount > 0
           ? Math.ceil(pirCount / Math.floor(600 / 120)) * (PIR_BUTTON_HEIGHT + 8) + 8
@@ -181,7 +187,7 @@ export default function SubmissionsHistory() {
       setEditRequestCounts(prev => ({ ...prev, [aipId]: (prev[aipId] ?? 0) + 1 }));
       setEditRequestToast('Edit request sent — an admin will be notified.');
       setTimeout(() => setEditRequestToast(null), 3500);
-    } catch { /* silently fail — button stays active so user can retry */ } finally {
+    } catch { /* silently fail */ } finally {
       setRequestingEditId(null);
     }
   }, []);
@@ -196,6 +202,41 @@ export default function SubmissionsHistory() {
       setTimeout(() => setEditRequestToast(null), 3500);
     } catch { /* silently fail */ } finally {
       setCancelingEditId(null);
+    }
+  }, []);
+
+  const handleDeleteAip = useCallback(async (aipId) => {
+    setConfirmDeleteAipId(null);
+    setDeletingAipId(aipId);
+    try {
+      await api.delete(`/api/aips/${aipId}`);
+      setHistory(prev => prev.map(yearEntry => ({
+        ...yearEntry,
+        aips: yearEntry.aips.map(aip =>
+          aip.id === aipId ? { ...aip, deletedAt: new Date().toISOString() } : aip
+        ),
+      })));
+    } catch { /* silently fail */ } finally {
+      setDeletingAipId(null);
+    }
+  }, []);
+
+  const handleDeletePir = useCallback(async (pirId) => {
+    setConfirmDeletePirId(null);
+    setDeletingPirId(pirId);
+    try {
+      await api.delete(`/api/pirs/${pirId}`);
+      setHistory(prev => prev.map(yearEntry => ({
+        ...yearEntry,
+        aips: yearEntry.aips.map(aip => ({
+          ...aip,
+          pirs: aip.pirs.map(pir =>
+            pir.id === pirId ? { ...pir, deletedAt: new Date().toISOString() } : pir
+          ),
+        })),
+      })));
+    } catch { /* silently fail */ } finally {
+      setDeletingPirId(null);
     }
   }, []);
 
@@ -278,89 +319,161 @@ export default function SubmissionsHistory() {
 
                 {isOpen && (
                   <div className="border-t border-slate-100 dark:border-dark-border divide-y divide-slate-100 dark:divide-dark-border">
-                    {aips.map((aip) => (
-                      <div key={aip.id} className="px-8 py-5" style={{ minHeight: `${rowHeights[aip.id] ?? 0}px` }}>
-                        <div className="flex items-center justify-between gap-4">
-                          <button
-                            onClick={() => handlePreviewAIP(aip.program, year, aip.programId)}
-                            disabled={previewLoading}
-                            className="flex items-center gap-2 group min-w-0"
-                          >
-                            <span className="font-bold text-sm text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
-                              {aip.abbreviation ?? aip.program}
-                            </span>
-                            {aip.abbreviation && (
-                              <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate hidden sm:block">
-                                {aip.program}
-                              </span>
-                            )}
-                          </button>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {aip.archived && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-dark-border">
-                                <Tray size={11} />
-                                Archived
-                              </span>
-                            )}
-                            <StatusBadge status={aip.status} size="xs" />
-                            {aip.status === 'Approved' && !aip.archived && (
-                              requestedEditIds.has(aip.id) ? (
-                                <button
-                                  onClick={() => setCancelConfirmId(aip.id)}
-                                  disabled={cancelingEditId === aip.id}
-                                  title="Cancel edit request"
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:hover:border-red-900/50 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <CheckCircle size={11} weight="fill" className="group-hover:hidden" />
-                                  <X size={11} weight="bold" className="hidden group-hover:block" />
-                                  <span className="group-hover:hidden">{cancelingEditId === aip.id ? 'Cancelling…' : 'Request Sent'}</span>
-                                  <span className="hidden group-hover:inline">Cancel Request</span>
-                                </button>
-                              ) : (editRequestCounts[aip.id] ?? 0) < 3 ? (
-                                <button
-                                  onClick={() => setConfirmEditId(aip.id)}
-                                  disabled={requestingEditId === aip.id}
-                                  title="Request edit from admin"
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <PencilSimple size={11} />
-                                  {requestingEditId === aip.id ? 'Sending…' : 'Request Edit'}
-                                </button>
-                              ) : (
-                                <span
-                                  title="Edit request limit reached"
-                                  className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-dark-border text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-dark-border"
-                                >
-                                  <PencilSimple size={11} />
-                                  No Requests Left
-                                </span>
-                              )
-                            )}
-                          </div>
-                        </div>
+                    {aips.map((aip) => {
+                      const isNotFound = !aip.program;
+                      const isDeleted = !!aip.deletedAt;
 
-                        {aip.pirs.length > 0 ? (
-                          <div className="mt-3 flex flex-wrap gap-2 pl-5">
-                            {aip.pirs.map((pir) => (
+                      return (
+                        <div key={aip.id} className="px-8 py-5" style={{ minHeight: `${rowHeights[aip.id] ?? 0}px` }}>
+                          <div className="flex items-center justify-between gap-4">
+                            {/* AIP name / not-found */}
+                            {isNotFound ? (
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileX size={15} className="text-slate-400 dark:text-slate-500 shrink-0" />
+                                <span className="italic text-sm text-slate-400 dark:text-slate-500">Document not found</span>
+                              </div>
+                            ) : (
                               <button
-                                key={pir.id}
-                                onClick={() => handlePreviewPIR(aip.program, pir.quarter)}
-                                disabled={previewLoading}
-                                className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-dark-border/50 border border-slate-200 dark:border-dark-border hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all text-xs font-bold text-slate-600 dark:text-slate-400"
+                                onClick={() => !isDeleted && handlePreviewAIP(aip.program, year, aip.programId)}
+                                disabled={isDeleted || previewLoading}
+                                className={`flex items-center gap-2 group min-w-0 ${isDeleted ? 'cursor-default' : ''}`}
                               >
-                                <Eye size={12} className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-500 transition-colors" />
-                                {pir.quarter.replace(` CY ${year}`, '')}
-                                <StatusBadge status={pir.status} size="xs" />
+                                <span className={`font-bold text-sm transition-colors truncate ${
+                                  isDeleted
+                                    ? 'text-slate-400 dark:text-slate-500 line-through'
+                                    : 'text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400'
+                                }`}>
+                                  {aip.abbreviation ?? aip.program}
+                                </span>
+                                {aip.abbreviation && !isDeleted && (
+                                  <span className="text-[11px] text-slate-400 dark:text-slate-500 truncate hidden sm:block">
+                                    {aip.program}
+                                  </span>
+                                )}
                               </button>
-                            ))}
+                            )}
+
+                            {/* Badges + actions */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {isDeleted ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 dark:bg-red-950/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-900/50">
+                                  <TrashSimple size={10} weight="fill" />
+                                  Deleted
+                                </span>
+                              ) : (
+                                <>
+                                  {aip.archived && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-dark-border text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-dark-border">
+                                      <Tray size={11} />
+                                      Archived
+                                    </span>
+                                  )}
+                                  {!isNotFound && <StatusBadge status={aip.status} size="xs" />}
+                                  {aip.status === 'Approved' && !aip.archived && !isNotFound && (
+                                    requestedEditIds.has(aip.id) ? (
+                                      <button
+                                        onClick={() => setCancelConfirmId(aip.id)}
+                                        disabled={cancelingEditId === aip.id}
+                                        title="Cancel edit request"
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:hover:border-red-900/50 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        <CheckCircle size={11} weight="fill" className="group-hover:hidden" />
+                                        <X size={11} weight="bold" className="hidden group-hover:block" />
+                                        <span className="group-hover:hidden">{cancelingEditId === aip.id ? 'Cancelling…' : 'Request Sent'}</span>
+                                        <span className="hidden group-hover:inline">Cancel Request</span>
+                                      </button>
+                                    ) : (editRequestCounts[aip.id] ?? 0) < 3 ? (
+                                      <button
+                                        onClick={() => setConfirmEditId(aip.id)}
+                                        disabled={requestingEditId === aip.id}
+                                        title="Request edit from admin"
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                        <PencilSimple size={11} />
+                                        {requestingEditId === aip.id ? 'Sending…' : 'Request Edit'}
+                                      </button>
+                                    ) : (
+                                      <span
+                                        title="Edit request limit reached"
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-dark-border text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-dark-border"
+                                      >
+                                        <PencilSimple size={11} />
+                                        No Requests Left
+                                      </span>
+                                    )
+                                  )}
+                                </>
+                              )}
+
+                              {/* Delete button — School only, non-deleted, non-archived */}
+                              {usesSchoolTerminology && !isDeleted && !aip.archived && !isNotFound && (
+                                <button
+                                  onClick={() => setConfirmDeleteAipId(aip.id)}
+                                  disabled={deletingAipId === aip.id}
+                                  title="Delete this AIP"
+                                  className="inline-flex items-center justify-center w-6 h-6 rounded-lg text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <TrashSimple size={13} />
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        ) : (
-                          <p className="mt-2 pl-5 text-[11px] text-slate-400 dark:text-slate-500 font-medium italic">
-                            No PIRs filed yet
-                          </p>
-                        )}
-                      </div>
-                    ))}
+
+                          {/* PIR chips */}
+                          {!isNotFound && (
+                            aip.pirs.length > 0 ? (
+                              <div className="mt-3 flex flex-wrap gap-2 pl-5">
+                                {aip.pirs.map((pir) => {
+                                  const pirDeleted = !!pir.deletedAt;
+                                  return (
+                                    <div key={pir.id} className="group/chip inline-flex items-stretch rounded-xl border border-slate-200 dark:border-dark-border overflow-hidden">
+                                      <button
+                                        onClick={() => !pirDeleted && handlePreviewPIR(aip.program, pir.quarter)}
+                                        disabled={pirDeleted || previewLoading}
+                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold transition-all ${
+                                          pirDeleted
+                                            ? 'bg-slate-50 dark:bg-dark-border/30 text-slate-400 dark:text-slate-500 cursor-default'
+                                            : 'bg-slate-50 dark:bg-dark-border/50 text-slate-600 dark:text-slate-400 hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 group'
+                                        }`}
+                                      >
+                                        <Eye size={12} className={pirDeleted ? 'text-slate-300 dark:text-slate-600' : 'text-slate-300 dark:text-slate-600 group-hover:text-indigo-500 transition-colors'} />
+                                        <span className={pirDeleted ? 'line-through' : ''}>
+                                          {pir.quarter.replace(` CY ${year}`, '')}
+                                        </span>
+                                        {pirDeleted ? (
+                                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-50 dark:bg-red-950/30 text-red-500 dark:text-red-400 border border-red-200 dark:border-red-900/50">
+                                            <TrashSimple size={9} weight="fill" />
+                                            Deleted
+                                          </span>
+                                        ) : (
+                                          <StatusBadge status={pir.status} size="xs" />
+                                        )}
+                                      </button>
+
+                                      {/* PIR delete button — School only, non-deleted */}
+                                      {usesSchoolTerminology && !pirDeleted && (
+                                        <button
+                                          onClick={() => setConfirmDeletePirId(pir.id)}
+                                          disabled={deletingPirId === pir.id}
+                                          title="Delete this PIR"
+                                          className="hidden group-hover/chip:flex items-center justify-center px-2 border-l border-slate-200 dark:border-dark-border bg-slate-50 dark:bg-dark-border/50 text-slate-300 dark:text-slate-600 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                          <TrashSimple size={11} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="mt-2 pl-5 text-[11px] text-slate-400 dark:text-slate-500 font-medium italic">
+                                No PIRs filed yet
+                              </p>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -411,7 +524,6 @@ export default function SubmissionsHistory() {
               >
                 <X size={16} weight="bold" />
               </button>
-
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex items-center justify-center">
                   <Warning size={20} weight="duotone" className="text-red-500" />
@@ -423,7 +535,6 @@ export default function SubmissionsHistory() {
                   </p>
                 </div>
               </div>
-
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   type="button"
@@ -470,7 +581,6 @@ export default function SubmissionsHistory() {
               >
                 <X size={16} weight="bold" />
               </button>
-
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-center justify-center">
                   <Warning size={20} weight="duotone" className="text-amber-500" />
@@ -482,7 +592,6 @@ export default function SubmissionsHistory() {
                   </p>
                 </div>
               </div>
-
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   type="button"
@@ -497,6 +606,120 @@ export default function SubmissionsHistory() {
                   className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 transition-colors shadow-sm"
                 >
                   Yes, Send Request
+                </button>
+              </div>
+            </Motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete AIP Confirmation Modal */}
+      <AnimatePresence>
+        {confirmDeleteAipId && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+            <Motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+              onClick={() => setConfirmDeleteAipId(null)}
+            />
+            <Motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+              className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-dark-surface shadow-2xl ring-1 ring-slate-900/10 dark:ring-dark-border p-6"
+            >
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteAipId(null)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
+              >
+                <X size={16} weight="bold" />
+              </button>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex items-center justify-center">
+                  <TrashSimple size={20} weight="duotone" className="text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight">Delete this AIP?</h3>
+                  <p className="mt-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
+                    The document will be marked as deleted and remain in your history for audit purposes. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteAipId(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-colors"
+                >
+                  Keep
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteAip(confirmDeleteAipId)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm"
+                >
+                  Yes, Delete
+                </button>
+              </div>
+            </Motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete PIR Confirmation Modal */}
+      <AnimatePresence>
+        {confirmDeletePirId && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+            <Motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+              onClick={() => setConfirmDeletePirId(null)}
+            />
+            <Motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 340 }}
+              className="relative w-full max-w-sm rounded-2xl bg-white dark:bg-dark-surface shadow-2xl ring-1 ring-slate-900/10 dark:ring-dark-border p-6"
+            >
+              <button
+                type="button"
+                onClick={() => setConfirmDeletePirId(null)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
+              >
+                <X size={16} weight="bold" />
+              </button>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex items-center justify-center">
+                  <TrashSimple size={20} weight="duotone" className="text-red-500" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight">Delete this PIR?</h3>
+                  <p className="mt-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
+                    The document will be marked as deleted and remain in your history for audit purposes. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeletePirId(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-border hover:bg-slate-200 dark:hover:bg-dark-border/80 transition-colors"
+                >
+                  Keep
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeletePir(confirmDeletePirId)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-sm"
+                >
+                  Yes, Delete
                 </button>
               </div>
             </Motion.div>

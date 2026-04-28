@@ -1,4 +1,5 @@
 import React from 'react';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 import SectionHeader from '../../ui/SectionHeader';
 import { TextareaAuto } from '../../ui/TextareaAuto';
 import { useFormShellContext } from '../../../forms/shared/formShellContext.jsx';
@@ -54,17 +55,25 @@ export default React.memo(function PIRActionItemsSection() {
                 </div>
             )}
 
-            <div className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl overflow-hidden shadow-sm">
-                <div className="divide-y divide-slate-100 dark:divide-dark-border" id="action-items-list">
+            <div className="space-y-4" id="action-items-list">
+                <AnimatePresence mode="popLayout">
                     {actionItems.map((item, i) => (
-                        <div key={i} className="flex items-start gap-3 px-4 py-3">
+                        <Motion.div
+                            key={`action-item-${i}`}
+                            layout
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="group relative flex items-start gap-3 rounded-2xl border border-slate-200/60 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-dark-border dark:bg-dark-surface"
+                        >
                             {actionItems.length > 1 && (
-                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold shadow-sm mt-1">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-[11px] font-bold text-white shadow-sm ring-4 ring-blue-50 dark:ring-blue-900/20">
                                     {i + 1}
                                 </div>
                             )}
                             <TextareaAuto
-                                className="flex-1 text-sm font-medium text-slate-800 dark:text-slate-100 bg-transparent outline-none min-h-[100px] placeholder:text-slate-300 dark:placeholder:text-slate-600 resize-none py-0.5"
+                                className="flex-1 resize-none bg-transparent py-0.5 text-sm font-medium text-slate-800 outline-none placeholder:text-slate-300 focus:ring-0 dark:text-slate-100 dark:placeholder:text-slate-600 min-h-[100px]"
                                 placeholder="Describe the recommended action or way forward..."
                                 value={item.action}
                                 onChange={(e) => handleChange(i, e.target.value)}
@@ -74,26 +83,26 @@ export default React.memo(function PIRActionItemsSection() {
                                 <button
                                     type="button"
                                     onClick={() => removeItem(i)}
-                                    className="mt-1 flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950/30"
+                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 dark:hover:bg-red-950/30"
                                     title="Remove"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
                                 </button>
                             )}
-                        </div>
+                        </Motion.div>
                     ))}
-                </div>
+                </AnimatePresence>
 
-                <div className="border-t border-slate-100 dark:border-dark-border">
-                    <button
-                        type="button"
-                        onClick={addItem}
-                        className="flex items-center gap-2 text-xs font-bold text-blue-500 hover:text-blue-600 px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all w-full"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                        Add Action Item
-                    </button>
-                </div>
+                <button
+                    type="button"
+                    onClick={addItem}
+                    className="group flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-4 text-sm font-bold text-slate-500 transition-all hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600 dark:border-dark-border dark:bg-dark-surface/50 dark:hover:border-blue-900/50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                >
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-200 transition-colors group-hover:bg-blue-100 dark:bg-slate-800 dark:group-hover:bg-blue-900/40">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    </div>
+                    Add another action item
+                </button>
             </div>
         </div>
     );

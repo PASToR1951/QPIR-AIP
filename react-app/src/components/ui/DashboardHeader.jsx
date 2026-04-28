@@ -85,6 +85,10 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                 size={40}
                                 rounded="rounded-full"
                             />
+                        ) : user?.role === 'Division Personnel' ? (
+                            <div className="w-10 h-10 rounded-full overflow-hidden border border-slate-200 dark:border-dark-border bg-white flex items-center justify-center">
+                                <img src="/Division_Logo.webp" alt="Division Logo" className="w-full h-full object-contain" />
+                            </div>
                         ) : (
                             <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center font-black border border-pink-200 uppercase">
                                 {displayName[0] || 'U'}

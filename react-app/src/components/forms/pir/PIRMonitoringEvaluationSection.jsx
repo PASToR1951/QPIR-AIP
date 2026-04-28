@@ -55,7 +55,10 @@ export default React.memo(function PIRMonitoringEvaluationSection({
         },
     ];
 
-    const desktopGroups = [{ key: 'all', activities, addLabel: 'Add Activity Row', onAdd: handleAddActivity }];
+    const desktopGroups = [
+        { key: 'planned',   activities: plannedActivities,   addLabel: 'Add Activity Row',      onAdd: handleAddActivity },
+        { key: 'unplanned', activities: unplannedActivities, addLabel: 'Add Unplanned Activity', onAdd: handleAddUnplannedActivity },
+    ];
 
     const wizardFields = [
         createWizardTextareaField({ key: 'actions',                  label: 'Actions to Address Gap',              placeholder: 'What steps will be taken?',                  field: 'actions',                 handleActivityChange, wrapperClassName: 'md:col-span-2' }),
@@ -68,7 +71,7 @@ export default React.memo(function PIRMonitoringEvaluationSection({
     const actionsField     = createMobileTextareaField({ key: 'actions', label: 'Actions to Address Gap',     placeholder: 'What steps will be taken?',    field: 'actions', handleActivityChange });
     const activityNameField = createMobileTextareaField({ key: 'name',    label: 'Activity Name / Description', placeholder: 'Describe the activity here...', field: 'name',    handleActivityChange, wrapperClassName: 'md:col-span-2' });
 
-    const desktopTable = buildDesktopTableConfig({ handleActivityChange, calculateGap, handleAddActivity });
+    const desktopTable = buildDesktopTableConfig({ handleActivityChange, calculateGap, handleAddActivity, activitiesCount: activities.length });
 
     const hasFromAIP = activities.some((a) => a.fromAIP);
 
@@ -142,9 +145,9 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                     cardClassName: MOBILE_CARD_CLASSNAME,
                     renderHeader: (activity, context) => (
                         <div className="mb-3 flex items-start justify-between gap-3">
-                            <div>
+                            <div className="min-w-0">
                                 <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">Activity {context.index + 1}</p>
-                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{activity.name || 'Untitled Activity'}</p>
+                                <p className="break-words text-sm font-semibold text-slate-700 dark:text-slate-200">{activity.name || 'Untitled Activity'}</p>
                                 {activity.implementation_period && <p className="mt-1 text-[11px] font-medium text-blue-600">{activity.implementation_period}</p>}
                             </div>
                             {context.canRemove && (

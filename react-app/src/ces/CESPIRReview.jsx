@@ -233,8 +233,24 @@ export default function CESPIRReview() {
                   <div><span className="font-bold">Physical:</span> {a.physAcc} / {a.physTarget}</div>
                   <div><span className="font-bold">Financial:</span> {formatCurrency(a.finAcc)} / {formatCurrency(a.finTarget)}</div>
                 </div>
-                {a.actualTasksConducted && (
-                  <p className="mt-2 text-xs text-slate-600 dark:text-slate-300"><span className="font-bold">Tasks:</span> {a.actualTasksConducted}</p>
+                {(a.actualTasksConducted || a.contributoryIndicators || a.movsExpectedOutputs || a.adjustments || a.actions) && (
+                  <div className="mt-3 space-y-1.5 border-t border-slate-100 dark:border-dark-border pt-3">
+                    {a.actualTasksConducted && (
+                      <p className="text-xs text-slate-600 dark:text-slate-300"><span className="font-bold">Tasks Conducted:</span> {a.actualTasksConducted}</p>
+                    )}
+                    {a.contributoryIndicators && (
+                      <p className="text-xs text-slate-600 dark:text-slate-300"><span className="font-bold">Contributory Indicators:</span> {a.contributoryIndicators}</p>
+                    )}
+                    {a.movsExpectedOutputs && (
+                      <p className="text-xs text-slate-600 dark:text-slate-300"><span className="font-bold">MOVs / Expected Outputs:</span> {a.movsExpectedOutputs}</p>
+                    )}
+                    {a.actions && (
+                      <p className="text-xs text-slate-600 dark:text-slate-300"><span className="font-bold">Actions to Address Gap:</span> {a.actions}</p>
+                    )}
+                    {a.adjustments && (
+                      <p className="text-xs text-slate-600 dark:text-slate-300"><span className="font-bold">Adjustments:</span> {a.adjustments}</p>
+                    )}
+                  </div>
                 )}
               </div>
             ))}

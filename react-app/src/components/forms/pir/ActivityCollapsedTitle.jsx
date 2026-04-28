@@ -42,7 +42,7 @@ export function ActivityCollapsedTitle({ activity, isExpanded, calculateGap, han
 
     return (
         <div className="min-w-0">
-            <span className="truncate text-sm font-bold text-slate-800 dark:text-slate-100">
+            <span className="block truncate text-sm font-bold text-slate-800 dark:text-slate-100">
                 {activity.name || <span className="italic font-normal text-slate-400 dark:text-slate-500">Untitled Activity...</span>}
             </span>
             <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">

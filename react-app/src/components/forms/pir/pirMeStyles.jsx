@@ -7,13 +7,37 @@ export const MOBILE_INPUT_CLASSNAME        = 'w-full rounded-2xl border border-s
 export const MOBILE_NUMBER_PANEL_CLASSNAME = 'rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-dark-border dark:bg-dark-base';
 export const WIZARD_PANEL_CLASSNAME        = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-50 dark:border-dark-border dark:bg-dark-surface dark:focus-within:ring-blue-950/20';
 export const TABLE_CELL_CLASSNAME          = 'border-r border-slate-200 p-3 align-top dark:border-dark-border';
-export const TABLE_NUMBER_INPUT_CLASSNAME  = 'min-h-[44px] w-full rounded-md border border-transparent bg-transparent text-center font-mono text-sm font-semibold text-slate-700 outline-none focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface';
-export const TABLE_TEXTAREA_CLASSNAME      = 'w-full rounded-md border border-transparent bg-transparent p-1 font-medium text-slate-700 focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface';
+export const TABLE_NUMBER_INPUT_CLASSNAME  = 'min-w-0 min-h-[44px] w-full rounded-md border border-transparent bg-transparent text-center font-mono text-sm font-semibold text-slate-700 outline-none focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface';
+export const TABLE_TEXTAREA_CLASSNAME      = 'min-w-0 w-full rounded-md border border-transparent bg-transparent p-1 font-medium text-slate-700 focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface';
 export const TABLE_DELETE_BUTTON_CLASSNAME = 'mx-auto flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-slate-600 dark:hover:bg-red-950/30';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 export function sanitizeDecimalInput(value) {
     return value.replace(/[^0-9.]/g, '');
+}
+
+function formatWithCommas(value) {
+    if (value === '' || value === null || value === undefined) return '';
+    const str = String(value);
+    const [integer, decimal] = str.split('.');
+    const formatted = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return decimal !== undefined ? `${formatted}.${decimal}` : formatted;
+}
+
+export function CommaNumberInput({ value, onChange, className, placeholder }) {
+    const [focused, setFocused] = React.useState(false);
+    return (
+        <input
+            type="text"
+            inputMode="decimal"
+            className={className}
+            placeholder={placeholder ?? '0'}
+            value={focused ? value : formatWithCommas(value)}
+            onChange={(e) => onChange({ target: { value: e.target.value.replace(/,/g, '') } })}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+        />
+    );
 }
 
 // ── Wizard/Mobile field-definition factories ──────────────────────────────────

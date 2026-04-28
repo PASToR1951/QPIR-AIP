@@ -167,7 +167,7 @@ export default function PIRFormEditor({
             <>
                 <FormHeader title="Quarterly Program Implementation Review" programName={profile.program} onBack={onBack} theme="blue" />
                 <div className="min-h-screen bg-slate-50 font-sans dark:bg-dark-base print:bg-white">
-                    <div className="mx-auto max-w-5xl px-4 pb-4 pt-8 print:hidden">
+                    <div className="mx-auto max-w-[1500px] px-4 pb-4 pt-8 print:hidden">
                         <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/30">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-emerald-600">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
@@ -230,8 +230,33 @@ export default function PIRFormEditor({
                                 </button>
                             </div>
                         </div>
+                    {submission.cesRemarks && (
+                        <div className={[
+                            'mt-3 rounded-2xl border p-5 print:hidden',
+                            submission.pirStatus === 'Returned'
+                                ? 'border-amber-200 bg-amber-50 dark:border-amber-700/40 dark:bg-amber-950/10'
+                                : 'border-teal-200 bg-teal-50 dark:border-teal-700/40 dark:bg-teal-950/10',
+                        ].join(' ')}>
+                            <p className={[
+                                'mb-2 text-[11px] font-black uppercase tracking-widest',
+                                submission.pirStatus === 'Returned'
+                                    ? 'text-amber-700 dark:text-amber-400'
+                                    : 'text-teal-700 dark:text-teal-400',
+                            ].join(' ')}>
+                                Reviewer Remarks
+                            </p>
+                            <p className={[
+                                'text-sm leading-relaxed whitespace-pre-wrap',
+                                submission.pirStatus === 'Returned'
+                                    ? 'text-amber-900 dark:text-amber-200'
+                                    : 'text-teal-900 dark:text-teal-200',
+                            ].join(' ')}>
+                                {submission.cesRemarks}
+                            </p>
+                        </div>
+                    )}
                     </div>
-                    <div className="mx-auto max-w-7xl px-4 pb-12">
+                    <div className="mx-auto max-w-[1500px] px-4 pb-12">
                         <div className="rounded-2xl border border-slate-100 bg-white p-8 shadow-sm dark:border-dark-border dark:bg-dark-surface print:rounded-none print:border-none print:p-0 print:shadow-none">
                             <Suspense fallback={<PreviewFallback />}>
                                 <LazyPIRDocument
@@ -278,7 +303,7 @@ export default function PIRFormEditor({
             <DocumentPreviewModal
                 isOpen={isPreviewOpen}
                 onClose={() => onPreviewOpen(false)}
-                title="PIR Document Preview"
+                title="PIR Print Preview"
                 subtitle="Quarterly Program Implementation Review"
                 filename={`PIR_${quarterString.replace(/\s+/g, '_')}${profile.program ? `_${profile.program.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '')}` : ''}`}
                 landscape
@@ -350,9 +375,9 @@ export default function PIRFormEditor({
                 </button>
             )}
 
-            <div className={`container relative z-10 mx-auto mb-12 mt-8 max-w-5xl px-4 print:hidden md:px-0 ${appMode === 'wizard' && isMobile ? 'pb-28' : ''}`}>
+            <div className={`container relative z-10 mx-auto mb-12 mt-8 px-4 print:hidden md:px-0 ${appMode === 'wizard' ? 'max-w-5xl' : 'max-w-[1500px]'} ${appMode === 'wizard' && isMobile ? 'pb-28' : ''}`}>
                 {appMode === 'wizard' && (
-                    <div className="mb-6 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-md dark:border-dark-border dark:bg-dark-surface">
+                    <div className="mb-6 rounded-[2rem] border border-white/40 bg-white/70 p-6 shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-dark-surface/60 ring-1 ring-slate-900/5">
                         <FormBoxHeader
                             title="Quarterly Program Implementation Review"
                             badge={quarterString}
@@ -361,7 +386,7 @@ export default function PIRFormEditor({
                     </div>
                 )}
 
-                <div className="relative rounded-[2.5rem] border border-slate-200 bg-white p-6 shadow-xl dark:border-dark-border dark:bg-dark-surface md:p-12">
+                <div className="relative rounded-[2.5rem] border border-white/40 bg-white/70 p-6 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-dark-surface/60 md:p-12 ring-1 ring-slate-900/5">
                     {appMode === 'full' && (
                         <FormBoxHeader
                             title="Quarterly Program Implmentation Review"
@@ -391,10 +416,10 @@ export default function PIRFormEditor({
                         <AnimatePresence mode="wait">
                             <Motion.div
                                 key={appMode}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.15 }}
+                                initial={{ opacity: 0, y: 15, scale: 0.98 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: -15, scale: 0.98 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                             >
                                 <div className="min-h-[320px]">
                                     <PIRProfileSection
@@ -435,8 +460,8 @@ export default function PIRFormEditor({
                                             appMode={appMode}
                                         />
 
-                                        <div className="relative mb-2 overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-dark-border dark:bg-dark-surface md:p-12">
-                                            <svg className="absolute inset-0 h-full w-full stroke-slate-300 opacity-20 dark:stroke-dark-border dark:opacity-40" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 30%)' }} xmlns="http://www.w3.org/2000/svg"><defs><pattern id="diagonal-lines-pir" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="20" strokeWidth="2"></line></pattern></defs><rect width="100%" height="100%" fill="url(#diagonal-lines-pir)"></rect></svg>
+                                        <div className="relative mb-2 overflow-hidden rounded-3xl border border-white/40 bg-white/40 p-8 shadow-lg backdrop-blur-md ring-1 ring-slate-900/5 dark:border-white/10 dark:bg-dark-surface/40 md:p-12">
+                                            <svg className="absolute inset-0 h-full w-full stroke-blue-300/30 dark:stroke-blue-900/20" style={{ maskImage: 'linear-gradient(to bottom, transparent, black 30%)' }} xmlns="http://www.w3.org/2000/svg"><defs><pattern id="diagonal-lines-pir" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="20" strokeWidth="2"></line></pattern></defs><rect width="100%" height="100%" fill="url(#diagonal-lines-pir)"></rect></svg>
                                             <div className="relative z-10 grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-24">
                                                 <SignatureBlock
                                                     label="Prepared by"
@@ -476,9 +501,9 @@ export default function PIRFormEditor({
                                             type="button"
                                             onClick={prevStep}
                                             disabled={currentStep === 1}
-                                            className={`group relative inline-flex h-12 items-center justify-center gap-2 rounded-xl px-6 font-medium transition-colors ${currentStep === 1 ? 'cursor-not-allowed text-slate-300 dark:text-slate-600' : 'border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 active:scale-95 dark:border-dark-border dark:bg-dark-surface dark:text-slate-300 dark:hover:bg-dark-base'}`}
+                                            className={`group relative inline-flex h-12 items-center justify-center gap-2 rounded-xl px-6 font-medium transition-all duration-300 ${currentStep === 1 ? 'cursor-not-allowed text-slate-300 dark:text-slate-600' : 'border border-slate-200/50 bg-white/50 backdrop-blur-sm text-slate-600 shadow-sm hover:bg-white hover:shadow hover:border-slate-300 active:scale-95 dark:border-dark-border dark:bg-dark-surface/50 dark:text-slate-300 dark:hover:bg-dark-surface'}`}
                                         >
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:-translate-x-1"><polyline points="15 18 9 12 15 6"></polyline></svg>
                                             Back
                                         </button>
 
@@ -486,10 +511,12 @@ export default function PIRFormEditor({
                                             <button
                                                 type="button"
                                                 onClick={nextStep}
-                                                className="group relative inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-slate-900 px-8 font-bold text-white shadow-md transition-colors hover:bg-slate-800 active:scale-95"
+                                                className="group relative overflow-hidden inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-8 font-bold text-white shadow-[0_8px_16px_rgba(79,70,229,0.3)] transition-all duration-300 hover:shadow-[0_8px_24px_rgba(79,70,229,0.5)] hover:scale-[1.02] active:scale-95"
                                             >
-                                                Continue
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-1"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                                <span className="relative z-10 flex items-center gap-2">
+                                                    Continue
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-1"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                                </span>
                                             </button>
                                         )}
                                     </div>
@@ -506,7 +533,7 @@ export default function PIRFormEditor({
                                                 className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-2xl border-2 border-slate-200 bg-white px-8 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 active:scale-95 dark:border-dark-border dark:bg-dark-surface dark:text-slate-200 dark:hover:bg-dark-base sm:w-auto"
                                             >
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                                                Preview Layout
+                                                Print Preview
                                             </button>
 
                                             <button

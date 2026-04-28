@@ -6,7 +6,7 @@ import { XCircle, Printer, Eye, FileText, CaretRight as ChevronRight, DownloadSi
 export const DocumentPreviewModal = ({
     isOpen,
     onClose,
-    title = "Document Preview",
+    title = "Print Preview",
     subtitle = "Review your document",
     filename,
     landscape = false,
@@ -113,7 +113,7 @@ export const DocumentPreviewModal = ({
                                     <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1 flex flex-wrap items-center gap-1.5">
                                         {subtitle} 
                                         <ChevronRight size={12} className="text-slate-300 shrink-0" />
-                                        <span className="text-indigo-600">Document View</span>
+                                        <span className="text-indigo-600">Print Preview</span>
                                     </p>
                                 </div>
                             </div>
@@ -161,9 +161,9 @@ export const DocumentPreviewModal = ({
                                         <div className="w-10 h-10 bg-white dark:bg-dark-border rounded-2xl flex items-center justify-center mx-auto mb-4 border border-indigo-100 dark:border-dark-border shadow-sm">
                                             <Eye size={22} className="text-indigo-600" />
                                         </div>
-                                        <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 mb-1">Document Preview</h4>
+                                        <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 mb-1">Print Preview</h4>
                                         <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
-                                            Review the submitted document here. Use the print action only when you need a paper copy or PDF.
+                                            Review the print layout here. Use the print action when you need a paper copy or PDF.
                                         </p>
                                     </div>
                                     <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5 opacity-60">

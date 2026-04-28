@@ -72,6 +72,7 @@ export function createInitialPirState({
         submission: {
             pirId: null,
             pirStatus: null,
+            cesRemarks: null,
             isEditing: false,
             isSubmitted: false,
         },
@@ -339,6 +340,7 @@ function pirReducer(state, action) {
                     ...state.submission,
                     pirId: pir.id ?? null,
                     pirStatus: pir.status ?? null,
+                    cesRemarks: pir.cesRemarks ?? null,
                 },
                 ui: hydratedActivities.ui,
             };

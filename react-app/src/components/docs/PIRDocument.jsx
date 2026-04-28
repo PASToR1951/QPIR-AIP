@@ -126,27 +126,43 @@ export const PIRDocument = ({
                 <div className="pb-2 overflow-x-auto">
                     <h2 className="font-black text-sm mb-4 uppercase tracking-widest border-l-4 border-black pl-3">C. Quarterly Monitoring Evaluation & Adjustment</h2>
                     <table className="w-full border-collapse text-[9px] border border-black table-fixed font-medium">
+                        <colgroup>
+                            <col style={{ width: '3%' }} />
+                            <col style={{ width: '12%' }} />
+                            <col style={{ width: '4%' }} />
+                            <col style={{ width: '9%' }} />
+                            <col style={{ width: '9%' }} />
+                            <col style={{ width: '9%' }} />
+                            <col style={{ width: '4%' }} />
+                            <col style={{ width: '8%' }} />
+                            <col style={{ width: '4%' }} />
+                            <col style={{ width: '8%' }} />
+                            <col style={{ width: '4%' }} />
+                            <col style={{ width: '4%' }} />
+                            <col style={{ width: '12%' }} />
+                            <col style={{ width: '10%' }} />
+                        </colgroup>
                         <thead>
                             <tr className="text-center font-black bg-slate-50 uppercase tracking-tighter print:bg-transparent">
-                                <th rowSpan={2} className="border border-black p-2 w-[3%]">No</th>
-                                <th rowSpan={2} className="border border-black p-2 w-[14%]">Q1 Activity/IES (Based on AIP {year})</th>
-                                <th rowSpan={2} className="border border-black p-1 w-[6%] leading-tight"><span className="block">Complied (✓)</span><span className="block">or Not</span><span className="block">Complied (✗)</span></th>
-                                <th rowSpan={2} className="border border-black p-2 w-[10%]">Actual Tasks Conducted</th>
-                                <th rowSpan={2} className="border border-black p-2 w-[10%]">Contributory Performance Indicators</th>
-                                <th rowSpan={2} className="border border-black p-2 w-[10%]">MOVs / Expected Outputs</th>
+                                <th rowSpan={2} className="border border-black p-2">No</th>
+                                <th rowSpan={2} className="border border-black p-2">Q1 Activity/IES (Based on AIP {year})</th>
+                                <th rowSpan={2} className="border border-black p-1 leading-tight"><span className="block">Complied (✓)</span><span className="block">or Not</span><span className="block">Complied (✗)</span></th>
+                                <th rowSpan={2} className="border border-black p-2">Actual Tasks Conducted</th>
+                                <th rowSpan={2} className="border border-black p-2">Contributory Performance Indicators</th>
+                                <th rowSpan={2} className="border border-black p-2">MOVs / Expected Outputs</th>
                                 <th colSpan={2} className="border border-black p-1">Quarterly Target</th>
                                 <th colSpan={2} className="border border-black p-1">Accomplishment</th>
                                 <th colSpan={2} className="border border-black p-1">Gap (%)</th>
-                                <th rowSpan={2} className="border border-black p-2 w-[10%]">Actions to be done to address the gap</th>
-                                <th rowSpan={2} className="border border-black p-2 w-[8%]">Adjustments</th>
+                                <th rowSpan={2} className="border border-black p-2">Actions to be done to address the gap</th>
+                                <th rowSpan={2} className="border border-black p-2">Adjustments</th>
                             </tr>
                             <tr className="text-center font-black bg-slate-50 uppercase tracking-tighter print:bg-transparent">
-                                <th className="border border-black p-1 w-[5%]">Physical</th>
-                                <th className="border border-black p-1 w-[5%]">Financial</th>
-                                <th className="border border-black p-1 w-[5%]">Physical</th>
-                                <th className="border border-black p-1 w-[5%]">Financial</th>
-                                <th className="border border-black p-1 w-[5%]">Physical</th>
-                                <th className="border border-black p-1 w-[5%]">Financial</th>
+                                <th className="border border-black p-1">Physical</th>
+                                <th className="border border-black p-1">Financial</th>
+                                <th className="border border-black p-1">Physical</th>
+                                <th className="border border-black p-1">Financial</th>
+                                <th className="border border-black p-1">Physical</th>
+                                <th className="border border-black p-1">Financial</th>
                             </tr>
                         </thead>
                         <tbody>
