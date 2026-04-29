@@ -66,6 +66,7 @@ export default function usePirAipActivities({
 
                         onActivitiesLoaded?.(
                             relevantActivities.map((activity) => createEmptyPirActivity({
+                                id: `aip:${activity.id}`,
                                 name: activity.activity_name,
                                 implementation_period: activity.implementation_period,
                                 period_start_month: activity.period_start_month ?? null,

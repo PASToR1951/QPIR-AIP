@@ -25,7 +25,6 @@ import {
     selectProfile,
     selectPirSubmission,
     selectPirUi,
-    selectRemovedAipActivities,
     usePirDispatch,
     usePirSelector,
 } from './pirContext.jsx';
@@ -84,11 +83,8 @@ export default function PIRFormEditor({
     onDeletePIR,
     onShowFinalConfirm,
     toggleAppMode,
-    handleRemoveActivity,
     handleActivityChange,
-    handleAddActivity,
     handleAddUnplannedActivity,
-    handleRestoreActivity,
     calculateGap,
     isSaving,
     isSaved,
@@ -107,7 +103,6 @@ export default function PIRFormEditor({
     const budget = usePirSelector(selectBudget);
     const indicatorTargets = usePirSelector(selectIndicatorTargets);
     const activities = usePirSelector(selectActivities);
-    const removedAIPActivities = usePirSelector(selectRemovedAipActivities);
     const factors = usePirSelector(selectFactors);
     const actionItems = usePirSelector(selectActionItems);
     const ui = usePirSelector(selectPirUi);
@@ -165,71 +160,98 @@ export default function PIRFormEditor({
     if (appMode === 'readonly') {
         return (
             <>
-                <FormHeader title="Quarterly Program Implementation Review" programName={profile.program} onBack={onBack} theme="blue" />
-                <div className="min-h-screen bg-slate-50 font-sans dark:bg-dark-base print:bg-white">
-                    <div className="mx-auto max-w-[1500px] px-4 pb-4 pt-8 print:hidden">
-                        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3.5 shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/30">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-emerald-600">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                            </svg>
-                            <span className="flex-1 text-sm font-bold text-emerald-800 dark:text-emerald-300">
-                                This form has been submitted{submission.pirStatus && submission.pirStatus !== 'Submitted' ? ` — currently ${submission.pirStatus.toLowerCase()} by reviewers` : ' and is read-only'}.
-                            </span>
-                            <div className="flex items-center gap-2">
-                                {['For CES Review', 'For Cluster Head Review', 'Returned'].includes(submission.pirStatus) && (
-                                    <>
+                <FormHeader title="Quarterly Program Implementation Review" programName={profile.program} onBack={onBack} onHome={onHome} theme="blue" />
+                <div className="min-h-screen bg-slate-100 font-sans dark:bg-dark-base print:bg-white">
+                    <div className="mx-auto max-w-[1500px] px-4 pb-4 pt-6 print:hidden">
+                        {(() => {
+                            const isReturned = submission.pirStatus === 'Returned';
+                            const isApproved = submission.pirStatus === 'Approved';
+                            const isPending = ['For CES Review', 'For Cluster Head Review'].includes(submission.pirStatus);
+                            const accentBorder = isReturned
+                                ? 'border-l-amber-400'
+                                : isPending
+                                    ? 'border-l-blue-400'
+                                    : 'border-l-emerald-400';
+                            const iconColor = isReturned ? 'text-amber-500' : isPending ? 'text-blue-500' : 'text-emerald-500';
+                            const labelColor = isReturned
+                                ? 'text-amber-800 dark:text-amber-200'
+                                : isPending
+                                    ? 'text-blue-800 dark:text-blue-200'
+                                    : 'text-emerald-800 dark:text-emerald-200';
+                            const statusLabel = isApproved
+                                ? 'Approved — read-only'
+                                : submission.pirStatus && submission.pirStatus !== 'Submitted'
+                                    ? `Currently ${submission.pirStatus.toLowerCase()} by reviewers`
+                                    : 'Submitted — read-only';
+                            const canEdit = ['For CES Review', 'For Cluster Head Review', 'Returned'].includes(submission.pirStatus);
+                            return (
+                                <div className={`rounded-2xl border border-slate-200 border-l-4 bg-white shadow-sm dark:border-dark-border dark:border-l-4 dark:bg-dark-surface ${accentBorder} print:hidden`}>
+                                    <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 dark:border-dark-border">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 ${iconColor}`}>
+                                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                                        </svg>
+                                        <span className={`flex-1 text-sm font-semibold ${labelColor}`}>
+                                            This form has been submitted.{' '}
+                                            <span className="font-bold">{statusLabel}.</span>
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-end gap-2 px-5 py-3">
+                                        {canEdit && (
+                                            <>
+                                                <button
+                                                    onClick={onEditPIR}
+                                                    className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700 active:scale-95"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                    </svg>
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={onDeletePIR}
+                                                    className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-100 active:scale-95 dark:border-red-900/50 dark:bg-red-950/30 dark:hover:bg-red-900/40"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="3 6 5 6 21 6" />
+                                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                                        <path d="M10 11v6" /><path d="M14 11v6" />
+                                                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                                    </svg>
+                                                    Delete
+                                                </button>
+                                                <div className="h-5 w-px bg-slate-200 dark:bg-dark-border" />
+                                            </>
+                                        )}
                                         <button
-                                            onClick={onEditPIR}
-                                            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-blue-700"
+                                            aria-label="Download PIR PDF"
+                                            onClick={handleDownloadPirPdf}
+                                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-white active:scale-95 dark:border-dark-border dark:bg-dark-surface dark:text-slate-200 dark:hover:bg-dark-base"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                                <polyline points="7 10 12 15 17 10" />
+                                                <line x1="12" y1="15" x2="12" y2="3" />
                                             </svg>
-                                            Edit
+                                            Download PDF
                                         </button>
                                         <button
-                                            onClick={onDeletePIR}
-                                            className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:hover:bg-red-900/40"
+                                            aria-label="Print PIR"
+                                            onClick={handleReadonlyPrint}
+                                            className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-700 active:scale-95 dark:border-slate-700"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="3 6 5 6 21 6" />
-                                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                                <path d="M10 11v6" />
-                                                <path d="M14 11v6" />
-                                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                                <polyline points="6 9 6 2 18 2 18 9" />
+                                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                                                <rect x="6" y="14" width="12" height="8" />
                                             </svg>
-                                            Delete
+                                            Print
                                         </button>
-                                    </>
-                                )}
-                                <button
-                                    aria-label="Download PIR PDF"
-                                    onClick={handleDownloadPirPdf}
-                                    className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-dark-border dark:bg-dark-surface dark:text-slate-200 dark:hover:bg-dark-base"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                        <polyline points="7 10 12 15 17 10" />
-                                        <line x1="12" y1="15" x2="12" y2="3" />
-                                    </svg>
-                                    Download PDF
-                                </button>
-                                <button
-                                    aria-label="Print PIR"
-                                    onClick={handleReadonlyPrint}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-700"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="6 9 6 2 18 2 18 9" />
-                                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                                        <rect x="6" y="14" width="12" height="8" />
-                                    </svg>
-                                    Print
-                                </button>
-                            </div>
-                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     {submission.cesRemarks && (
                         <div className={[
                             'mt-3 rounded-2xl border p-5 print:hidden',
@@ -257,7 +279,7 @@ export default function PIRFormEditor({
                     )}
                     </div>
                     <div className="mx-auto max-w-[1500px] px-4 pb-12">
-                        <div className="rounded-2xl border border-slate-100 bg-white p-8 shadow-sm dark:border-dark-border dark:bg-dark-surface print:rounded-none print:border-none print:p-0 print:shadow-none">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-md print:rounded-none print:border-none print:p-0 print:shadow-none">
                             <Suspense fallback={<PreviewFallback />}>
                                 <LazyPIRDocument
                                     quarter={quarterString}
@@ -438,16 +460,11 @@ export default function PIRFormEditor({
                                         expandedActivityId={ui.expandedActivityId}
                                         setExpandedActivityId={(activityId) => dispatch({ type: 'SET_EXPANDED_ACTIVITY_ID', payload: activityId })}
                                         calculateGap={calculateGap}
-                                        handleRemoveActivity={handleRemoveActivity}
                                         handleActivityChange={handleActivityChange}
-                                        handleAddActivity={handleAddActivity}
                                         handleAddUnplannedActivity={handleAddUnplannedActivity}
-                                        isAddingActivity={ui.isAddingActivity}
-                                        removedAIPActivities={removedAIPActivities}
-                                        handleRestoreActivity={handleRestoreActivity}
                                     />
 
-                                    <PIRFactorsSection showRecommendations={true} />
+                                    <PIRFactorsSection />
 
                                     <PIRActionItemsSection />
 

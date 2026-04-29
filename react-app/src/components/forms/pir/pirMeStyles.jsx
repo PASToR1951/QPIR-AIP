@@ -9,7 +9,6 @@ export const WIZARD_PANEL_CLASSNAME        = 'rounded-2xl border border-slate-20
 export const TABLE_CELL_CLASSNAME          = 'border-r border-slate-200 p-3 align-top dark:border-dark-border';
 export const TABLE_NUMBER_INPUT_CLASSNAME  = 'min-w-0 min-h-[44px] w-full rounded-md border border-transparent bg-transparent text-center font-mono text-sm font-semibold text-slate-700 outline-none focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface';
 export const TABLE_TEXTAREA_CLASSNAME      = 'min-w-0 w-full rounded-md border border-transparent bg-transparent p-1 font-medium text-slate-700 focus:border-slate-300 focus:bg-white dark:text-slate-200 dark:focus:border-dark-border dark:focus:bg-dark-surface';
-export const TABLE_DELETE_BUTTON_CLASSNAME = 'mx-auto flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-slate-600 dark:hover:bg-red-950/30';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 export function sanitizeDecimalInput(value) {

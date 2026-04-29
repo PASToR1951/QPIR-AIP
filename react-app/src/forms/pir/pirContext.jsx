@@ -13,7 +13,6 @@ export const selectProfile = (state) => state.profile;
 export const selectBudget = (state) => state.budget;
 export const selectIndicatorTargets = (state) => state.indicatorTargets;
 export const selectActivities = (state) => state.activities;
-export const selectRemovedAipActivities = (state) => state.removedAIPActivities;
 export const selectFactors = (state) => state.factors;
 export const selectActionItems = (state) => state.actionItems;
 export const selectPirUi = (state) => state.ui;

@@ -1,18 +1,13 @@
 import { TextareaAuto } from '../../ui/TextareaAuto';
 import {
     TABLE_CELL_CLASSNAME, TABLE_NUMBER_INPUT_CLASSNAME,
-    TABLE_TEXTAREA_CLASSNAME, TABLE_DELETE_BUTTON_CLASSNAME,
+    TABLE_TEXTAREA_CLASSNAME,
     sanitizeDecimalInput, CommaNumberInput,
 } from './pirMeStyles.jsx';
 
-const TrashIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-    </svg>
-);
-const PlusIcon = () => (
+const renderPlusIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
     </svg>
 );
 
@@ -53,11 +48,11 @@ function textCell(field, handleActivityChange, placeholder) {
 const colHeader = 'border-r border-slate-200 p-4 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-dark-border dark:text-slate-300';
 const subHeader = 'border-r border-slate-200 p-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:border-dark-border dark:text-slate-500';
 
-export function buildDesktopTableConfig({ handleActivityChange, calculateGap, handleAddActivity, activitiesCount }) {
+export function buildDesktopTableConfig({ handleActivityChange, calculateGap }) {
     return {
         wrapperClassName: 'hidden md:block overflow-x-auto pb-4',
-        innerClassName:   'w-max min-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-dark-border dark:bg-dark-surface',
-        tableClassName:   'w-full min-w-[2000px] border-collapse text-sm',
+        innerClassName: 'w-max min-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-dark-border dark:bg-dark-surface',
+        tableClassName: 'w-full min-w-[2000px] border-collapse text-sm',
         renderGroupHeader: (group, context) => {
             if (group.key !== 'unplanned') return null;
             return (
@@ -75,14 +70,7 @@ export function buildDesktopTableConfig({ handleActivityChange, calculateGap, ha
                 headerClassName: `w-14 ${colHeader}`,
                 cellClassName: 'border-r border-slate-200 p-3 text-center align-top dark:border-dark-border',
                 renderCell: (_, context) => (
-                    <div className="flex flex-col items-center gap-3">
-                        <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{context.index + 1}</span>
-                        {context.canRemove && (
-                            <button type="button" onClick={() => context.remove()} className={TABLE_DELETE_BUTTON_CLASSNAME} title="Delete Row">
-                                <TrashIcon />
-                            </button>
-                        )}
-                    </div>
+                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500">{context.index + 1}</span>
                 ),
             },
             {
@@ -143,13 +131,6 @@ export function buildDesktopTableConfig({ handleActivityChange, calculateGap, ha
                 renderCell: textCell('actualTasksConducted', handleActivityChange, 'Tasks conducted...'),
             },
             {
-                key: 'contributory-indicators',
-                header: 'Contributory Performance Indicators',
-                headerClassName: `min-w-[200px] w-[200px] ${colHeader}`,
-                cellClassName: TABLE_CELL_CLASSNAME,
-                renderCell: textCell('contributoryIndicators', handleActivityChange, 'Indicators...'),
-            },
-            {
                 key: 'movs',
                 header: 'MOVs / Expected Outputs',
                 headerClassName: `min-w-[200px] w-[200px] ${colHeader}`,
@@ -157,27 +138,34 @@ export function buildDesktopTableConfig({ handleActivityChange, calculateGap, ha
                 renderCell: textCell('movsExpectedOutputs', handleActivityChange, 'Means of verification...'),
             },
             {
+                key: 'contributory-indicators',
+                header: 'Objectively Verifiable Indicators',
+                headerClassName: `min-w-[200px] w-[200px] ${colHeader}`,
+                cellClassName: TABLE_CELL_CLASSNAME,
+                renderCell: textCell('contributoryIndicators', handleActivityChange, 'Indicators...'),
+            },
+            {
                 key: 'target', header: 'Quarterly Target',
                 headerClassName: colHeader,
                 columns: [
-                    { key: 'target-physical',  header: 'Physical',  headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 p-1 align-top dark:border-dark-border', renderCell: numberCell('physTarget', handleActivityChange) },
-                    { key: 'target-financial', header: 'Financial', headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 p-1 align-top dark:border-dark-border', renderCell: numberCell('finTarget',  handleActivityChange) },
+                    { key: 'target-physical', header: 'Physical', headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 p-1 align-top dark:border-dark-border', renderCell: numberCell('physTarget', handleActivityChange) },
+                    { key: 'target-financial', header: 'Financial', headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 p-1 align-top dark:border-dark-border', renderCell: numberCell('finTarget', handleActivityChange) },
                 ],
             },
             {
                 key: 'accomplishment', header: 'Accomplishment',
                 headerClassName: colHeader,
                 columns: [
-                    { key: 'accomplishment-physical',  header: 'Physical',  headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 p-1 align-top dark:border-dark-border', renderCell: numberCell('physAcc', handleActivityChange) },
-                    { key: 'accomplishment-financial', header: 'Financial', headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 p-1 align-top dark:border-dark-border', renderCell: numberCell('finAcc',  handleActivityChange) },
+                    { key: 'accomplishment-physical', header: 'Physical', headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 p-1 align-top dark:border-dark-border', renderCell: numberCell('physAcc', handleActivityChange) },
+                    { key: 'accomplishment-financial', header: 'Financial', headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 p-1 align-top dark:border-dark-border', renderCell: numberCell('finAcc', handleActivityChange) },
                 ],
             },
             {
                 key: 'gap', header: 'Gap (%)',
                 headerClassName: colHeader,
                 columns: [
-                    { key: 'gap-physical',  header: 'Physical',  headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 bg-slate-50/50 p-1 align-top dark:border-dark-border dark:bg-dark-base/50', renderCell: gapCell(calculateGap, 'physTarget', 'physAcc') },
-                    { key: 'gap-financial', header: 'Financial', headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 bg-slate-50/50 p-1 align-top dark:border-dark-border dark:bg-dark-base/50', renderCell: gapCell(calculateGap, 'finTarget',  'finAcc')  },
+                    { key: 'gap-physical', header: 'Physical', headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 bg-slate-50/50 p-1 align-top dark:border-dark-border dark:bg-dark-base/50', renderCell: gapCell(calculateGap, 'physTarget', 'physAcc') },
+                    { key: 'gap-financial', header: 'Financial', headerClassName: `w-[90px] min-w-[90px] ${subHeader}`, cellClassName: 'h-px border-r border-slate-200 bg-slate-50/50 p-1 align-top dark:border-dark-border dark:bg-dark-base/50', renderCell: gapCell(calculateGap, 'finTarget', 'finAcc') },
                 ],
             },
             {
@@ -188,7 +176,6 @@ export function buildDesktopTableConfig({ handleActivityChange, calculateGap, ha
                     <TextareaAuto placeholder="Resolutions..." className={TABLE_TEXTAREA_CLASSNAME}
                         value={activity.actions}
                         onChange={(e) => handleActivityChange(activity.id, 'actions', e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddActivity(); }}
                     />
                 ),
             },
@@ -199,16 +186,19 @@ export function buildDesktopTableConfig({ handleActivityChange, calculateGap, ha
                 renderCell: textCell('adjustments', handleActivityChange, 'Adjustments made...'),
             },
         ],
-        renderGroupFooter: (group, context) => (
-            <tr key={`${group.key}-footer`}>
-                <td colSpan={context.columnCount} className="p-4">
-                    <button type="button" onClick={group.onAdd}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:bg-slate-50 hover:text-blue-600 active:scale-95 dark:border-dark-border dark:bg-dark-surface dark:text-slate-300 dark:hover:bg-dark-base"
-                    >
-                        <PlusIcon />{group.addLabel}
-                    </button>
-                </td>
-            </tr>
-        ),
+        renderGroupFooter: (group, context) => {
+            if (group.key !== 'unplanned' || !group.onAdd || !group.addLabel) return null;
+            return (
+                <tr key={`${group.key}-footer`}>
+                    <td colSpan={context.columnCount} className="p-4">
+                        <button type="button" onClick={group.onAdd}
+                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition-all hover:border-blue-200 hover:bg-slate-50 hover:text-blue-600 active:scale-95 dark:border-dark-border dark:bg-dark-surface dark:text-slate-300 dark:hover:bg-dark-base"
+                        >
+                            {renderPlusIcon()}{group.addLabel}
+                        </button>
+                    </td>
+                </tr>
+            );
+        },
     };
 }

@@ -54,6 +54,7 @@ export async function generatePIRPdf(data) {
 
   const aipActivities = activities.filter((activity) => !activity.isUnplanned);
   const unplannedActivities = activities.filter((activity) => activity.isUnplanned);
+  const factorActivities = [...aipActivities, ...unplannedActivities];
 
   let y = drawGovHeader(pdf, sealData, {
     title: 'Quarterly Program Implementation Review (AIP-PIR)',
@@ -164,8 +165,8 @@ export async function generatePIRPdf(data) {
       { content: `Q Activity/IES\n(Based on AIP ${year})`, rowSpan: 2, styles: { valign: 'middle' } },
       { content: 'Complied/\nNot Complied', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
       { content: 'Actual Tasks\nConducted', rowSpan: 2, styles: { valign: 'middle' } },
-      { content: 'Contributory\nPerformance\nIndicators', rowSpan: 2, styles: { valign: 'middle' } },
       { content: 'MOVs /\nExpected\nOutputs', rowSpan: 2, styles: { valign: 'middle' } },
+      { content: 'Objectively\nVerifiable\nIndicators', rowSpan: 2, styles: { valign: 'middle' } },
       { content: 'Quarterly Target', colSpan: 2, styles: { halign: 'center' } },
       { content: 'Accomplishment', colSpan: 2, styles: { halign: 'center' } },
       { content: 'Gap (%)', colSpan: 2, styles: { halign: 'center' } },
@@ -187,8 +188,8 @@ export async function generatePIRPdf(data) {
       activity.name || '',
       activity.complied === true ? '\u2713' : activity.complied === false ? '\u2717' : '',
       activity.actualTasksConducted || '',
-      activity.contributoryIndicators || '',
       activity.movsExpectedOutputs || '',
+      activity.contributoryIndicators || '',
       activity.physTarget || '',
       formatCurrency(activity.finTarget),
       activity.physAcc || '',
@@ -264,40 +265,46 @@ export async function generatePIRPdf(data) {
   pdf.text('D. FACILITATING AND HINDERING FACTORS', MARGIN.left, y);
   y += 3;
 
-  pdf.autoTable({
-    startY: y,
-    margin: { left: MARGIN.left, right: MARGIN.right },
-    styles: {
-      fontSize: FONT_SIZES.sm,
-      cellPadding: 1.5,
-      lineColor: BLACK,
-      lineWidth: 0.2,
-      textColor: BLACK,
-      overflow: 'linebreak',
-      minCellHeight: 8,
-    },
-    headStyles: {
-      fillColor: LIGHT_GRAY,
-      textColor: BLACK,
-      fontStyle: 'bold',
-      halign: 'center',
-      fontSize: FONT_SIZES.xs,
-    },
-    head: [['', 'Context-Specific Facilitating Factors', 'Context-Specific Hindering Factors', 'Recommendations']],
-    columnStyles: {
-      0: { cellWidth: BODY_W * 0.15, fontStyle: 'bold', fontSize: FONT_SIZES.xs },
-      1: { cellWidth: BODY_W * 0.28 },
-      2: { cellWidth: BODY_W * 0.28 },
-      3: { cellWidth: BODY_W * 0.29 },
-    },
-    body: factorTypes.map((type) => [
-      type.toUpperCase(),
-      factors[type]?.facilitating || '',
-      factors[type]?.hindering || '',
-      factors[type]?.recommendations || '',
-    ]),
-  });
-  y = pdf.lastAutoTable.finalY + 5;
+  for (const type of factorTypes) {
+    pdf.autoTable({
+      startY: y,
+      margin: { left: MARGIN.left, right: MARGIN.right },
+      styles: {
+        fontSize: FONT_SIZES.sm,
+        cellPadding: 1.5,
+        lineColor: BLACK,
+        lineWidth: 0.2,
+        textColor: BLACK,
+        overflow: 'linebreak',
+        minCellHeight: 8,
+      },
+      headStyles: {
+        fillColor: LIGHT_GRAY,
+        textColor: BLACK,
+        fontStyle: 'bold',
+        halign: 'center',
+        fontSize: FONT_SIZES.xs,
+      },
+      head: [
+        [{ content: `${type.toUpperCase()} FACTORS`, colSpan: 3, styles: { halign: 'left' } }],
+        ['Activity Name', 'Context-Specific Facilitating Factors', 'Context-Specific Hindering Factors'],
+      ],
+      columnStyles: {
+        0: { cellWidth: BODY_W * 0.34, fontStyle: 'bold', fontSize: FONT_SIZES.xs },
+        1: { cellWidth: BODY_W * 0.33 },
+        2: { cellWidth: BODY_W * 0.33 },
+      },
+      body: factorActivities.length === 0
+        ? [[{ content: 'No activities recorded.', colSpan: 3, styles: { halign: 'center', fontStyle: 'italic' } }]]
+        : factorActivities.map((activity) => [
+          activity.name || 'Untitled Activity',
+          factors[type]?.[activity.id]?.facilitating || '',
+          factors[type]?.[activity.id]?.hindering || '',
+        ]),
+    });
+    y = pdf.lastAutoTable.finalY + 2;
+  }
+  y += 3;
 
   if (y + 20 > PAGE.h - MARGIN.bottom) {
     pdf.addPage();

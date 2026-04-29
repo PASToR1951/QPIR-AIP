@@ -20,6 +20,54 @@ function SectionHeading({ label }) {
   );
 }
 
+function isActivityFactorMap(factor) {
+  return factor && typeof factor === 'object' &&
+    !Array.isArray(factor) &&
+    typeof factor.facilitating !== 'string' &&
+    typeof factor.hindering !== 'string';
+}
+
+function ActivityFactorSummary({ factor, activities = [] }) {
+  const orderedActivities = [
+    ...activities.filter((activity) => !activity.isUnplanned),
+    ...activities.filter((activity) => activity.isUnplanned),
+  ];
+  const rows = orderedActivities.length
+    ? orderedActivities.map((activity, index) => ({
+      id: activity.id,
+      name: activity.name || `Activity ${index + 1}`,
+      entry: factor?.[activity.id] ?? {},
+    }))
+    : Object.entries(factor ?? {}).map(([activityId, entry], index) => ({
+      id: activityId,
+      name: `Activity ${index + 1}`,
+      entry,
+    }));
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[720px] border-collapse text-sm">
+        <thead>
+          <tr className="bg-slate-50 text-left text-[10px] font-black uppercase tracking-widest text-slate-500 dark:bg-dark-base dark:text-slate-400">
+            <th className="w-[34%] border-r border-slate-100 px-4 py-2 dark:border-dark-border">Activity</th>
+            <th className="w-[33%] border-r border-slate-100 px-4 py-2 text-emerald-600 dark:border-dark-border">Facilitating</th>
+            <th className="w-[33%] px-4 py-2 text-rose-600">Hindering</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.id} className="border-t border-slate-100 dark:border-dark-border">
+              <td className="border-r border-slate-100 px-4 py-3 align-top font-semibold text-slate-700 dark:border-dark-border dark:text-slate-200">{row.name || 'Untitled Activity'}</td>
+              <td className="border-r border-slate-100 px-4 py-3 align-top whitespace-pre-wrap text-slate-600 dark:border-dark-border dark:text-slate-300">{row.entry?.facilitating || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}</td>
+              <td className="px-4 py-3 align-top whitespace-pre-wrap text-slate-600 dark:text-slate-300">{row.entry?.hindering || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function CESPIRReview() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -283,22 +331,26 @@ export default function CESPIRReview() {
                 <div className="px-4 py-2 bg-slate-50 dark:bg-dark-base border-b border-slate-100 dark:border-dark-border">
                   <span className="text-[11px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{type}</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-dark-border">
-                  <div className="p-4">
-                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Facilitating</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{f?.facilitating || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}</p>
+                {isActivityFactorMap(f) ? (
+                  <ActivityFactorSummary factor={f} activities={pir.activities ?? []} />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100 dark:divide-dark-border">
+                    <div className="p-4">
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Facilitating</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{f?.facilitating || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}</p>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mb-1.5">Hindering</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{f?.hindering || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}</p>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1.5">Recommendations</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
+                        {f?.recommendations || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}
+                      </p>
+                    </div>
                   </div>
-                  <div className="p-4">
-                    <p className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mb-1.5">Hindering</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{f?.hindering || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}</p>
-                  </div>
-                  <div className="p-4">
-                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1.5">Recommendations</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
-                      {f?.recommendations || <span className="text-slate-300 dark:text-slate-600 italic">—</span>}
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
             );
           })}

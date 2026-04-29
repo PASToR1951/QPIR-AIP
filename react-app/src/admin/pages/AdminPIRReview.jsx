@@ -165,7 +165,7 @@ export default function AdminPIRReview() {
           )}
 
           {activeTab === 'factors' && (
-            <FactorsTab factors={factors} />
+            <FactorsTab factors={factors} activities={pir?.activities ?? []} />
           )}
         </>
       ) : (

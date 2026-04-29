@@ -50,14 +50,14 @@ export const PIRDocument = ({
 
     const aipActivities = activities.filter(a => !a.isUnplanned);
     const unplannedActivities = activities.filter(a => a.isUnplanned);
+    const factorActivities = [...aipActivities, ...unplannedActivities];
     const projectTerminology = getProjectTerminology(usesSchoolTerminology);
 
     return (
-        <div className="pir-printable text-black font-sans print:p-0 print:m-0 print:bg-white min-h-screen">
+        <div className="pir-printable bg-white text-black font-sans print:p-0 print:m-0 min-h-full">
             {/* Header */}
             <GovDocHeader
                 documentTitle="Quarterly Program Implementation Review (AIP-PIR)"
-                documentSubtitle="Quarterly Program Implementation Review"
                 badge={quarter}
             />
 
@@ -148,8 +148,8 @@ export const PIRDocument = ({
                                 <th rowSpan={2} className="border border-black p-2">Q1 Activity/IES (Based on AIP {year})</th>
                                 <th rowSpan={2} className="border border-black p-1 leading-tight"><span className="block">Complied (✓)</span><span className="block">or Not</span><span className="block">Complied (✗)</span></th>
                                 <th rowSpan={2} className="border border-black p-2">Actual Tasks Conducted</th>
-                                <th rowSpan={2} className="border border-black p-2">Contributory Performance Indicators</th>
                                 <th rowSpan={2} className="border border-black p-2">MOVs / Expected Outputs</th>
+                                <th rowSpan={2} className="border border-black p-2">Objectively Verifiable Indicators</th>
                                 <th colSpan={2} className="border border-black p-1">Quarterly Target</th>
                                 <th colSpan={2} className="border border-black p-1">Accomplishment</th>
                                 <th colSpan={2} className="border border-black p-1">Gap (%)</th>
@@ -183,8 +183,8 @@ export const PIRDocument = ({
                                                     {act.complied === true ? '✓' : act.complied === false ? '✗' : ''}
                                                 </td>
                                                 <td className="border border-black p-2 whitespace-pre-wrap align-top">{act.actualTasksConducted}</td>
-                                                <td className="border border-black p-2 whitespace-pre-wrap align-top">{act.contributoryIndicators}</td>
                                                 <td className="border border-black p-2 whitespace-pre-wrap align-top">{act.movsExpectedOutputs}</td>
+                                                <td className="border border-black p-2 whitespace-pre-wrap align-top">{act.contributoryIndicators}</td>
                                                 <td className="border border-black p-1 text-center align-top font-mono">{act.physTarget}</td>
                                                 <td className="border border-black p-1 text-center align-top font-mono">{formatCurrency(act.finTarget)}</td>
                                                 <td className="border border-black p-1 text-center align-top font-mono">{act.physAcc}</td>
@@ -212,8 +212,8 @@ export const PIRDocument = ({
                                                         <td className="border border-black p-2 whitespace-pre-wrap align-top font-bold">{act.name}</td>
                                                         <td className="border border-black p-2 text-center align-top"></td>
                                                         <td className="border border-black p-2 whitespace-pre-wrap align-top">{act.actualTasksConducted}</td>
-                                                        <td className="border border-black p-2 whitespace-pre-wrap align-top">{act.contributoryIndicators}</td>
                                                         <td className="border border-black p-2 whitespace-pre-wrap align-top">{act.movsExpectedOutputs}</td>
+                                                        <td className="border border-black p-2 whitespace-pre-wrap align-top">{act.contributoryIndicators}</td>
                                                         <td className="border border-black p-1 text-center align-top font-mono">{act.physTarget}</td>
                                                         <td className="border border-black p-1 text-center align-top font-mono">{formatCurrency(act.finTarget)}</td>
                                                         <td className="border border-black p-1 text-center align-top font-mono">{act.physAcc}</td>
@@ -238,20 +238,33 @@ export const PIRDocument = ({
             <div className="mb-6 page-break-inside-avoid relative rounded-xl p-4 -mx-4 print:p-0 print:mx-0">
                 <div>
                     <h2 className="font-black text-sm mb-4 uppercase tracking-widest border-l-4 border-black pl-3">D. Facilitating and Hindering Factors</h2>
-                    <div className="border border-black text-[10px]">
-                        <div className="grid grid-cols-4 font-black text-center border-b border-black bg-slate-50 uppercase tracking-widest print:bg-transparent">
-                            <div className="p-2 border-r border-black col-span-1"></div>
-                            <div className="p-2 border-r border-black">Context-Specific Facilitating Factors</div>
-                            <div className="p-2 border-r border-black">Context-Specific Hindering Factors</div>
-                            <div className="p-2">Recommendations</div>
-                        </div>
-                        {factorTypes.map((type, idx) => (
-                            <div key={type} className={`grid grid-cols-4 ${idx < factorTypes.length - 1 ? 'border-b border-black' : ''}`}>
-                                <div className="p-2 border-r border-black font-black text-[8px] uppercase tracking-widest flex items-center">{type}</div>
-                                <div className="p-2 border-r border-black whitespace-pre-wrap min-h-[50px]">{factors[type]?.facilitating}</div>
-                                <div className="p-2 border-r border-black whitespace-pre-wrap min-h-[50px]">{factors[type]?.hindering}</div>
-                                <div className="p-2 whitespace-pre-wrap min-h-[50px]">{factors[type]?.recommendations}</div>
-                            </div>
+                    <div className="space-y-3">
+                        {factorTypes.map((type) => (
+                            <table key={type} className="w-full border-collapse text-[9px] border border-black table-fixed">
+                                <thead>
+                                    <tr>
+                                        <th colSpan={3} className="border border-black bg-slate-50 p-1.5 text-left font-black uppercase tracking-widest print:bg-transparent">{type} Factors</th>
+                                    </tr>
+                                    <tr className="font-black bg-slate-50 uppercase text-center print:bg-transparent">
+                                        <th className="border border-black p-1.5 w-[34%]">Activity Name</th>
+                                        <th className="border border-black p-1.5 w-[33%]">Context-Specific Facilitating Factors</th>
+                                        <th className="border border-black p-1.5 w-[33%]">Context-Specific Hindering Factors</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {factorActivities.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={3} className="border border-black p-2 text-center italic text-slate-400">No activities recorded.</td>
+                                        </tr>
+                                    ) : factorActivities.map((activity, index) => (
+                                        <tr key={`${type}-${activity.id ?? index}`}>
+                                            <td className="border border-black p-2 align-top font-bold whitespace-pre-wrap">{activity.name || 'Untitled Activity'}</td>
+                                            <td className="border border-black p-2 align-top whitespace-pre-wrap min-h-[40px]">{factors[type]?.[activity.id]?.facilitating ?? ''}</td>
+                                            <td className="border border-black p-2 align-top whitespace-pre-wrap min-h-[40px]">{factors[type]?.[activity.id]?.hindering ?? ''}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         ))}
                     </div>
                 </div>

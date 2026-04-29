@@ -10,7 +10,6 @@ import {
 import { GapPanel, MobileGapInputs } from './GapWidgets.jsx';
 import { ComplianceToggle } from './ComplianceToggle.jsx';
 import { ActivityCollapsedTitle } from './ActivityCollapsedTitle.jsx';
-import { RemovedActivitiesTray } from './RemovedActivitiesTray.jsx';
 import { buildDesktopTableConfig } from './buildDesktopTableConfig.jsx';
 
 export default React.memo(function PIRMonitoringEvaluationSection({
@@ -21,28 +20,18 @@ export default React.memo(function PIRMonitoringEvaluationSection({
     expandedActivityId,
     setExpandedActivityId,
     calculateGap,
-    handleRemoveActivity,
     handleActivityChange,
-    handleAddActivity,
     handleAddUnplannedActivity,
-    isAddingActivity,
-    removedAIPActivities = [],
-    handleRestoreActivity,
 }) {
     if (appMode !== 'full' && currentStep !== 3) return null;
 
-    const plannedActivities   = activities.filter((a) => !a.isUnplanned);
+    const plannedActivities = activities.filter((a) => !a.isUnplanned);
     const unplannedActivities = activities.filter((a) => a.isUnplanned);
 
     const groupedActivities = [
         {
             key: 'planned', activities: plannedActivities,
             emptyMessage: 'No review activities yet.',
-            addLabel: isAddingActivity ? 'Activity Added!' : 'Add Another Activity',
-            onAdd: handleAddActivity,
-            addButtonClassName: isAddingActivity
-                ? 'mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm font-bold text-emerald-600 dark:bg-emerald-950/30'
-                : 'mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-2xl border-2 border-blue-100 bg-white px-4 py-2.5 text-sm font-bold text-blue-600 transition-colors hover:border-blue-300 hover:bg-blue-50 dark:border-dark-border dark:bg-dark-surface dark:hover:bg-blue-950/20',
         },
         {
             key: 'unplanned', title: 'Activities Conducted But Not Included in AIP',
@@ -56,22 +45,22 @@ export default React.memo(function PIRMonitoringEvaluationSection({
     ];
 
     const desktopGroups = [
-        { key: 'planned',   activities: plannedActivities,   addLabel: 'Add Activity Row',      onAdd: handleAddActivity },
+        { key: 'planned', activities: plannedActivities },
         { key: 'unplanned', activities: unplannedActivities, addLabel: 'Add Unplanned Activity', onAdd: handleAddUnplannedActivity },
     ];
 
     const wizardFields = [
-        createWizardTextareaField({ key: 'actions',                  label: 'Actions to Address Gap',              placeholder: 'What steps will be taken?',                  field: 'actions',                 handleActivityChange, wrapperClassName: 'md:col-span-2' }),
-        createWizardTextareaField({ key: 'actual-tasks',             label: 'Actual Tasks Conducted',              placeholder: 'What tasks were actually conducted?',          field: 'actualTasksConducted',    handleActivityChange }),
-        createWizardTextareaField({ key: 'contributory-indicators',  label: 'Contributory Performance Indicators', placeholder: 'Indicators this activity contributes to...',   field: 'contributoryIndicators',  handleActivityChange }),
-        createWizardTextareaField({ key: 'movs',                     label: 'MOVs / Expected Outputs',             placeholder: 'Means of verification and expected outputs...', field: 'movsExpectedOutputs',     handleActivityChange }),
-        createWizardTextareaField({ key: 'adjustments',              label: 'Adjustments',                         placeholder: 'Any adjustments made to the activity...',      field: 'adjustments',             handleActivityChange }),
+        createWizardTextareaField({ key: 'actions', label: 'Actions to Address Gap', placeholder: 'What steps will be taken?', field: 'actions', handleActivityChange, wrapperClassName: 'md:col-span-2' }),
+        createWizardTextareaField({ key: 'actual-tasks', label: 'Actual Tasks Conducted', placeholder: 'What tasks were actually conducted?', field: 'actualTasksConducted', handleActivityChange }),
+        createWizardTextareaField({ key: 'movs', label: 'MOVs / Expected Outputs', placeholder: 'Means of verification and expected outputs...', field: 'movsExpectedOutputs', handleActivityChange }),
+        createWizardTextareaField({ key: 'contributory-indicators', label: 'Objectively Verifiable Indicators', placeholder: 'Indicators this activity contributes to...', field: 'contributoryIndicators', handleActivityChange }),
+        createWizardTextareaField({ key: 'adjustments', label: 'Adjustments', placeholder: 'Any adjustments made to the activity...', field: 'adjustments', handleActivityChange }),
     ];
 
-    const actionsField     = createMobileTextareaField({ key: 'actions', label: 'Actions to Address Gap',     placeholder: 'What steps will be taken?',    field: 'actions', handleActivityChange });
-    const activityNameField = createMobileTextareaField({ key: 'name',    label: 'Activity Name / Description', placeholder: 'Describe the activity here...', field: 'name',    handleActivityChange, wrapperClassName: 'md:col-span-2' });
+    const actionsField = createMobileTextareaField({ key: 'actions', label: 'Actions to Address Gap', placeholder: 'What steps will be taken?', field: 'actions', handleActivityChange });
+    const activityNameField = createMobileTextareaField({ key: 'name', label: 'Activity Name / Description', placeholder: 'Describe the activity here...', field: 'name', handleActivityChange, wrapperClassName: 'md:col-span-2' });
 
-    const desktopTable = buildDesktopTableConfig({ handleActivityChange, calculateGap, handleAddActivity, activitiesCount: activities.length });
+    const desktopTable = buildDesktopTableConfig({ handleActivityChange, calculateGap });
 
     const hasFromAIP = activities.some((a) => a.fromAIP);
 
@@ -79,13 +68,13 @@ export default React.memo(function PIRMonitoringEvaluationSection({
         <div className={`${(appMode === 'full' || currentStep === 3) ? 'block animate-in fade-in slide-in-from-bottom-4 duration-200' : 'hidden'} ${appMode === 'full' ? 'mb-16' : ''}`}>
             {appMode === 'wizard' && (
                 <SectionHeader
-                    icon={<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>}
                     title="Monitoring Evaluation"
                     subtitle={isLoadingActivities ? 'Loading activities from AIP...' : hasFromAIP ? 'Activities loaded from AIP. Fill in targets and accomplishments.' : 'Record activities, targets, and actual accomplishments.'}
                     theme="blue" appMode={appMode}
                     rightElement={hasFromAIP && (
                         <span className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                             Synced from AIP
                         </span>
                     )}
@@ -96,13 +85,13 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                 <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-4 dark:border-dark-border">
                     <div className="flex items-center gap-3">
                         <div className="rounded-xl border border-blue-100 bg-blue-50 p-2.5 text-blue-600 dark:border-blue-900 dark:bg-blue-950/30">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
                         </div>
                         <div>
                             <h2 className="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100">Monitoring Evaluation & Adjustment</h2>
                             {hasFromAIP && (
                                 <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                                     Activities and implementation schedule auto-loaded from AIP
                                 </p>
                             )}
@@ -117,8 +106,7 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                 desktopGroups={desktopGroups}
                 expandedActivityId={expandedActivityId}
                 onExpandedChange={setExpandedActivityId}
-                onRemove={handleRemoveActivity}
-                canRemove={() => activities.length > 1}
+                canRemove={() => false}
                 renderCollapsedTitle={(activity, context) => (
                     <ActivityCollapsedTitle
                         activity={activity} isExpanded={context.isExpanded}
@@ -128,12 +116,12 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                 wizardCard={{
                     beforeFields: (activity) => {
                         const physGap = calculateGap(activity.physTarget, activity.physAcc);
-                        const finGap  = calculateGap(activity.finTarget,  activity.finAcc);
+                        const finGap = calculateGap(activity.finTarget, activity.finAcc);
                         return (
                             <div className="mb-6 flex flex-col gap-6">
                                 <div className="grid grid-cols-1 gap-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-dark-border dark:bg-dark-base md:grid-cols-2">
-                                    <GapPanel title="Physical Targets"  colorClass="bg-blue-500"    targetValue={activity.physTarget} accomplishedValue={activity.physAcc} gapValue={physGap} onTargetChange={(e) => handleActivityChange(activity.id, 'physTarget', sanitizeDecimalInput(e.target.value))} onAccomplishedChange={(e) => handleActivityChange(activity.id, 'physAcc', sanitizeDecimalInput(e.target.value))} />
-                                    <GapPanel title="Financial Targets" colorClass="bg-emerald-500" targetValue={activity.finTarget}  accomplishedValue={activity.finAcc}  gapValue={finGap}  onTargetChange={(e) => handleActivityChange(activity.id, 'finTarget', sanitizeDecimalInput(e.target.value))} onAccomplishedChange={(e) => handleActivityChange(activity.id, 'finAcc',  sanitizeDecimalInput(e.target.value))} />
+                                    <GapPanel title="Physical Targets" colorClass="bg-blue-500" targetValue={activity.physTarget} accomplishedValue={activity.physAcc} gapValue={physGap} onTargetChange={(e) => handleActivityChange(activity.id, 'physTarget', sanitizeDecimalInput(e.target.value))} onAccomplishedChange={(e) => handleActivityChange(activity.id, 'physAcc', sanitizeDecimalInput(e.target.value))} />
+                                    <GapPanel title="Financial Targets" colorClass="bg-emerald-500" targetValue={activity.finTarget} accomplishedValue={activity.finAcc} gapValue={finGap} onTargetChange={(e) => handleActivityChange(activity.id, 'finTarget', sanitizeDecimalInput(e.target.value))} onAccomplishedChange={(e) => handleActivityChange(activity.id, 'finAcc', sanitizeDecimalInput(e.target.value))} />
                                 </div>
                                 <ComplianceToggle activity={activity} handleActivityChange={handleActivityChange} />
                             </div>
@@ -150,19 +138,12 @@ export default React.memo(function PIRMonitoringEvaluationSection({
                                 <p className="break-words text-sm font-semibold text-slate-700 dark:text-slate-200">{activity.name || 'Untitled Activity'}</p>
                                 {activity.implementation_period && <p className="mt-1 text-[11px] font-medium text-blue-600">{activity.implementation_period}</p>}
                             </div>
-                            {context.canRemove && (
-                                <button type="button" onClick={() => context.remove()}
-                                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:border-dark-border dark:text-slate-500 dark:hover:bg-red-950/30" title="Delete Activity">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                                </button>
-                            )}
                         </div>
                     ),
                     beforeFields: (activity) => <MobileGapInputs activity={activity} calculateGap={calculateGap} handleActivityChange={handleActivityChange} />,
                     fields: ({ activity }) => (activity.fromAIP ? [actionsField] : [activityNameField, actionsField]),
                 }}
                 desktopTable={desktopTable}
-                renderTray={() => <RemovedActivitiesTray removedAIPActivities={removedAIPActivities} handleRestoreActivity={handleRestoreActivity} />}
             />
         </div>
     );

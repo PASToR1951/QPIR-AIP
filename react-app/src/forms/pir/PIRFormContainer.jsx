@@ -37,6 +37,19 @@ function getQuarterNumber(quarterString) {
     return 4;
 }
 
+function hasFactorInput(factors) {
+    return Object.values(factors).some((factorGroup) => {
+        if (!factorGroup || typeof factorGroup !== 'object') return false;
+        if (typeof factorGroup.facilitating === 'string' || typeof factorGroup.hindering === 'string') {
+            return Boolean(factorGroup.facilitating || factorGroup.hindering);
+        }
+
+        return Object.values(factorGroup).some((entry) => (
+            entry && typeof entry === 'object' && Boolean(entry.facilitating || entry.hindering)
+        ));
+    });
+}
+
 export default function PIRFormContainer() {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -175,6 +188,12 @@ export default function PIRFormContainer() {
         setAipDocumentData(null);
     }, [dispatch, profile.program]);
 
+    // Auto-fill Functional Division from the selected program's division field
+    useEffect(() => {
+        if (!isDivisionPersonnel || !selectedProgramRecord?.division) return;
+        dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'functionalDivision', value: selectedProgramRecord.division } });
+    }, [isDivisionPersonnel, selectedProgramRecord, dispatch]);
+
     const resetFormState = useCallback((selectedProgram = '') => {
         dispatch({
             type: 'RESET',
@@ -214,7 +233,7 @@ export default function PIRFormContainer() {
         || budget.fromDivision
         || budget.fromCoPSF
         || activities.some((activity) => activity.name || activity.physTarget || activity.finTarget || activity.physAcc || activity.finAcc || activity.actions)
-        || Object.values(factors).some((factor) => factor.facilitating || factor.hindering)
+        || hasFactorInput(factors)
         || actionItems.some((item) => item.action)
     ), [
         actionItems,
@@ -262,7 +281,7 @@ export default function PIRFormContainer() {
             title: 'Continue your saved draft?',
             message: `We found an auto-saved draft from ${new Date(localDraft.savedAt).toLocaleString()}. Continue from that draft?`,
             confirmText: 'Continue draft',
-            cancelText: 'Open saved draft',
+            cancelText: 'Start fresh',
         }),
         loadInitialDraft: async (selectedProgram) => {
             if (serverDraft?.draftProgram === selectedProgram && serverDraft.draftData) {
@@ -329,46 +348,8 @@ export default function PIRFormContainer() {
         setIsAIPPreviewOpen(true);
     }, [aipDocumentData, profile.program, quarterString, selectedProgramRecord?.id]);
 
-    const handleAddActivity = useCallback(() => {
-        dispatch({ type: 'ADD_ACTIVITY', payload: { activity: createEmptyPirActivity(), showAddedFlash: true } });
-        window.setTimeout(() => {
-            dispatch({ type: 'SET_IS_ADDING_ACTIVITY', payload: false });
-        }, 1200);
-    }, [dispatch]);
-
     const handleAddUnplannedActivity = useCallback(() => {
         dispatch({ type: 'ADD_ACTIVITY', payload: { activity: createEmptyPirActivity({ isUnplanned: true }) } });
-    }, [dispatch]);
-
-    const executeRemoveActivity = useCallback((activityId, moveToRemovedAip) => {
-        dispatch({ type: 'REMOVE_ACTIVITY', payload: { id: activityId, moveToRemovedAip } });
-    }, [dispatch]);
-
-    const handleRemoveActivity = useCallback((activityId) => {
-        const activity = activities.find((currentActivity) => currentActivity.id === activityId);
-        const hasData = activity && [activity.name, activity.physTarget, activity.finTarget, activity.physAcc, activity.finAcc, activity.actions].some((value) => String(value).trim() !== '');
-
-        if (hasData) {
-            shell.openModal({
-                type: 'warning',
-                title: 'Delete Activity?',
-                message: activity.fromAIP
-                    ? 'This activity contains data. It will be moved to the tray below so you can restore it later.'
-                    : 'This activity contains data. Are you sure you want to permanently remove it?',
-                confirmText: 'Yes, Delete',
-                onConfirm: () => {
-                    executeRemoveActivity(activityId, Boolean(activity.fromAIP));
-                    shell.closeModal();
-                },
-            });
-            return;
-        }
-
-        executeRemoveActivity(activityId, Boolean(activity?.fromAIP));
-    }, [activities, executeRemoveActivity, shell]);
-
-    const handleRestoreActivity = useCallback((activityId) => {
-        dispatch({ type: 'RESTORE_ACTIVITY', payload: { id: activityId } });
     }, [dispatch]);
 
     const handleActivityChange = useCallback((activityId, field, value) => {
@@ -507,11 +488,8 @@ export default function PIRFormContainer() {
                             onDeletePIR={handleDeletePIR}
                             onShowFinalConfirm={setShowFinalConfirm}
                             toggleAppMode={handleToggleAppMode}
-                            handleRemoveActivity={handleRemoveActivity}
                             handleActivityChange={handleActivityChange}
-                            handleAddActivity={handleAddActivity}
                             handleAddUnplannedActivity={handleAddUnplannedActivity}
-                            handleRestoreActivity={handleRestoreActivity}
                             calculateGap={calculateGap}
                             isSaving={draft.isSaving}
                             isSaved={draft.isSaved}
@@ -542,11 +520,8 @@ export default function PIRFormContainer() {
                             onDeletePIR={handleDeletePIR}
                             onShowFinalConfirm={setShowFinalConfirm}
                             toggleAppMode={handleToggleAppMode}
-                            handleRemoveActivity={handleRemoveActivity}
                             handleActivityChange={handleActivityChange}
-                            handleAddActivity={handleAddActivity}
                             handleAddUnplannedActivity={handleAddUnplannedActivity}
-                            handleRestoreActivity={handleRestoreActivity}
                             calculateGap={calculateGap}
                             isSaving={draft.isSaving}
                             isSaved={draft.isSaved}

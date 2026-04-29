@@ -272,7 +272,6 @@ export function ConsolidatedPIRDocument({ data, year, quarter, groupBy, onClose 
                   <th className="border border-black px-2 py-1.5 text-left font-black">Factor Type</th>
                   <th className="border border-black px-2 py-1.5 text-left font-black">Facilitating Factors</th>
                   <th className="border border-black px-2 py-1.5 text-left font-black">Hindering Factors</th>
-                  <th className="border border-black px-2 py-1.5 text-left font-black">Recommendations</th>
                 </tr>
               </thead>
               <tbody>
@@ -286,9 +285,6 @@ export function ConsolidatedPIRDocument({ data, year, quarter, groupBy, onClose 
                       </td>
                       <td className="border border-black px-2 py-1 align-top whitespace-pre-line">
                         {f.hinderingEntries?.join(';\n') || '\u00A0'}
-                      </td>
-                      <td className="border border-black px-2 py-1 align-top whitespace-pre-line">
-                        {f.recommendationEntries?.join(';\n') || '\u00A0'}
                       </td>
                     </tr>
                   );

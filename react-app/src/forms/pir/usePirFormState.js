@@ -37,9 +37,40 @@ export function createEmptyPirActivity(overrides = {}) {
 
 export function createInitialFactors() {
     return FACTOR_TYPES.reduce((accumulator, type) => {
-        accumulator[type] = { facilitating: '', hindering: '', recommendations: '' };
+        accumulator[type] = {};
         return accumulator;
     }, {});
+}
+
+function normalizeFactors(loaded) {
+    if (!loaded || typeof loaded !== 'object') return null;
+
+    const hasLegacyShape = FACTOR_TYPES.some((type) => (
+        typeof loaded[type]?.facilitating === 'string'
+        || typeof loaded[type]?.hindering === 'string'
+        || typeof loaded[type]?.recommendations === 'string'
+    ));
+
+    if (hasLegacyShape) {
+        return createInitialFactors();
+    }
+
+    const normalized = createInitialFactors();
+    FACTOR_TYPES.forEach((type) => {
+        const group = loaded[type];
+        if (!group || typeof group !== 'object') return;
+
+        normalized[type] = Object.fromEntries(
+            Object.entries(group)
+                .filter(([, entry]) => entry && typeof entry === 'object')
+                .map(([activityId, entry]) => [activityId, {
+                    facilitating: entry.facilitating ?? '',
+                    hindering: entry.hindering ?? '',
+                }]),
+        );
+    });
+
+    return normalized;
 }
 
 export function createInitialPirState({
@@ -238,7 +269,10 @@ function pirReducer(state, action) {
                     ...state.factors,
                     [action.payload.type]: {
                         ...state.factors[action.payload.type],
-                        [action.payload.category]: action.payload.value,
+                        [action.payload.activityId]: {
+                            ...(state.factors[action.payload.type]?.[action.payload.activityId] ?? {}),
+                            [action.payload.category]: action.payload.value,
+                        },
                     },
                 },
             };
@@ -246,7 +280,7 @@ function pirReducer(state, action) {
         case 'SET_FACTORS':
             return {
                 ...state,
-                factors: action.payload,
+                factors: normalizeFactors(action.payload) ?? state.factors,
             };
 
         case 'SET_EXPANDED_ACTIVITY_ID':
@@ -306,7 +340,7 @@ function pirReducer(state, action) {
                     ? draft.actionItems
                     : state.actionItems,
                 activities: hydratedActivities.items,
-                factors: draft.factors || state.factors,
+                factors: normalizeFactors(draft.factors) ?? state.factors,
                 ui: hydratedActivities.ui,
             };
         }
@@ -335,7 +369,7 @@ function pirReducer(state, action) {
                 indicatorTargets: pir.indicatorQuarterlyTargets || [],
                 actionItems: pir.actionItems || state.actionItems,
                 activities: hydratedActivities.items,
-                factors: pir.factors || state.factors,
+                factors: normalizeFactors(pir.factors) ?? state.factors,
                 submission: {
                     ...state.submission,
                     pirId: pir.id ?? null,

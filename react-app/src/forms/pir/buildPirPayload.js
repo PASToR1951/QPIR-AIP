@@ -1,5 +1,42 @@
 import { FACTOR_TYPES } from './usePirFormState.js';
 
+function getPersistedActivityFactorKey(activity, unplannedIndex) {
+    if (activity.aip_activity_id) {
+        return `aip:${activity.aip_activity_id}`;
+    }
+    if (activity.isUnplanned) {
+        return `unplanned:${unplannedIndex}`;
+    }
+    return String(activity.id);
+}
+
+function buildFactorsPayload(factors, activities) {
+    let unplannedIndex = 0;
+    const activityKeys = activities.map((activity) => {
+        const key = getPersistedActivityFactorKey(activity, unplannedIndex);
+        if (activity.isUnplanned) {
+            unplannedIndex += 1;
+        }
+        return { activity, key };
+    });
+
+    return Object.fromEntries(
+        FACTOR_TYPES.map((type) => {
+            const entries = Object.fromEntries(
+                activityKeys.map(({ activity, key }) => {
+                    const entry = factors[type]?.[activity.id] ?? factors[type]?.[key] ?? {};
+                    return [key, {
+                        facilitating: entry.facilitating ?? '',
+                        hindering: entry.hindering ?? '',
+                    }];
+                }),
+            );
+
+            return [type, entries];
+        }),
+    );
+}
+
 export function buildPirPayload(state, { isDivisionPersonnel, quarterString }) {
     return {
         program_title: state.profile.program,
@@ -24,13 +61,7 @@ export function buildPirPayload(state, { isDivisionPersonnel, quarterString }) {
             finAcc: activity.finAcc,
             actions: activity.actions,
         })),
-        factors: Object.fromEntries(
-            FACTOR_TYPES.map((type) => [type, {
-                facilitating: state.factors[type]?.facilitating ?? '',
-                hindering: state.factors[type]?.hindering ?? '',
-                recommendations: state.factors[type]?.recommendations ?? '',
-            }]),
-        ),
+        factors: buildFactorsPayload(state.factors, state.activities),
     };
 }
 
@@ -49,4 +80,3 @@ export function buildPirLocalSnapshot(state, { quarterString }) {
         factors: state.factors,
     };
 }
-
