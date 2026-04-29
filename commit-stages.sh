@@ -6,13 +6,11 @@ COMMIT_BATCH="$REPO_ROOT/commit-batch.sh"
 
 WAVE_ORDER=(
   "schema"
-  "server-sessions"
-  "server-admin-shared"
-  "server-admin-routes"
+  "server-lib"
+  "server-admin"
   "server-admin-submissions"
   "server-data"
   "frontend"
-  "docs"
   "root"
 )
 
@@ -33,14 +31,12 @@ Commits the working tree in predefined waves and delegates each wave to
 commit-batch.sh so every category gets its own batch note and commit.
 
 Default waves:
-  schema                 prisma schema cleanup and migration purges
-  server-sessions        session library and auth route hardening
-  server-admin-shared    admin shared guards, display, and selects
-  server-admin-routes    core admin routes: overview, sessions, users, PIR review
-  server-admin-submissions  admin submissions route cleanup
-  server-data            soft delete and history for AIPs and PIRs
-  frontend               frontend visual design, table layout, and logo assets
-  docs                   session restore and logout documentation
+  schema                 ProgramFocalPerson model + focal person migration
+  server-lib             routing.ts comment update for focal flow
+  server-admin           admin routes: programs, overview, reports, pirReview, focalPersonReview, index
+  server-admin-submissions  submissions: validation, status guard, notification label
+  server-data            aips, pirs, lookups, dashboard — focal person submission routing
+  frontend               all react-app/src changes: division UI, CES AIP review, status badge
   root                   root tooling: commit-stages.sh update
 
 Options:
@@ -77,15 +73,13 @@ require_value() {
 
 wave_title() {
   case "$1" in
-    schema)                 printf 'schema cleanup and migration purges' ;;
-    server-sessions)        printf 'session library and auth route hardening' ;;
-    server-admin-shared)    printf 'admin shared guards, display, and selects cleanup' ;;
-    server-admin-routes)    printf 'core admin routes: overview, sessions, users, PIR review' ;;
-    server-admin-submissions) printf 'admin submissions route cleanup' ;;
-    server-data)            printf 'soft delete and history for AIPs and PIRs' ;;
-    frontend)               printf 'frontend visual design, table layout, and logo assets' ;;
-    docs)                   printf 'session restore and logout documentation' ;;
-    root)                   printf 'root tooling: commit-stages.sh for this release cycle' ;;
+    schema)                   printf 'ProgramFocalPerson model and focal person migration' ;;
+    server-lib)               printf 'routing.ts comment update for focal person flow' ;;
+    server-admin)             printf 'admin routes: programs, overview, reports, pirReview, focalPersonReview' ;;
+    server-admin-submissions) printf 'submissions: validation status, admin guard, notification label' ;;
+    server-data)              printf 'aips, pirs, lookups, dashboard — focal person submission routing' ;;
+    frontend)                 printf 'division UI, CES AIP review queue, status badge, focal flow wiring' ;;
+    root)                     printf 'root tooling: commit-stages.sh for focal person flow cycle' ;;
     *) die "Unknown wave: $1" ;;
   esac
 }
@@ -99,15 +93,13 @@ wave_commit_message() {
   fi
 
   case "$wave" in
-    schema)                   printf 'chore(db): purge observer review notes and consolidation TA columns' ;;
-    server-sessions)          printf 'feat(server): harden session restore and multi-device logout' ;;
-    server-admin-shared)      printf 'refactor(admin): remove observer access helper, update guards and selects' ;;
-    server-admin-routes)      printf 'refactor(admin): clean up overview, sessions, users, consolidation, and PIR review routes' ;;
-    server-admin-submissions) printf 'refactor(admin): remove observer notes from submissions, clean up list and validation' ;;
-    server-data)              printf 'feat(server): soft delete for AIPs and PIRs' ;;
-    frontend)                 printf 'feat(frontend): improve visual design, table layout, and logo assets' ;;
-    docs)                     printf 'docs(sessions): add SECURE_SESSION_RESTORE_AND_LOGOUT guide' ;;
-    root)                     printf 'chore(tooling): update commit-stages.sh for session and admin overhaul waves' ;;
+    schema)                   printf 'feat(db): add ProgramFocalPerson model and focal person fields on AIP/PIR' ;;
+    server-lib)               printf 'chore(server): update routing.ts comment for focal person flow' ;;
+    server-admin)             printf 'feat(admin): focal person review routes and program focal-persons management' ;;
+    server-admin-submissions) printf 'feat(admin): add For Recommendation status to submissions pipeline' ;;
+    server-data)              printf 'feat(server): route school AIP/PIR submissions through focal person flow' ;;
+    frontend)                 printf 'feat(frontend): division focal person queue, CES AIP review, status badge updates' ;;
+    root)                     printf 'chore(tooling): update commit-stages.sh for focal person flow cycle' ;;
     *) die "Unknown wave: $wave" ;;
   esac
 }
@@ -117,48 +109,37 @@ wave_paths() {
     schema)
       printf '%s\n' \
         'server/prisma/schema.prisma' \
-        'server/prisma/migrations'
+        'server/prisma/migrations/20260429000001_focal_person_flow'
       ;;
-    server-sessions)
+    server-lib)
       printf '%s\n' \
-        'server/lib/auth.ts' \
-        'server/lib/userSessions.ts' \
-        'server/lib/userSessions.test.ts' \
-        'server/routes/auth.ts'
+        'server/lib/routing.ts'
       ;;
-    server-admin-shared)
+    server-admin)
       printf '%s\n' \
-        'server/routes/admin/shared'
-      ;;
-    server-admin-routes)
-      printf '%s\n' \
-        'server/routes/admin/consolidationNotes.ts' \
-        'server/routes/admin/logs/actionCatalog.ts' \
+        'server/routes/admin/index.ts' \
         'server/routes/admin/overview.ts' \
         'server/routes/admin/pirReview.ts' \
-        'server/routes/admin/security.test.ts' \
-        'server/routes/admin/sessions.ts' \
-        'server/routes/admin/users.ts'
+        'server/routes/admin/programs.ts' \
+        'server/routes/admin/reports.ts' \
+        'server/routes/admin/focalPersonReview.ts'
       ;;
     server-admin-submissions)
       printf '%s\n' \
-        'server/routes/admin/submissions.ts' \
-        'server/routes/admin/submissions'
+        'server/routes/admin/submissions/notifications.ts' \
+        'server/routes/admin/submissions/status.ts' \
+        'server/routes/admin/submissions/validation.ts'
       ;;
     server-data)
       printf '%s\n' \
         'server/routes/data/aips.ts' \
         'server/routes/data/dashboard.ts' \
+        'server/routes/data/lookups.ts' \
         'server/routes/data/pirs.ts'
       ;;
     frontend)
       printf '%s\n' \
-        'react-app/src' \
-        'react-app/public'
-      ;;
-    docs)
-      printf '%s\n' \
-        'docs/SECURE_SESSION_RESTORE_AND_LOGOUT.md'
+        'react-app/src'
       ;;
     root)
       printf '%s\n' '.' ':(top,exclude)react-app/**' ':(top,exclude)server/**' ':(top,exclude)docs/**'
@@ -181,48 +162,48 @@ wave_summary() {
   case "$1" in
     schema)
       printf '%s\n' \
-        'Removed the AdminObserverReviewNote model and committed its purge migration.' \
-        'Dropped the consolidation TA-schools percentage columns no longer referenced in the UI.'
+        'Added ProgramFocalPerson join table linking Division Personnel users to programs as focal persons.' \
+        'Added focal_person_id, focal_recommended_at, focal_remarks fields to AIP and PIR.' \
+        'Added ces_reviewer_id, ces_noted_at, ces_remarks fields to AIP for CES noting workflow.' \
+        'Added migration 20260429000001_focal_person_flow with all DDL changes.'
       ;;
-    server-sessions)
+    server-lib)
       printf '%s\n' \
-        'Updated session library to support secure session restore and explicit multi-device logout.' \
-        'Hardened auth route token validation and session cookie handling.'
+        'Updated getCESRoleForDivisionPIR JSDoc to reflect its new role in the focal-recommendation path for school AIPs/PIRs.'
       ;;
-    server-admin-shared)
+    server-admin)
       printf '%s\n' \
-        'Deleted observerAccess helper now that observer review notes are removed.' \
-        'Updated shared guards and Prisma selects to match the cleaned-up schema.'
-      ;;
-    server-admin-routes)
-      printf '%s\n' \
-        'Updated admin overview, sessions, users, consolidation notes, and PIR review routes.' \
-        'Cleaned up action catalog log entries; updated security tests.'
+        'Added focalPersonReview.ts (667 lines) with focal recommendation, CES noting, and cluster head approval endpoints for school AIPs and PIRs.' \
+        'Mounted focalReviewRoutes in admin/index.ts.' \
+        'Updated programs.ts to expose focal_persons list and added PUT /programs/:id/focal-persons management endpoint.' \
+        'Updated overview.ts stats to include For Recommendation status in submitted/underReview/pending counts.' \
+        'Updated reports.ts funnel statuses and quarterly report pending logic to include For Recommendation, For CES Review, For Cluster Head Review.'
       ;;
     server-admin-submissions)
       printf '%s\n' \
-        'Deleted the observerNotes submission handler; removed the feature end-to-end.' \
-        'Updated list, normalizer, notification, and validation modules.'
+        'Added For Recommendation to VALID_STATUSES in validation.ts.' \
+        'Added guard in status.ts blocking admin status changes on school AIPs already in focal or CES review.' \
+        'Added For Recommendation push-notification message template in notifications.ts.'
       ;;
     server-data)
       printf '%s\n' \
-        'Implemented soft deletion for AIPs and PIRs using deleted_at timestamp.' \
-        'Updated dashboard data queries to fetch soft-deleted items for history view.'
+        'School AIP submissions now require at least one active focal person for the program; submission is blocked otherwise.' \
+        'School AIP submissions now land in For Recommendation status instead of Approved.' \
+        'School PIR submissions now require an approved AIP and active focal persons; PIRs land in For Recommendation status.' \
+        'Updated lookups.ts and dashboard.ts filed/active status arrays to include For Recommendation, For CES Review, and For Cluster Head Review.'
       ;;
     frontend)
       printf '%s\n' \
-        'Implemented glassmorphic UI and Framer Motion micro-animations for PIR workflow.' \
-        'Resolved PIR form table layout issues to enforce landscape orientation and fix column widths.' \
-        'Replaced blurry logos with high-quality WebP assets in public directory.'
-      ;;
-    docs)
-      printf '%s\n' \
-        'Added SECURE_SESSION_RESTORE_AND_LOGOUT.md documenting the secure session restore and explicit logout flows.'
+        'Added react-app/src/division/ with DivisionLayout, FocalPersonQueue, and FocalPersonReview components for the Division Personnel focal-review workflow.' \
+        'Added CESAIPReview.jsx for CES AIP noting queue alongside the existing PIR review queue.' \
+        'Updated CESDashboard to fetch and display both PIRs and AIPs in tabbed queues.' \
+        'Added For Recommendation to StatusBadge, submissionsConstants, and useSubmissionActions.' \
+        'Updated AnimatedContent, AdminTopBar, DashboardHeader, NotificationBell, PIRFormEditor, CESLayout, AdminPrograms, and errorMessages for focal flow support.'
       ;;
     root)
       printf '%s\n' \
-        'Updated commit-stages.sh wave definitions to match the current session management and admin overhaul work.' \
-        'Updated README.md to reflect the current release state.'
+        'Updated commit-stages.sh wave definitions to match the focal person flow release cycle.' \
+        'Replaced session/admin-overhaul waves with schema, server-lib, server-admin, server-admin-submissions, server-data, frontend, and root waves.'
       ;;
     *)
       die "Unknown wave: $1"
@@ -234,48 +215,41 @@ wave_handoff() {
   case "$1" in
     schema)
       printf '%s\n' \
-        'Review the two new migration files for correctness; confirm Prisma client was regenerated after schema change.' \
-        'Verify no remaining references to AdminObserverReviewNote or consolidation TA percentage fields in server code.'
+        'Confirm Prisma client was regenerated after schema change (prisma generate).' \
+        'Verify no remaining unhandled references to the new focal_person_id/ces_reviewer_id fields in any route not yet updated.' \
+        'Update DATABASE_SCHEMA.md ERD and SYSTEM_DOCUMENTATION_THESIS.md ERD in the next docs pass.'
       ;;
-    server-sessions)
+    server-lib)
       printf '%s\n' \
-        'Review userSessions test coverage and the new session restore behavior end-to-end.' \
-        'Confirm cookie SameSite and HttpOnly settings are correct in both dev and production environments.'
+        'No functional change — comment-only update. Confirm getCESRoleForDivisionPIR call sites are correct in focalPersonReview.ts.'
       ;;
-    server-admin-shared)
+    server-admin)
       printf '%s\n' \
-        'Grep for any remaining observerAccess imports in admin routes before declaring the cleanup complete.' \
-        'Verify guards.ts and prismaSelects.ts compile cleanly after the schema change.'
-      ;;
-    server-admin-routes)
-      printf '%s\n' \
-        'Run security.test.ts and confirm all refactored routes have passing coverage.' \
-        'Review the PIR review route for any references to the removed observer notes types.'
+        'Review focalPersonReview.ts endpoints against the focal person flow spec: recommend, CES note, cluster head approve/return.' \
+        'Confirm PUT /programs/:id/focal-persons is wired correctly in AdminPrograms.jsx.' \
+        'Document new focal person endpoints in API_DOCS.md during the next docs pass.'
       ;;
     server-admin-submissions)
       printf '%s\n' \
-        'Confirm all observer-note endpoints have been removed from admin submissions routing.' \
-        'Verify submission list, normalizer, and notification modules reflect the updated schema selects.'
+        'Confirm the admin status guard in status.ts does not block any legitimate admin workflow.' \
+        'Test the For Recommendation push notification end-to-end against the focal person review flow.'
       ;;
     server-data)
       printf '%s\n' \
-        'Verify soft deletion cascades correctly or is handled properly in relation to dependencies.' \
-        'Ensure soft-deleted records do not accidentally appear in active lists.'
+        'Test that a school user cannot submit an AIP when no focal persons are assigned to the program.' \
+        'Confirm PIR submission guard (AIP must be Approved) works after the focal flow lands the AIP in Approved state.' \
+        'Verify dashboard and lookup queries return correct counts for the new statuses.'
       ;;
     frontend)
       printf '%s\n' \
-        'Verify PIR form landscape layout renders correctly on smaller screens.' \
-        'Confirm logo assets load correctly across different network conditions.'
-      ;;
-    docs)
-      printf '%s\n' \
-        'Incorporate the new session doc into USER_MANUAL.md and FAQ.md in the next documentation pass.' \
-        'Cross-reference from README.md once the root wave lands.'
+        'Walk through the Division Personnel focal-review flow end-to-end in the browser (queue → review → recommend/return).' \
+        'Confirm CESDashboard AIP tab loads correctly and the CESAIPReview modal works.' \
+        'Verify StatusBadge renders For Recommendation in yellow for all table contexts.'
       ;;
     root)
       printf '%s\n' \
-        'This commit-stages.sh covers the current session-and-admin-overhaul cycle. Update wave definitions at the start of the next release.' \
-        'Verify README.md version badge and highlights section match the CHANGELOG entry.'
+        'This commit-stages.sh covers the focal person flow release cycle. Update wave definitions at the start of the next release.' \
+        'Verify README.md version badge and highlights section match the CHANGELOG entry after the next docs pass.'
       ;;
     *)
       die "Unknown wave: $1"
