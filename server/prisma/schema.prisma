@@ -64,11 +64,24 @@ model Program {
   aips                     AIP[]
   template                 ProgramTemplate?
   personnel                User[] @relation("UserPrograms")
+  focal_persons            ProgramFocalPerson[]
   restricted_schools       School[] @relation("RestrictedPrograms")
   consolidation_notes      ConsolidationNote[]
 
   @@unique([title, school_level_requirement])
   @@map("programs")
+}
+
+model ProgramFocalPerson {
+  program_id Int
+  user_id    Int
+
+  program Program @relation(fields: [program_id], references: [id], onDelete: Cascade)
+  user    User    @relation("FocalPersonPrograms", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([program_id, user_id])
+  @@index([user_id])
+  @@map("program_focal_persons")
 }
 
 model ProgramTemplate {
@@ -120,6 +133,7 @@ model User {
 
   // Relation to Programs (For Division Personnel Users)
   programs  Program[] @relation("UserPrograms")
+  focal_programs ProgramFocalPerson[] @relation("FocalPersonPrograms")
 
   // Documents created by this user (for Division Personnel tracking)
   aips      AIP[]     @relation("CreatedByUser")
@@ -127,6 +141,11 @@ model User {
 
   // PIRs this user CES-noted
   ces_reviewed_pirs PIR[] @relation("PIRCESReviewer")
+  ces_reviewed_aips AIP[] @relation("AIPCESReviewer")
+
+  // School documents this user recommended or returned as focal person
+  focal_reviewed_pirs PIR[] @relation("PIRFocalPerson")
+  focal_reviewed_aips AIP[] @relation("AIPFocalPerson")
 
   // PIRs this user is currently actively reviewing
   active_pir_reviews PIR[] @relation("PIRActiveReviewer")
@@ -211,16 +230,26 @@ model AIP {
   archived            Boolean  @default(false)
   archived_at         DateTime?
   deleted_at          DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
+  focal_person_id     Int?
+  focal_recommended_at DateTime?
+  focal_remarks       String?
+  ces_reviewer_id     Int?
+  ces_noted_at        DateTime?
+  ces_remarks         String?
   created_at          DateTime @default(now())
 
   // Relations
   school              School?        @relation(fields: [school_id], references: [id], onDelete: Cascade)
   program             Program        @relation(fields: [program_id], references: [id])
   created_by          User?          @relation("CreatedByUser", fields: [created_by_user_id], references: [id], onDelete: Cascade)
+  focal_person        User?          @relation("AIPFocalPerson", fields: [focal_person_id], references: [id], onDelete: SetNull)
+  ces_reviewer        User?          @relation("AIPCESReviewer", fields: [ces_reviewer_id], references: [id], onDelete: SetNull)
   activities          AIPActivity[]
   pirs                PIR[]
 
   @@unique([school_id, program_id, year]) // School Users: unique per school/program/year
+  @@index([status, program_id, focal_person_id])
+  @@index([status, ces_reviewer_id])
   // Division Personnel uniqueness enforced via partial index in DB: (created_by_user_id, program_id, year) WHERE school_id IS NULL
 }
 
@@ -263,6 +292,10 @@ model PIR {
   ces_reviewer_id             Int?
   ces_noted_at                DateTime?
   ces_remarks                 String?  // CES notes/feedback
+  // Focal person recommendation tracking for school-owned PIRs
+  focal_person_id             Int?
+  focal_recommended_at        DateTime?
+  focal_remarks               String?
   // Active review tracking — set when a reviewer opens the PIR; cleared on note/return
   active_reviewer_id          Int?
   active_review_started_at    DateTime?
@@ -272,11 +305,13 @@ model PIR {
   aip                AIP                 @relation(fields: [aip_id], references: [id], onDelete: Cascade)
   created_by         User?               @relation("CreatedByUser", fields: [created_by_user_id], references: [id], onDelete: Cascade)
   ces_reviewer       User?               @relation("PIRCESReviewer", fields: [ces_reviewer_id], references: [id], onDelete: SetNull)
+  focal_person       User?               @relation("PIRFocalPerson", fields: [focal_person_id], references: [id], onDelete: SetNull)
   active_reviewer    User?               @relation("PIRActiveReviewer", fields: [active_reviewer_id], references: [id], onDelete: SetNull)
   activity_reviews   PIRActivityReview[]
   factors            PIRFactor[]
 
   @@unique([aip_id, quarter]) // Ensures only one PIR per quarter for a specific AIP
+  @@index([status, focal_person_id])
 }
 
 model PIRActivityReview {
