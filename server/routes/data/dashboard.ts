@@ -182,6 +182,8 @@ dashboardRoutes.get(
         "Submitted",
         "Verified",
         "Under Review",
+        "For Recommendation",
+        "For CES Review",
         "Approved",
         "Returned",
       ];

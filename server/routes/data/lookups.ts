@@ -180,6 +180,8 @@ lookupsRoutes.get(
         "Submitted",
         "Verified",
         "Under Review",
+        "For Recommendation",
+        "For CES Review",
         "Approved",
         "Returned",
       ];
@@ -231,6 +233,9 @@ lookupsRoutes.get(
       const filedStatuses = [
         "Submitted",
         "Under Review",
+        "For Recommendation",
+        "For CES Review",
+        "For Cluster Head Review",
         "Approved",
         "Returned",
       ];

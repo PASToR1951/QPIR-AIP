@@ -115,6 +115,17 @@ async function mapTargetlessUniqueConflict<T>(
   }
 }
 
+async function getActiveFocalPersonIds(programId: number): Promise<number[]> {
+  const focalPeople = await prisma.programFocalPerson.findMany({
+    where: {
+      program_id: programId,
+      user: { role: "Division Personnel", is_active: true },
+    },
+    select: { user_id: true },
+  });
+  return focalPeople.map((person) => person.user_id);
+}
+
 pirRoutes.use("/pirs", requireAuth());
 pirRoutes.use("/pirs/*", requireAuth());
 
@@ -220,9 +231,11 @@ pirRoutes.get(
               aip_activity_id: review.aip_activity_id,
               fromAIP: Boolean(review.aip_activity_id),
               name: review.aip_activity?.activity_name ?? "",
-              implementation_period: review.aip_activity?.implementation_period ??
-                "",
-              period_start_month: review.aip_activity?.period_start_month ?? null,
+              implementation_period:
+                review.aip_activity?.implementation_period ??
+                  "",
+              period_start_month: review.aip_activity?.period_start_month ??
+                null,
               period_end_month: review.aip_activity?.period_end_month ?? null,
               complied: review.complied,
               actualTasksConducted: review.actual_tasks_conducted ?? "",
@@ -299,6 +312,26 @@ pirRoutes.post(
       }) as AIPWithProgramSchoolClusterActivities | null;
       if (!aip) return c.json({ error: "Resource not found" }, 404);
 
+      const isSchoolSubmission = tokenUser.role === "School" &&
+        aip.school_id !== null;
+      if (isSchoolSubmission && aip.status !== "Approved") {
+        throw new ConflictError(
+          "PIR submission is available only after the related AIP is approved.",
+        );
+      }
+      const focalPersonIds = isSchoolSubmission
+        ? await getActiveFocalPersonIds(program.id)
+        : [];
+      if (isSchoolSubmission && focalPersonIds.length === 0) {
+        return c.json(
+          {
+            error:
+              "No focal persons assigned to this program. Contact your administrator.",
+          },
+          400,
+        );
+      }
+
       if (
         (tokenUser.role === "Division Personnel" ||
           CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])) &&
@@ -333,8 +366,9 @@ pirRoutes.post(
 
       const factorData = transformFactors(factors);
       const reviewData = transformActivityReviews(activity_reviews);
-      const nextStatus = aip.school_id !== null &&
-          tokenUser.role !== "Cluster Coordinator"
+      const nextStatus = isSchoolSubmission
+        ? "For Recommendation"
+        : aip.school_id !== null && tokenUser.role !== "Cluster Coordinator"
         ? "For Cluster Head Review"
         : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
         ? "For Admin Review"
@@ -381,6 +415,16 @@ pirRoutes.post(
                     [],
                   action_items: action_items ?? [],
                   status: nextStatus,
+                  ...(isSchoolSubmission && {
+                    focal_person_id: null,
+                    focal_recommended_at: null,
+                    focal_remarks: null,
+                    ces_reviewer_id: null,
+                    ces_noted_at: null,
+                    ces_remarks: null,
+                    active_reviewer_id: null,
+                    active_review_started_at: null,
+                  }),
                   factors: { create: factorData },
                   activity_reviews: { create: reviewData },
                 },
@@ -426,16 +470,8 @@ pirRoutes.post(
       });
 
       let reviewerIds: number[] = [];
-      if (tokenUser.role === "School") {
-        const clusterCoords = await prisma.user.findMany({
-          where: {
-            role: "Cluster Coordinator",
-            cluster_id: aip.school?.cluster_id ?? null,
-            is_active: true,
-          },
-          select: { id: true },
-        });
-        reviewerIds = clusterCoords.map((user: { id: number }) => user.id);
+      if (isSchoolSubmission) {
+        reviewerIds = focalPersonIds;
       } else if (tokenUser.role === "Cluster Coordinator") {
         const cesCID = await prisma.user.findMany({
           where: { role: "CES-CID", is_active: true },
@@ -456,7 +492,7 @@ pirRoutes.post(
         reviewerIds = cesUsers.map((user: { id: number }) => user.id);
       }
 
-      const notifyIds = [
+      const notifyIds = isSchoolSubmission ? [...new Set(reviewerIds)] : [
         ...new Set([
           ...reviewerIds,
           ...pirAdmins.map((user: { id: number }) => user.id),
@@ -466,10 +502,13 @@ pirRoutes.post(
         const pirNotifs = await prisma.notification.createManyAndReturn({
           data: notifyIds.map((userId) => ({
             user_id: userId,
-            title: "New PIR Submitted",
-            message:
-              `${submitterLabel} submitted a PIR for ${cleanProgramTitle} (${cleanQuarter}).`,
-            type: "pir_submitted",
+            title: isSchoolSubmission
+              ? "PIR Pending Recommendation"
+              : "New PIR Submitted",
+            message: isSchoolSubmission
+              ? `${submitterLabel} submitted a PIR for ${cleanProgramTitle} (${cleanQuarter}) for your recommendation.`
+              : `${submitterLabel} submitted a PIR for ${cleanProgramTitle} (${cleanQuarter}).`,
+            type: isSchoolSubmission ? "for_recommendation" : "pir_submitted",
             entity_id: pir.id,
             entity_type: "pir",
           })),
@@ -561,22 +600,43 @@ pirRoutes.put(
           ) {
             throw new HttpError(403, "Forbidden", "FORBIDDEN");
           }
+          const pirAip = await tx.aIP.findUnique({
+            where: { id: lockedPir.aip_id },
+            select: { school_id: true, program_id: true },
+          });
+          const isSchoolResubmission = tokenUser.role === "School" &&
+            pirAip?.school_id != null;
           if (
-            lockedPir.status !== "For CES Review" &&
-            lockedPir.status !== "For Cluster Head Review" &&
-            lockedPir.status !== "Returned"
+            isSchoolResubmission
+              ? lockedPir.status !== "Returned"
+              : lockedPir.status !== "For CES Review" &&
+                lockedPir.status !== "For Cluster Head Review" &&
+                lockedPir.status !== "Returned"
           ) {
             throw new ConflictError(
               "This PIR can no longer be edited — it is currently under review.",
             );
           }
+          if (isSchoolResubmission) {
+            const focalCount = await tx.programFocalPerson.count({
+              where: {
+                program_id: pirAip?.program_id ?? -1,
+                user: { role: "Division Personnel", is_active: true },
+              },
+            });
+            if (focalCount === 0) {
+              throw new HttpError(
+                400,
+                "No focal persons assigned to this program. Contact your administrator.",
+                "NO_FOCAL_PERSONS",
+              );
+            }
+          }
 
-          const pirAip = await tx.aIP.findUnique({
-            where: { id: lockedPir.aip_id },
-            select: { school_id: true },
-          });
-          const resubmitStatus = pirAip?.school_id !== null &&
-              tokenUser.role !== "Cluster Coordinator"
+          const resubmitStatus = isSchoolResubmission
+            ? "For Recommendation"
+            : pirAip?.school_id != null &&
+                tokenUser.role !== "Cluster Coordinator"
             ? "For Cluster Head Review"
             : "For CES Review";
 
@@ -593,12 +653,50 @@ pirRoutes.put(
               indicator_quarterly_targets: indicator_quarterly_targets ?? [],
               action_items: action_items ?? [],
               status: resubmitStatus,
+              ...(isSchoolResubmission && {
+                focal_person_id: null,
+                focal_recommended_at: null,
+                focal_remarks: null,
+                ces_reviewer_id: null,
+                ces_noted_at: null,
+                ces_remarks: null,
+                active_reviewer_id: null,
+                active_review_started_at: null,
+              }),
               factors: { create: factorData },
               activity_reviews: { create: reviewData },
             },
           });
         },
       );
+
+      if (tokenUser.role === "School") {
+        const resubmittedPir = await prisma.pIR.findUnique({
+          where: { id: pirId },
+          include: { aip: { include: { program: true, school: true } } },
+        });
+        if (resubmittedPir?.aip.school_id != null) {
+          const focalIds = await getActiveFocalPersonIds(
+            resubmittedPir.aip.program_id,
+          );
+          if (focalIds.length > 0) {
+            const reviewerNotifs = await prisma.notification
+              .createManyAndReturn({
+                data: focalIds.map((userId) => ({
+                  user_id: userId,
+                  title: "PIR Resubmitted for Recommendation",
+                  message: `${
+                    resubmittedPir.aip.school?.name ?? "A school"
+                  } resubmitted a PIR for ${resubmittedPir.aip.program.title} (${resubmittedPir.quarter}) for your recommendation.`,
+                  type: "for_recommendation",
+                  entity_id: pirId,
+                  entity_type: "pir",
+                })),
+              });
+            pushNotifications(reviewerNotifs);
+          }
+        }
+      }
 
       writeUserLog({
         userId: tokenUser.id,
@@ -635,7 +733,9 @@ pirRoutes.delete(
         pirResourceKeyFromRecord(pir),
         async (tx) => {
           const lockedPir = await tx.pIR.findUnique({ where: { id: pirId } });
-          if (!lockedPir) throw new HttpError(404, "PIR not found", "NOT_FOUND");
+          if (!lockedPir) {
+            throw new HttpError(404, "PIR not found", "NOT_FOUND");
+          }
 
           const pirAip = await tx.aIP.findUnique({
             where: { id: lockedPir.aip_id },
@@ -648,6 +748,15 @@ pirRoutes.delete(
             lockedPir.created_by_user_id === tokenUser.id;
           if (!isSchoolOwner && !isCreator) {
             throw new HttpError(403, "Forbidden", "FORBIDDEN");
+          }
+
+          if (
+            isSchoolOwner &&
+            !["Draft", "Returned"].includes(lockedPir.status)
+          ) {
+            throw new ConflictError(
+              "This PIR can no longer be deleted — it is currently under review.",
+            );
           }
 
           if ((lockedPir as any).deleted_at) {

@@ -82,6 +82,17 @@ async function mapTargetlessUniqueConflict<T>(
   }
 }
 
+async function getActiveFocalPersonIds(programId: number): Promise<number[]> {
+  const focalPeople = await prisma.programFocalPerson.findMany({
+    where: {
+      program_id: programId,
+      user: { role: "Division Personnel", is_active: true },
+    },
+    select: { user_id: true },
+  });
+  return focalPeople.map((person) => person.user_id);
+}
+
 aipRoutes.use("/aips", requireAuth());
 aipRoutes.use("/aips/*", requireAuth());
 
@@ -296,6 +307,20 @@ aipRoutes.post(
           tokenUser.role === "Cluster Coordinator")
         ? tokenUser.school_id
         : null;
+      const isSchoolSubmission = tokenUser.role === "School" &&
+        schoolId !== null;
+      const focalPersonIds = isSchoolSubmission
+        ? await getActiveFocalPersonIds(program.id)
+        : [];
+      if (isSchoolSubmission && focalPersonIds.length === 0) {
+        return c.json(
+          {
+            error:
+              "No focal persons assigned to this program. Contact your administrator.",
+          },
+          400,
+        );
+      }
       const parsedYear = safeParseInt(
         year,
         new Date().getFullYear(),
@@ -317,7 +342,7 @@ aipRoutes.post(
         prepared_by_title: prepared_by_title || "",
         approved_by_name: approved_by_name || "",
         approved_by_title: approved_by_title || "",
-        status: "Approved",
+        status: isSchoolSubmission ? "For Recommendation" : "Approved",
       };
 
       if (hasInvalidActivityBudget(activities)) {
@@ -366,6 +391,14 @@ aipRoutes.post(
                 where: { id: existingDraft.id },
                 data: {
                   ...aipFields,
+                  ...(isSchoolSubmission && {
+                    focal_person_id: null,
+                    focal_recommended_at: null,
+                    focal_remarks: null,
+                    ces_reviewer_id: null,
+                    ces_noted_at: null,
+                    ces_remarks: null,
+                  }),
                   activities: { create: activityFields },
                 },
                 include: { activities: true },
@@ -417,23 +450,28 @@ aipRoutes.post(
         );
       }
 
-      const admins = await prisma.user.findMany({
-        where: { role: "Admin" },
-        select: { id: true },
-      });
-      if (admins.length > 0) {
-        const adminNotifs = await prisma.notification.createManyAndReturn({
-          data: admins.map((admin) => ({
-            user_id: admin.id,
-            title: "New AIP Received for Review",
-            message:
-              `${schoolLabel} submitted an AIP for ${program.title} (FY ${parsedYear}) awaiting your review.`,
-            type: "aip_submitted",
+      const reviewerIds = isSchoolSubmission
+        ? focalPersonIds
+        : (await prisma.user.findMany({
+          where: { role: "Admin" },
+          select: { id: true },
+        })).map((admin) => admin.id);
+      if (reviewerIds.length > 0) {
+        const reviewerNotifs = await prisma.notification.createManyAndReturn({
+          data: reviewerIds.map((userId) => ({
+            user_id: userId,
+            title: isSchoolSubmission
+              ? "AIP Pending Recommendation"
+              : "New AIP Received for Review",
+            message: isSchoolSubmission
+              ? `${schoolLabel} submitted an AIP for ${program.title} (FY ${parsedYear}) for your recommendation.`
+              : `${schoolLabel} submitted an AIP for ${program.title} (FY ${parsedYear}) awaiting your review.`,
+            type: isSchoolSubmission ? "for_recommendation" : "aip_submitted",
             entity_id: aip.id,
             entity_type: "aip",
           })),
         });
-        pushNotifications(adminNotifs);
+        pushNotifications(reviewerNotifs);
       }
 
       const submitterNotif = await prisma.notification.create({
@@ -487,12 +525,25 @@ aipRoutes.delete(
         aipResourceKeyFromRecord(aip),
         async (tx) => {
           const lockedAip = await tx.aIP.findUnique({ where: { id: aipId } });
-          if (!lockedAip) throw new HttpError(404, "AIP not found", "NOT_FOUND");
+          if (!lockedAip) {
+            throw new HttpError(404, "AIP not found", "NOT_FOUND");
+          }
 
-          const isOwner =
-            (tokenUser.school_id != null && lockedAip.school_id === tokenUser.school_id) ||
+          const isOwner = (tokenUser.school_id != null &&
+            lockedAip.school_id === tokenUser.school_id) ||
             lockedAip.created_by_user_id === tokenUser.id;
           if (!isOwner) throw new HttpError(403, "Forbidden", "FORBIDDEN");
+
+          if (
+            lockedAip.school_id !== null &&
+            !["Draft", "Returned"].includes(lockedAip.status)
+          ) {
+            throw new HttpError(
+              403,
+              "This AIP cannot be deleted in its current state.",
+              "FORBIDDEN",
+            );
+          }
 
           if (lockedAip.deleted_at) {
             throw new ConflictError("This AIP has already been deleted.");
@@ -510,7 +561,10 @@ aipRoutes.delete(
         action: "aip_delete",
         entityType: "AIP",
         entityId: aipId,
-        details: { programTitle: aip.program?.title ?? "Unknown", year: aip.year },
+        details: {
+          programTitle: aip.program?.title ?? "Unknown",
+          year: aip.year,
+        },
         ipAddress: getClientIp(c),
       });
       return c.json({ message: "AIP deleted successfully" });
@@ -581,6 +635,24 @@ aipRoutes.put(
             );
           }
 
+          const isSchoolResubmission = tokenUser.role === "School" &&
+            lockedAip.school_id !== null;
+          if (isSchoolResubmission) {
+            const focalCount = await tx.programFocalPerson.count({
+              where: {
+                program_id: lockedAip.program_id,
+                user: { role: "Division Personnel", is_active: true },
+              },
+            });
+            if (focalCount === 0) {
+              throw new HttpError(
+                400,
+                "No focal persons assigned to this program. Contact your administrator.",
+                "NO_FOCAL_PERSONS",
+              );
+            }
+          }
+
           await tx.aIPActivity.deleteMany({ where: { aip_id: aipId } });
           return tx.aIP.update({
             where: { id: aipId },
@@ -598,13 +670,46 @@ aipRoutes.put(
               prepared_by_title: prepared_by_title || "",
               approved_by_name: approved_by_name || "",
               approved_by_title: approved_by_title || "",
-              status: "Approved",
+              status: isSchoolResubmission ? "For Recommendation" : "Approved",
+              ...(isSchoolResubmission && {
+                focal_person_id: null,
+                focal_recommended_at: null,
+                focal_remarks: null,
+                ces_reviewer_id: null,
+                ces_noted_at: null,
+                ces_remarks: null,
+              }),
               activities: { create: activityFields },
             },
             include: { activities: true },
           });
         },
       );
+
+      if (tokenUser.role === "School" && aip.school_id !== null) {
+        const focalIds = await getActiveFocalPersonIds(aip.program_id);
+        if (focalIds.length > 0) {
+          const school = tokenUser.school_id
+            ? await prisma.school.findUnique({
+              where: { id: tokenUser.school_id },
+              select: { name: true },
+            })
+            : null;
+          const reviewerNotifs = await prisma.notification.createManyAndReturn({
+            data: focalIds.map((userId) => ({
+              user_id: userId,
+              title: "AIP Resubmitted for Recommendation",
+              message: `${
+                school?.name ?? "A school"
+              } resubmitted an AIP for ${aip.program.title} (FY ${aip.year}) for your recommendation.`,
+              type: "for_recommendation",
+              entity_id: aipId,
+              entity_type: "aip",
+            })),
+          });
+          pushNotifications(reviewerNotifs);
+        }
+      }
 
       writeUserLog({
         userId: tokenUser.id,
