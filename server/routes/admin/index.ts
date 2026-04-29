@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import pirReviewRoutes from "./pirReview.ts";
+import focalReviewRoutes from "./focalPersonReview.ts";
 import overviewRoutes from "./overview.ts";
 import {
   observerRoutes as submissionObserverRoutes,
@@ -27,6 +28,7 @@ import logsRoutes from "./logs/index.ts";
 const adminRoutes = new Hono();
 
 adminRoutes.route("/", pirReviewRoutes);
+adminRoutes.route("/", focalReviewRoutes);
 
 adminRoutes.route("/", overviewRoutes);
 adminRoutes.route("/", submissionObserverRoutes);

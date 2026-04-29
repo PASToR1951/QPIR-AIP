@@ -83,12 +83,29 @@ observerRoutes.get("/programs", async (c) => {
           middle_initial: true,
         },
       },
+      focal_persons: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              first_name: true,
+              last_name: true,
+              middle_initial: true,
+            },
+          },
+        },
+      },
       restricted_schools: { select: { id: true, name: true } },
       _count: { select: { aips: true } },
     },
     orderBy: { title: "asc" },
   });
-  return c.json(programs);
+  return c.json(programs.map((program: any) => ({
+    ...program,
+    focal_persons: program.focal_persons.map((entry: any) => entry.user),
+  })));
 });
 
 adminRoutes.post("/programs", async (c) => {
@@ -179,6 +196,93 @@ adminRoutes.patch("/programs/:id/personnel", async (c) => {
   return c.json({ success: true });
 });
 
+adminRoutes.put("/programs/:id/focal-persons", async (c) => {
+  const admin = await requireAdmin(c);
+  if (!admin) return c.json({ error: "Unauthorized" }, 401);
+
+  const id = safeParseInt(c.req.param("id"), 0);
+  if (id === 0) return c.json({ error: "Invalid program id" }, 400);
+
+  const { user_ids } = sanitizeObject(await c.req.json());
+  if (!Array.isArray(user_ids)) {
+    return c.json({ error: "user_ids must be an array" }, 400);
+  }
+
+  const uniqueUserIds = [
+    ...new Set(
+      user_ids
+        .map((value: unknown) => safeParseInt(String(value ?? ""), 0))
+        .filter((value: number) => value > 0),
+    ),
+  ];
+
+  const program = await prisma.program.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+  if (!program) return c.json({ error: "Program not found" }, 404);
+
+  if (uniqueUserIds.length > 0) {
+    const users = await prisma.user.findMany({
+      where: {
+        id: { in: uniqueUserIds },
+        role: "Division Personnel",
+        is_active: true,
+      },
+      select: { id: true },
+    });
+    if (users.length !== uniqueUserIds.length) {
+      return c.json(
+        { error: "All focal persons must be active Division Personnel users" },
+        400,
+      );
+    }
+  }
+
+  const focalPersons = await prisma.$transaction(async (tx) => {
+    await tx.programFocalPerson.deleteMany({ where: { program_id: id } });
+    if (uniqueUserIds.length > 0) {
+      await tx.programFocalPerson.createMany({
+        data: uniqueUserIds.map((userId: number) => ({
+          program_id: id,
+          user_id: userId,
+        })),
+      });
+    }
+    return tx.programFocalPerson.findMany({
+      where: { program_id: id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            first_name: true,
+            last_name: true,
+            middle_initial: true,
+          },
+        },
+      },
+      orderBy: { user_id: "asc" },
+    });
+  });
+
+  await writeAuditLog(
+    admin.id,
+    "updated_program_focal_persons",
+    "Program",
+    id,
+    {
+      user_ids: uniqueUserIds,
+    },
+    { ctx: c },
+  );
+
+  return c.json({
+    focal_persons: focalPersons.map((entry: any) => entry.user),
+  });
+});
+
 adminRoutes.get("/programs/:id/members", async (c) => {
   const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
@@ -196,7 +300,9 @@ adminRoutes.get("/programs/:id/members", async (c) => {
 
   const restrictedIds = program.restricted_schools.map((s) => s.id);
 
-  let schools: Array<{ id: number; name: string; abbreviation: string | null; level: string }> = [];
+  let schools: Array<
+    { id: number; name: string; abbreviation: string | null; level: string }
+  > = [];
   if (program.school_level_requirement !== "Division") {
     const levelWhere = program.school_level_requirement === "Elementary"
       ? { level: "Elementary" }

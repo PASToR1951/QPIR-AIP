@@ -208,7 +208,12 @@ overviewRoutes.get("/overview", async (c) => {
     );
     return {
       quarter: `Q${quarter}`,
-      submitted: quarterPirs.filter((pir) => pir.status === "Submitted").length,
+      submitted: quarterPirs.filter((pir) =>
+        ["Submitted", "For Recommendation"].includes(pir.status)
+      ).length,
+      forRecommendation: quarterPirs.filter((pir) =>
+        pir.status === "For Recommendation"
+      ).length,
       forCESReview: quarterPirs.filter((pir) =>
         pir.status === "For CES Review"
       ).length,
@@ -217,7 +222,7 @@ overviewRoutes.get("/overview", async (c) => {
       ).length,
       approved: quarterPirs.filter((pir) => pir.status === "Approved").length,
       underReview: quarterPirs.filter((pir) =>
-        ["Under Review", "For CES Review", "For Cluster Head Review"].includes(
+        ["Under Review", "For Recommendation", "For CES Review", "For Cluster Head Review"].includes(
           pir.status,
         )
       ).length,
@@ -452,7 +457,7 @@ overviewRoutes.get("/overview", async (c) => {
       total: sectionPirs.length,
       thisQuarter: currentQuarterSection.length,
       pending: sectionPirs.filter((pir) =>
-        pir.status === "For CES Review"
+        ["For Recommendation", "For CES Review"].includes(pir.status)
       ).length,
       inReview:
         sectionPirs.filter((pir) =>
