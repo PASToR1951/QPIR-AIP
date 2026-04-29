@@ -84,6 +84,9 @@ export default function AdminPrograms() {
   const [toast, setToast] = useState(null);
   const [templateProgram, setTemplateProgram] = useState(null);
   const [membersProgram, setMembersProgram] = useState(null);
+  const [focalProgram, setFocalProgram] = useState(null);
+  const [focalSelection, setFocalSelection] = useState([]);
+  const [divisionUsers, setDivisionUsers] = useState([]);
   const [viewUser, setViewUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(false);
 
@@ -102,6 +105,12 @@ export default function AdminPrograms() {
   }, []);
 
   useEffect(() => { fetchPrograms(); }, [fetchPrograms]);
+
+  useEffect(() => {
+    api.get('/api/admin/users?role=Division Personnel&status=active')
+      .then(r => setDivisionUsers(r.data))
+      .catch(() => setDivisionUsers([]));
+  }, []);
 
   // ── School Programs handlers ───────────────────────────────────────────────
   const handleAddProgram = async () => {
@@ -158,6 +167,38 @@ export default function AdminPrograms() {
       showToast('Failed to load user.', 'error');
     } finally {
       setLoadingUser(false);
+    }
+  };
+
+  const openFocalModal = (program) => {
+    setFocalProgram(program);
+    setFocalSelection((program.focal_persons ?? []).map(p => p.id));
+    setFormError('');
+  };
+
+  const toggleFocalSelection = (userId) => {
+    setFocalSelection(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  const handleSaveFocalPersons = async () => {
+    if (!focalProgram) return;
+    setActionLoading(true);
+    try {
+      setFormError('');
+      await api.put(`/api/admin/programs/${focalProgram.id}/focal-persons`, {
+        user_ids: focalSelection,
+      });
+      setFocalProgram(null);
+      fetchPrograms();
+      showToast('Focal persons updated.');
+    } catch (e) {
+      setFormError(e.friendlyMessage ?? 'Failed to update focal persons.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -343,6 +384,13 @@ export default function AdminPrograms() {
                           <UsersThree size={16} />
                         </button>
                         <button
+                          onClick={() => openFocalModal(prog)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+                          title="Assign focal persons"
+                        >
+                          <User size={16} />
+                        </button>
+                        <button
                           onClick={() => setTemplateProgram(prog)}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
                           title="Manage template"
@@ -354,8 +402,32 @@ export default function AdminPrograms() {
                       </div>
                     </div>
 
-                    <div className="flex items-center border-t border-slate-100 dark:border-dark-border pt-3">
+                    <div className="space-y-2 border-t border-slate-100 dark:border-dark-border pt-3">
                       <span className="text-xs text-slate-400 dark:text-slate-500">{prog._count?.aips ?? 0} AIPs filed</span>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Focal Persons</p>
+                        {prog.focal_persons?.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {prog.focal_persons.slice(0, 3).map(p => (
+                              <span key={p.id} className="rounded-lg bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
+                                {personnelDisplayName(p)}
+                              </span>
+                            ))}
+                            {prog.focal_persons.length > 3 && (
+                              <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500 dark:bg-dark-border dark:text-slate-400">
+                                +{prog.focal_persons.length - 3}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => openFocalModal(prog)}
+                            className="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400"
+                          >
+                            No focal person assigned
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -540,6 +612,58 @@ export default function AdminPrograms() {
         program={membersProgram}
         onClose={() => setMembersProgram(null)}
       />
+
+      <FormModal
+        open={!!focalProgram}
+        title="Assign Focal Persons"
+        onSave={handleSaveFocalPersons}
+        onCancel={() => { setFocalProgram(null); setFormError(''); }}
+        loading={actionLoading}
+      >
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+              {focalProgram?.title}
+            </p>
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">
+              Select one or more active Division Personnel users who can recommend school submissions for this program.
+            </p>
+          </div>
+          <div className="max-h-72 overflow-y-auto rounded-2xl border border-slate-200 dark:border-dark-border">
+            {divisionUsers.length === 0 ? (
+              <p className="px-4 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                No active Division Personnel users found.
+              </p>
+            ) : (
+              divisionUsers.map(user => {
+                const checked = focalSelection.includes(user.id);
+                return (
+                  <label
+                    key={user.id}
+                    className={`flex cursor-pointer items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-dark-border ${checked ? 'bg-blue-50/70 dark:bg-blue-950/20' : 'bg-white dark:bg-dark-surface hover:bg-slate-50 dark:hover:bg-dark-base'}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleFocalSelection(user.id)}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-bold text-slate-700 dark:text-slate-200">
+                        {personnelDisplayName(user)}
+                      </span>
+                      <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
+                        {user.email}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })
+            )}
+          </div>
+          {formError && <p className="text-xs font-bold text-red-500">{formError}</p>}
+        </div>
+      </FormModal>
 
       <UserProfileModal
         open={!!viewUser}

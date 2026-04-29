@@ -34,6 +34,7 @@ const NOTIF_ICON = {
   returned:                <ArrowBendUpLeft size={15} className="text-amber-400 shrink-0 mt-0.5" />,
   remarked:                <NotePencil size={15} className="text-pink-400 shrink-0 mt-0.5" />,
   under_review:            <Bell size={15} className="text-indigo-400 shrink-0 mt-0.5" />,
+  for_recommendation:      <HourglassMedium size={15} className="text-blue-400 shrink-0 mt-0.5" />,
   for_ces_review:          <HourglassMedium size={15} className="text-violet-400 shrink-0 mt-0.5" />,
   for_cluster_head_review: <HourglassMedium size={15} className="text-violet-400 shrink-0 mt-0.5" />,
   aip_edit_requested:      <PencilSimple size={15} className="text-orange-400 shrink-0 mt-0.5" />,

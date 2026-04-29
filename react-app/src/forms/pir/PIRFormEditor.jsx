@@ -166,7 +166,7 @@ export default function PIRFormEditor({
                         {(() => {
                             const isReturned = submission.pirStatus === 'Returned';
                             const isApproved = submission.pirStatus === 'Approved';
-                            const isPending = ['For CES Review', 'For Cluster Head Review'].includes(submission.pirStatus);
+                            const isPending = ['For Recommendation', 'For CES Review', 'For Cluster Head Review'].includes(submission.pirStatus);
                             const accentBorder = isReturned
                                 ? 'border-l-amber-400'
                                 : isPending
@@ -183,7 +183,9 @@ export default function PIRFormEditor({
                                 : submission.pirStatus && submission.pirStatus !== 'Submitted'
                                     ? `Currently ${submission.pirStatus.toLowerCase()} by reviewers`
                                     : 'Submitted — read-only';
-                            const canEdit = ['For CES Review', 'For Cluster Head Review', 'Returned'].includes(submission.pirStatus);
+                            const canEdit = user?.role === 'School'
+                                ? submission.pirStatus === 'Returned'
+                                : ['For CES Review', 'For Cluster Head Review', 'Returned'].includes(submission.pirStatus);
                             return (
                                 <div className={`rounded-2xl border border-slate-200 border-l-4 bg-white shadow-sm dark:border-dark-border dark:border-l-4 dark:bg-dark-surface ${accentBorder} print:hidden`}>
                                     <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 dark:border-dark-border">

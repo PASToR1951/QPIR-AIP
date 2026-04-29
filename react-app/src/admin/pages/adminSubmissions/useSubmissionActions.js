@@ -12,6 +12,7 @@ export function useSubmissionActions({ fetchSubmissions, showToast, isObserver }
   const canChangeSubmissionStatus = (item) => {
     if (isObserver) return false;
     if (item?.type === 'PIR') return false;
+    if (['For Recommendation', 'For CES Review'].includes(item?.status)) return false;
     return item?.status !== 'Approved' && item?.status !== 'Returned';
   };
 

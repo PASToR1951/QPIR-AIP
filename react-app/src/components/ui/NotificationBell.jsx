@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone, LockKeyOpen, LockKey, CalendarBlank } from '@phosphor-icons/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import api, { API } from '../../lib/api.js';
 import { mergeNotifications } from '../../lib/notifications.js';
 
@@ -14,6 +14,7 @@ const TYPE_ICON = {
   aip_submitted:           <FilePlus size={16} className="text-blue-400 shrink-0" />,
   pir_submitted:           <FilePlus size={16} className="text-blue-400 shrink-0" />,
   aip_edit_requested:      <PencilSimple size={16} className="text-orange-400 shrink-0" />,
+  for_recommendation:      <HourglassMedium size={16} className="text-blue-400 shrink-0" />,
   for_ces_review:          <HourglassMedium size={16} className="text-violet-400 shrink-0" />,
   for_cluster_head_review: <HourglassMedium size={16} className="text-violet-400 shrink-0" />,
   submitted:               <CheckCircle size={16} className="text-slate-400 shrink-0" />,
@@ -46,7 +47,13 @@ function resolveNotificationRoute(n, role) {
   }
   if (['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(role)) {
     if (entity_type === 'pir' && entity_id) return `/ces/pirs/${entity_id}`;
+    if (entity_type === 'aip' && entity_id) return `/ces/aips/${entity_id}`;
     return '/ces';
+  }
+  if (role === 'Division Personnel' && type === 'for_recommendation') {
+    if (entity_type === 'pir' && entity_id) return `/division/pirs/${entity_id}/review`;
+    if (entity_type === 'aip' && entity_id) return `/division/aips/${entity_id}/review`;
+    return '/division';
   }
   if (role === 'Cluster Coordinator' && type === 'pir_submitted') {
     if (entity_id) return `/ces/pirs/${entity_id}`;
@@ -56,7 +63,7 @@ function resolveNotificationRoute(n, role) {
   // Group B — creator navigation (fix/resubmit + status updates)
   if (type === 'aip_edit_approved') return '/aip';
   if (type === 'aip_edit_denied') return '/';
-  if (['returned', 'remarked', 'approved', 'under_review', 'for_ces_review', 'for_cluster_head_review'].includes(type)) {
+  if (['returned', 'remarked', 'approved', 'under_review', 'for_recommendation', 'for_ces_review', 'for_cluster_head_review'].includes(type)) {
     if (entity_type === 'aip') return '/aip';
     if (entity_type === 'pir') return '/pir';
   }
@@ -193,7 +200,7 @@ export function NotificationBell() {
       {/* Dropdown */}
       <AnimatePresence>
         {open && (
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0, y: -8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
@@ -242,7 +249,7 @@ export function NotificationBell() {
                 ))
               )}
             </div>
-          </motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </div>

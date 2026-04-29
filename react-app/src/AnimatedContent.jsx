@@ -28,6 +28,7 @@ const MagicLinkCallback = lazy(() => import('./MagicLinkCallback.jsx'));
 
 // CES pages
 const CESLayout = lazy(() => import('./ces/CESLayout.jsx'));
+const DivisionLayout = lazy(() => import('./division/DivisionLayout.jsx'));
 
 // Cluster Head pages
 const ClusterHeadLayout = lazy(() => import('./cluster-head/ClusterHeadLayout.jsx'));
@@ -72,6 +73,10 @@ function preloadForRole(role) {
     import('./ces/CESLayout.jsx');
     import('./AIPForm');
     import('./PIRForm');
+  } else if (role === 'Division Personnel') {
+    import('./division/DivisionLayout.jsx');
+    import('./AIPForm');
+    import('./PIRForm');
   } else if (role === 'Cluster Coordinator') {
     import('./cluster-head/ClusterHeadLayout.jsx');
     import('./AIPForm');
@@ -98,6 +103,7 @@ function isProtectedPath(pathname) {
     pathname === '/user-logs' ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/ces') ||
+    pathname.startsWith('/division') ||
     pathname.startsWith('/cluster-head')
   );
 }
@@ -382,6 +388,9 @@ export default function AnimatedContent() {
 
             {/* CES Routes */}
             <Route path="/ces/*" element={<CESRouteGuard><CESLayout /></CESRouteGuard>} />
+
+            {/* Division Focal Review Routes */}
+            <Route path="/division/*" element={<DivisionPersonnelRouteGuard><DivisionLayout /></DivisionPersonnelRouteGuard>} />
 
             {/* Cluster Head Routes */}
             <Route path="/cluster-head/*" element={<ClusterHeadRouteGuard><ClusterHeadLayout /></ClusterHeadRouteGuard>} />

@@ -2,12 +2,13 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAppLogo } from '../../context/BrandingContext.jsx';
-import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageCircle, TagIcon, IdentificationCardIcon, ListBulletsIcon, BookOpenUserIcon, BooksIcon, ClockCounterClockwise } from '@phosphor-icons/react';
+import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageCircle, TagIcon, IdentificationCardIcon, ListBulletsIcon, BookOpenUserIcon, BooksIcon, ClockCounterClockwise, ClipboardText } from '@phosphor-icons/react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NotificationBell } from './NotificationBell.jsx';
 import { SchoolAvatar } from './SchoolAvatar.jsx';
 import MyDevicesModal from './MyDevicesModal.jsx';
+import api from '../../lib/api.js';
 
 const MotionDiv = motion.div;
 
@@ -15,6 +16,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
     const appLogo = useAppLogo();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isDevicesOpen, setIsDevicesOpen] = useState(false);
+    const [pendingCount, setPendingCount] = useState(0);
     const dropdownRef = useRef(null);
 
     // Close dropdown on outside click
@@ -27,6 +29,19 @@ export const DashboardHeader = ({ user, onLogout }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+        if (user?.role !== 'Division Personnel') return;
+        let cancelled = false;
+        api.get('/api/admin/focal/pending-count')
+            .then(res => {
+                if (!cancelled) setPendingCount(res.data?.total ?? 0);
+            })
+            .catch(() => {
+                if (!cancelled) setPendingCount(0);
+            });
+        return () => { cancelled = true; };
+    }, [user?.role]);
 
     const displayRole = user?.role || (user?.email?.includes('deped.gov.ph') ? 'DepEd Personnel' : 'User');
     const displayName =
@@ -59,6 +74,21 @@ export const DashboardHeader = ({ user, onLogout }) => {
 
                 {/* Right Side Actions */}
                 <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
+                {user?.role === 'Division Personnel' && (
+                    <Link
+                        to="/division"
+                        onMouseEnter={() => import('../../division/DivisionLayout.jsx')}
+                        className="relative hidden items-center gap-2 rounded-2xl px-3 py-2 text-xs font-black text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-slate-300 dark:hover:bg-blue-950/30 dark:hover:text-blue-300 sm:flex"
+                    >
+                        <ClipboardText size={17} />
+                        Review Queue
+                        {pendingCount > 0 && (
+                            <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-blue-600 px-1.5 py-0.5 text-center text-[10px] font-black leading-none text-white shadow-sm">
+                                {pendingCount > 99 ? '99+' : pendingCount}
+                            </span>
+                        )}
+                    </Link>
+                )}
 
                 {/* Profile Dropdown */}
                 <div className="flex items-center relative" ref={dropdownRef}>
@@ -129,6 +159,17 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                         <ListBulletsIcon size={18} />
                                         User Logs
                                     </Link>
+                                    {user?.role === 'Division Personnel' && (
+                                        <Link to="/division" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../division/DivisionLayout.jsx')} className="flex items-center gap-3 px-3 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-xl transition-colors">
+                                            <ClipboardText size={18} />
+                                            Review Queue
+                                            {pendingCount > 0 && (
+                                                <span className="ml-auto rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">
+                                                    {pendingCount > 99 ? '99+' : pendingCount}
+                                                </span>
+                                            )}
+                                        </Link>
+                                    )}
                                 </div>
 
                                 <div className="px-2 py-1 border-t border-slate-100 dark:border-dark-border">

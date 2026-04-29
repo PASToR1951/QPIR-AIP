@@ -2,6 +2,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom';
 import { ClipboardText, FileText, ChartBar, SignOut } from '@phosphor-icons/react';
 import CESDashboard from './CESDashboard.jsx';
 import CESPIRReview from './CESPIRReview.jsx';
+import CESAIPReview from './CESAIPReview.jsx';
 import Footer from '../components/ui/Footer.jsx';
 import { useAppLogo } from '../context/BrandingContext.jsx';
 import { auth } from '../lib/auth.js';
@@ -55,7 +56,7 @@ export default function CESLayout() {
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border/40 transition-colors"
             >
               <ClipboardText size={15} />
-              PIR Queue
+              Review Queue
             </button>
 
             <button
@@ -89,6 +90,7 @@ export default function CESLayout() {
         <Routes>
           <Route index element={<CESDashboard />} />
           <Route path="pirs/:id" element={<CESPIRReview />} />
+          <Route path="aips/:id" element={<CESAIPReview />} />
         </Routes>
       </main>
       <Footer />

@@ -33,6 +33,8 @@ const EXACT_MAP = {
     'A PIR for this program and quarter has already been submitted.',
   'This PIR was returned for correction. Please update the returned PIR instead of submitting a new one.':
     'This PIR was returned for correction. Open the returned PIR and submit your updates there.',
+  'Another reviewer has already acted on this document':
+    'Another focal person has already acted on this document. Please refresh your queue.',
   'A record already exists for this request':
     'A submission already exists for this request. Duplicate entries are not allowed.',
   'Email already exists':
@@ -63,6 +65,8 @@ const EXACT_MAP = {
     'You do not have permission to perform this action.',
   'You are not assigned to this program':
     'You are not assigned to this program. Contact an administrator if this is an error.',
+  'No focal persons assigned to this program. Contact your administrator.':
+    'No focal person has been assigned to this program yet. Please contact your administrator.',
   'Not authorized to request edit for this AIP':
     'You are not authorized to request an edit for this AIP.',
 
@@ -73,6 +77,14 @@ const EXACT_MAP = {
     'This AIP cannot be edited in its current state. It may already be under review or approved.',
   'This PIR can no longer be edited — it is currently under review.':
     'This PIR cannot be edited because it is currently under review.',
+  'PIR submission is available only after the related AIP is approved.':
+    'You can submit a PIR only after the related AIP has been approved.',
+  'Remarks are required when returning a document':
+    'Please enter remarks before returning this document.',
+  'AIP is not pending CES review':
+    'This AIP is not currently pending CES review.',
+  'Document is not pending focal recommendation':
+    'This document is no longer pending focal recommendation.',
   'This AIP cannot be deleted in its current state.':
     'This AIP cannot be deleted. It may be under review or already approved.',
   'This PIR can no longer be deleted — it is currently under review.':

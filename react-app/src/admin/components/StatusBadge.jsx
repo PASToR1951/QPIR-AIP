@@ -3,6 +3,7 @@ import React from 'react';
 const STATUS_STYLES = {
   Submitted: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400',
   'Under Review': 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
+  'For Recommendation': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400',
   'For CES Review': 'bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400',
   'For Cluster Head Review': 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
   Approved: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
