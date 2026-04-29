@@ -23,7 +23,9 @@ import {
   fetchProgramByTitle,
 } from "./shared/lookups.ts";
 import {
+  factorFieldsToClientShape,
   normalizeIndicators,
+  pirActivityClientId,
   serializeIndicators,
   transformActivityReviews,
   transformAIPActivities,
@@ -543,12 +545,15 @@ draftsRoutes.get(
 
       const pir = quarter
         ? await fetchPIRForUser(aip.id, quarter, {
-          activity_reviews: true,
+          activity_reviews: { orderBy: { id: "asc" } },
           factors: true,
         })
         : await prisma.pIR.findFirst({
           where: { aip_id: aip.id, status: "Draft" },
-          include: { activity_reviews: true, factors: true },
+          include: {
+            activity_reviews: { orderBy: { id: "asc" } },
+            factors: true,
+          },
         });
 
       if (!pir || pir.status !== "Draft") return c.json({ hasDraft: false });
@@ -556,11 +561,7 @@ draftsRoutes.get(
       const typedPir = pir as PIRWithFactorsAndReviews;
       const factorsMap: Record<string, unknown> = {};
       for (const factor of typedPir.factors) {
-        factorsMap[factor.factor_type] = {
-          facilitating: factor.facilitating_factors,
-          hindering: factor.hindering_factors,
-          recommendations: factor.recommendations ?? "",
-        };
+        factorsMap[factor.factor_type] = factorFieldsToClientShape(factor);
       }
 
       return c.json({
@@ -575,21 +576,30 @@ draftsRoutes.get(
           indicatorQuarterlyTargets:
             typedPir.indicator_quarterly_targets as any[] ?? [],
           actionItems: typedPir.action_items as any[] ?? [],
-          activities: typedPir.activity_reviews.map((review) => ({
-            aip_activity_id: review.aip_activity_id,
-            complied: review.complied,
-            actualTasksConducted: review.actual_tasks_conducted ?? "",
-            contributoryIndicators:
-              review.contributory_performance_indicators ?? "",
-            movsExpectedOutputs: review.movs_expected_outputs ?? "",
-            adjustments: review.adjustments ?? "",
-            isUnplanned: review.is_unplanned ?? false,
-            physTarget: String(review.physical_target),
-            finTarget: String(review.financial_target),
-            physAcc: String(review.physical_accomplished),
-            finAcc: String(review.financial_accomplished),
-            actions: review.actions_to_address_gap || "",
-          })),
+          activities: (() => {
+            let unplannedIndex = 0;
+            return typedPir.activity_reviews.map((review) => {
+              const clientId = pirActivityClientId(review, unplannedIndex);
+              if (review.is_unplanned) unplannedIndex += 1;
+              return {
+                id: clientId,
+                aip_activity_id: review.aip_activity_id,
+                fromAIP: Boolean(review.aip_activity_id),
+                complied: review.complied,
+                actualTasksConducted: review.actual_tasks_conducted ?? "",
+                contributoryIndicators:
+                  review.contributory_performance_indicators ?? "",
+                movsExpectedOutputs: review.movs_expected_outputs ?? "",
+                adjustments: review.adjustments ?? "",
+                isUnplanned: review.is_unplanned ?? false,
+                physTarget: String(review.physical_target),
+                finTarget: String(review.financial_target),
+                physAcc: String(review.physical_accomplished),
+                finAcc: String(review.financial_accomplished),
+                actions: review.actions_to_address_gap || "",
+              };
+            });
+          })(),
           factors: factorsMap,
         },
         lastSaved: typedPir.created_at,

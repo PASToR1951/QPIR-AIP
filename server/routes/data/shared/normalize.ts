@@ -2,9 +2,127 @@ import { safeParseInt } from "../../../lib/safeParseInt.ts";
 import type {
   ActivityInput,
   ActivityReviewInput,
+  FactorInput,
   FactorMapInput,
   IndicatorInput,
 } from "./types.ts";
+
+const ACTIVITY_FACTOR_MARKER = "__pirActivityFactorsV1";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isActivityFactorEntry(value: unknown): value is {
+  facilitating?: unknown;
+  hindering?: unknown;
+} {
+  return isRecord(value) &&
+    ("facilitating" in value || "hindering" in value);
+}
+
+function isActivityFactorMap(data: FactorInput): boolean {
+  const hasLegacyKeys = ["facilitating", "hindering", "recommendations"].some(
+    (key) => Object.prototype.hasOwnProperty.call(data, key),
+  );
+  if (!hasLegacyKeys) return true;
+
+  return Object.entries(data).some(([key, value]) =>
+    !["facilitating", "hindering", "recommendations"].includes(key) &&
+    isActivityFactorEntry(value)
+  );
+}
+
+function encodeActivityFactorCategory(
+  data: FactorInput,
+  category: "facilitating" | "hindering",
+): string {
+  const values = Object.fromEntries(
+    Object.entries(data)
+      .filter(([, value]) => isActivityFactorEntry(value))
+      .map(([activityId, value]) => [
+        activityId,
+        String((value as Record<string, unknown>)[category] ?? ""),
+      ]),
+  );
+
+  return JSON.stringify({
+    [ACTIVITY_FACTOR_MARKER]: true,
+    values,
+  });
+}
+
+function decodeActivityFactorCategory(value: string): Record<string, string> | null {
+  try {
+    const parsed = JSON.parse(value);
+    if (!isRecord(parsed) || parsed[ACTIVITY_FACTOR_MARKER] !== true) {
+      return null;
+    }
+    if (!isRecord(parsed.values)) {
+      return {};
+    }
+
+    return Object.fromEntries(
+      Object.entries(parsed.values).map(([activityId, entry]) => [
+        activityId,
+        String(entry ?? ""),
+      ]),
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function storedFactorFieldHasContent(value: string | null | undefined): boolean {
+  const text = value ?? "";
+  const decoded = decodeActivityFactorCategory(text);
+  if (decoded) {
+    return Object.values(decoded).some((entry) => entry.trim().length > 0);
+  }
+  return text.trim().length > 0;
+}
+
+export function factorFieldsToClientShape(factor: {
+  facilitating_factors: string;
+  hindering_factors: string;
+  recommendations?: string | null;
+}) {
+  const facilitatingByActivity = decodeActivityFactorCategory(
+    factor.facilitating_factors,
+  );
+  const hinderingByActivity = decodeActivityFactorCategory(
+    factor.hindering_factors,
+  );
+
+  if (facilitatingByActivity || hinderingByActivity) {
+    const activityIds = new Set([
+      ...Object.keys(facilitatingByActivity ?? {}),
+      ...Object.keys(hinderingByActivity ?? {}),
+    ]);
+
+    return Object.fromEntries(
+      [...activityIds].map((activityId) => [activityId, {
+        facilitating: facilitatingByActivity?.[activityId] ?? "",
+        hindering: hinderingByActivity?.[activityId] ?? "",
+      }]),
+    );
+  }
+
+  return {
+    facilitating: factor.facilitating_factors,
+    hindering: factor.hindering_factors,
+    recommendations: factor.recommendations ?? "",
+  };
+}
+
+export function pirActivityClientId(
+  review: { id?: number | string; aip_activity_id?: number | null; is_unplanned?: boolean | null },
+  unplannedIndex: number,
+): string {
+  if (review.aip_activity_id) return `aip:${review.aip_activity_id}`;
+  if (review.is_unplanned) return `unplanned:${unplannedIndex}`;
+  return String(review.id ?? `activity:${unplannedIndex}`);
+}
 
 export function normalizeBudgetSource(
   amount: number,
@@ -71,12 +189,23 @@ export function transformAIPActivities(
 }
 
 export function transformFactors(factors: FactorMapInput | null | undefined) {
-  return Object.entries(factors || {}).map(([type, data]) => ({
-    factor_type: type,
-    facilitating_factors: data.facilitating ?? "",
-    hindering_factors: data.hindering ?? "",
-    recommendations: data.recommendations ?? "",
-  }));
+  return Object.entries(factors || {}).map(([type, data]) => {
+    if (isActivityFactorMap(data)) {
+      return {
+        factor_type: type,
+        facilitating_factors: encodeActivityFactorCategory(data, "facilitating"),
+        hindering_factors: encodeActivityFactorCategory(data, "hindering"),
+        recommendations: "",
+      };
+    }
+
+    return {
+      factor_type: type,
+      facilitating_factors: data.facilitating ?? "",
+      hindering_factors: data.hindering ?? "",
+      recommendations: data.recommendations ?? "",
+    };
+  });
 }
 
 export function transformActivityReviews(

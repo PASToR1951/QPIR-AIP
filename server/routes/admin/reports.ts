@@ -9,6 +9,7 @@ import {
   REPORT_AIP_INCLUDE,
   REPORT_PIR_INCLUDE,
 } from "./shared/prismaSelects.ts";
+import { storedFactorFieldHasContent } from "../data/shared/normalize.ts";
 
 const reportsRoutes = new Hono();
 
@@ -219,10 +220,12 @@ const EXPORT_BUILDERS: Record<string, ExportBuilder> = {
         f.factor_type.trim() === factorType
       );
       const facilitating = matching.filter((f) =>
-        f.facilitating_factors?.trim()
+        storedFactorFieldHasContent(f.facilitating_factors)
       ).length;
       const hindering =
-        matching.filter((f) => f.hindering_factors?.trim()).length;
+        matching.filter((f) =>
+          storedFactorFieldHasContent(f.hindering_factors)
+        ).length;
       return {
         "Factor Type": factorType,
         Facilitating: facilitating,
@@ -460,10 +463,11 @@ reportsRoutes.get("/reports/factors", async (c) => {
     return {
       type,
       facilitating: matching.filter((factor) =>
-        factor.facilitating_factors?.trim()
+        storedFactorFieldHasContent(factor.facilitating_factors)
       ).length,
-      hindering: matching.filter((factor) => factor.hindering_factors?.trim())
-        .length,
+      hindering: matching.filter((factor) =>
+        storedFactorFieldHasContent(factor.hindering_factors)
+      ).length,
     };
   });
 

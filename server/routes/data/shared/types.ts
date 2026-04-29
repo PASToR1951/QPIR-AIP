@@ -29,6 +29,7 @@ export interface FactorInput {
   facilitating?: string | null;
   hindering?: string | null;
   recommendations?: string | null;
+  [activityId: string]: unknown;
 }
 
 export type FactorMapInput = Record<string, FactorInput>;

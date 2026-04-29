@@ -26,6 +26,10 @@ import {
 import { canReadPirRecord, pirReadableWhereFor } from "./shared/pirAccess.ts";
 import { documentWhereFromRef, publicDocumentRef } from "./shared/documentRefs.ts";
 import { adminAsyncHandler } from "./submissions/asyncHandler.ts";
+import {
+  factorFieldsToClientShape,
+  pirActivityClientId,
+} from "../data/shared/normalize.ts";
 
 const pirReviewRoutes = new Hono();
 
@@ -111,11 +115,7 @@ pirReviewRoutes.get("/pirs/:id", async (c) => {
 
   const factorsMap: Record<string, any> = {};
   for (const factor of pir.factors) {
-    factorsMap[factor.factor_type] = {
-      facilitating: factor.facilitating_factors,
-      hindering: factor.hindering_factors,
-      recommendations: (factor as any).recommendations ?? "",
-    };
+    factorsMap[factor.factor_type] = factorFieldsToClientShape(factor);
   }
 
   return c.json({
@@ -136,22 +136,32 @@ pirReviewRoutes.get("/pirs/:id", async (c) => {
     cesReviewer: (pir as any).ces_reviewer?.name ?? null,
     cesNotedAt: (pir as any).ces_noted_at ?? null,
     cesRemarks: (pir as any).ces_remarks ?? null,
-    activities: pir.activity_reviews.map((review: any) => ({
-      id: review.id,
-      name: review.aip_activity?.activity_name ?? "",
-      implementation_period: review.aip_activity?.implementation_period ?? "",
-      complied: review.complied,
-      actualTasksConducted: review.actual_tasks_conducted ?? "",
-      contributoryIndicators: review.contributory_performance_indicators ?? "",
-      movsExpectedOutputs: review.movs_expected_outputs ?? "",
-      adjustments: review.adjustments ?? "",
-      isUnplanned: review.is_unplanned ?? false,
-      physTarget: review.physical_target,
-      finTarget: review.financial_target,
-      physAcc: review.physical_accomplished,
-      finAcc: review.financial_accomplished,
-      actions: review.actions_to_address_gap ?? "",
-    })),
+    activities: (() => {
+      let unplannedIndex = 0;
+      return pir.activity_reviews.map((review: any) => {
+        const clientId = pirActivityClientId(review, unplannedIndex);
+        if (review.is_unplanned) unplannedIndex += 1;
+        return {
+          id: clientId,
+          aip_activity_id: review.aip_activity_id,
+          fromAIP: Boolean(review.aip_activity_id),
+          name: review.aip_activity?.activity_name ?? "",
+          implementation_period: review.aip_activity?.implementation_period ?? "",
+          complied: review.complied,
+          actualTasksConducted: review.actual_tasks_conducted ?? "",
+          contributoryIndicators:
+            review.contributory_performance_indicators ?? "",
+          movsExpectedOutputs: review.movs_expected_outputs ?? "",
+          adjustments: review.adjustments ?? "",
+          isUnplanned: review.is_unplanned ?? false,
+          physTarget: review.physical_target,
+          finTarget: review.financial_target,
+          physAcc: review.physical_accomplished,
+          finAcc: review.financial_accomplished,
+          actions: review.actions_to_address_gap ?? "",
+        };
+      });
+    })(),
     factors: factorsMap,
   });
 });

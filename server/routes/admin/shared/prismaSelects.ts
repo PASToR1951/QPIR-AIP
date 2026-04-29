@@ -9,7 +9,10 @@ export const PIR_DETAIL_INCLUDE = {
   aip: {
     include: { program: true, school: { include: { cluster: true } } },
   },
-  activity_reviews: { include: { aip_activity: true } },
+  activity_reviews: {
+    orderBy: { id: "asc" },
+    include: { aip_activity: true },
+  },
   factors: true,
   ces_reviewer: { select: { name: true, role: true } },
 } as const;
@@ -56,7 +59,10 @@ export const SUBMISSION_DETAIL_PIR_INCLUDE = {
       activities: true,
     },
   },
-  activity_reviews: { include: { aip_activity: true } },
+  activity_reviews: {
+    orderBy: { id: "asc" },
+    include: { aip_activity: true },
+  },
   factors: true,
   created_by: true,
 } as const;
@@ -82,4 +88,3 @@ export const REPORT_PIR_INCLUDE = {
 export const SCHOOL_CLUSTER_INCLUDE = {
   cluster: true,
 } as const;
-

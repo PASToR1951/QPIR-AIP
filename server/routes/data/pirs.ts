@@ -28,6 +28,8 @@ import {
   fetchProgramByTitle,
 } from "./shared/lookups.ts";
 import {
+  factorFieldsToClientShape,
+  pirActivityClientId,
   transformActivityReviews,
   transformFactors,
   validateBudgetAmount,
@@ -152,7 +154,10 @@ pirRoutes.get(
       if (!aip) return c.json({ error: "No AIP found for this program" }, 404);
 
       const pir = await fetchPIRForUser(aip.id, quarter, {
-        activity_reviews: { include: { aip_activity: true } },
+        activity_reviews: {
+          orderBy: { id: "asc" },
+          include: { aip_activity: true },
+        },
         factors: true,
       }) as PIRWithReviewActivitiesAndFactors | null;
       if (!pir) {
@@ -178,11 +183,7 @@ pirRoutes.get(
 
       const factorsMap: Record<string, unknown> = {};
       for (const factor of pir.factors) {
-        factorsMap[factor.factor_type] = {
-          facilitating: factor.facilitating_factors,
-          hindering: factor.hindering_factors,
-          recommendations: factor.recommendations ?? "",
-        };
+        factorsMap[factor.factor_type] = factorFieldsToClientShape(factor);
       }
 
       await prisma.auditLog.create({
@@ -209,26 +210,35 @@ pirRoutes.get(
         indicatorQuarterlyTargets: pir.indicator_quarterly_targets as any[] ??
           [],
         actionItems: pir.action_items as any[] ?? [],
-        activities: pir.activity_reviews.map((review) => ({
-          id: review.id,
-          name: review.aip_activity?.activity_name ?? "",
-          implementation_period: review.aip_activity?.implementation_period ??
-            "",
-          period_start_month: review.aip_activity?.period_start_month ?? null,
-          period_end_month: review.aip_activity?.period_end_month ?? null,
-          complied: review.complied,
-          actualTasksConducted: review.actual_tasks_conducted ?? "",
-          contributoryIndicators: review.contributory_performance_indicators ??
-            "",
-          movsExpectedOutputs: review.movs_expected_outputs ?? "",
-          adjustments: review.adjustments ?? "",
-          isUnplanned: review.is_unplanned ?? false,
-          physTarget: review.physical_target,
-          finTarget: review.financial_target,
-          physAcc: review.physical_accomplished,
-          finAcc: review.financial_accomplished,
-          actions: review.actions_to_address_gap ?? "",
-        })),
+        activities: (() => {
+          let unplannedIndex = 0;
+          return pir.activity_reviews.map((review) => {
+            const clientId = pirActivityClientId(review, unplannedIndex);
+            if (review.is_unplanned) unplannedIndex += 1;
+            return {
+              id: clientId,
+              aip_activity_id: review.aip_activity_id,
+              fromAIP: Boolean(review.aip_activity_id),
+              name: review.aip_activity?.activity_name ?? "",
+              implementation_period: review.aip_activity?.implementation_period ??
+                "",
+              period_start_month: review.aip_activity?.period_start_month ?? null,
+              period_end_month: review.aip_activity?.period_end_month ?? null,
+              complied: review.complied,
+              actualTasksConducted: review.actual_tasks_conducted ?? "",
+              contributoryIndicators:
+                review.contributory_performance_indicators ?? "",
+              movsExpectedOutputs: review.movs_expected_outputs ?? "",
+              adjustments: review.adjustments ?? "",
+              isUnplanned: review.is_unplanned ?? false,
+              physTarget: review.physical_target,
+              finTarget: review.financial_target,
+              physAcc: review.physical_accomplished,
+              finAcc: review.financial_accomplished,
+              actions: review.actions_to_address_gap ?? "",
+            };
+          });
+        })(),
         factors: factorsMap,
       });
     },
