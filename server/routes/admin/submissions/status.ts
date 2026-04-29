@@ -10,10 +10,7 @@ import { HttpError } from "../../../lib/errors.ts";
 import { sanitizeObject } from "../../../lib/sanitize.ts";
 import { writeAuditLog } from "../shared/audit.ts";
 import { documentWhereFromRef } from "../shared/documentRefs.ts";
-import {
-  VALID_STATUSES,
-  validateTextLength,
-} from "./validation.ts";
+import { VALID_STATUSES, validateTextLength } from "./validation.ts";
 import { pushAIPStatusNotification } from "./notifications.ts";
 import { adminAsyncHandler } from "./asyncHandler.ts";
 
@@ -34,7 +31,9 @@ statusRouter.patch(
 
       if (type === "pir") {
         return c.json(
-          { error: "Forbidden: PIR approval is handled by CES or Cluster Head" },
+          {
+            error: "Forbidden: PIR approval is handled by CES or Cluster Head",
+          },
           403,
         );
       }
@@ -54,9 +53,22 @@ statusRouter.patch(
           created_by_user_id: true,
           program_id: true,
           year: true,
+          status: true,
         },
       });
       if (!currentAip) return c.json({ error: "Not found" }, 404);
+      if (
+        currentAip.school_id !== null &&
+        ["For Recommendation", "For CES Review"].includes(currentAip.status)
+      ) {
+        return c.json(
+          {
+            error:
+              "School AIPs in focal review must be handled by the assigned focal person or CES",
+          },
+          403,
+        );
+      }
       const id = currentAip.id;
 
       const aip = await withAdvisoryLock(

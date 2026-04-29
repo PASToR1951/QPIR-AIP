@@ -7,6 +7,7 @@ export const STATUS_LABELS: Record<string, string> = {
   "Approved": "approved",
   "Returned": "returned",
   "Under Review": "under_review",
+  "For Recommendation": "for_recommendation",
   "For CES Review": "for_ces_review",
   "For Cluster Head Review": "for_cluster_head_review",
   "Submitted": "submitted",
@@ -34,6 +35,11 @@ const PIR_STATUS_MESSAGES: Record<
   "Under Review": (programTitle, quarter) => ({
     title: "PIR Under Review",
     message: `Your PIR for ${programTitle} (${quarter}) is now under review.`,
+  }),
+  "For Recommendation": (programTitle, quarter) => ({
+    title: "PIR Pending Recommendation",
+    message:
+      `Your PIR for ${programTitle} (${quarter}) has been sent for focal person recommendation.`,
   }),
   "For CES Review": (programTitle, quarter) => ({
     title: "PIR Pending CES Review",
