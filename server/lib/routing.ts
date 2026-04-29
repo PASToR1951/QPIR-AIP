@@ -1,13 +1,16 @@
 /**
  * Returns which CES role should review a PIR based on the program's division.
- * Used for Division Personnel PIRs and Cluster Coordinator PIRs.
+ * Used for Division Personnel PIRs, Cluster Coordinator PIRs, and
+ * focal-recommended school AIPs/PIRs.
  *
  * - Division Personnel PIRs route by program.division:
  *   SGOD → CES-SGOD, OSDS → CES-ASDS, CID → CES-CID, null → CES-CID (fallback)
  * - Cluster Coordinator PIRs always route to CES-CID (call with null; also applies to school-level CC PIRs)
- * - School PIRs do NOT use this function — they route to the Cluster Coordinator
+ * - School AIPs/PIRs use this after focal recommendation
  */
-export function getCESRoleForDivisionPIR(programDivision: string | null): string {
+export function getCESRoleForDivisionPIR(
+  programDivision: string | null,
+): string {
   if (programDivision === "SGOD") return "CES-SGOD";
   if (programDivision === "OSDS") return "CES-ASDS";
   if (programDivision === "CID") return "CES-CID";
