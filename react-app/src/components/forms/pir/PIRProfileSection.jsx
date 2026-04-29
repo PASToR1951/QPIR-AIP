@@ -79,20 +79,24 @@ export default React.memo(function PIRProfileSection({
                     </div>
                 </div>
 
-                {/* School Users: read-only school field. Division Personnel: Functional Division dropdown. */}
+                {/* School Users: read-only school field. Division Personnel: Functional Division (locked when auto-filled from program). */}
                 {isDivisionPersonnel ? (
-                    <Select
-                        theme="blue"
-                        label="Functional Division"
-                        placeholder="Select..."
-                        options={[
-                            { value: "SGOD", label: "SGOD" },
-                            { value: "OSDS", label: "OSDS" },
-                            { value: "CID", label: "CID" },
-                        ]}
-                        value={profile.functionalDivision}
-                        onChange={(e) => dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'functionalDivision', value: e.target.value } })}
-                    />
+                    profile.functionalDivision ? (
+                        <LockedField label="Functional Division" value={profile.functionalDivision} />
+                    ) : (
+                        <Select
+                            theme="blue"
+                            label="Functional Division"
+                            placeholder="Select..."
+                            options={[
+                                { value: "SGOD", label: "SGOD" },
+                                { value: "OSDS", label: "OSDS" },
+                                { value: "CID", label: "CID" },
+                            ]}
+                            value={profile.functionalDivision}
+                            onChange={(e) => dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'functionalDivision', value: e.target.value } })}
+                        />
+                    )
                 ) : (
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">School</label>

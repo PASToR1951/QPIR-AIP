@@ -130,9 +130,10 @@ export default function useFormLifecycle({
         moveToMode,
         onBeforeStart,
         onReadonlyError,
+        closeModal,
+        openModal,
         resetFormState,
         resetSubmissionState,
-        shell,
     ]);
 
     const handleBack = useCallback(() => {
@@ -148,7 +149,12 @@ export default function useFormLifecycle({
             return;
         }
 
-        if (appMode !== 'readonly' && hasInputtedData()) {
+        if (appMode === 'readonly') {
+            navigate('/');
+            return;
+        }
+
+        if (hasInputtedData()) {
             draft?.saveNow?.();
         }
 
@@ -156,14 +162,12 @@ export default function useFormLifecycle({
         setSearchParams({}, { replace: true });
     }, [
         appMode,
-        closeModal,
         currentProgram,
         draft,
         exitEditMode,
         hasInputtedData,
         isEditing,
         navigate,
-        openModal,
         setAppMode,
         setSearchParams,
     ]);
@@ -198,7 +202,7 @@ export default function useFormLifecycle({
         if (paramProgram && !paramMode) {
             setSplashSelectedProgram(paramProgram);
         }
-    }, [handleStart, isLoading, searchParams, setSplashSelectedProgram]);
+    }, [autoStartedRef, handleStart, isLoading, searchParams, setSplashSelectedProgram]);
 
     // Keep a ref so the URL-params effect below can always call the latest
     // handleStart without listing it as a dependency. handleStart changes
@@ -240,7 +244,7 @@ export default function useFormLifecycle({
         if (appModeRef.current === 'splash' && !startPendingRef.current) {
             handleStartRef.current(paramMode, paramProgram);
         }
-    }, [clearProgramField, searchParams, setAppMode, setSplashSelectedProgram]);
+    }, [autoStartedRef, clearProgramField, searchParams, setAppMode, setSplashSelectedProgram]);
 
     return {
         handleStart,
