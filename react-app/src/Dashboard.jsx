@@ -9,6 +9,7 @@ import Footer from './components/ui/Footer';
 import DashboardStats, { getActionPrompt } from './components/ui/DashboardStats';
 import SubmissionsHistory from './components/ui/SubmissionsHistory';
 import { useAccessibility } from './context/AccessibilityContext';
+import { getPeriodYear, periodNoun, periodPrefix } from './lib/periods.js';
 
 function useAnimatedNumber(targetValue, duration = 700) {
   const targetNumber = Number(targetValue) || 0;
@@ -112,6 +113,18 @@ export default function Dashboard() {
     : 'group-hover:text-white transition-colors duration-300';
 
   const actionPrompt = dashboardData ? getActionPrompt(dashboardData, aipStatus) : '';
+  const dashboardPeriodType = dashboardData?.period_type === 'trimester' ? 'trimester' : 'quarter';
+  const dashboardPeriodPrefix = periodPrefix(dashboardPeriodType);
+  const dashboardPeriodNoun = periodNoun(dashboardPeriodType);
+  const dashboardPeriodShort = dashboardData
+    ? `${dashboardPeriodPrefix}${dashboardData.currentQuarter}`
+    : '';
+  const reportingYear = dashboardData
+    ? getPeriodYear(dashboardData.currentPeriodLabel, dashboardPeriodType === 'trimester' ? 'School' : 'Division Personnel')
+    : new Date().getFullYear();
+  const pirReportTitle = dashboardPeriodType === 'trimester'
+    ? 'PIR - Trimester Report'
+    : 'PIR - Quarterly Report';
 
   const handleLogout = async () => {
     try {
@@ -228,7 +241,7 @@ export default function Dashboard() {
                 <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
                   <span className="text-slate-400 dark:text-slate-500 text-sm md:text-base font-normal">
                     {dashboardData && dashboardData.aipCompletion.completed < dashboardData.aipCompletion.total
-                      ? `${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed} program${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed !== 1 ? 's still need planning' : ' still needs planning'} for FY ${new Date().getFullYear()}.`
+                      ? `${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed} program${dashboardData.aipCompletion.total - dashboardData.aipCompletion.completed !== 1 ? 's still need planning' : ' still needs planning'} for FY ${reportingYear}.`
                       : 'Plan your objectives, activities, and budget for the fiscal year.'
                     }
                   </span>
@@ -270,8 +283,8 @@ export default function Dashboard() {
                       <span className="absolute inset-0 -translate-x-full group-hover:translate-x-0 transition-transform duration-500 ease-out bg-blue-500/75 backdrop-blur-sm rounded-full" />
                       <span className="relative z-10 group-hover:text-white transition-colors duration-300">
                         {dashboardData.pirSubmitted.total === 0
-                          ? `No Q${dashboardData.currentQuarter} Activities`
-                          : `Q${dashboardData.currentQuarter}: ${dashboardData.pirSubmitted.submitted}/${dashboardData.pirSubmitted.total} Filed`
+                          ? `No ${dashboardPeriodShort} Activities`
+                          : `${dashboardPeriodShort}: ${dashboardData.pirSubmitted.submitted}/${dashboardData.pirSubmitted.total} Filed`
                         }
                       </span>
                     </div>
@@ -279,14 +292,14 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-auto">
-                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:text-blue-600">PIR - Quarterly Report</h3>
+                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3 opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:text-blue-600">{pirReportTitle}</h3>
                   <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6 opacity-60 group-hover:opacity-100 transition-opacity duration-300">
                     <span className="text-slate-400 dark:text-slate-500 text-sm md:text-base font-normal">
                       {dashboardData && dashboardData.pirSubmitted.total > 0 && dashboardData.pirSubmitted.submitted < dashboardData.pirSubmitted.total
-                        ? `${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted} quarterly report${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted !== 1 ? 's are' : ' is'} still pending for Q${dashboardData.currentQuarter}.`
+                        ? `${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted} ${dashboardPeriodNoun} report${dashboardData.pirSubmitted.total - dashboardData.pirSubmitted.submitted !== 1 ? 's are' : ' is'} still pending for ${dashboardPeriodShort}.`
                         : dashboardData && dashboardData.pirSubmitted.total === 0
-                          ? `No activities are scheduled this quarter. Check back next quarter.`
-                          : 'Report your accomplishments and spending for the current quarter.'
+                          ? `No activities are scheduled this ${dashboardPeriodNoun}. Check back next ${dashboardPeriodNoun}.`
+                          : `Report your accomplishments and spending for the current ${dashboardPeriodNoun}.`
                       }
                     </span>
                   </p>
@@ -317,9 +330,9 @@ export default function Dashboard() {
                 </div>
 
                 <div className="mt-auto">
-                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3">PIR - Quarterly Report</h3>
+                  <h3 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-slate-100 mb-3">{pirReportTitle}</h3>
                   <p className="font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-base md:text-lg mb-6">
-                    <span className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-normal">Submit your AIP first to unlock quarterly reports.</span>
+                    <span className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-normal">Submit your AIP first to unlock PIR reports.</span>
                   </p>
 
                   <div className="inline-flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 text-amber-700 border border-amber-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm">

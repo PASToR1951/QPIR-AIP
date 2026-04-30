@@ -55,7 +55,7 @@ export function useAipMutations({
         } catch (error) {
             shell.openModal({ type: 'warning', title: 'Request Failed', message: error.friendlyMessage ?? 'Failed to send edit request. Please try again.', confirmText: 'Close', onConfirm: shell.closeModal });
         }
-    }, [shell, submission.aipId, dispatch]);
+    }, [shell, submission.aipId, submission.editRequestCount, dispatch]);
 
     const handleCancelEditRequest = useCallback(async () => {
         if (!submission.aipId) return;
@@ -138,7 +138,7 @@ export function useAipMutations({
                     shell.closeModal();
                     shell.setAppMode('readonly');
                     setSearchParams({ program: profile.depedProgram, mode: 'readonly' }, { replace: true });
-                    api.get('/api/aips', { params: buildProgramParams(profile.depedProgram, { year: new Date().getFullYear() }) })
+                    api.get('/api/aips', { params: buildProgramParams(profile.depedProgram, { year: parseInt(profile.year, 10) }) })
                         .then(r => { dispatch({ type: 'HYDRATE_SUBMITTED', payload: { aip: r.data } }); }).catch(() => {});
                 },
                 hideCancelButton: true,

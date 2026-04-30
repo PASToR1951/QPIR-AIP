@@ -3,6 +3,10 @@ import { prisma } from "../../db/client.ts";
 import { normalizeQuarterLabel } from "../../lib/quarters.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { sanitizeString } from "../../lib/sanitize.ts";
+import {
+  getDefaultReportingYear,
+  normalizeTrimesterLabel,
+} from "../../lib/trimesters.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
 import {
@@ -170,7 +174,7 @@ lookupsRoutes.get(
       const tokenUser = getAuthedUser(c);
       const year = safeParseInt(
         c.req.query("year"),
-        new Date().getFullYear(),
+        getDefaultReportingYear(tokenUser.role),
         2020,
         2100,
       );
@@ -223,12 +227,14 @@ lookupsRoutes.get(
       const tokenUser = getAuthedUser(c);
       const year = safeParseInt(
         c.req.query("year"),
-        new Date().getFullYear(),
+        getDefaultReportingYear(tokenUser.role),
         2020,
         2100,
       );
       const quarter = c.req.query("quarter")
-        ? normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
+        ? tokenUser.role === "School"
+          ? normalizeTrimesterLabel(sanitizeString(c.req.query("quarter")))
+          : normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
         : null;
       const filedStatuses = [
         "Submitted",
@@ -287,7 +293,7 @@ lookupsRoutes.get(
       const schoolId = safeParseInt(c.req.param("id"), 0);
       const year = safeParseInt(
         c.req.query("year"),
-        new Date().getFullYear(),
+        getDefaultReportingYear(tokenUser.role),
         2020,
         2100,
       );
@@ -389,7 +395,7 @@ lookupsRoutes.get(
       const userId = safeParseInt(c.req.param("id"), 0);
       const year = safeParseInt(
         c.req.query("year"),
-        new Date().getFullYear(),
+        getDefaultReportingYear(tokenUser.role),
         2020,
         2100,
       );
@@ -417,7 +423,7 @@ lookupsRoutes.get(
       const programId = safeParseInt(c.req.query("program_id"), 0);
       const year = safeParseInt(
         c.req.query("year"),
-        new Date().getFullYear(),
+        getDefaultReportingYear(tokenUser.role),
         2020,
         2100,
       );

@@ -21,7 +21,12 @@ import {
 } from "../../lib/advisoryLock.ts";
 import { ConflictError, HttpError } from "../../lib/errors.ts";
 import { isPrismaUniqueConflictWithoutTarget } from "../../lib/prismaErrors.ts";
-import { normalizeQuarterLabel } from "../../lib/quarters.ts";
+import { normalizeQuarterLabel, parseQuarterLabel } from "../../lib/quarters.ts";
+import {
+  getDefaultReportingYear,
+  normalizeTrimesterLabel,
+  parseTrimesterLabel,
+} from "../../lib/trimesters.ts";
 import {
   fetchAIPForUser,
   fetchPIRForUser,
@@ -102,6 +107,51 @@ async function validateQuarterSubmissionWindow(
   return null;
 }
 
+async function validateTrimesterSubmissionWindow(
+  year: number,
+  trimester: number,
+): Promise<string | null> {
+  const deadlineRecord = await prisma.trimesterDeadline.findUnique({
+    where: { year_trimester: { year, trimester } },
+  });
+
+  if (!deadlineRecord) {
+    return "Submission window not configured for this trimester — contact your administrator.";
+  }
+
+  const deadline = new Date(deadlineRecord.date);
+  deadline.setHours(23, 59, 59, 999);
+  const graceEnd = new Date(
+    deadline.getTime() + deadlineRecord.grace_period_days * 86400000,
+  );
+  graceEnd.setHours(23, 59, 59, 999);
+  const openDate = new Date(deadlineRecord.open_date);
+  const now = new Date();
+
+  if (now < openDate) {
+    return "Submission window has not opened yet for this trimester.";
+  }
+  if (now > graceEnd) {
+    return "The submission window for this trimester is closed.";
+  }
+  return null;
+}
+
+async function validateSubmissionWindowForRole(
+  role: string,
+  periodLabel: string,
+): Promise<string | null> {
+  if (role === "School") {
+    const parsed = parseTrimesterLabel(periodLabel);
+    if (!parsed) return "Invalid trimester label.";
+    return validateTrimesterSubmissionWindow(parsed.year, parsed.trimester);
+  }
+
+  const parsed = parseQuarterLabel(periodLabel);
+  if (!parsed) return null;
+  return validateQuarterSubmissionWindow(parsed.year, parsed.quarter);
+}
+
 async function mapTargetlessUniqueConflict<T>(
   operation: Promise<T>,
 ): Promise<T> {
@@ -137,9 +187,9 @@ pirRoutes.get(
     async (c) => {
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title") || "";
-      const quarter = normalizeQuarterLabel(
-        sanitizeString(c.req.query("quarter") || ""),
-      );
+      const quarter = tokenUser.role === "School"
+        ? normalizeTrimesterLabel(sanitizeString(c.req.query("quarter") || ""))
+        : normalizeQuarterLabel(sanitizeString(c.req.query("quarter") || ""));
 
       if (!programTitle || !quarter) {
         return c.json(
@@ -150,8 +200,13 @@ pirRoutes.get(
 
       const yearMatch = quarter.match(/CY (\d{4})/);
       const year = yearMatch
-        ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100)
-        : new Date().getFullYear();
+        ? safeParseInt(
+          yearMatch[1],
+          getDefaultReportingYear(tokenUser.role),
+          2020,
+          2100,
+        )
+        : getDefaultReportingYear(tokenUser.role);
 
       const program = await fetchProgramByTitle(programTitle);
       if (!program) {
@@ -283,26 +338,30 @@ pirRoutes.post(
       if (clusterErr) return c.json({ error: clusterErr }, 403);
 
       const cleanProgramTitle = sanitizeString(program_title);
-      const cleanQuarter = normalizeQuarterLabel(sanitizeString(quarter));
+      const cleanQuarter = tokenUser.role === "School"
+        ? normalizeTrimesterLabel(sanitizeString(quarter))
+        : normalizeQuarterLabel(sanitizeString(quarter));
 
       const program = await fetchProgramByTitle(cleanProgramTitle);
       if (!program) return c.json({ error: "Resource not found" }, 404);
 
       const yearMatch = cleanQuarter.match(/CY (\d{4})/);
       const year = yearMatch
-        ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100)
-        : new Date().getFullYear();
+        ? safeParseInt(
+          yearMatch[1],
+          getDefaultReportingYear(tokenUser.role),
+          2020,
+          2100,
+        )
+        : getDefaultReportingYear(tokenUser.role);
 
-      const qNumMatch = cleanQuarter.match(/(\d+)(?:st|nd|rd|th) Quarter/);
-      const quarterNum = qNumMatch ? safeParseInt(qNumMatch[1], 0, 1, 4) : null;
-      if (quarterNum) {
-        const submissionWindowError = await validateQuarterSubmissionWindow(
-          year,
-          quarterNum,
-        );
-        if (submissionWindowError) {
-          return c.json({ error: submissionWindowError }, 403);
-        }
+      const submissionWindowError = await validateSubmissionWindowForRole(
+        tokenUser.role,
+        cleanQuarter,
+      );
+      if (submissionWindowError) {
+        const status = submissionWindowError.startsWith("Invalid") ? 400 : 403;
+        return c.json({ error: submissionWindowError }, status);
       }
 
       const aip = await fetchAIPForUser(tokenUser, program.id, year, {
@@ -618,6 +677,18 @@ pirRoutes.put(
             );
           }
           if (isSchoolResubmission) {
+            const submissionWindowError =
+              await validateSubmissionWindowForRole(
+                tokenUser.role,
+                lockedPir.quarter,
+              );
+            if (submissionWindowError) {
+              const status = submissionWindowError.startsWith("Invalid")
+                ? 400
+                : 403;
+              throw new HttpError(status, submissionWindowError, "FORBIDDEN");
+            }
+
             const focalCount = await tx.programFocalPerson.count({
               where: {
                 program_id: pirAip?.program_id ?? -1,

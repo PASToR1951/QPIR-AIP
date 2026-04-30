@@ -7,7 +7,7 @@ import { emitOnboardingSignal } from '../../lib/onboardingSignals.js';
  * Keeps the per-program API calls, draft bootstrapping, and form-reset logic in one place.
  */
 export function useAipProgramInit({
-    rawPrograms, data, state, dispatch, shell, draft, profile, setSearchParams, setLoadError,
+    rawPrograms, data, state, dispatch, shell, draft, profile, setLoadError, reportingYear,
 }) {
     const findProgramByTitle = useCallback((programTitle) => (
         rawPrograms.find((program) => program.title === programTitle) ?? null
@@ -24,7 +24,7 @@ export function useAipProgramInit({
 
     const resetFormState = useCallback((selectedProgram = '') => {
         const selectedProgramRecord = findProgramByTitle(selectedProgram);
-        dispatch({ type: 'RESET', payload: { year: String(new Date().getFullYear()) } });
+        dispatch({ type: 'RESET', payload: { year: reportingYear } });
         dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'depedProgram', value: selectedProgram } });
         dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'programId', value: selectedProgramRecord?.id ?? null } });
         dispatch({
@@ -32,7 +32,7 @@ export function useAipProgramInit({
             payload: { coordinatorSuggestions: data.coordinatorSuggestions, personsTerms: data.personsTerms },
         });
         shell.setCurrentStep(1);
-    }, [data.coordinatorSuggestions, data.personsTerms, dispatch, findProgramByTitle, shell]);
+    }, [data.coordinatorSuggestions, data.personsTerms, dispatch, findProgramByTitle, reportingYear, shell]);
 
     const loadServerDraft = useCallback(async (selectedProgram, yearValue) => {
         const draftResponse = await api.get('/api/aips/draft', {
@@ -82,17 +82,17 @@ export function useAipProgramInit({
 
     const loadReadonlyRecord = useCallback(async (selectedProgram) => {
         const response = await api.get('/api/aips', {
-            params: buildProgramParams(selectedProgram, { year: new Date().getFullYear() }),
+            params: buildProgramParams(selectedProgram, { year: reportingYear }),
         });
         dispatch({ type: 'HYDRATE_SUBMITTED', payload: { aip: response.data } });
-    }, [buildProgramParams, dispatch]);
+    }, [buildProgramParams, dispatch, reportingYear]);
 
     const hydrateDraft = useCallback((draftData) => {
         draft.hydrate(draftData);
     }, [draft]);
 
     const getLocalDraftKey = useCallback((selectedProgram) =>
-        `aip_draft_${selectedProgram}_${String(new Date().getFullYear())}`, []);
+        `aip_draft_${selectedProgram}_${reportingYear}`, [reportingYear]);
 
     const getLocalDraftModal = useCallback(({ localDraft }) => ({
         type: 'warning',
@@ -103,16 +103,16 @@ export function useAipProgramInit({
     }), []);
 
     const loadInitialDraft = useCallback(async (selectedProgram) => {
-        const currentYear = String(new Date().getFullYear());
+        const currentYear = reportingYear;
         const hasServerDraft = await loadServerDraft(selectedProgram, currentYear);
         if (!hasServerDraft) await applyTemplateForProgram(selectedProgram);
-    }, [applyTemplateForProgram, loadServerDraft]);
+    }, [applyTemplateForProgram, loadServerDraft, reportingYear]);
 
     const loadDiscardedLocalDraftFallback = useCallback(async (selectedProgram) => {
-        const currentYear = String(new Date().getFullYear());
+        const currentYear = reportingYear;
         const hasServerDraft = await loadServerDraft(selectedProgram, currentYear);
         if (!hasServerDraft) await applyTemplateForProgram(selectedProgram);
-    }, [applyTemplateForProgram, loadServerDraft]);
+    }, [applyTemplateForProgram, loadServerDraft, reportingYear]);
 
     const onBeforeStart = useCallback(({ mode, selectedProgram }) => {
         setLoadError(null);

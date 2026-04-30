@@ -17,3 +17,13 @@ export function normalizeQuarterLabel(value: string): string {
   const year = match[2];
   return `${ordinalQuarter(quarter)} Quarter CY ${year}`;
 }
+
+export function parseQuarterLabel(
+  label: string,
+): { year: number; quarter: number } | null {
+  const compact = label.trim().replace(/\s+/g, " ");
+  const match = compact.match(QUARTER_LABEL_PATTERN) ??
+    compact.match(SHORT_QUARTER_PATTERN);
+  if (!match) return null;
+  return { quarter: Number(match[1]), year: Number(match[2]) };
+}

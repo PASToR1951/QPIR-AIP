@@ -14,6 +14,10 @@ import { isPrismaUniqueConflictWithoutTarget } from "../../lib/prismaErrors.ts";
 import { normalizeQuarterLabel } from "../../lib/quarters.ts";
 import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
+import {
+  getDefaultReportingYear,
+  normalizeTrimesterLabel,
+} from "../../lib/trimesters.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
 import {
@@ -116,7 +120,12 @@ draftsRoutes.post(
       );
       if (!program) return c.json({ error: "Resource not found" }, 404);
 
-      const year = safeParseInt(rawYear, new Date().getFullYear(), 2020, 2100);
+      const year = safeParseInt(
+        rawYear,
+        getDefaultReportingYear(tokenUser.role),
+        2020,
+        2100,
+      );
       const schoolId = (tokenUser.role === "School" ||
           tokenUser.role === "Cluster Coordinator")
         ? tokenUser.school_id
@@ -223,7 +232,7 @@ draftsRoutes.get(
       const programId = c.req.query("program_id");
       const year = safeParseInt(
         c.req.query("year"),
-        new Date().getFullYear(),
+        getDefaultReportingYear(tokenUser.role),
         2020,
         2100,
       );
@@ -311,7 +320,7 @@ draftsRoutes.delete(
       const programId = c.req.query("program_id");
       const year = safeParseInt(
         c.req.query("year"),
-        new Date().getFullYear(),
+        getDefaultReportingYear(tokenUser.role),
         2020,
         2100,
       );
@@ -391,7 +400,9 @@ draftsRoutes.post(
       }
 
       const sanitizedTitle = sanitizeString(program_title);
-      const sanitizedQuarter = normalizeQuarterLabel(sanitizeString(quarter));
+      const sanitizedQuarter = tokenUser.role === "School"
+        ? normalizeTrimesterLabel(sanitizeString(quarter))
+        : normalizeQuarterLabel(sanitizeString(quarter));
       if (!sanitizedTitle || !sanitizedQuarter) {
         return c.json(
           { error: "program_title and quarter are required" },
@@ -404,8 +415,13 @@ draftsRoutes.post(
 
       const yearMatch = sanitizedQuarter.match(/CY (\d{4})/);
       const year = yearMatch
-        ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100)
-        : new Date().getFullYear();
+        ? safeParseInt(
+          yearMatch[1],
+          getDefaultReportingYear(tokenUser.role),
+          2020,
+          2100,
+        )
+        : getDefaultReportingYear(tokenUser.role);
 
       const aip = await fetchAIPForUser(tokenUser, program.id, year, {
         activities: true,
@@ -510,7 +526,9 @@ draftsRoutes.get(
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title");
       const quarter = c.req.query("quarter")
-        ? normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
+        ? tokenUser.role === "School"
+          ? normalizeTrimesterLabel(sanitizeString(c.req.query("quarter")))
+          : normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
         : undefined;
 
       if (!programTitle) {
@@ -534,8 +552,13 @@ draftsRoutes.get(
 
       const yearMatch = quarter?.match(/CY (\d{4})/);
       const year = yearMatch
-        ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100)
-        : new Date().getFullYear();
+        ? safeParseInt(
+          yearMatch[1],
+          getDefaultReportingYear(tokenUser.role),
+          2020,
+          2100,
+        )
+        : getDefaultReportingYear(tokenUser.role);
 
       const program = await fetchProgramByTitle(programTitle);
       if (!program) return c.json({ hasDraft: false });
@@ -617,7 +640,9 @@ draftsRoutes.delete(
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title");
       const quarter = c.req.query("quarter")
-        ? normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
+        ? tokenUser.role === "School"
+          ? normalizeTrimesterLabel(sanitizeString(c.req.query("quarter")))
+          : normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
         : undefined;
 
       if (!programTitle || !quarter) {
@@ -629,8 +654,13 @@ draftsRoutes.delete(
 
       const yearMatch = quarter.match(/CY (\d{4})/);
       const year = yearMatch
-        ? safeParseInt(yearMatch[1], new Date().getFullYear(), 2020, 2100)
-        : new Date().getFullYear();
+        ? safeParseInt(
+          yearMatch[1],
+          getDefaultReportingYear(tokenUser.role),
+          2020,
+          2100,
+        )
+        : getDefaultReportingYear(tokenUser.role);
 
       const program = await fetchProgramByTitle(programTitle);
       if (!program) return c.json({ message: "No draft found" });

@@ -18,24 +18,7 @@ import usePirAipActivities from './usePirAipActivities.js';
 import { buildPirPayload } from './buildPirPayload.js';
 import submitPir from './submitPir.js';
 import PIRFormEditor from './PIRFormEditor.jsx';
-
-function getQuarterString() {
-    const date = new Date();
-    const month = date.getMonth();
-    const year = date.getFullYear();
-
-    if (month <= 2) return `1st Quarter CY ${year}`;
-    if (month <= 5) return `2nd Quarter CY ${year}`;
-    if (month <= 8) return `3rd Quarter CY ${year}`;
-    return `4th Quarter CY ${year}`;
-}
-
-function getQuarterNumber(quarterString) {
-    if (quarterString.startsWith('1st')) return 1;
-    if (quarterString.startsWith('2nd')) return 2;
-    if (quarterString.startsWith('3rd')) return 3;
-    return 4;
-}
+import { getCurrentPeriodLabel, getPeriodNumber, getPeriodTypeForRole } from '../../lib/periods.js';
 
 function hasFactorInput(factors) {
     return Object.values(factors).some((factorGroup) => {
@@ -71,8 +54,36 @@ export default function PIRFormContainer() {
     }
 
     const isDivisionPersonnel = ['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role);
-    const quarterString = useMemo(() => getQuarterString(), []);
-    const currentQuarterNum = useMemo(() => getQuarterNumber(quarterString), [quarterString]);
+    const fallbackPeriodLabel = useMemo(() => getCurrentPeriodLabel(user?.role), [user?.role]);
+    const [periodInfo, setPeriodInfo] = useState({
+        label: fallbackPeriodLabel,
+        type: getPeriodTypeForRole(user?.role),
+    });
+    const quarterString = periodInfo.label || fallbackPeriodLabel;
+    const periodType = periodInfo.type || getPeriodTypeForRole(user?.role);
+    const currentQuarterNum = useMemo(() => getPeriodNumber(quarterString), [quarterString]);
+
+    useEffect(() => {
+        let isActive = true;
+        api.get('/api/dashboard')
+            .then((response) => {
+                if (!isActive) return;
+                setPeriodInfo({
+                    label: response.data.currentPeriodLabel || fallbackPeriodLabel,
+                    type: response.data.period_type || getPeriodTypeForRole(user?.role),
+                });
+            })
+            .catch(() => {
+                if (!isActive) return;
+                setPeriodInfo({
+                    label: fallbackPeriodLabel,
+                    type: getPeriodTypeForRole(user?.role),
+                });
+            });
+        return () => {
+            isActive = false;
+        };
+    }, [fallbackPeriodLabel, user?.role]);
 
     const data = useProgramsAndConfig({
         kind: 'pir',
@@ -176,6 +187,7 @@ export default function PIRFormContainer() {
         programId: selectedProgramRecord?.id ?? null,
         quarterString,
         currentQuarterNum,
+        periodType,
         isDivisionPersonnel,
         user,
         onActivitiesLoaded: handleActivitiesLoaded,

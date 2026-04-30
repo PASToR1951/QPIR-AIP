@@ -5,6 +5,12 @@ import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
 import { writeUserLog } from "../../lib/userActivityLog.ts";
 import { getClientIp } from "../../lib/clientIp.ts";
+import {
+  activityOverlapsTrimester,
+  getSchoolYearStart,
+  getTrimesterLabel,
+  getTrimesterNumbers,
+} from "../../lib/trimesters.ts";
 import type { DataRouteEnv } from "./shared/types.ts";
 
 const dashboardRoutes = new Hono<{ Variables: DataRouteEnv }>();
@@ -132,9 +138,10 @@ dashboardRoutes.get(
     "Failed to fetch dashboard data",
     async (c) => {
       const tokenUser = getAuthedUser(c);
+      const isSchoolUser = tokenUser.role === "School";
       const year = safeParseInt(
         c.req.query("year"),
-        new Date().getFullYear(),
+        isSchoolUser ? getSchoolYearStart() : new Date().getFullYear(),
         2020,
         2100,
       );
@@ -142,6 +149,9 @@ dashboardRoutes.get(
       const currentQuarter = Math.ceil((today.getMonth() + 1) / 3);
 
       const customDeadlines = await prisma.deadline.findMany({ where: { year } });
+      const trimesterRows = isSchoolUser
+        ? await prisma.trimesterDeadline.findMany({ where: { year } })
+        : [];
       const getDeadline = (quarter: number) =>
         buildDeadline(
           year,
@@ -249,17 +259,44 @@ dashboardRoutes.get(
             )
             : true
         );
+      const aipHasActivitiesInTrimester = (aip: any, trimester: number) =>
+        aip.activities.some((activity: any) =>
+          activity.period_start_month && activity.period_end_month
+            ? activityOverlapsTrimester(
+              activity.period_start_month,
+              activity.period_end_month,
+              trimester,
+            )
+            : true
+        );
 
-      const aipsRelevantThisQuarter = userAIPsWithActivities.filter((aip: any) =>
-        aipHasActivitiesInQuarter(aip, currentQuarter)
+      const currentTrimester = isSchoolUser
+        ? trimesterRows.find((row) =>
+          today >= new Date(row.open_date) && today <= new Date(row.date)
+        )?.trimester ??
+          [...trimesterRows]
+            .filter((row) => today >= new Date(row.open_date))
+            .sort((a, b) =>
+              new Date(b.open_date).getTime() -
+              new Date(a.open_date).getTime()
+            )[0]?.trimester ??
+          1
+        : currentQuarter;
+
+      const aipsRelevantThisPeriod = userAIPsWithActivities.filter((aip: any) =>
+        isSchoolUser
+          ? aipHasActivitiesInTrimester(aip, currentTrimester)
+          : aipHasActivitiesInQuarter(aip, currentQuarter)
       );
-      const pirTotal = aipsRelevantThisQuarter.length;
-      const relevantAipIds: number[] = aipsRelevantThisQuarter.map((aip: any) => aip.id);
+      const pirTotal = aipsRelevantThisPeriod.length;
+      const relevantAipIds: number[] = aipsRelevantThisPeriod.map((aip: any) => aip.id);
 
-      const currentQuarterLabel = getQuarterLabel(currentQuarter, year);
+      const currentPeriodLabel = isSchoolUser
+        ? getTrimesterLabel(currentTrimester, year)
+        : getQuarterLabel(currentQuarter, year);
       const pirSubmittedCount = relevantAipIds.length > 0
         ? await prisma.pIR.count({
-          where: { aip_id: { in: relevantAipIds }, quarter: currentQuarterLabel },
+          where: { aip_id: { in: relevantAipIds }, quarter: currentPeriodLabel },
         })
         : 0;
 
@@ -281,63 +318,141 @@ dashboardRoutes.get(
         4: new Date(year, 9, 1),
       };
 
-      const quarters = await Promise.all([1, 2, 3, 4].map(async (quarter) => {
-        const customRecord = customDeadlines.find((deadline) =>
-          deadline.quarter === quarter
-        );
-        const deadline = getDeadline(quarter);
-        const label = getQuarterLabel(quarter, year);
+      const quarters = isSchoolUser
+        ? await Promise.all(getTrimesterNumbers().map(async (trimester) => {
+          const customRecord = trimesterRows.find((deadline) =>
+            deadline.trimester === trimester
+          );
+          const label = getTrimesterLabel(trimester, year);
 
-        const openDate = customRecord?.open_date
-          ? new Date(customRecord.open_date)
-          : quarterStarts[quarter];
-        const graceDays = customRecord?.grace_period_days ?? 0;
-        const graceEnd = new Date(deadline.getTime() + graceDays * 86400000);
-        graceEnd.setHours(23, 59, 59, 999);
+          if (!customRecord) {
+            return {
+              name: `T${trimester}`,
+              status: "Locked",
+              deadline: null,
+              open_date: null,
+              grace_end: null,
+              submitted: 0,
+              total: 0,
+            };
+          }
 
-        const hasActivities = userAIPsWithActivities.some((aip: any) =>
-          aipHasActivitiesInQuarter(aip, quarter)
-        );
+          const deadline = new Date(customRecord.date);
+          deadline.setHours(23, 59, 59, 999);
+          const openDate = new Date(customRecord.open_date);
+          const graceDays = customRecord.grace_period_days ?? 0;
+          const graceEnd = new Date(deadline.getTime() + graceDays * 86400000);
+          graceEnd.setHours(23, 59, 59, 999);
 
-        const relevantIds = userAIPsWithActivities
-          .filter((aip: any) => aipHasActivitiesInQuarter(aip, quarter))
-          .map((aip: any) => aip.id);
-        const quarterTotal = relevantIds.length;
-        const quarterSubmitted = quarterTotal > 0
-          ? await prisma.pIR.count({
-            where: { aip_id: { in: relevantIds }, quarter: label },
-          })
-          : 0;
+          const hasActivities = userAIPsWithActivities.some((aip: any) =>
+            aipHasActivitiesInTrimester(aip, trimester)
+          );
 
-        let status: string;
-        if (!hasActivities && allAipIds.length > 0) {
-          status = "No Activities";
-        } else if (today < openDate) {
-          status = "Locked";
-        } else if (today <= deadline) {
-          status = "In Progress";
-        } else if (graceDays > 0 && today <= graceEnd) {
-          status = "In Grace";
-        } else {
-          status = quarterSubmitted >= quarterTotal && quarterTotal > 0
-            ? "Submitted"
-            : (quarterTotal > 0 ? "Missed" : "No Activities");
-        }
+          const relevantIds = userAIPsWithActivities
+            .filter((aip: any) => aipHasActivitiesInTrimester(aip, trimester))
+            .map((aip: any) => aip.id);
+          const trimesterTotal = relevantIds.length;
+          const trimesterSubmitted = trimesterTotal > 0
+            ? await prisma.pIR.count({
+              where: { aip_id: { in: relevantIds }, quarter: label },
+            })
+            : 0;
 
-        return {
-          name: `Q${quarter}`,
-          status,
-          deadline: deadline.toISOString(),
-          open_date: openDate.toISOString(),
-          grace_end: graceEnd.toISOString(),
-          submitted: quarterSubmitted,
-          total: quarterTotal,
-        };
-      }));
+          let status: string;
+          if (!hasActivities && allAipIds.length > 0) {
+            status = "No Activities";
+          } else if (today < openDate) {
+            status = "Locked";
+          } else if (today <= deadline) {
+            status = "In Progress";
+          } else if (graceDays > 0 && today <= graceEnd) {
+            status = "In Grace";
+          } else {
+            status = trimesterSubmitted >= trimesterTotal && trimesterTotal > 0
+              ? "Submitted"
+              : (trimesterTotal > 0 ? "Missed" : "No Activities");
+          }
 
-      const currentDeadline = getDeadline(currentQuarter);
+          return {
+            name: `T${trimester}`,
+            status,
+            deadline: deadline.toISOString(),
+            open_date: openDate.toISOString(),
+            grace_end: graceEnd.toISOString(),
+            submitted: trimesterSubmitted,
+            total: trimesterTotal,
+          };
+        }))
+        : await Promise.all([1, 2, 3, 4].map(async (quarter) => {
+          const customRecord = customDeadlines.find((deadline) =>
+            deadline.quarter === quarter
+          );
+          const deadline = getDeadline(quarter);
+          const label = getQuarterLabel(quarter, year);
+
+          const openDate = customRecord?.open_date
+            ? new Date(customRecord.open_date)
+            : quarterStarts[quarter];
+          const graceDays = customRecord?.grace_period_days ?? 0;
+          const graceEnd = new Date(deadline.getTime() + graceDays * 86400000);
+          graceEnd.setHours(23, 59, 59, 999);
+
+          const hasActivities = userAIPsWithActivities.some((aip: any) =>
+            aipHasActivitiesInQuarter(aip, quarter)
+          );
+
+          const relevantIds = userAIPsWithActivities
+            .filter((aip: any) => aipHasActivitiesInQuarter(aip, quarter))
+            .map((aip: any) => aip.id);
+          const quarterTotal = relevantIds.length;
+          const quarterSubmitted = quarterTotal > 0
+            ? await prisma.pIR.count({
+              where: { aip_id: { in: relevantIds }, quarter: label },
+            })
+            : 0;
+
+          let status: string;
+          if (!hasActivities && allAipIds.length > 0) {
+            status = "No Activities";
+          } else if (today < openDate) {
+            status = "Locked";
+          } else if (today <= deadline) {
+            status = "In Progress";
+          } else if (graceDays > 0 && today <= graceEnd) {
+            status = "In Grace";
+          } else {
+            status = quarterSubmitted >= quarterTotal && quarterTotal > 0
+              ? "Submitted"
+              : (quarterTotal > 0 ? "Missed" : "No Activities");
+          }
+
+          return {
+            name: `Q${quarter}`,
+            status,
+            deadline: deadline.toISOString(),
+            open_date: openDate.toISOString(),
+            grace_end: graceEnd.toISOString(),
+            submitted: quarterSubmitted,
+            total: quarterTotal,
+          };
+        }));
+
+      const currentTrimesterDeadline = trimesterRows.find((deadline) =>
+        deadline.trimester === currentTrimester
+      );
+      const currentDeadline = isSchoolUser
+        ? currentTrimesterDeadline
+          ? (() => {
+            const deadline = new Date(currentTrimesterDeadline.date);
+            deadline.setHours(23, 59, 59, 999);
+            return deadline;
+          })()
+          : null
+        : getDeadline(currentQuarter);
 
       return c.json({
+        period_type: isSchoolUser ? "trimester" : "quarter",
+        currentPeriodLabel,
         activePrograms,
         aipCompletion: {
           completed: aipCompleted,
@@ -346,8 +461,8 @@ dashboardRoutes.get(
         },
         pirSubmitted: { submitted: pirSubmittedCount, total: pirTotal },
         totalPlannedBudget,
-        currentQuarter,
-        deadline: currentDeadline.toISOString(),
+        currentQuarter: isSchoolUser ? currentTrimester : currentQuarter,
+        deadline: currentDeadline?.toISOString() ?? null,
         quarters,
       });
     },

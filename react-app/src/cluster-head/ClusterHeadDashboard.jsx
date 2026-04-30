@@ -4,18 +4,19 @@ import { MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
 import { EndOfListCue } from '../components/ui/EndOfListCue.jsx';
 import { shouldShowEndOfListCue } from '../components/ui/endOfListCue';
 import { emitOnboardingSignal } from '../lib/onboardingSignals.js';
+import { getCurrentTrimesterNumber, getSchoolYearStart, getTrimesterLabel } from '../lib/periods.js';
 
-const QUARTERS = ['1st', '2nd', '3rd', '4th'];
-const currentQ = Math.ceil((new Date().getMonth() + 1) / 3);
-const currentYear = new Date().getFullYear();
-const defaultQuarter = `${QUARTERS[currentQ - 1]} Quarter CY ${currentYear}`;
+const currentTrimester = getCurrentTrimesterNumber();
+const currentSchoolYear = getSchoolYearStart();
+const defaultQuarter = getTrimesterLabel(currentTrimester, currentSchoolYear);
 
 const buildQuarterOptions = () => {
-  const opts = [{ value: '', label: 'All Quarters' }];
-  for (let y = currentYear; y >= currentYear - 1; y--) {
-    for (let q = 4; q >= 1; q--) {
-      if (y === currentYear && q > currentQ) continue;
-      opts.push({ value: `${QUARTERS[q - 1]} Quarter CY ${y}`, label: `${QUARTERS[q - 1]} Quarter CY ${y}` });
+  const opts = [{ value: '', label: 'All Trimesters' }];
+  for (let y = currentSchoolYear; y >= currentSchoolYear - 1; y--) {
+    for (let t = 3; t >= 1; t--) {
+      if (y === currentSchoolYear && t > currentTrimester) continue;
+      const label = getTrimesterLabel(t, y);
+      opts.push({ value: label, label });
     }
   }
   return opts;

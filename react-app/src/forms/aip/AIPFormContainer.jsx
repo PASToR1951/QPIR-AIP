@@ -21,6 +21,7 @@ import { useAipSignatories } from './useAipSignatories.js';
 import { useAipProgramInit } from './useAipProgramInit.js';
 import { useAipMutations } from './useAipMutations.js';
 import { DeletedProgramsPopup } from './DeletedProgramsPopup.jsx';
+import { getDefaultReportingYear } from '../../lib/periods.js';
 
 export default function AIPFormContainer() {
     const navigate = useNavigate();
@@ -41,9 +42,10 @@ export default function AIPFormContainer() {
     const isSchoolUser        = user?.role === 'School';
     const projectTerminology  = getProjectTerminology(isSchoolUser);
     const schoolOrUserId      = user?.school_id || user?.id;
+    const reportingYear       = String(getDefaultReportingYear(user?.role));
 
     const data = useProgramsAndConfig({ kind: 'aip', schoolOrUserId, clusterId: user?.cluster_id });
-    const [state, dispatch]  = useAipFormState({ year: String(new Date().getFullYear()) });
+    const [state, dispatch]  = useAipFormState({ year: reportingYear });
     const profile     = selectAipProfile(state);
     const submission  = selectAipSubmission(state);
     const rawPrograms = data.rawPrograms ?? [];
@@ -108,7 +110,7 @@ export default function AIPFormContainer() {
     });
 
     const programInit = useAipProgramInit({
-        rawPrograms, data, state, dispatch, shell, draft, profile, setSearchParams, setLoadError: programState.setLoadError,
+        rawPrograms, data, state, dispatch, shell, draft, profile, setLoadError: programState.setLoadError, reportingYear,
     });
 
     const mutations = useAipMutations({

@@ -10,6 +10,7 @@ import {
   REPORT_PIR_INCLUDE,
 } from "./shared/prismaSelects.ts";
 import { storedFactorFieldHasContent } from "../data/shared/normalize.ts";
+import { parseQuarterLabel } from "../../lib/quarters.ts";
 
 const reportsRoutes = new Hono();
 
@@ -346,7 +347,8 @@ reportsRoutes.get("/reports/quarterly", async (c) => {
   const summary = ["1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter"]
     .map((_, index) => {
       const quarterPirs = pirs.filter((pir) =>
-        pir.quarter.startsWith(`${index + 1}`)
+        pir.aip.school_id == null &&
+        parseQuarterLabel(pir.quarter)?.quarter === index + 1
       );
       return {
         quarter: `Q${index + 1}`,
@@ -529,7 +531,14 @@ reportsRoutes.get("/reports/cluster-pir-summary", async (c) => {
       school_id: { in: schools.map((school) => school.id) },
     },
     include: {
-      pirs: { where: { quarter: { startsWith: quarterPrefix } } },
+      pirs: {
+        where: {
+          quarter: {
+            startsWith: quarterPrefix,
+            contains: "Quarter",
+          },
+        },
+      },
     },
   });
 

@@ -22,6 +22,7 @@ import { ConflictError, HttpError } from "../../lib/errors.ts";
 import { isPrismaUniqueConflictWithoutTarget } from "../../lib/prismaErrors.ts";
 import { fetchAIPForUser, fetchProgramByReference } from "./shared/lookups.ts";
 import { CES_ROLES } from "../../lib/routing.ts";
+import { getDefaultReportingYear } from "../../lib/trimesters.ts";
 import {
   normalizeIndicators,
   serializeIndicators,
@@ -107,7 +108,7 @@ aipRoutes.get(
       const programId = c.req.query("program_id");
       const year = safeParseInt(
         c.req.query("year"),
-        new Date().getFullYear(),
+        getDefaultReportingYear(tokenUser.role),
         2020,
         2100,
       );
@@ -182,7 +183,7 @@ aipRoutes.delete(
       const programId = c.req.query("program_id");
       const year = safeParseInt(
         c.req.query("year"),
-        new Date().getFullYear(),
+        getDefaultReportingYear(tokenUser.role),
         2020,
         2100,
       );
@@ -323,7 +324,7 @@ aipRoutes.post(
       }
       const parsedYear = safeParseInt(
         year,
-        new Date().getFullYear(),
+        getDefaultReportingYear(tokenUser.role),
         2020,
         2100,
       );

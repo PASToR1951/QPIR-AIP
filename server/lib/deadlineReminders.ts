@@ -2,10 +2,12 @@ import { prisma } from "../db/client.ts";
 import { sendDeadlineReminderNotification } from "./accountEmails.ts";
 import { logger } from "./logger.ts";
 import { pushNotifications } from "./notifStream.ts";
+import { getTrimesterLabel } from "./trimesters.ts";
 
 const REMINDER_DAY_OFFSETS = new Set([14, 7, 3, 1, 0]);
 const REMINDER_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const TARGET_ROLES = ["School", "Division Personnel"] as const;
+const QUARTER_TARGET_ROLES = ["Division Personnel"] as const;
+const TRIMESTER_TARGET_ROLES = ["School"] as const;
 
 let reminderIntervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -53,29 +55,50 @@ function reminderMessage(quarterLabel: string, deadline: Date): string {
     day: "numeric",
     year: "numeric",
   });
-  return `${quarterLabel} closes on ${formatted}. Submit your PIR - Quarterly Report before the deadline.`;
+  return `${quarterLabel} closes on ${formatted}. Submit your PIR report before the deadline.`;
 }
 
 export async function runDeadlineReminderSweep(now = new Date()) {
   const currentYear = now.getFullYear();
-  const years = [currentYear, currentYear + 1];
+  const quarterYears = [currentYear, currentYear + 1];
+  const trimesterYears = [currentYear - 1, currentYear, currentYear + 1];
   const today = startOfDay(now);
 
-  const [users, customDeadlines] = await Promise.all([
+  const [quarterUsers, customDeadlines, trimesterUsers, trimesterDeadlines] =
+    await Promise.all([
     prisma.user.findMany({
       where: {
-        role: { in: [...TARGET_ROLES] },
+        role: { in: [...QUARTER_TARGET_ROLES] },
         is_active: true,
         deleted_at: null,
       },
       select: { id: true },
     }),
     prisma.deadline.findMany({
-      where: { year: { in: years } },
+      where: { year: { in: quarterYears } },
       select: { id: true, year: true, quarter: true, date: true, open_date: true },
+    }),
+    prisma.user.findMany({
+      where: {
+        role: { in: [...TRIMESTER_TARGET_ROLES] },
+        is_active: true,
+        deleted_at: null,
+      },
+      select: { id: true },
+    }),
+    prisma.trimesterDeadline.findMany({
+      where: { year: { in: trimesterYears } },
+      select: {
+        id: true,
+        year: true,
+        trimester: true,
+        date: true,
+        open_date: true,
+      },
     }),
   ]);
 
+  const users = [...quarterUsers, ...trimesterUsers];
   if (users.length === 0) return;
 
   const existingNotifications = await prisma.notification.findMany({
@@ -107,7 +130,37 @@ export async function runDeadlineReminderSweep(now = new Date()) {
     daysLeft: number;
   }> = [];
 
-  for (const year of years) {
+  const queueReminder = (
+    userIds: number[],
+    periodLabel: string,
+    deadline: Date,
+    daysUntil: number,
+  ) => {
+    const title = reminderTitle(periodLabel, daysUntil);
+    const message = reminderMessage(periodLabel, deadline);
+
+    for (const userId of userIds) {
+      const dedupeKey = `${userId}:${title}:${message}`;
+      if (existingKeys.has(dedupeKey)) continue;
+      existingKeys.add(dedupeKey);
+      notificationsToCreate.push({
+        user_id: userId,
+        title,
+        message,
+        type: "deadline_reminder",
+        entity_type: "deadline",
+      });
+      emailRemindersToSend.push({
+        user_id: userId,
+        quarterLabel: periodLabel,
+        deadline,
+        daysLeft: daysUntil,
+      });
+    }
+  };
+
+  const quarterUserIds = quarterUsers.map((user) => user.id);
+  for (const year of quarterYears) {
     for (const quarter of [1, 2, 3, 4]) {
       const customDeadline = customDeadlines.find((entry) => entry.year === year && entry.quarter === quarter);
       const deadline = buildDeadline(year, quarter, customDeadline?.date ?? null);
@@ -122,28 +175,28 @@ export async function runDeadlineReminderSweep(now = new Date()) {
       if (!REMINDER_DAY_OFFSETS.has(daysUntil)) continue;
 
       const quarterLabel = buildQuarterLabel(quarter, year);
-      const title = reminderTitle(quarterLabel, daysUntil);
-      const message = reminderMessage(quarterLabel, deadline);
-
-      for (const user of users) {
-        const dedupeKey = `${user.id}:${title}:${message}`;
-        if (existingKeys.has(dedupeKey)) continue;
-        existingKeys.add(dedupeKey);
-        notificationsToCreate.push({
-          user_id: user.id,
-          title,
-          message,
-          type: "deadline_reminder",
-          entity_type: "deadline",
-        });
-        emailRemindersToSend.push({
-          user_id: user.id,
-          quarterLabel,
-          deadline,
-          daysLeft: daysUntil,
-        });
-      }
+      queueReminder(quarterUserIds, quarterLabel, deadline, daysUntil);
     }
+  }
+
+  const trimesterUserIds = trimesterUsers.map((user) => user.id);
+  for (const row of trimesterDeadlines) {
+    const openDate = startOfDay(new Date(row.open_date));
+    if (today < openDate) continue;
+
+    const deadline = new Date(row.date);
+    deadline.setHours(23, 59, 59, 999);
+    const daysUntil = Math.round(
+      (startOfDay(deadline).getTime() - today.getTime()) / 86400000,
+    );
+    if (!REMINDER_DAY_OFFSETS.has(daysUntil)) continue;
+
+    queueReminder(
+      trimesterUserIds,
+      getTrimesterLabel(row.trimester, row.year),
+      deadline,
+      daysUntil,
+    );
   }
 
   if (notificationsToCreate.length === 0) return;

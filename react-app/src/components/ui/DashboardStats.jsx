@@ -1,13 +1,16 @@
 import React from 'react';
 import { FileText, ChartBar as BarChart3, Clock } from '@phosphor-icons/react';
+import { getPeriodYear, periodNoun, periodPrefix } from '../../lib/periods.js';
 
 function calculateDaysLeft(isoDate) {
+    if (!isoDate) return null;
     const deadline = new Date(isoDate);
     const now = new Date();
     return Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function formatDeadlineShort(isoDate) {
+    if (!isoDate) return 'Not set';
     return new Date(isoDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
@@ -91,8 +94,12 @@ export default function DashboardStats({ data, loading }) {
     if (loading || !data) return <LoadingSkeleton />;
 
     const { aipCompletion, pirSubmitted, currentQuarter, deadline, totalPlannedBudget } = data;
+    const currentPeriod = data.currentPeriodLabel || `${periodPrefix(data.period_type)}${currentQuarter}`;
+    const currentPeriodShort = `${periodPrefix(data.period_type)}${currentQuarter}`;
+    const noun = periodNoun(data.period_type);
+    const reportingYear = getPeriodYear(data.currentPeriodLabel, data.period_type === 'trimester' ? 'School' : 'Division Personnel');
     const daysLeft = calculateDaysLeft(deadline);
-    const urgency = getUrgencyTier(daysLeft);
+    const urgency = deadline ? getUrgencyTier(daysLeft) : { level: 'locked', color: 'slate', bgTint: 'bg-white dark:bg-dark-surface border-slate-200 dark:border-dark-border' };
 
     const aipPending = aipCompletion.total - aipCompletion.completed;
     const pirPending = pirSubmitted.total - pirSubmitted.submitted;
@@ -130,7 +137,7 @@ export default function DashboardStats({ data, loading }) {
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allPirDone ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400' : noPirNeeded ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500' : 'bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400'}`}>
                         <BarChart3 size={20} />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Q{currentQuarter} Reviews</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{currentPeriodShort} Reviews</span>
                 </div>
                 <div className="text-2xl font-black text-slate-800 dark:text-slate-100 leading-none">
                     {noPirNeeded
@@ -140,7 +147,7 @@ export default function DashboardStats({ data, loading }) {
                 </div>
                 <p className={`text-xs font-semibold mt-1.5 ${allPirDone ? 'text-emerald-600 dark:text-emerald-400' : noPirNeeded ? 'text-slate-400 dark:text-slate-500' : 'text-amber-600 dark:text-amber-400'}`}>
                     {noPirNeeded
-                        ? 'No activities this quarter'
+                        ? `No activities this ${noun}`
                         : allPirDone
                             ? 'All reviews submitted'
                             : `${pirPending} review${pirPending !== 1 ? 's' : ''} pending`
@@ -159,7 +166,7 @@ export default function DashboardStats({ data, loading }) {
                     }`}>
                         <Clock size={20} />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Q{currentQuarter} Deadline</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{currentPeriodShort} Deadline</span>
                     {urgency.level === 'urgent' && (
                         <span className="relative flex h-2.5 w-2.5 ml-auto">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
@@ -173,7 +180,9 @@ export default function DashboardStats({ data, loading }) {
                     urgency.level === 'attention' ? 'text-amber-700' :
                     'text-slate-800 dark:text-slate-100'
                 }`}>
-                    {urgency.level === 'overdue'
+                    {!deadline
+                        ? 'Not Set'
+                        : urgency.level === 'overdue'
                         ? (daysLeft === 0 ? 'Due Today' : 'Overdue')
                         : urgency.level === 'calm'
                             ? formatDeadlineShort(deadline)
@@ -181,9 +190,11 @@ export default function DashboardStats({ data, loading }) {
                     }
                 </div>
                 <p className="text-xs font-semibold mt-1.5 text-slate-500 dark:text-slate-400">
-                    {urgency.level === 'calm'
+                    {!deadline
+                        ? `${currentPeriod} window is not configured`
+                        : urgency.level === 'calm'
                         ? `${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining`
-                        : `Q${currentQuarter} deadline · ${formatDeadlineShort(deadline)}`
+                        : `${currentPeriodShort} deadline · ${formatDeadlineShort(deadline)}`
                     }
                 </p>
             </div>
@@ -195,19 +206,26 @@ export default function DashboardStats({ data, loading }) {
 export function getActionPrompt(data, aipStatus) {
     if (!data) return '';
     const { aipCompletion, pirSubmitted, currentQuarter } = data;
+    const currentPeriod = data.currentPeriodLabel || `${periodPrefix(data.period_type)}${currentQuarter}`;
+    const currentPeriodShort = `${periodPrefix(data.period_type)}${currentQuarter}`;
+    const noun = periodNoun(data.period_type);
     const daysLeft = calculateDaysLeft(data.deadline);
 
     if (aipCompletion.completed === 0) {
-        return `Start by submitting your AIP - Annual Plan for FY ${new Date().getFullYear()}.`;
+        return `Start by submitting your AIP - Annual Plan for FY ${reportingYear}.`;
     }
     if (pirSubmitted.total > 0 && pirSubmitted.submitted < pirSubmitted.total) {
-        return `Your Q${currentQuarter} PIR - Quarterly Report is due in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.`;
+        return data.deadline
+            ? `Your ${currentPeriodShort} PIR report is due in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.`
+            : `${currentPeriod} PIR window is not configured yet.`;
     }
     if (pirSubmitted.total === 0 && aipCompletion.completed > 0) {
-        return `No activities are scheduled for Q${currentQuarter}. ${currentQuarter < 4 ? `Your next report opens in Q${currentQuarter + 1}.` : 'All quarters are complete.'}`;
+        const periodCount = data.period_type === 'trimester' ? 3 : 4;
+        return `No activities are scheduled for ${currentPeriodShort}. ${currentQuarter < periodCount ? `Your next report opens in ${periodPrefix(data.period_type)}${currentQuarter + 1}.` : `All ${noun}s are complete.`}`;
     }
     if (pirSubmitted.submitted >= pirSubmitted.total && aipCompletion.completed >= aipCompletion.total) {
-        return `You are on track for Q${currentQuarter}. ${currentQuarter < 4 ? `Your next report opens in Q${currentQuarter + 1}.` : 'Great work this year.'}`;
+        const periodCount = data.period_type === 'trimester' ? 3 : 4;
+        return `You are on track for ${currentPeriodShort}. ${currentQuarter < periodCount ? `Your next report opens in ${periodPrefix(data.period_type)}${currentQuarter + 1}.` : 'Great work this year.'}`;
     }
-    return `You are managing the planning and reporting cycle for FY ${new Date().getFullYear()}.`;
+    return `You are managing the planning and reporting cycle for FY ${reportingYear}.`;
 }

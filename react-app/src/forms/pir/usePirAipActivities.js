@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import api from '../../lib/api.js';
 import { createEmptyPirActivity } from './usePirFormState.js';
+import { activityOverlapsPeriod } from '../../lib/periods.js';
 
 export default function usePirAipActivities({
     program,
     programId,
     quarterString,
     currentQuarterNum,
+    periodType = 'quarter',
     isDivisionPersonnel,
     user,
     onActivitiesLoaded,
@@ -56,11 +58,14 @@ export default function usePirAipActivities({
                     if (preserveActivityReviewsRef.current) {
                         preserveActivityReviewsRef.current = false;
                     } else {
-                        const quarterStart = (currentQuarterNum - 1) * 3 + 1;
-                        const quarterEnd = currentQuarterNum * 3;
                         const relevantActivities = aipActivities.filter((activity) => (
                             activity.period_start_month && activity.period_end_month
-                                ? (activity.period_start_month <= quarterEnd && activity.period_end_month >= quarterStart)
+                                ? activityOverlapsPeriod(
+                                    activity.period_start_month,
+                                    activity.period_end_month,
+                                    currentQuarterNum,
+                                    periodType,
+                                )
                                 : true
                         ));
 
@@ -116,6 +121,7 @@ export default function usePirAipActivities({
         onActivitiesLoaded,
         onIndicatorsLoaded,
         onOwnerLoaded,
+        periodType,
         program,
         programId,
         quarterString,

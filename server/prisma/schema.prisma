@@ -395,6 +395,20 @@ model Deadline {
   @@map("deadlines")
 }
 
+model TrimesterDeadline {
+  id                Int      @id @default(autoincrement())
+  year              Int      // School year start: 2026 = SY 2026-2027
+  trimester         Int      // 1, 2, or 3
+  open_date         DateTime // Required — admin-configured submission open date
+  date              DateTime // Submission deadline
+  grace_period_days Int      @default(0)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([year, trimester])
+  @@map("trimester_deadlines")
+}
+
 model EmailConfig {
   id                     Int      @id @default(autoincrement())
   smtp_host              String   @default("smtp.gmail.com")
