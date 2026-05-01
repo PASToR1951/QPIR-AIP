@@ -2,13 +2,13 @@
 
 Web-based system for managing **Annual Implementation Plans (AIP)** and **Program Implementation Reviews (PIR)** for the DepEd Division of Guihulngan City.
 
-> **Version:** 1.1.0-beta — Beta 2
+> **Version:** 1.2.0-beta — Beta 3
 
 ---
 
 ## Overview
 
-Schools submit an AIP at the start of each fiscal year, outlining their program activities, targets, and budget. At the end of each quarter, they submit a PIR to track how well those activities were implemented. The system enforces a gated workflow — PIR submission is locked until the AIP is approved.
+Schools submit an AIP at the start of each fiscal year, outlining their program activities, targets, and budget. At the end of each reporting period, they submit a PIR to track how well those activities were implemented. The system enforces a gated workflow — PIR submission is locked until the AIP is approved.
 
 **User roles:**
 - **School** — tied 1-to-1 with a school; submits and manages their school's AIP and PIRs
@@ -18,6 +18,19 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 - **Admin** — full system access; manages users, schools, programs, deadlines, email, and submissions
 - **Observer** — read-only access to submitted AIPs and PIRs across the division
 - **Pending** — newly created accounts awaiting role assignment by an Admin
+
+---
+
+## What's New in AIP-PIR Beta 3
+
+- School AIP/PIR submissions now enter a **For Recommendation** focal person queue before CES and Cluster Head review.
+- Admins can assign active Division Personnel as program focal persons.
+- CES reviewers now have an AIP review queue for focal-recommended school AIPs.
+- School reporting windows now use admin-managed trimesters, while division-level quarter workflows remain available where implemented.
+- PIR monitoring factors are activity-scoped and grouped by the M&E Manual taxonomy.
+- AIPs and PIRs support soft-delete timestamps for retention and privacy workflows.
+- Secure session restore, logout, multi-device revocation, and admin session management are documented.
+- Documentation is aligned with the DepEd M&E Manual, including DepEd Order No. 29, s. 2022, MOVs, PIR phases, role mapping, official timelines, and YEPE concepts.
 
 ---
 
@@ -298,9 +311,11 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `POST/DELETE` | `/api/admin/schools/:id/logo` | School logo upload/removal |
 | `GET/POST/PATCH/DELETE` | `/api/admin/programs` | Program management |
 | `PATCH` | `/api/admin/programs/:id/personnel` | Assign personnel to a program |
+| `PUT` | `/api/admin/programs/:id/focal-persons` | Assign focal persons to a program |
 | `GET/PUT` | `/api/admin/programs/:id/template` | Get or set the activity template for a program |
 | `GET/POST/PATCH/DELETE` | `/api/admin/division-programs` | Division-level program management |
 | `GET/POST/DELETE` | `/api/admin/deadlines` | Deadline management |
+| `GET/POST/DELETE` | `/api/admin/deadlines/trimesters` | School trimester window management |
 | `GET` | `/api/admin/deadlines/history` | Deadline audit/history view |
 | `GET` | `/api/admin/submissions` | AIP/PIR submission review list |
 | `GET` | `/api/admin/submissions/export` | Export submissions |
@@ -311,6 +326,9 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `GET` | `/api/admin/pirs` | Admin PIR list |
 | `GET` | `/api/admin/pirs/:id` | PIR detail |
 | `PATCH` | `/api/admin/pirs/:id/presented` | Toggle PIR presented status |
+| `GET/POST` | `/api/admin/focal/{aips,pirs}` | Division Personnel focal review queue and actions |
+| `GET` | `/api/admin/ces/aips` | CES AIP review queue |
+| `POST` | `/api/admin/ces/aips/:id/{approve,return}` | CES AIP approve/return action |
 | `GET` | `/api/admin/ces/pirs` | CES review queue |
 | `POST` | `/api/admin/ces/pirs/:id/start-review` | Mark a PIR as actively reviewed by CES |
 | `POST` | `/api/admin/ces/pirs/:id/note` | CES approve/note action |
@@ -329,6 +347,8 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `POST` | `/api/admin/settings/email-config/test` | Test SMTP connection |
 | `GET/POST` | `/api/admin/email-blast` | Email blast management |
 | `GET` | `/api/admin/audit-logs` | Audit log viewer |
+| `GET` | `/api/admin/logs` | Merged admin/user activity investigation timeline |
+| `GET/DELETE` | `/api/admin/sessions` | Admin session listing and revocation |
 | `GET` | `/api/admin/backup/status` | Backup health and file listing |
 | `POST` | `/api/admin/backup/trigger` | Trigger a background hourly backup |
 
@@ -336,16 +356,35 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 
 ## Status
 
-Active beta — **Beta 2** (`v1.1.0-beta`, 2026-04-13).
+Active beta — **Beta 3** (`v1.2.0-beta`, 2026-04-30).
 
 - Core workflows (AIP, PIR, dashboard) are complete and validated.
 - Admin panel is feature-complete — users, schools, clusters, programs, deadlines, submissions, reports, backups, settings, announcements, email config, email blasts, and logs.
-- PIR review queues are complete: school PIRs route to Cluster Coordinators; division-level and Cluster Coordinator-owned PIRs route to CES; Admin retains oversight and override tools.
-- Beta 2 additions: SMTP email system, magic link tokens, Must Change Password flow, reCAPTCHA v3, program templates, division signatories, onboarding tour, practice mode, Observer role, cluster head assignment.
+- School AIP/PIR submissions now enter a **For Recommendation** focal person queue before CES and Cluster Head review.
+- School reporting periods now use trimesters with admin-managed trimester windows; division-level reporting continues to use quarter-based flows where still implemented.
+- CES reviewers now have an AIP review queue for focal-recommended school AIPs.
+- PIR monitoring factors are activity-scoped and render consistently in review, reports, and PDF output.
+- AIPs and PIRs support soft-delete timestamps for retention/privacy workflows.
+- Admin submissions, sessions, users, consolidation, PIR review, and dashboard insights received cleanup and overhaul work.
+- Documentation now anchors the workflow to the DepEd M&E Manual, including DepEd Order No. 29, s. 2022, MOVs, PIR phases, official timelines, role mapping, and YEPE planning gaps.
 - Admin and form codebases refactored into focused subdirectory modules.
 - OAuth SSO (Google only — Microsoft OAuth removed), HttpOnly cookie sessions, real-time notifications, announcements, audit logs, and privacy compliance are implemented.
 - School/cluster logo uploads, bundled cluster-logo fallbacks, CSV user import, and report/export workflows are complete.
 - See internal `ROADMAP.md` and `TODO.md` for full milestone tracking.
+
+---
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [M&E Manual Draft](docs/M-E-Manual-Draft-v.1.md) | DepEd M&E framework anchor for PIR roles, timelines, MOVs, factors, pillars, and YEPE |
+| [User Manual](docs/USER_MANUAL.md) | Role-based user guidance and common workflows |
+| [API Docs](docs/API_DOCS.md) | REST endpoint reference and schema notes |
+| [Database Schema](docs/DATABASE_SCHEMA.md) | Prisma/PostgreSQL schema and ERD |
+| [PIR Routing Chain](docs/PIR-ROUTING-CHAIN.md) | Focal, CES, and Cluster Head review flow |
+| [Roadmap](docs/ROADMAP.md) | Milestone and backlog tracking |
+| [Changelog](docs/CHANGELOG.md) | Release history |
 
 ---
 
