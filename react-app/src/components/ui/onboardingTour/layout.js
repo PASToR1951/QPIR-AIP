@@ -2,8 +2,21 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function clampToViewport(position, size, viewportSize, margin) {
-  return clamp(position, margin, Math.max(margin, viewportSize - size - margin));
+function clampToRange(position, size, rangeStart, rangeSize, margin) {
+  const min = rangeStart + margin;
+  const max = Math.max(min, rangeStart + rangeSize - size - margin);
+  return clamp(position, min, max);
+}
+
+function readSafeTop(fallback) {
+  if (typeof window === 'undefined') return fallback;
+  const value = window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue('--tour-safe-top')
+    .trim();
+  if (!value) return fallback;
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? Math.max(parsed, fallback) : fallback;
 }
 
 function getRectOverlapArea(a, b) {
@@ -36,8 +49,8 @@ function getPlacementOrder(placement, targetRect, viewW, viewH) {
   return [normalizedPlacement, oppositePlacement, ...verticalPlacements];
 }
 
-function buildCardCandidate(targetRect, placement, cardW, cardH, viewW, viewH) {
-  const MARGIN = 16;
+function buildCardCandidate(targetRect, placement, cardW, cardH, viewport) {
+  const { width: viewW, height: viewH, offsetTop, offsetLeft, marginTop, marginSide } = viewport;
   const GAP = 16;
   const centeredLeft = targetRect.left + targetRect.width / 2 - cardW / 2;
   const centeredTop = targetRect.top + targetRect.height / 2 - cardH / 2;
@@ -55,8 +68,8 @@ function buildCardCandidate(targetRect, placement, cardW, cardH, viewW, viewH) {
     preferredLeft = targetRect.right + GAP;
   }
 
-  const top = clampToViewport(preferredTop, cardH, viewH, MARGIN);
-  const left = clampToViewport(preferredLeft, cardW, viewW, MARGIN);
+  const top = clampToRange(preferredTop, cardH, offsetTop, viewH, marginTop);
+  const left = clampToRange(preferredLeft, cardW, offsetLeft, viewW, marginSide);
   const rect = {
     top,
     left,
@@ -74,13 +87,47 @@ function buildCardCandidate(targetRect, placement, cardW, cardH, viewW, viewH) {
   };
 }
 
-export function getCardPosition(targetRect, placement, cardH, viewW, viewH) {
-  const MARGIN = 16;
-  const cardW = Math.min(360, viewW - MARGIN * 2);
-  const candidates = getPlacementOrder(placement, targetRect, viewW, viewH)
+function resolveViewportBounds(rawViewport) {
+  if (rawViewport && typeof rawViewport === 'object' && 'width' in rawViewport) {
+    const marginSide = 16;
+    const marginTop = readSafeTop(marginSide);
+    return {
+      width: rawViewport.width,
+      height: rawViewport.height,
+      offsetTop: rawViewport.offsetTop ?? 0,
+      offsetLeft: rawViewport.offsetLeft ?? 0,
+      marginTop,
+      marginSide,
+    };
+  }
+
+  // Legacy positional-args fallback for safety.
+  const marginSide = 16;
+  const marginTop = readSafeTop(marginSide);
+  return {
+    width: rawViewport ?? (typeof window !== 'undefined' ? window.innerWidth : 0),
+    height: arguments[1] ?? (typeof window !== 'undefined' ? window.innerHeight : 0),
+    offsetTop: 0,
+    offsetLeft: 0,
+    marginTop,
+    marginSide,
+  };
+}
+
+export function getCardPosition(targetRect, placement, cardH, viewportArg, legacyViewH) {
+  const viewport = typeof viewportArg === 'object' && viewportArg !== null
+    ? resolveViewportBounds(viewportArg)
+    : resolveViewportBounds({
+        width: viewportArg,
+        height: legacyViewH,
+        offsetTop: 0,
+        offsetLeft: 0,
+      });
+  const cardW = Math.min(360, viewport.width - viewport.marginSide * 2);
+  const candidates = getPlacementOrder(placement, targetRect, viewport.width, viewport.height)
     .map((candidatePlacement, priority) => ({
       priority,
-      ...buildCardCandidate(targetRect, candidatePlacement, cardW, cardH, viewW, viewH),
+      ...buildCardCandidate(targetRect, candidatePlacement, cardW, cardH, viewport),
     }));
 
   const bestCandidate = candidates.reduce((best, candidate) => {
@@ -95,21 +142,28 @@ export function getCardPosition(targetRect, placement, cardH, viewW, viewH) {
   }, null);
 
   return {
-    top: bestCandidate?.top ?? MARGIN,
-    left: bestCandidate?.left ?? MARGIN,
+    top: bestCandidate?.top ?? (viewport.offsetTop + viewport.marginTop),
+    left: bestCandidate?.left ?? (viewport.offsetLeft + viewport.marginSide),
     width: bestCandidate?.width ?? cardW,
   };
 }
 
-export function getDetachedCardPosition(cardH, viewW, viewH) {
-  const MARGIN = 16;
-  const cardW = Math.min(360, viewW - MARGIN * 2);
-  const left = viewW < 640
-    ? clamp((viewW - cardW) / 2, MARGIN, viewW - cardW - MARGIN)
-    : viewW - cardW - MARGIN;
+export function getDetachedCardPosition(cardH, viewportArg, legacyViewH) {
+  const viewport = typeof viewportArg === 'object' && viewportArg !== null
+    ? resolveViewportBounds(viewportArg)
+    : resolveViewportBounds({
+        width: viewportArg,
+        height: legacyViewH,
+        offsetTop: 0,
+        offsetLeft: 0,
+      });
+  const cardW = Math.min(360, viewport.width - viewport.marginSide * 2);
+  const left = viewport.width < 640
+    ? clamp(viewport.offsetLeft + (viewport.width - cardW) / 2, viewport.offsetLeft + viewport.marginSide, viewport.offsetLeft + viewport.width - cardW - viewport.marginSide)
+    : viewport.offsetLeft + viewport.width - cardW - viewport.marginSide;
 
   return {
-    top: clamp(MARGIN, MARGIN, viewH - cardH - MARGIN),
+    top: clamp(viewport.offsetTop + viewport.marginTop, viewport.offsetTop + viewport.marginTop, viewport.offsetTop + viewport.height - cardH - viewport.marginSide),
     left,
     width: cardW,
   };

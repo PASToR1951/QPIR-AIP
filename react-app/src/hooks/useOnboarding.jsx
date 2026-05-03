@@ -127,6 +127,21 @@ export function OnboardingProvider({ children }) {
   }, [localState, localStorageKey, user?.id]);
 
   useEffect(() => {
+    if (!import.meta.env.DEV) return undefined;
+    if (!isHydrated || !roleKey) return undefined;
+    let cancelled = false;
+    let cancelTimer;
+    import('../lib/onboarding/validateTargets.dev.js').then((mod) => {
+      if (cancelled) return;
+      cancelTimer = mod.scheduleTargetValidation(roleKey);
+    });
+    return () => {
+      cancelled = true;
+      cancelTimer?.();
+    };
+  }, [isHydrated, roleKey]);
+
+  useEffect(() => {
     if (!user?.id || auth.isExpired()) return undefined;
 
     let cancelled = false;

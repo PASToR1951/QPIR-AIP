@@ -1,6 +1,6 @@
 import { ROLE_REGISTRY } from './onboarding/roles/index.js';
 
-export const ONBOARDING_VERSION = 1;
+export const ONBOARDING_VERSION = 2;
 
 export const DEFAULT_CHECKLIST_PROGRESS = {
   completed_task_ids: [],
@@ -17,7 +17,6 @@ const ROLE_KEY_MAP = {
   'CES-SGOD':             'ces',
   'CES-ASDS':             'ces',
   'CES-CID':              'ces',
-  'Cluster Coordinator':  'cluster',
   'Admin':                'admin',
   'Observer':             'observer',
   'Pending':              'pending',

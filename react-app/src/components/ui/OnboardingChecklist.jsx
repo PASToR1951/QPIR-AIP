@@ -11,6 +11,7 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAccessibility } from '../../context/AccessibilityContext.jsx';
 import { THEMES, resolveRouteThemeName } from '../../lib/routeTheme.js';
+import { useViewportSize } from './onboardingTour/useViewportSize.js';
 
 function SegmentedProgress({ completed, total, theme, compact = false }) {
   if (total === 0) return null;
@@ -111,18 +112,15 @@ export default function OnboardingChecklist({
   const navigate = useNavigate();
   const location = useLocation();
   const { settings } = useAccessibility();
+  const viewport = useViewportSize();
+  const isMobile = viewport.width < 640;
   const themeName = resolveRouteThemeName(location.pathname);
   const theme = THEMES[themeName];
   const containerRef = useRef(null);
 
   useEffect(() => {
-    if (!isComplete || settings.reduceMotion || !open) return undefined;
-    const timer = window.setTimeout(() => onClose?.(), 5000);
-    return () => window.clearTimeout(timer);
-  }, [isComplete, onClose, open, settings.reduceMotion]);
-
-  useEffect(() => {
     if (!open) return undefined;
+    if (isMobile) return undefined;
     const handlePointerDown = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
         onClose?.();
@@ -130,7 +128,7 @@ export default function OnboardingChecklist({
     };
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [open, onClose]);
+  }, [open, onClose, isMobile]);
 
   if (hidden) return null;
 
@@ -206,20 +204,30 @@ export default function OnboardingChecklist({
             <Motion.div
               key="panel"
               initial={settings.reduceMotion ? false : { opacity: 0, scale: 0.985 }}
-              animate={settings.reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+              animate={settings.reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
               exit={settings.reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.985 }}
               transition={settings.reduceMotion ? { duration: 0.1 } : {
                 opacity: { duration: 0.16, ease: 'easeInOut' },
                 scale: { duration: 0.18, ease: [0.22, 1, 0.36, 1] },
               }}
-              className="w-full"
+              drag={isMobile && !settings.reduceMotion ? 'y' : false}
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.4 }}
+              dragMomentum={false}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 80 || info.velocity.y > 500) {
+                  onClose?.();
+                }
+              }}
+              className="w-full touch-pan-y"
             >
               <button
                 type="button"
                 onClick={onToggle}
-                className="flex w-full items-center justify-center border-b border-slate-200 py-2 dark:border-slate-700 sm:hidden"
+                aria-label="Collapse checklist"
+                className="flex min-h-11 w-full items-center justify-center border-b border-slate-200 py-2 dark:border-slate-700 sm:hidden"
               >
-                <span className="h-1 w-8 rounded-full bg-slate-200 dark:bg-slate-700" />
+                <span className="h-1 w-8 rounded-full bg-slate-300 dark:bg-slate-600" />
               </button>
 
               <div className="p-4 sm:p-5">
@@ -241,7 +249,7 @@ export default function OnboardingChecklist({
                   <button
                     type="button"
                     onClick={onToggle}
-                    className="hidden sm:inline-flex rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-dark-base hover:text-slate-600 dark:hover:text-slate-200"
+                    className="hidden sm:inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-dark-base hover:text-slate-600 dark:hover:text-slate-200"
                     aria-label="Collapse checklist"
                   >
                     <CaretDown size={14} />
@@ -272,10 +280,10 @@ export default function OnboardingChecklist({
                       <CheckCircle size={16} className="mt-0.5 shrink-0 text-emerald-500 dark:text-emerald-400" />
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                          Checklist complete
+                          All done
                         </p>
                         <p className="mt-0.5 text-xs text-emerald-600/80 dark:text-emerald-300/70">
-                          Page tours are available in Help whenever you need a refresher.
+                          Page tours stay available in Help whenever you need a refresher.
                         </p>
                       </div>
                     </div>
@@ -283,10 +291,10 @@ export default function OnboardingChecklist({
                     <button
                       type="button"
                       onClick={onDismiss}
-                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-700/50 bg-white dark:bg-dark-surface px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 transition-colors hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                      className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-700/50 bg-emerald-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-600 dark:border-emerald-700/50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
                     >
-                      <XCircle size={13} />
-                      Dismiss
+                      <CheckCircle size={15} weight="fill" />
+                      Got it
                     </button>
                   </div>
                 ) : (

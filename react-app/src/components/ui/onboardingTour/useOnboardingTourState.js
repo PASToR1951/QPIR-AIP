@@ -4,15 +4,44 @@ import { getCardPosition, getDetachedCardPosition } from './layout.js';
 import { useTourCardUnlock } from './useTourCardUnlock.js';
 import { useTourEnvironment } from './useTourEnvironment.js';
 import { useTourTargetState } from './useTourTargetState.js';
+import { useViewportSize } from './useViewportSize.js';
+
+const STEP_PERSIST_TTL_MS = 30 * 60 * 1000;
+
+function readPersistedStep(stepStorageKey, maxIndex) {
+  if (!stepStorageKey || maxIndex < 0) return 0;
+  try {
+    const raw = localStorage.getItem(stepStorageKey);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw);
+    if (
+      !parsed ||
+      typeof parsed.step !== 'number' ||
+      typeof parsed.ts !== 'number'
+    ) {
+      return 0;
+    }
+    if (Date.now() - parsed.ts > STEP_PERSIST_TTL_MS) {
+      localStorage.removeItem(stepStorageKey);
+      return 0;
+    }
+    return Math.min(Math.max(parsed.step, 0), maxIndex);
+  } catch {
+    return 0;
+  }
+}
 
 export function useOnboardingTourState({
   open,
   steps,
   storageKey,
+  stepStorageKey,
   onClose,
   reduceMotion,
 }) {
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [currentStepIndex, setCurrentStepIndex] = useState(() =>
+    readPersistedStep(stepStorageKey, steps.length - 1)
+  );
   const [cardH, setCardH] = useState(0);
   const [measuredStepKey, setMeasuredStepKey] = useState('');
   const cardRef = useRef(null);
@@ -39,8 +68,15 @@ export function useOnboardingTourState({
 
   const finishTour = useCallback((reason) => {
     if (storageKey) localStorage.setItem(storageKey, reason);
+    if (stepStorageKey) {
+      if (reason === 'completed') {
+        localStorage.removeItem(stepStorageKey);
+      }
+    }
     onClose?.(reason);
-  }, [storageKey, onClose]);
+  }, [storageKey, stepStorageKey, onClose]);
+
+  const viewport = useViewportSize();
 
   const {
     hasResolvedTarget,
@@ -54,6 +90,7 @@ export function useOnboardingTourState({
     activeStep,
     stepKey,
     reduceMotion,
+    viewport,
   });
 
   const isTargetVisible = Boolean(targetRect);
@@ -88,6 +125,19 @@ export function useOnboardingTourState({
     setCurrentStepIndex((index) => Math.max(index - 1, 0));
   }, [resetForStepChange]);
 
+  useLayoutEffect(() => {
+    if (!stepStorageKey || !open) return;
+    if (stepIndex >= steps.length - 1) return;
+    try {
+      localStorage.setItem(
+        stepStorageKey,
+        JSON.stringify({ step: stepIndex, ts: Date.now() })
+      );
+    } catch {
+      /* storage full / private mode — ignore */
+    }
+  }, [stepStorageKey, open, stepIndex, steps.length]);
+
   const cardUnlocked = useTourCardUnlock({
     open,
     stepIndex,
@@ -120,19 +170,20 @@ export function useOnboardingTourState({
     }
   }, [shouldMountMeasureCard, cardH, measuredStepKey, stepKey]);
 
-  const viewW = window.innerWidth;
-  const viewH = window.innerHeight;
-  const measureCardWidth = Math.min(360, viewW - 32);
+  const measureCardWidth = Math.min(360, viewport.width - 32);
 
   const highlightTop = isInViewport ? Math.max(targetRect.top - 8, 8) : 0;
   const highlightLeft = isInViewport ? Math.max(targetRect.left - 8, 8) : 0;
-  const highlightWidth = isInViewport ? Math.min(targetRect.width + 16, viewW - 16) : 0;
-  const highlightHeight = isInViewport ? Math.min(targetRect.height + 16, viewH - 16) : 0;
+  const highlightWidth = isInViewport ? Math.min(targetRect.width + 16, viewport.width - 16) : 0;
+  const highlightHeight = isInViewport ? Math.min(targetRect.height + 16, viewport.height - 16) : 0;
 
-  const resolvedCardH = cardH || (isInViewport ? 240 : 280);
+  const resolvedCardH = Math.min(
+    cardH || (isInViewport ? 240 : 280),
+    Math.max(160, viewport.height * 0.7)
+  );
   const { top: cardTop, left: cardLeft, width: cardWidth } = isInViewport
-    ? getCardPosition(targetRect, activeStep?.placement, resolvedCardH, viewW, viewH)
-    : getDetachedCardPosition(resolvedCardH, viewW, viewH);
+    ? getCardPosition(targetRect, activeStep?.placement, resolvedCardH, viewport)
+    : getDetachedCardPosition(resolvedCardH, viewport);
 
   return {
     activeStep,

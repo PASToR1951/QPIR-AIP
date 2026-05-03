@@ -6,6 +6,7 @@ export function useTourTargetState({
   activeStep,
   stepKey,
   reduceMotion,
+  viewport,
 }) {
   const [targetElement, setTargetElement] = useState(null);
   const [targetRect, setTargetRect] = useState(null);
@@ -15,13 +16,17 @@ export function useTourTargetState({
 
   const isInViewport = useMemo(() => {
     if (!targetRect) return false;
+    const visTop = viewport?.offsetTop ?? 0;
+    const visLeft = viewport?.offsetLeft ?? 0;
+    const visBottom = visTop + (viewport?.height ?? (typeof window !== 'undefined' ? window.innerHeight : 0));
+    const visRight = visLeft + (viewport?.width ?? (typeof window !== 'undefined' ? window.innerWidth : 0));
     return (
-      targetRect.top < window.innerHeight &&
-      targetRect.bottom > 0 &&
-      targetRect.left < window.innerWidth &&
-      targetRect.right > 0
+      targetRect.top < visBottom &&
+      targetRect.bottom > visTop &&
+      targetRect.left < visRight &&
+      targetRect.right > visLeft
     );
-  }, [targetRect]);
+  }, [targetRect, viewport?.offsetTop, viewport?.offsetLeft, viewport?.height, viewport?.width]);
 
   const hasResolvedTarget = Boolean(targetElement && targetRect);
 
@@ -115,14 +120,27 @@ export function useTourTargetState({
   }, [open, targetElement, refreshTarget]);
 
   useLayoutEffect(() => {
-    if (!open || !activeStep || !targetElement || !targetRect) return;
-    if (lastScrolledStepKeyRef.current === stepKey) return;
+    if (!open || !activeStep || !targetElement || !targetRect) return undefined;
+    if (lastScrolledStepKeyRef.current === stepKey) return undefined;
 
     lastScrolledStepKeyRef.current = stepKey;
+
+    const safeTop = window
+      .getComputedStyle(document.documentElement)
+      .getPropertyValue('--tour-safe-top')
+      .trim() || '16px';
+    const previousScrollMarginTop = targetElement.style.scrollMarginTop;
+    // eslint-disable-next-line react-hooks/immutability -- intentional DOM mutation, restored on cleanup
+    targetElement.style.scrollMarginTop = safeTop;
+
     targetElement.scrollIntoView({
-      block: 'center',
+      block: 'start',
       behavior: reduceMotion ? 'auto' : 'smooth',
     });
+
+    return () => {
+      targetElement.style.scrollMarginTop = previousScrollMarginTop;
+    };
   }, [activeStep, open, reduceMotion, stepKey, targetElement, targetRect]);
 
   return {

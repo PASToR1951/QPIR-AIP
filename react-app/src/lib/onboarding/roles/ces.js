@@ -93,18 +93,18 @@ export const cesRoleConfig = {
       completeOn: ['ces.aip_form_visited'],
       tourSteps: [
         {
+          target: 'form-program-selector',
+          title: 'Program Selector',
+          description: 'Select one of your assigned programs here to start. Each program has its own separate budget and activity entries.',
+          placement: 'bottom',
+        },
+        {
           target: 'form-step-nav',
           title: 'AIP Form Steps',
           description: 'The AIP is divided into sections — work through each one in order before reaching the final review and submission step.',
           placement: 'bottom',
           prerequisiteTarget: 'aip-form-active',
           missingTargetHint: 'Open the AIP form first by clicking "My AIP" in the top navigation.',
-        },
-        {
-          target: 'form-program-selector',
-          title: 'Program Selector',
-          description: 'Select one of your assigned programs here to start. Each program has its own separate budget and activity entries.',
-          placement: 'bottom',
         },
       ],
     },

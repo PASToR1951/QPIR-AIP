@@ -15,6 +15,7 @@ export default function OnboardingTour({
   title = 'Guided Tour',
   steps = [],
   storageKey,
+  stepStorageKey,
   onClose,
 }) {
   const location = useLocation();
@@ -51,6 +52,7 @@ export default function OnboardingTour({
     open,
     steps,
     storageKey,
+    stepStorageKey,
     onClose,
     reduceMotion,
   });

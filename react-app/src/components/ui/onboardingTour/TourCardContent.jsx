@@ -1,5 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
+
+const SKIP_MICROCOPY_KEY = 'tour:skipMicrocopySeen';
+
+function readSkipMicrocopySeen() {
+  try {
+    return localStorage.getItem(SKIP_MICROCOPY_KEY) === '1';
+  } catch {
+    return true; // assume seen if storage unavailable
+  }
+}
 
 export function TourCardContent({
   activeStep,
@@ -16,6 +26,16 @@ export function TourCardContent({
   handleSkipStep,
   finishTour,
 }) {
+  const [showSkipMicrocopy] = useState(() => !readSkipMicrocopySeen());
+
+  useEffect(() => {
+    if (!showSkipMicrocopy) return;
+    try {
+      localStorage.setItem(SKIP_MICROCOPY_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+  }, [showSkipMicrocopy]);
   const primaryActionLabel = isTargetVisible
     ? (isLastStep ? 'Done' : 'Next →')
     : (isLastStep ? 'Finish' : 'Skip step');
@@ -112,13 +132,19 @@ export function TourCardContent({
           {renderStepBody(true)}
         </AnimatePresence>
 
+        {showSkipMicrocopy && (
+          <p className="mt-4 text-center text-[11px] font-medium text-slate-400 dark:text-slate-500">
+            Reopen anytime from Help.
+          </p>
+        )}
+
         <div className="mt-5 flex items-center gap-2">
           {stepIndex > 0 ? (
             <button
               type="button"
               onClick={handleBack}
               aria-label="Go to previous step"
-              className="shrink-0 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-dark-base dark:hover:text-slate-200"
+              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl px-3 py-2.5 text-sm font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-dark-base dark:hover:text-slate-200"
             >
               ← Back
             </button>
@@ -131,7 +157,7 @@ export function TourCardContent({
               type="button"
               onClick={() => finishTour('skipped')}
               aria-label="Skip tour"
-              className="rounded-xl px-3 py-2.5 text-sm font-bold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-dark-base dark:hover:text-slate-200"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl px-3 py-2.5 text-sm font-bold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-dark-base dark:hover:text-slate-200"
             >
               Skip
             </button>
@@ -141,7 +167,7 @@ export function TourCardContent({
             type="button"
             onClick={isTargetVisible ? handleNext : handleSkipStep}
             aria-label={isTargetVisible ? (isLastStep ? 'Finish tour' : 'Next step') : 'Skip this step'}
-            className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all focus-visible:outline focus-visible:outline-2 ${t.focusRing} ${t.tourPrimary}`}
+            className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-bold text-white transition-all focus-visible:outline focus-visible:outline-2 ${t.focusRing} ${t.tourPrimary}`}
           >
             {primaryActionLabel}
           </button>

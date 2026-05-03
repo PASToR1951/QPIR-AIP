@@ -12,6 +12,7 @@ import OnboardingCompletionCard from './OnboardingCompletionCard.jsx';
 import WelcomeCard from './WelcomeCard.jsx';
 import OnboardingChecklist from './OnboardingChecklist.jsx';
 import OnboardingTour from './OnboardingTour.jsx';
+import OnboardingHint from './OnboardingHint.jsx';
 
 function getSessionPromptKey(userId, expiry) {
   return userId && expiry
@@ -22,17 +23,14 @@ function getSessionPromptKey(userId, expiry) {
 function getRouteSignal(roleKey, pathname) {
   if (['school', 'division'].includes(roleKey)) {
     if (pathname === '/') return 'author.dashboard_visited';
-    if (pathname === '/aip' || pathname === '/pir') return 'author.form_visited';
+    if (pathname === '/aip') return 'author.aip_form_visited';
+    if (pathname === '/pir') return 'author.pir_form_visited';
   }
 
   if (roleKey === 'ces') {
     if (pathname === '/ces') return 'ces.queue_visited';
     if (pathname === '/aip') return 'ces.aip_form_visited';
     if (pathname === '/pir') return 'ces.pir_form_visited';
-  }
-
-  if (roleKey === 'cluster') {
-    if (pathname === '/cluster-head') return 'cluster.queue_visited';
   }
 
   if (roleKey === 'admin') {
@@ -49,7 +47,7 @@ function getRouteSignal(roleKey, pathname) {
 function OnboardingHints() {
   const location = useLocation();
   const { hints, onboarding, tasks, markHintSeen } = useOnboarding();
-  const [visibleHint, setVisibleHint] = useState(null);
+  const [activeHint, setActiveHint] = useState(null);
 
   const nextHint = useMemo(() => {
     return hints.find((hint) => {
@@ -67,59 +65,31 @@ function OnboardingHints() {
 
   useEffect(() => {
     if (!nextHint) {
-      const timer = window.setTimeout(() => setVisibleHint(null), 0);
-      return () => window.clearTimeout(timer);
+      const clearTimer = window.setTimeout(() => setActiveHint(null), 0);
+      return () => window.clearTimeout(clearTimer);
     }
 
     const timer = window.setTimeout(() => {
-      const target = document.querySelector(`[data-tour="${nextHint.target}"]`);
-      if (!target) return;
-      const rect = target.getBoundingClientRect();
-      setVisibleHint({
-        ...nextHint,
-        top: Math.max(16, rect.bottom + 12),
-        left: Math.min(window.innerWidth - 304, Math.max(16, rect.left)),
-      });
+      setActiveHint(nextHint);
       markHintSeen(nextHint.id);
     }, 550);
 
     return () => window.clearTimeout(timer);
   }, [markHintSeen, nextHint]);
 
-  if (!visibleHint) return null;
+  if (!activeHint) return null;
 
-  const task = tasks.find((item) => item.id === visibleHint.pendingTaskId);
+  const task = tasks.find((item) => item.id === activeHint.pendingTaskId);
 
   return (
-    <div
-      className="fixed z-[102] max-w-[288px] rounded-2xl border border-slate-200 dark:border-dark-border bg-white/96 dark:bg-dark-surface/96 p-4 shadow-xl backdrop-blur"
-      style={{
-        top: visibleHint.top,
-        left: visibleHint.left,
-      }}
-    >
-      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
-        First Action Hint
-      </p>
-      <h4 className="mt-1 text-sm font-black text-slate-900 dark:text-slate-100">
-        {visibleHint.title}
-      </h4>
-      <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-        {visibleHint.description}
-      </p>
-      {task && (
-        <p className="mt-3 text-xs font-bold text-slate-400 dark:text-slate-500">
-          Related checklist task: {task.label}
-        </p>
-      )}
-      <button
-        type="button"
-        onClick={() => setVisibleHint(null)}
-        className="mt-3 text-xs font-black uppercase tracking-[0.18em] text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
-      >
-        Dismiss
-      </button>
-    </div>
+    <OnboardingHint
+      hintId={activeHint.id}
+      target={activeHint.target}
+      title={activeHint.title}
+      description={activeHint.description}
+      relatedTaskLabel={task?.label}
+      onDismiss={() => setActiveHint(null)}
+    />
   );
 }
 
@@ -341,6 +311,7 @@ export default function OnboardingController() {
               open
               title={activeTaskTour.title}
               steps={activeTaskTour.steps}
+              stepStorageKey={user?.id ? `tour:step:${user.id}:${activeTaskTour.id}` : undefined}
               onClose={(reason) => {
                 if (reason === 'completed') {
                   // Auto-advance to the next incomplete task on the same route.

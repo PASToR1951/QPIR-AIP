@@ -11,7 +11,6 @@ import {
   Funnel,
   FileText,
   BookOpen,
-  UserList,
   Bell,
   Gear,
 } from '@phosphor-icons/react';
@@ -225,31 +224,6 @@ export const portalHelpConfig = {
     ],
   }),
 
-  clusterHead: withStorage({
-    id: 'cluster-head',
-    title: 'Cluster Head Help',
-    docsHref: '/getting-started#6-what-to-do-first',
-    autoStart: false,
-    steps: [
-      {
-        target: 'cluster-filters',
-        title: 'Filter school PIRs',
-        description:
-          'Narrow down the list by school name, program, or quarter using these filters. Focus on the reports due for review in the current period.',
-        placement: 'bottom',
-        icon: createTourIcon(Funnel),
-      },
-      {
-        target: 'cluster-queue',
-        title: 'School PIR queue',
-        description:
-          'All PIRs from schools in your cluster appear here. Open each one to review and take the appropriate action before forwarding to the CES.',
-        placement: 'top',
-        icon: createTourIcon(UserList),
-      },
-    ],
-  }),
-
   adminDashboard: withStorage({
     id: 'admin-dashboard',
     title: 'Admin Help',
@@ -300,7 +274,6 @@ export function getPortalHelp(pathname) {
   if (pathname === '/pir') return portalHelpConfig.pir;
   if (pathname === '/ces') return portalHelpConfig.cesDashboard;
   if (pathname.startsWith('/ces/pirs/')) return portalHelpConfig.cesReview;
-  if (pathname.startsWith('/cluster-head')) return portalHelpConfig.clusterHead;
   if (pathname.startsWith('/admin')) {
     if (pathname === '/admin') return portalHelpConfig.adminDashboard;
     return { ...portalHelpConfig.adminDashboard, autoStart: false };
