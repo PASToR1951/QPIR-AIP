@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { XCircle, At } from '@phosphor-icons/react';
+import { API_BASE_URL } from '../../lib/apiBase.js';
 import { useTextMeasure } from '../../lib/useTextMeasure';
 
 /* Render plain text with @[Name] mentions as inline white badges */
@@ -26,7 +27,7 @@ function textForMeasurement(text = '') {
   return text.replace(/@\[([^\]]+)\]/g, '@$1');
 }
 
-const API = import.meta.env.VITE_API_URL;
+const API = API_BASE_URL;
 
 const TYPE_CONFIG = {
   info: {

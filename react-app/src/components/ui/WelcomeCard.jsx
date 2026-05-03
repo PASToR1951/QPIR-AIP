@@ -6,6 +6,7 @@ import { useAccessibility } from '../../context/AccessibilityContext.jsx';
 import { useAppLogo } from '../../context/BrandingContext.jsx';
 import { THEMES, resolveRouteThemeName } from '../../lib/routeTheme.js';
 import { onboardingContent } from '../../lib/onboardingUtils.js';
+import { useViewportSize } from './onboardingTour/useViewportSize.js';
 
 const LOGOS = [
   { src: '/DepEd_Seal.webp', alt: 'DepEd Seal' },
@@ -25,10 +26,15 @@ export default function WelcomeCard({
   const location = useLocation();
   const { settings } = useAccessibility();
   const appLogo = useAppLogo();
+  const viewport = useViewportSize();
+  const isMobile = viewport.width < 640;
   const themeName = resolveRouteThemeName(location.pathname);
   const t = THEMES[themeName];
   const content = onboardingContent[roleKey];
   const isPending = roleKey === 'pending';
+  const handleBackdropClick = isMobile
+    ? undefined
+    : (isPending ? onDismissPending : onSkip);
 
   if (!content) return null;
 
@@ -42,10 +48,12 @@ export default function WelcomeCard({
           transition={{ duration: 0.2 }}
           className="fixed inset-0 z-[104] flex items-end justify-center overflow-y-auto px-0 pt-10 pb-0 sm:p-6 sm:items-center"
         >
-          {/* Backdrop */}
+          {/* Backdrop — tap-to-dismiss only on desktop to avoid accidental
+              dismissal on phones; mobile users must use the X or "Maybe later". */}
           <div
             className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
-            onClick={isPending ? onDismissPending : onSkip}
+            onClick={handleBackdropClick}
+            aria-hidden="true"
           />
 
           {/* Card */}
@@ -157,7 +165,7 @@ export default function WelcomeCard({
                     <button
                       type="button"
                       onClick={isPending ? onDismissPending : onSkip}
-                      className="rounded-xl border border-slate-200 p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:border-dark-border dark:hover:bg-dark-base dark:hover:text-slate-200"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:border-dark-border dark:hover:bg-dark-base dark:hover:text-slate-200"
                       aria-label="Close"
                     >
                       <XCircle size={18} />

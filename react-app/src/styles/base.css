@@ -12,6 +12,12 @@
   --color-border-subtle: #f1f5f9;    /* slate-100 */
   --color-grid-line: #dde3ec;
   --segment-empty: #e2e8f0;          /* slate-200 — unfilled bar/pip segments */
+
+  /* Top-edge offset for tour scroll-into-view + card placement.
+     Defaults large enough to clear the sticky DashboardHeader / FormHeader /
+     AdminTopBar (all ~56px) plus a small buffer. Layouts without sticky chrome
+     (login, docs) can override to a smaller value where needed. */
+  --tour-safe-top: 80px;
 }
 
 .dark {

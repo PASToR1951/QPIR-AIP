@@ -3,8 +3,9 @@ import { createRoot } from 'react-dom/client';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ReportHeader } from '../components/docs/ReportHeader.jsx';
+import { API_BASE_URL } from './apiBase.js';
 
-const API = import.meta.env.VITE_API_URL;
+const API = API_BASE_URL;
 
 export const REPORT_TEMPLATES = {
   compliance: { title: 'AIP Compliance Report', subtitle: 'School Annual Implementation Plan Submission Status' },

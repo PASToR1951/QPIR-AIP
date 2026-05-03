@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
   const allowedHosts = env.VITE_ALLOWED_HOSTS
     ? env.VITE_ALLOWED_HOSTS.split(',').map((host) => host.trim()).filter(Boolean)
     : publicHost
-      ? [publicHost]
+      ? [publicHost, 'localhost', '127.0.0.1']
       : undefined
   const hmrProtocol = env.VITE_HMR_PROTOCOL || (legacyTunnelHost ? 'wss' : 'ws')
   const hmrClientPort = Number(

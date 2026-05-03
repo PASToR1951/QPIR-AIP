@@ -16,7 +16,6 @@ const TYPE_ICON = {
   aip_edit_requested:      <PencilSimple size={16} className="text-orange-400 shrink-0" />,
   for_recommendation:      <HourglassMedium size={16} className="text-blue-400 shrink-0" />,
   for_ces_review:          <HourglassMedium size={16} className="text-violet-400 shrink-0" />,
-  for_cluster_head_review: <HourglassMedium size={16} className="text-violet-400 shrink-0" />,
   submitted:               <CheckCircle size={16} className="text-slate-400 shrink-0" />,
   announcement:            <Megaphone size={16} className="text-rose-400 shrink-0" />,
   aip_edit_approved:       <LockKeyOpen size={16} className="text-emerald-400 shrink-0" />,
@@ -55,15 +54,10 @@ function resolveNotificationRoute(n, role) {
     if (entity_type === 'aip' && entity_id) return `/division/aips/${entity_id}/review`;
     return '/division';
   }
-  if (role === 'Cluster Coordinator' && type === 'pir_submitted') {
-    if (entity_id) return `/ces/pirs/${entity_id}`;
-    return '/cluster-head';
-  }
-
   // Group B — creator navigation (fix/resubmit + status updates)
   if (type === 'aip_edit_approved') return '/aip';
   if (type === 'aip_edit_denied') return '/';
-  if (['returned', 'remarked', 'approved', 'under_review', 'for_recommendation', 'for_ces_review', 'for_cluster_head_review'].includes(type)) {
+  if (['returned', 'remarked', 'approved', 'under_review', 'for_recommendation', 'for_ces_review'].includes(type)) {
     if (entity_type === 'aip') return '/aip';
     if (entity_type === 'pir') return '/pir';
   }

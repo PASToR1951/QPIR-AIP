@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeSlash, LockKey, SpinnerGap as Spinner, CheckCircle, WarningCircle } from '@phosphor-icons/react';
 import axios from 'axios';
+import { apiUrl } from '../../lib/apiBase.js';
 import { auth, useUser } from '../../lib/auth';
 
 export default function ForceChangePasswordModal() {
@@ -33,7 +34,7 @@ export default function ForceChangePasswordModal() {
       // we can skip the "current password" check on the server for must_change_password flows.
       // Let's pass a sentinel so the server knows to skip verification in that case.
       await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/change-password`,
+        apiUrl('/api/auth/change-password'),
         { newPassword, skipCurrentPasswordCheck: true },
         { withCredentials: true }
       );

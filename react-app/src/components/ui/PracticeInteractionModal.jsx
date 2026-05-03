@@ -19,7 +19,7 @@ const MOCK_PROGRAM = 'Basic Education Curriculum Implementation';
 const MOCK_SCHOOL  = 'San Juan Elementary School';
 const MOCK_QUARTER = '2nd Quarter CY 2026';
 
-const ROLE_OPTIONS = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Observer'];
+const ROLE_OPTIONS = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Observer'];
 
 // ─── Sub-views ────────────────────────────────────────────────────────────────
 

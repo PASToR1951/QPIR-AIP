@@ -30,9 +30,6 @@ const MagicLinkCallback = lazy(() => import('./MagicLinkCallback.jsx'));
 const CESLayout = lazy(() => import('./ces/CESLayout.jsx'));
 const DivisionLayout = lazy(() => import('./division/DivisionLayout.jsx'));
 
-// Cluster Head pages
-const ClusterHeadLayout = lazy(() => import('./cluster-head/ClusterHeadLayout.jsx'));
-
 // Admin layout + pages
 const AdminLayout = lazy(() => import('./admin/AdminLayout.jsx'));
 const AdminOverview = lazy(() => import('./admin/pages/AdminOverview.jsx'));
@@ -77,10 +74,6 @@ function preloadForRole(role) {
     import('./division/DivisionLayout.jsx');
     import('./AIPForm');
     import('./PIRForm');
-  } else if (role === 'Cluster Coordinator') {
-    import('./cluster-head/ClusterHeadLayout.jsx');
-    import('./AIPForm');
-    import('./PIRForm');
   } else {
     import('./AIPForm');
     import('./PIRForm');
@@ -103,8 +96,7 @@ function isProtectedPath(pathname) {
     pathname === '/user-logs' ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/ces') ||
-    pathname.startsWith('/division') ||
-    pathname.startsWith('/cluster-head')
+    pathname.startsWith('/division')
   );
 }
 
@@ -120,7 +112,6 @@ const ProtectedRoute = ({ children }) => {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
     if (auth.isAdminPanelRole(user?.role)) return <Navigate to="/admin" replace />;
     if (CES_ROLES.includes(user?.role)) return <Navigate to="/ces" replace />;
-    if (user?.role === 'Cluster Coordinator') return <Navigate to="/cluster-head" replace />;
   } catch {
     return <Navigate to="/login" replace />;
   }
@@ -167,21 +158,12 @@ const CESRouteGuard = ({ children }) => {
   return children;
 };
 
-const ClusterHeadRouteGuard = ({ children }) => {
-  if (isTokenObsolete()) return <Navigate to="/login" replace />;
-  try {
-    const u = JSON.parse(sessionStorage.getItem('user') || 'null');
-    if (u?.role !== 'Cluster Coordinator' && u?.role !== 'Admin') return <Navigate to="/" replace />;
-  } catch { return <Navigate to="/login" replace />; }
-  return children;
-};
-
 const AuthenticatedRoute = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
   return children;
 };
 
-const SUBMITTER_ROLES = ['School', 'Division Personnel', 'Cluster Coordinator', 'CES-SGOD', 'CES-ASDS', 'CES-CID'];
+const SUBMITTER_ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'];
 
 const SubmitterRoute = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
@@ -202,8 +184,7 @@ const PIRRouteGuard = ({ children }) => {
   } catch {
     sessionStorage.removeItem('user');
   }
-  const isDivisionPersonnel = ['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role) ||
-    (user?.role === 'Cluster Coordinator' && !user?.school_id);
+  const isDivisionPersonnel = ['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -391,9 +372,6 @@ export default function AnimatedContent() {
 
             {/* Division Focal Review Routes */}
             <Route path="/division/*" element={<DivisionPersonnelRouteGuard><DivisionLayout /></DivisionPersonnelRouteGuard>} />
-
-            {/* Cluster Head Routes */}
-            <Route path="/cluster-head/*" element={<ClusterHeadRouteGuard><ClusterHeadLayout /></ClusterHeadRouteGuard>} />
 
             {/* Error Pages */}
             <Route path="/403" element={<PageTransition><ErrorPage type="403" /></PageTransition>} />

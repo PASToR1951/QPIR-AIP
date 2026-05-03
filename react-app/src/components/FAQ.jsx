@@ -15,7 +15,7 @@ const FAQ_DATA = [
       },
       {
         q: "Who can use the portal?",
-        a: "The Beta Build supports School Users, Division Personnel, CES reviewers, Cluster Coordinators, Admin users, and Pending OAuth accounts awaiting administrator assignment. Your role controls which schools, programs, and review queues you can access."
+        a: "The Beta Build supports School Users, Division Personnel, CES reviewers, Admin users, and Pending OAuth accounts awaiting administrator assignment. Your role controls which schools, programs, and review queues you can access."
       },
       {
         q: "What does Apir mean in this system?",
@@ -54,16 +54,12 @@ const FAQ_DATA = [
     icon: AlertCircle,
     questions: [
       {
-        q: "What does For Cluster Head Review mean?",
-        a: "A school PIR with this status is in the Cluster Coordinator queue for the school's assigned cluster. The reviewer can approve it or return it with remarks."
-      },
-      {
         q: "What does For CES Review mean?",
-        a: "A division-level PIR with this status is in the CES queue for the program's functional division. PIRs submitted by Cluster Coordinator users route to CES-CID."
+        a: "A PIR with this status is in the CES queue for the program's functional division."
       },
       {
         q: "What happens when a PIR is returned?",
-        a: "You receive an in-app notification with the reviewer remarks. Open the same program and quarter, make the correction, then submit again. Returned school PIRs go back to Cluster Head review; returned division-level PIRs go back to CES review."
+        a: "You receive an in-app notification with the reviewer remarks. Open the same program and quarter, make the correction, then submit again. Returned PIRs go back to the appropriate recommendation or CES review queue."
       },
       {
         q: "Can I edit a PIR while it is being reviewed?",

@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "changelog": "node scripts/changelog.mjs"
+    "changelog": "node scripts/changelog.mjs",
+    "validate:onboarding": "node scripts/validate-onboarding.mjs"
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.5",

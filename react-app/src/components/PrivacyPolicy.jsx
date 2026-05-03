@@ -32,7 +32,7 @@ const sections = [
         <ul className="list-disc list-inside space-y-1 pl-2">
           <li><span className="font-semibold text-slate-700 dark:text-slate-300">Identity data</span> — full name, official DepEd email address</li>
           <li><span className="font-semibold text-slate-700 dark:text-slate-300">Affiliation data</span> — school name, position/designation, division assignment</li>
-          <li><span className="font-semibold text-slate-700 dark:text-slate-300">Account data</span> — hashed password, assigned role (Division Personnel, CES, Cluster Coordinator, Admin)</li>
+          <li><span className="font-semibold text-slate-700 dark:text-slate-300">Account data</span> — hashed password, assigned role (Division Personnel, CES, Admin)</li>
           <li><span className="font-semibold text-slate-700 dark:text-slate-300">Submission data</span> — AIP and PIR form contents, program targets, accomplishment rates, timestamps</li>
           <li><span className="font-semibold text-slate-700 dark:text-slate-300">Activity data</span> — login timestamps, administrative action logs (audit trail)</li>
         </ul>
@@ -80,7 +80,6 @@ const sections = [
             <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
               {[
                 ['Division Personnel', 'Own submissions only'],
-                ['Cluster Coordinator', 'Submissions of schools under their cluster'],
                 ['CES Personnel', 'All submissions within their strand (SGOD / ASDS / CID)'],
                 ['Admin', 'All data, audit logs, and user management'],
                 ['External / Unauthorized', 'No access — system is not publicly accessible'],
