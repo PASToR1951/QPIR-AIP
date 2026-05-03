@@ -10,7 +10,7 @@ import adminRoutes from "./routes/admin.ts";
 import backupRoutes from "./routes/backup.ts";
 import { prisma as _prisma } from "./db/client.ts";
 import { getUserFromToken } from "./lib/auth.ts";
-import { ALLOWED_ORIGIN } from "./lib/config.ts";
+import { ALLOWED_ORIGINS } from "./lib/config.ts";
 import { logger } from "./lib/logger.ts";
 import { startDeadlineReminderScheduler } from "./lib/deadlineReminders.ts";
 import { startMagicLinkCleanupScheduler } from "./lib/magicLink.ts";
@@ -65,7 +65,7 @@ app.use(
 app.use(
   "*",
   cors({
-    origin: ALLOWED_ORIGIN,
+    origin: ALLOWED_ORIGINS,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -162,26 +162,6 @@ app.get("/api/config", async (c) => {
   };
   const ces = Object.fromEntries(cesUsers.map((u) => [u.role, u.name ?? ""]));
 
-  // Optional cluster head lookup for School users
-  const clusterId = c.req.query("cluster_id");
-  let cluster_head_name = "";
-  let cluster_head_title = "Cluster Coordinator";
-  if (clusterId) {
-    const cluster = await _prisma.cluster.findUnique({
-      where: { id: Number(clusterId) },
-      include: {
-        cluster_head: {
-          select: { name: true, first_name: true, last_name: true },
-        },
-      },
-    });
-    if (cluster?.cluster_head) {
-      const h = cluster.cluster_head;
-      cluster_head_name = h.name ||
-        [h.first_name, h.last_name].filter(Boolean).join(" ");
-    }
-  }
-
   // For each division, prefer the live CES user name; fall back to the admin-configured
   // DivisionConfig text if no active CES user holds that role (e.g. vacant position).
   const sgodName = ces["CES-SGOD"] || config?.sgod_noted_by_name || "";
@@ -198,8 +178,6 @@ app.get("/api/config", async (c) => {
     cid_noted_by_title: cidName ? CES_TITLES["CES-CID"] : "",
     osds_noted_by_name: osdsName,
     osds_noted_by_title: osdsName ? CES_TITLES["CES-ASDS"] : "",
-    cluster_head_name,
-    cluster_head_title,
   });
 });
 

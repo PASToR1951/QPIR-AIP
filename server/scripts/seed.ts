@@ -52,6 +52,11 @@ async function main() {
     for (const program of programs) {
       const title = program.title as string;
       const schoolLevelRequirement = program.school_level_requirement as string;
+      const abbreviation = (program.abbreviation as string) || null;
+      const divisionRaw = (program.division as string) || '';
+      const division = ['SGOD', 'OSDS', 'CID'].includes(divisionRaw)
+        ? (divisionRaw as 'SGOD' | 'OSDS' | 'CID')
+        : null;
 
       await prisma.program.upsert({
         where: {
@@ -65,6 +70,8 @@ async function main() {
           id: parseInt(program.id as string),
           title,
           school_level_requirement: schoolLevelRequirement,
+          abbreviation,
+          division,
         },
       });
     }
@@ -79,6 +86,7 @@ async function main() {
     console.log(`Loading ${schoolsFile}...`);
     const schools = await parseCSV(schoolsFile);
     for (const school of schools) {
+      const abbreviation = (school.abbreviation as string) || null;
       await prisma.school.upsert({
         where: { id: parseInt(school.id as string) },
         update: {
@@ -91,6 +99,7 @@ async function main() {
           name: school.name as string,
           level: school.level as string,
           cluster_id: parseInt(school.cluster_id as string),
+          abbreviation,
         },
       });
     }
