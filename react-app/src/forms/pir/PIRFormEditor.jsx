@@ -44,18 +44,10 @@ function PreviewFallback() {
     );
 }
 
-function resolveNotedBy({ user, isDivisionPersonnel, functionalDivision, notedBy, clusterHead, supervisorName, supervisorTitle }) {
-    // Division Personnel -> division-specific chief
-    if (isDivisionPersonnel && functionalDivision && notedBy?.[functionalDivision]?.name) {
+function resolveNotedBy({ user, isDivisionPersonnel, functionalDivision, notedBy, supervisorName, supervisorTitle }) {
+    // Division Personnel and school submissions resolve to the program's CES chief.
+    if ((isDivisionPersonnel || user?.role === 'School') && functionalDivision && notedBy?.[functionalDivision]?.name) {
         return notedBy[functionalDivision];
-    }
-    // Cluster Coordinator -> CID chief
-    if (user?.role === 'Cluster Coordinator' && notedBy?.CID?.name) {
-        return notedBy.CID;
-    }
-    // School user -> their admin-designated Cluster Head
-    if (user?.role === 'School' && clusterHead?.name) {
-        return clusterHead;
     }
     // Fallback -> legacy supervisor from DivisionConfig
     return { name: supervisorName, title: supervisorTitle };
@@ -66,7 +58,6 @@ export default function PIRFormEditor({
     supervisorName,
     supervisorTitle,
     notedBy,
-    clusterHead,
     user,
     isDivisionPersonnel,
     aipActivitiesLoading,
@@ -90,6 +81,7 @@ export default function PIRFormEditor({
     isSaved,
     lastSavedTime,
     lastAutoSavedTime,
+    reviewAreaRef,
 }) {
     const {
         appMode,
@@ -114,7 +106,6 @@ export default function PIRFormEditor({
         isDivisionPersonnel,
         functionalDivision: profile.functionalDivision,
         notedBy,
-        clusterHead,
         supervisorName,
         supervisorTitle,
     });
@@ -166,7 +157,7 @@ export default function PIRFormEditor({
                         {(() => {
                             const isReturned = submission.pirStatus === 'Returned';
                             const isApproved = submission.pirStatus === 'Approved';
-                            const isPending = ['For Recommendation', 'For CES Review', 'For Cluster Head Review'].includes(submission.pirStatus);
+                            const isPending = ['For Recommendation', 'For CES Review'].includes(submission.pirStatus);
                             const accentBorder = isReturned
                                 ? 'border-l-amber-400'
                                 : isPending
@@ -185,7 +176,7 @@ export default function PIRFormEditor({
                                     : 'Submitted — read-only';
                             const canEdit = user?.role === 'School'
                                 ? submission.pirStatus === 'Returned'
-                                : ['For CES Review', 'For Cluster Head Review', 'Returned'].includes(submission.pirStatus);
+                                : ['For CES Review', 'Returned'].includes(submission.pirStatus);
                             return (
                                 <div className={`rounded-2xl border border-slate-200 border-l-4 bg-white shadow-sm dark:border-dark-border dark:border-l-4 dark:bg-dark-surface ${accentBorder} print:hidden`}>
                                     <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 dark:border-dark-border">
@@ -308,7 +299,7 @@ export default function PIRFormEditor({
     }
 
     return (
-        <div className="relative flex min-h-screen flex-col bg-slate-50 font-sans text-slate-800 dark:bg-dark-base dark:text-slate-100 print:bg-white print:text-black">
+        <div data-tour="pir-form-active" className="relative flex min-h-screen flex-col bg-slate-50 font-sans text-slate-800 dark:bg-dark-base dark:text-slate-100 print:bg-white print:text-black">
             <FormHeader
                 title={submission.isEditing ? 'Edit Submitted PIR' : 'Quarterly Programs Implementation Review'}
                 programName={profile.program}
@@ -502,7 +493,7 @@ export default function PIRFormEditor({
                                     </div>
 
                                     {appMode === 'wizard' && currentStep === 6 && (
-                                        <div data-tour="form-review-submit" className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-200">
+                                        <div ref={reviewAreaRef} data-tour="form-review-submit" className="mt-6 animate-in fade-in slide-in-from-bottom-4 duration-200">
                                             <FinalizeCard
                                                 isSubmitted={submission.isSubmitted}
                                                 onSubmit={() => onShowFinalConfirm(true)}
@@ -542,7 +533,7 @@ export default function PIRFormEditor({
                                 )}
 
                                 {appMode === 'full' && (
-                                    <div data-tour="form-review-submit" className="relative z-10 mt-12 flex flex-col items-center justify-center rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-lg dark:border-dark-border dark:bg-dark-surface">
+                                    <div ref={reviewAreaRef} data-tour="form-review-submit" className="relative z-10 mt-12 flex flex-col items-center justify-center rounded-[2rem] border border-slate-200 bg-white p-8 text-center shadow-lg dark:border-dark-border dark:bg-dark-surface">
                                         <h3 className="mb-6 text-xl font-bold text-slate-800 dark:text-slate-100">Ready to finalize your review?</h3>
 
                                         <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row">

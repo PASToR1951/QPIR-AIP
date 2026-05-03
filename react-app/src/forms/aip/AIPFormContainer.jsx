@@ -54,7 +54,7 @@ export default function AIPFormContainer() {
 
     useAipSignatories({
         user, state, dispatch, isDivisionPersonnel, isSchoolUser,
-        notedBy: programState.notedBy, clusterHead: programState.clusterHead,
+        notedBy: programState.notedBy,
         rawPrograms, profile,
     });
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import api from '../../lib/api.js';
@@ -19,6 +19,7 @@ import { buildPirPayload } from './buildPirPayload.js';
 import submitPir from './submitPir.js';
 import PIRFormEditor from './PIRFormEditor.jsx';
 import { getCurrentPeriodLabel, getPeriodNumber, getPeriodTypeForRole } from '../../lib/periods.js';
+import { emitOnboardingSignal } from '../../lib/onboardingSignals.js';
 
 function hasFactorInput(factors) {
     return Object.values(factors).some((factorGroup) => {
@@ -109,12 +110,12 @@ export default function PIRFormContainer() {
     const [supervisorName, setSupervisorName] = useState('');
     const [supervisorTitle, setSupervisorTitle] = useState('');
     const [notedBy, setNotedBy] = useState(null);
-    const [clusterHead, setClusterHead] = useState(null);
     const [serverDraft, setServerDraft] = useState(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [isAIPPreviewOpen, setIsAIPPreviewOpen] = useState(false);
     const [aipDocumentData, setAipDocumentData] = useState(null);
     const [showFinalConfirm, setShowFinalConfirm] = useState(false);
+    const reviewAreaRef = useRef(null);
 
     useEffect(() => {
         setProgramsWithAIPs(data.programsWithAIPs);
@@ -123,7 +124,6 @@ export default function PIRFormContainer() {
         setSupervisorName(data.supervisorName);
         setSupervisorTitle(data.supervisorTitle);
         setNotedBy(data.notedBy);
-        setClusterHead(data.clusterHead);
         setServerDraft(data.draft);
     }, [
         data.completedPrograms,
@@ -133,7 +133,6 @@ export default function PIRFormContainer() {
         data.supervisorName,
         data.supervisorTitle,
         data.notedBy,
-        data.clusterHead,
     ]);
 
     const findProgramByTitle = useCallback((programTitle) => (
@@ -202,9 +201,9 @@ export default function PIRFormContainer() {
 
     // Auto-fill Functional Division from the selected program's division field
     useEffect(() => {
-        if (!isDivisionPersonnel || !selectedProgramRecord?.division) return;
+        if (!selectedProgramRecord?.division) return;
         dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'functionalDivision', value: selectedProgramRecord.division } });
-    }, [isDivisionPersonnel, selectedProgramRecord, dispatch]);
+    }, [selectedProgramRecord, dispatch]);
 
     const resetFormState = useCallback((selectedProgram = '') => {
         dispatch({
@@ -258,6 +257,17 @@ export default function PIRFormContainer() {
         profile.school,
     ]);
 
+    useEffect(() => {
+        const reviewArea = reviewAreaRef.current;
+        if (!reviewArea || shell.appMode === 'splash' || shell.appMode === 'readonly') return undefined;
+        if (typeof IntersectionObserver === 'undefined') { emitOnboardingSignal('author.pir_review_area_opened'); return undefined; }
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some((e) => e.isIntersecting)) { emitOnboardingSignal('author.pir_review_area_opened'); observer.disconnect(); }
+        }, { threshold: 0.35 });
+        observer.observe(reviewArea);
+        return () => observer.disconnect();
+    }, [shell.appMode, shell.currentStep]);
+
     const { handleStart, handleBack, handleHome, handleToggleAppMode } = useFormLifecycle({
         shell,
         searchParams,
@@ -302,6 +312,11 @@ export default function PIRFormContainer() {
         },
         loadDiscardedLocalDraftFallback: async (selectedProgram) => {
             await loadServerDraft(selectedProgram);
+        },
+        onBeforeStart: ({ mode, selectedProgram }) => {
+            if (mode !== 'readonly') {
+                emitOnboardingSignal('author.pir_program_selected', { program: selectedProgram, mode });
+            }
         },
     });
 
@@ -483,7 +498,6 @@ export default function PIRFormContainer() {
                             supervisorName={supervisorName}
                             supervisorTitle={supervisorTitle}
                             notedBy={notedBy}
-                            clusterHead={clusterHead}
                             user={user}
                             isDivisionPersonnel={isDivisionPersonnel}
                             aipActivitiesLoading={aipActivities.isLoading}
@@ -507,6 +521,7 @@ export default function PIRFormContainer() {
                             isSaved={draft.isSaved}
                             lastSavedTime={draft.lastSavedTime}
                             lastAutoSavedTime={draft.lastAutoSavedTime}
+                            reviewAreaRef={reviewAreaRef}
                         />
                     )}
                     editor={(
@@ -515,7 +530,6 @@ export default function PIRFormContainer() {
                             supervisorName={supervisorName}
                             supervisorTitle={supervisorTitle}
                             notedBy={notedBy}
-                            clusterHead={clusterHead}
                             user={user}
                             isDivisionPersonnel={isDivisionPersonnel}
                             aipActivitiesLoading={aipActivities.isLoading}
@@ -539,6 +553,7 @@ export default function PIRFormContainer() {
                             isSaved={draft.isSaved}
                             lastSavedTime={draft.lastSavedTime}
                             lastAutoSavedTime={draft.lastAutoSavedTime}
+                            reviewAreaRef={reviewAreaRef}
                         />
                     )}
                     afterAnimate={(

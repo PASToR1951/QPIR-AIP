@@ -18,7 +18,6 @@ const EMPTY_STATE = {
         CID:  { name: '', title: '' },
         OSDS: { name: '', title: '' },
     },
-    clusterHead: { name: '', title: '' },
     draft: null,
     isLoading: true,
     error: null,
@@ -78,10 +77,6 @@ export default function useProgramsAndConfig({
                             SGOD: { name: cfg.sgod_noted_by_name ?? '', title: cfg.sgod_noted_by_title ?? '' },
                             CID:  { name: cfg.cid_noted_by_name  ?? '', title: cfg.cid_noted_by_title  ?? '' },
                             OSDS: { name: cfg.osds_noted_by_name ?? '', title: cfg.osds_noted_by_title ?? '' },
-                        };
-                        nextState.clusterHead = {
-                            name: cfg.cluster_head_name ?? '',
-                            title: cfg.cluster_head_title ?? 'Cluster Coordinator',
                         };
                     }
 
@@ -165,10 +160,6 @@ export default function useProgramsAndConfig({
                         SGOD: { name: cfg.sgod_noted_by_name ?? '', title: cfg.sgod_noted_by_title ?? '' },
                         CID:  { name: cfg.cid_noted_by_name  ?? '', title: cfg.cid_noted_by_title  ?? '' },
                         OSDS: { name: cfg.osds_noted_by_name ?? '', title: cfg.osds_noted_by_title ?? '' },
-                    };
-                    nextState.clusterHead = {
-                        name:  cfg.cluster_head_name  ?? '',
-                        title: cfg.cluster_head_title ?? 'Cluster Coordinator',
                     };
                 }
 

@@ -13,7 +13,6 @@ export function useAipProgramState({ data, dispatch, profileYear }) {
     const [draftPrograms, setDraftPrograms]               = useState([]);
     const [autosavedPrograms, setAutosavedPrograms]       = useState([]);
     const [notedBy, setNotedBy]                           = useState(null);
-    const [clusterHead, setClusterHead]                   = useState(null);
     const [loadError, setLoadError]                       = useState(null);
 
     // Sync data → local state whenever the programs/config response updates
@@ -24,7 +23,6 @@ export function useAipProgramState({ data, dispatch, profileYear }) {
         setReturnedPrograms(data.returnedPrograms);
         setDraftPrograms(data.draftPrograms);
         setNotedBy(data.notedBy);
-        setClusterHead(data.clusterHead);
         setLoadError(typeof data.error === 'string' ? data.error : (data.error?.friendlyMessage ?? null));
         dispatch({
             type: 'SET_SUGGESTIONS',
@@ -43,7 +41,6 @@ export function useAipProgramState({ data, dispatch, profileYear }) {
         data.programList,
         data.returnedPrograms,
         data.notedBy,
-        data.clusterHead,
         dispatch,
     ]);
 
@@ -68,7 +65,6 @@ export function useAipProgramState({ data, dispatch, profileYear }) {
         draftPrograms, setDraftPrograms,
         autosavedPrograms, setAutosavedPrograms,
         notedBy,
-        clusterHead,
         loadError, setLoadError,
     };
 }

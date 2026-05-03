@@ -7,7 +7,7 @@ import { useEffect } from 'react';
 export function useAipSignatories({
     user, state, dispatch,
     isDivisionPersonnel, isSchoolUser,
-    notedBy, clusterHead,
+    notedBy,
     rawPrograms, profile,
 }) {
     // Auto-fill "Project Coordinator" from the logged-in user
@@ -45,11 +45,10 @@ export function useAipSignatories({
         dispatch({ type: 'SET_SIGNATORY', payload: { field: 'preparedByTitle', value: user.position } });
     }, [user, state.signatories.preparedByTitle, dispatch]);
 
-    // Auto-fill "Approved by" from the program's division chief (Division Personnel)
-    // or the cluster head (School users)
+    // Auto-fill "Approved by" from the selected program's division chief
     useEffect(() => {
         if (state.signatories.approvedByName) return;
-        if (isDivisionPersonnel && notedBy) {
+        if ((isDivisionPersonnel || isSchoolUser) && notedBy) {
             const selectedProgram = rawPrograms.find(p => p.title === profile.depedProgram);
             const division = selectedProgram?.division;
             const chief = division ? notedBy[division] : null;
@@ -59,9 +58,6 @@ export function useAipSignatories({
                     dispatch({ type: 'SET_SIGNATORY', payload: { field: 'approvedByTitle', value: chief.title } });
                 }
             }
-        } else if (isSchoolUser && clusterHead?.name) {
-            dispatch({ type: 'SET_SIGNATORY', payload: { field: 'approvedByName', value: clusterHead.name } });
-            dispatch({ type: 'SET_SIGNATORY', payload: { field: 'approvedByTitle', value: clusterHead.title || 'Cluster Coordinator' } });
         }
-    }, [isDivisionPersonnel, isSchoolUser, notedBy, clusterHead, rawPrograms, profile.depedProgram, state.signatories.approvedByName, dispatch]);
+    }, [isDivisionPersonnel, isSchoolUser, notedBy, rawPrograms, profile.depedProgram, state.signatories.approvedByName, dispatch]);
 }
