@@ -11,7 +11,7 @@ export function ClusterCard({
   onToggle, onEdit, onDeleteCluster,
   onEditSchool, onDeleteSchool, onRestrictSchool,
   highlightedSchoolId, activeLogoSchoolId, onSchoolHover, onSchoolHoverEnd, onSchoolFocus, onSchoolBlur,
-  onAssignHead, searchQuery,
+  searchQuery,
 }) {
   const cl = cluster;
   const schoolCount = cl.schools?.length ?? 0;
@@ -35,20 +35,6 @@ export function ClusterCard({
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-bold">{schoolCount} schools</span>
             <span className="text-[11px] sm:text-xs font-bold text-indigo-600 dark:text-indigo-400">{userCount} user{userCount !== 1 ? 's' : ''}</span>
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Head:</span>
-            {cl.cluster_head ? (
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                {cl.cluster_head.name || [cl.cluster_head.first_name, cl.cluster_head.last_name].filter(Boolean).join(' ')}
-              </span>
-            ) : (
-              <span className="text-[11px] font-bold text-amber-500 dark:text-amber-400 italic">Not assigned</span>
-            )}
-            <button onClick={(e) => { e.stopPropagation(); onAssignHead(cl); }}
-              className="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 underline">
-              {cl.cluster_head ? 'Change' : 'Assign'}
-            </button>
           </div>
         </div>
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">

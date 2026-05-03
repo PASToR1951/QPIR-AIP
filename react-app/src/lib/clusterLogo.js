@@ -1,4 +1,6 @@
-const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+import { API_BASE_URL } from './apiBase.js';
+
+const API_BASE = API_BASE_URL;
 
 export function getClusterLogoPath(clusterNumber) {
   if (!clusterNumber) return null;

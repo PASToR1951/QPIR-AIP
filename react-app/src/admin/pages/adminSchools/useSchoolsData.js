@@ -76,13 +76,6 @@ export function useSchoolsData() {
     finally { setLogoUploading(false); }
   };
 
-  const assignClusterHead = async (clusterId, userId) => {
-    try {
-      await api.patch(`/api/admin/clusters/${clusterId}/head`, { user_id: userId });
-      fetchAll(); return { ok: true };
-    } catch (e) { return { ok: false, message: e?.friendlyMessage || 'Failed to assign cluster head.' }; }
-  };
-
   // School actions
   const addSchool = async (schoolForm, clusterId) => {
     setActionLoading(true); setFormError('');
@@ -153,7 +146,7 @@ export function useSchoolsData() {
   return {
     clusters, programs, loading, fetchError, actionLoading, logoUploading, formError, setFormError,
     fetchAll,
-    addCluster, editCluster, deleteCluster, uploadClusterLogo, removeClusterLogo, assignClusterHead,
+    addCluster, editCluster, deleteCluster, uploadClusterLogo, removeClusterLogo,
     addSchool, editSchool, deleteSchool, saveRestrictions, uploadSchoolLogo, removeSchoolLogo,
   };
 }

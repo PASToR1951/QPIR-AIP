@@ -150,7 +150,6 @@ const ROUTE_THEME_MATCHERS = [
   { match: (pathname) => pathname.startsWith('/pir'), theme: 'blue' },
   { match: (pathname) => pathname === '/login' || pathname.startsWith('/admin'), theme: 'indigo' },
   { match: (pathname) => pathname.startsWith('/ces'), theme: 'teal' },
-  { match: (pathname) => pathname.startsWith('/cluster-head'), theme: 'amber' },
 ];
 
 export function resolveRouteThemeName(pathname = '') {

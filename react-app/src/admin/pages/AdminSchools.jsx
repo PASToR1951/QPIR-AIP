@@ -4,7 +4,6 @@ import { CheckCircle, MagnifyingGlass, Plus, X } from '@phosphor-icons/react';
 import { Spinner } from '../components/Spinner.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
-import { SearchableSelect } from '../components/SearchableSelect.jsx';
 import { useSchoolsData } from './adminSchools/useSchoolsData.js';
 import { ClusterCard } from './adminSchools/ClusterCard.jsx';
 import { ClusterNumberModal } from './adminSchools/ClusterNumberModal.jsx';
@@ -32,10 +31,6 @@ export default function AdminSchools() {
   const [restrictedIds, setRestrictedIds] = useState([]);
   const [restrictSearch, setRestrictSearch] = useState('');
 
-  const [headAssignCluster, setHeadAssignCluster] = useState(null);
-  const [headAssignUserId, setHeadAssignUserId] = useState(null);
-  const [headAssignLoading, setHeadAssignLoading] = useState(false);
-
   const [highlightedSchoolId, setHighlightedSchoolId] = useState(null);
   const [highlightedClusterId, setHighlightedClusterId] = useState(null);
   const [activeLogoSchoolId, setActiveLogoSchoolId] = useState(null);
@@ -46,7 +41,7 @@ export default function AdminSchools() {
 
   const {
     clusters, programs, loading, fetchError, actionLoading, logoUploading, formError, setFormError,
-    addCluster, editCluster, deleteCluster: doDeleteCluster, uploadClusterLogo, removeClusterLogo, assignClusterHead,
+    addCluster, editCluster, deleteCluster: doDeleteCluster, uploadClusterLogo, removeClusterLogo,
     addSchool, editSchool: doEditSchool, deleteSchool: doDeleteSchool, saveRestrictions, uploadSchoolLogo, removeSchoolLogo,
   } = useSchoolsData();
 
@@ -137,7 +132,6 @@ export default function AdminSchools() {
                 onSchoolHoverEnd={() => setActiveLogoSchoolId(null)}
                 onSchoolFocus={(id) => setActiveLogoSchoolId(id)}
                 onSchoolBlur={e => { if (!e.currentTarget?.contains(e.relatedTarget)) setActiveLogoSchoolId(null); }}
-                onAssignHead={(c) => { setHeadAssignCluster(c); setHeadAssignUserId(c.cluster_head?.id ?? null); }}
                 searchQuery={q}
               />
             ))}
@@ -224,23 +218,6 @@ export default function AdminSchools() {
             </label>
           ))}
         </div>
-      </FormModal>
-
-      <FormModal open={!!headAssignCluster} title={`Assign Cluster Head — Cluster ${headAssignCluster?.cluster_number ?? ''}`}
-        onSave={async () => { setHeadAssignLoading(true); const r = await assignClusterHead(headAssignCluster.id, headAssignUserId); setHeadAssignLoading(false); if (r.ok) { showToast(headAssignUserId ? 'Cluster head assigned.' : 'Cluster head unassigned.'); setHeadAssignCluster(null); } else showToast(r.message, 'error'); }}
-        onCancel={() => { setHeadAssignCluster(null); setHeadAssignUserId(null); }} loading={headAssignLoading} saveLabel="Save">
-        {headAssignCluster?.coordinator_users?.length > 0 ? (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-500 dark:text-slate-400">Select a Cluster Coordinator to designate as head of this cluster.</p>
-            <SearchableSelect options={[{ value: null, label: '— Unassign —' }, ...headAssignCluster.coordinator_users.map(u => ({ value: u.id, label: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') }))]}
-              value={headAssignUserId} onChange={v => setHeadAssignUserId(v === null || v === '' ? null : Number(v))} />
-          </div>
-        ) : (
-          <div className="py-4 text-center">
-            <p className="text-sm font-bold text-amber-600 dark:text-amber-400">No coordinators in this cluster.</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Assign a Cluster Coordinator in the Users tab first.</p>
-          </div>
-        )}
       </FormModal>
 
       {toast && (
