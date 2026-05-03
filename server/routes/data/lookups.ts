@@ -241,7 +241,6 @@ lookupsRoutes.get(
         "Under Review",
         "For Recommendation",
         "For CES Review",
-        "For Cluster Head Review",
         "Approved",
         "Returned",
       ];

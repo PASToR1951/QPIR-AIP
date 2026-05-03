@@ -486,7 +486,6 @@ dashboardRoutes.get("/me/export", requireAuth("Unauthorized"), async (c) => {
       created_at: true,
       deleted_at: true,
       school: { select: { id: true, name: true } },
-      cluster: { select: { id: true, name: true } },
       aips: {
         select: {
           id: true,

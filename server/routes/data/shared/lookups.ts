@@ -42,10 +42,7 @@ export async function fetchAIPForUser(
   include?: Prisma.AIPInclude,
   db: DbClient = prisma,
 ) {
-  if (
-    (user.role === "School" || user.role === "Cluster Coordinator") &&
-    user.school_id
-  ) {
+  if (user.role === "School" && user.school_id) {
     return db.aIP.findUnique({
       where: {
         school_id_program_id_year: {

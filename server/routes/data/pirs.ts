@@ -427,8 +427,6 @@ pirRoutes.post(
       const reviewData = transformActivityReviews(activity_reviews);
       const nextStatus = isSchoolSubmission
         ? "For Recommendation"
-        : aip.school_id !== null && tokenUser.role !== "Cluster Coordinator"
-        ? "For Cluster Head Review"
         : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
         ? "For Admin Review"
         : "For CES Review";
@@ -531,12 +529,6 @@ pirRoutes.post(
       let reviewerIds: number[] = [];
       if (isSchoolSubmission) {
         reviewerIds = focalPersonIds;
-      } else if (tokenUser.role === "Cluster Coordinator") {
-        const cesCID = await prisma.user.findMany({
-          where: { role: "CES-CID", is_active: true },
-          select: { id: true },
-        });
-        reviewerIds = cesCID.map((user: { id: number }) => user.id);
       } else if (
         CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
       ) {
@@ -669,7 +661,6 @@ pirRoutes.put(
             isSchoolResubmission
               ? lockedPir.status !== "Returned"
               : lockedPir.status !== "For CES Review" &&
-                lockedPir.status !== "For Cluster Head Review" &&
                 lockedPir.status !== "Returned"
           ) {
             throw new ConflictError(
@@ -706,9 +697,6 @@ pirRoutes.put(
 
           const resubmitStatus = isSchoolResubmission
             ? "For Recommendation"
-            : pirAip?.school_id != null &&
-                tokenUser.role !== "Cluster Coordinator"
-            ? "For Cluster Head Review"
             : "For CES Review";
 
           await tx.pIRActivityReview.deleteMany({ where: { pir_id: pirId } });

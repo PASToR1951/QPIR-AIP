@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { prisma } from "../../db/client.ts";
 import { subscribe } from "../../lib/notifStream.ts";
+import { isAllowedOrigin, normalizeOrigin } from "../../lib/origins.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
 import type { DataRouteEnv } from "./shared/types.ts";
@@ -15,8 +16,10 @@ notificationsRoutes.get("/notifications/stream", async (c) => {
   const tokenUser = getAuthedUser(c);
 
   const requestOrigin = c.req.header("Origin");
-  const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "http://localhost:5173";
-  if (requestOrigin === allowedOrigin) {
+  const allowedOrigin = isAllowedOrigin(requestOrigin)
+    ? normalizeOrigin(requestOrigin)
+    : null;
+  if (allowedOrigin) {
     c.header("Access-Control-Allow-Origin", allowedOrigin);
     c.header("Access-Control-Allow-Credentials", "true");
   }

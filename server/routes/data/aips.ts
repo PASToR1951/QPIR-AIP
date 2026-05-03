@@ -304,10 +304,7 @@ aipRoutes.post(
         }
       }
 
-      const schoolId = (tokenUser.role === "School" ||
-          tokenUser.role === "Cluster Coordinator")
-        ? tokenUser.school_id
-        : null;
+      const schoolId = tokenUser.role === "School" ? tokenUser.school_id : null;
       const isSchoolSubmission = tokenUser.role === "School" &&
         schoolId !== null;
       const focalPersonIds = isSchoolSubmission
