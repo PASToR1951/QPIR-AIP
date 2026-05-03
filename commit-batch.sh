@@ -7,6 +7,7 @@ NOTE_DIR="$REPO_ROOT/docs/commit-batches"
 INSTRUCTIONS_FILE="$NOTE_DIR/INSTRUCTIONS.md"
 
 STAGE_NOTE=true
+WRITE_NOTE=true
 STAGE_WORKTREE=true
 DO_COMMIT=true
 DRY_RUN=false
@@ -18,6 +19,7 @@ ADD_PATHS=()
 FORCE_ADD_PATHS=()
 SUMMARY_ITEMS=()
 HANDOFF_ITEMS=()
+INSTRUCTIONS_CREATED=false
 
 usage() {
   cat <<'USAGE'
@@ -68,6 +70,77 @@ die() {
   exit 1
 }
 
+write_instructions_template() {
+  local target="$1"
+
+  cat > "$target" <<'TEMPLATE'
+# Commit Batch Instructions
+
+This file is auto-created by `commit-batch.sh` when it is missing. Keep it in
+`docs/commit-batches` as the local template/reference for generated batch notes.
+
+## Required Inputs
+
+- Use at least one `--summary "..."` item for real note-writing runs.
+- Use at least one `--handoff "..."` item for real note-writing runs.
+- Scope each batch with `--add PATH` and use `--force-add PATH` only for
+  intentionally ignored files that should be committed.
+
+## Generated Note Template
+
+```md
+# <version>-<MMDDYYYY>-<batch>
+
+## Metadata
+
+- Version: `<version>`
+- Date: `<YYYY-MM-DD>`
+- Filename date: `<MMDDYYYY>`
+- Batch: `<NN>`
+- Status: categorized working tree batch
+- Base commit: `<short sha and subject>`
+- Commit subject: `<subject>`
+- Selected paths: `<scope>`
+- Staged files before this batch: `<files or none>`
+- Selected tracked diff stat: `<stat or none>`
+- Selected untracked additions: `<count> files`
+
+## Summary
+
+- <behavior-focused summary>
+
+## File Inventory
+
+| Status | File | Change summary |
+| --- | --- | --- |
+| <status> | `<path>` | <short summary> |
+
+## Docs Handoff Notes
+
+- <what the next documentation pass should know>
+```
+
+## Review Checklist
+
+- Confirm the selected scope is narrow enough for one commit.
+- Confirm generated notes do not duplicate the latest same-day batch.
+- Confirm the commit message and handoff notes describe behavior, not only files.
+TEMPLATE
+}
+
+ensure_instructions_file() {
+  [ -f "$INSTRUCTIONS_FILE" ] && return
+
+  if [ "$DRY_RUN" = true ]; then
+    INSTRUCTIONS_CREATED=dry-run
+    return
+  fi
+
+  mkdir -p "$NOTE_DIR"
+  write_instructions_template "$INSTRUCTIONS_FILE"
+  INSTRUCTIONS_CREATED=true
+}
+
 log_stage() {
   printf '\n==> %s\n' "$1"
 }
@@ -101,12 +174,14 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --stage-note)
+      WRITE_NOTE=true
       STAGE_NOTE=true
       STAGE_WORKTREE=false
       DO_COMMIT=false
       shift
       ;;
     --stage)
+      WRITE_NOTE=true
       STAGE_NOTE=true
       STAGE_WORKTREE=true
       DO_COMMIT=false
@@ -126,6 +201,7 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     --note-only)
+      WRITE_NOTE=true
       STAGE_NOTE=false
       STAGE_WORKTREE=false
       DO_COMMIT=false
@@ -172,10 +248,10 @@ fi
 
 command -v git >/dev/null 2>&1 || die "git is required"
 [ -f "$VERSION_FILE" ] || die "Missing version file: $VERSION_FILE"
-[ -f "$INSTRUCTIONS_FILE" ] || die "Missing instructions file: $INSTRUCTIONS_FILE"
+ensure_instructions_file
 git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "Not inside a Git worktree"
 
-if [ "$DRY_RUN" = false ] && [ "$STAGE_NOTE" = true ]; then
+if [ "$DRY_RUN" = false ] && [ "$WRITE_NOTE" = true ]; then
   [ "${#SUMMARY_ITEMS[@]}" -gt 0 ] || die "Real runs that write a batch note require at least one --summary item"
   [ "${#HANDOFF_ITEMS[@]}" -gt 0 ] || die "Real runs that write a batch note require at least one --handoff item"
 fi
@@ -503,6 +579,14 @@ fi
 
 log_stage "Stage 1: Read commit-batch instructions"
 echo "Instructions: $INSTRUCTIONS_FILE"
+case "$INSTRUCTIONS_CREATED" in
+  true)
+    echo "Template:     auto-created missing instructions file"
+    ;;
+  dry-run)
+    echo "Template:     dry run; would auto-create missing instructions file"
+    ;;
+esac
 echo "Version:      $CURRENT_VERSION"
 echo "Date:         $MANILA_DATE ($MANILA_STAMP)"
 echo "Batch:        $BATCH_NUMBER"
@@ -523,7 +607,7 @@ log_stage "Stage 3: Prepare batch note"
 echo "Target: $NOTE_PATH"
 if [ "$DRY_RUN" = true ]; then
   echo "Dry run enabled; note was not written."
-elif [ "$STAGE_NOTE" = true ]; then
+elif [ "$WRITE_NOTE" = true ]; then
   [ ! -e "$NOTE_PATH" ] || die "Refusing to overwrite existing note: $NOTE_PATH"
 
   NOTE_TMP="$(mktemp "${TMPDIR:-/tmp}/commit-batch-note.XXXXXX")"
