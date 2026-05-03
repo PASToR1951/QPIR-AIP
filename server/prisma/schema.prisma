@@ -25,11 +25,6 @@ model Cluster {
 
   // Relations
   schools           School[]
-  coordinator_users User[]   @relation("UserCluster")
-
-  // Admin-designated cluster head (one-to-one)
-  cluster_head_id   Int?     @unique
-  cluster_head      User?    @relation("ClusterHead", fields: [cluster_head_id], references: [id], onDelete: SetNull)
 
   @@map("clusters")
 }
@@ -103,7 +98,7 @@ model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
   password  String?   // Hashed password — null for OAuth-only users
-  role            String    // "School" | "Division Personnel" | "Admin" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Cluster Coordinator" | "Pending" | "Observer"
+  role            String    // "School" | "Division Personnel" | "Admin" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Pending" | "Observer"
 
   // OAuth SSO fields — populated on first OAuth login
   oauth_provider  String?   // "google" | null
@@ -127,10 +122,6 @@ model User {
   school_id  Int?
   school     School?  @relation(fields: [school_id], references: [id])
 
-  // Relation to Cluster (For Cluster Coordinator users)
-  cluster_id Int?
-  cluster    Cluster? @relation("UserCluster", fields: [cluster_id], references: [id], onDelete: SetNull)
-
   // Relation to Programs (For Division Personnel Users)
   programs  Program[] @relation("UserPrograms")
   focal_programs ProgramFocalPerson[] @relation("FocalPersonPrograms")
@@ -149,9 +140,6 @@ model User {
 
   // PIRs this user is currently actively reviewing
   active_pir_reviews PIR[] @relation("PIRActiveReviewer")
-
-  // Cluster this user heads (one-to-one inverse)
-  headed_cluster Cluster? @relation("ClusterHead")
 
   // Admin audit logs
   audit_logs    AuditLog[]
@@ -285,7 +273,7 @@ model PIR {
   // Shape: [{description: string, annual_target: string, quarterly_target: string}]
   action_items                Json     @default("[]")
   // Shape: [{action: string, response_asds: string, response_sds: string}]
-  status                      String   @default("For CES Review") // "Draft" | "For CES Review" | "For Cluster Head Review" | "Under Review" | "Approved" | "Returned"
+  status                      String   @default("For CES Review") // "Draft" | "For Recommendation" | "For CES Review" | "For Admin Review" | "Under Review" | "Approved" | "Returned"
   deleted_at                  DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
   presented                   Boolean  @default(false) // Admin-toggled: whether school presented this PIR
   // CES review tracking
