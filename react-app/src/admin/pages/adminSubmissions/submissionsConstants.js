@@ -1,5 +1,5 @@
 export const STATUS_OPTIONS = [
-  'Submitted', 'Under Review', 'For Recommendation', 'For CES Review', 'For Cluster Head Review', 'Approved', 'Returned',
+  'Submitted', 'Under Review', 'For Recommendation', 'For CES Review', 'Approved', 'Returned',
 ];
 
 export const QUARTER_OPTIONS = [

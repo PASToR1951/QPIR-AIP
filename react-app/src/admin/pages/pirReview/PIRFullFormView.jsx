@@ -26,21 +26,7 @@ function resolveSignatory({ config, functionalDivision, sub }) {
 
   const role = sub?.created_by?.role;
 
-  if (role === 'School' && config.cluster_head_name) {
-    return {
-      name: config.cluster_head_name,
-      title: config.cluster_head_title ?? 'Cluster Coordinator',
-    };
-  }
-
-  if (role === 'Cluster Coordinator' && config.cid_noted_by_name) {
-    return {
-      name: config.cid_noted_by_name,
-      title: config.cid_noted_by_title ?? 'Chief Education Supervisor, CID',
-    };
-  }
-
-  if (DIVISION_ROLES.has(role) && functionalDivision) {
+  if ((role === 'School' || DIVISION_ROLES.has(role)) && functionalDivision) {
     const prefix = DIVISION_SIGNATORY_PREFIX[functionalDivision];
     const name = prefix ? config[`${prefix}_noted_by_name`] : '';
     if (name) {

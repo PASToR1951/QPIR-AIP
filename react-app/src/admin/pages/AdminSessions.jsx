@@ -20,7 +20,6 @@ const ROLE_OPTIONS = [
   'CES-SGOD',
   'CES-ASDS',
   'CES-CID',
-  'Cluster Coordinator',
   'Admin',
   'Observer',
 ];

@@ -6,7 +6,6 @@ export function useUserData({ search, roleFilter, showToast }) {
   const [loading, setLoading] = useState(true);
   const [schools, setSchools] = useState([]);
   const [programs, setPrograms] = useState([]);
-  const [clusters, setClusters] = useState([]);
   const dropdownsLoaded = useRef(false);
 
   const fetchAll = useCallback(() => {
@@ -28,10 +27,9 @@ export function useUserData({ search, roleFilter, showToast }) {
     dropdownsLoaded.current = true;
     api.get('/api/admin/schools').then(r => setSchools(r.data)).catch(() => {});
     api.get('/api/admin/programs').then(r => setPrograms(r.data)).catch(() => {});
-    api.get('/api/admin/clusters').then(r => setClusters(r.data)).catch(() => {});
   }, []);
 
-  return { users, loading, schools, programs, clusters, fetchAll, loadDropdownData };
+  return { users, loading, schools, programs, fetchAll, loadDropdownData };
 }
 
 export function useOnboardingData() {

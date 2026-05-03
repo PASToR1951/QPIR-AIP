@@ -25,7 +25,6 @@ const CONSOLIDATION_STATUSES = [
   'Submitted',
   'Under Review',
   'For CES Review',
-  'For Cluster Head Review',
   'For Admin Review',
   'Approved',
   'Returned',

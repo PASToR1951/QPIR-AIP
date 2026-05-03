@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import {
   XCircle, CaretLeft, Buildings, IdentificationBadge, ShieldStar,
-  UserPlus, CaretRight, Eye, EyeSlash, UsersThree,
+  UserPlus, CaretRight, Eye, EyeSlash,
 } from '@phosphor-icons/react';
 import { SearchableSelect } from './SearchableSelect.jsx';
 import { MultiSelect } from './MultiSelect.jsx';
 import {
-  getAvailableClusterCoordinatorOwnSchools,
   getAvailableSchoolRoleSchools,
 } from '../pages/adminUsers/schoolAssignmentOptions.js';
 
@@ -54,17 +53,6 @@ const ROLES = [
     hoverBg: 'hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50/50 dark:hover:bg-rose-950/20',
     iconBg: 'bg-rose-100 dark:bg-rose-950/50',
   },
-  {
-    value: 'Cluster Coordinator',
-    label: 'Cluster Coordinator',
-    icon: UsersThree,
-    description: 'School Head who notes school PIRs from their cluster. Also submits their own PIRs to CES-CID.',
-    group: 'review-chain',
-    iconColor: 'text-amber-500',
-    activeBg: 'bg-amber-50 dark:bg-amber-950/30 border-amber-400 dark:border-amber-600',
-    hoverBg: 'hover:border-amber-300 dark:hover:border-amber-700 hover:bg-amber-50/50 dark:hover:bg-amber-950/20',
-    iconBg: 'bg-amber-100 dark:bg-amber-950/50',
-  },
 ];
 
 function RoleCard({ role, selected, onSelect }) {
@@ -99,7 +87,6 @@ function RoleCard({ role, selected, onSelect }) {
 function RolePicker({ selected, onSelect }) {
   const field = ROLES.filter(r => r.group === 'field');
   const system = ROLES.filter(r => r.group === 'system');
-  const reviewChain = ROLES.filter(r => r.group === 'review-chain');
 
   return (
     <div className="space-y-5">
@@ -111,18 +98,6 @@ function RolePicker({ selected, onSelect }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {field.map(r => <RoleCard key={r.value} role={r} selected={selected} onSelect={onSelect} />)}
         </div>
-      </div>
-
-      {/* Divider */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-slate-100 dark:bg-dark-border" />
-        <span className="text-[10px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-widest">Review Chain</span>
-        <div className="flex-1 h-px bg-slate-100 dark:bg-dark-border" />
-      </div>
-
-      {/* Review chain group */}
-      <div className="flex flex-col gap-3">
-        {reviewChain.map(r => <RoleCard key={r.value} role={r} selected={selected} onSelect={onSelect} />)}
       </div>
 
       {/* Divider */}
@@ -156,18 +131,13 @@ const STRENGTH_CONFIG = {
   strong:   { label: 'Strong',   bars: 3, color: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
 };
 
-function DetailsForm({ form, setForm, schools, users = [], programs, clusters = [] }) {
+function DetailsForm({ form, setForm, schools, users = [], programs }) {
   const [showPassword, setShowPassword] = useState(false);
   const isDepedEmail = true;
   const strength = getPasswordStrength(form.password);
   const availableSchoolRoleSchools = getAvailableSchoolRoleSchools({
     schools,
     users,
-  });
-  const availableClusterCoordinatorSchools = getAvailableClusterCoordinatorOwnSchools({
-    schools,
-    users,
-    clusterId: form.cluster_id,
   });
 
   const emailLocal = isDepedEmail ? form.email.replace(/@deped\.gov\.ph$/, '') : form.email;
@@ -179,7 +149,7 @@ function DetailsForm({ form, setForm, schools, users = [], programs, clusters = 
 
   return (
     <div className="space-y-4">
-      {(['Admin', 'Cluster Coordinator'].includes(form.role)) && (
+      {form.role === 'Admin' && (
         <div className="grid grid-cols-[100px_1fr] gap-3">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
@@ -198,7 +168,7 @@ function DetailsForm({ form, setForm, schools, users = [], programs, clusters = 
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               className={inputCls}
-              placeholder={form.role === 'Cluster Coordinator' ? 'Cluster Coordinator Name' : 'Administrator Name'}
+              placeholder="Administrator Name"
             />
           </div>
         </div>
@@ -403,41 +373,6 @@ function DetailsForm({ form, setForm, schools, users = [], programs, clusters = 
         </div>
       )}
 
-      {form.role === 'Cluster Coordinator' && (
-        <>
-          <div>
-            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-              Assigned Cluster <span className="text-rose-500">*</span>
-            </label>
-            <SearchableSelect
-              options={clusters.map(c => ({ value: c.id, label: c.name || `Cluster ${c.cluster_number}` }))}
-              value={form.cluster_id}
-              onChange={v => setForm(f => ({ ...f, cluster_id: v, school_id: null }))}
-              placeholder="Select cluster"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-              Own School <span className="text-slate-400 font-normal normal-case">(if Cluster Head submits school AIPs/PIRs)</span>
-            </label>
-            <SearchableSelect
-              options={[
-                { value: null, label: 'None — division-level only' },
-                ...availableClusterCoordinatorSchools.map(s => ({ value: s.id, label: s.name })),
-              ]}
-              value={form.school_id}
-              onChange={v => setForm(f => ({ ...f, school_id: v }))}
-              placeholder={form.cluster_id ? 'Select school (optional)' : 'Select cluster first'}
-            />
-            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-              {form.cluster_id
-                ? 'Only schools in the selected cluster that do not already have an assigned Cluster Head are listed.'
-                : 'Choose the assigned cluster first to list eligible schools.'}
-            </p>
-          </div>
-        </>
-      )}
-
       {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(form.role)) && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
@@ -472,12 +407,11 @@ function createEmptyForm() {
     password: '',
     role: null,
     school_id: null,
-    cluster_id: null,
     program_ids: [],
   };
 }
 
-export function CreateUserWizard({ open, onClose, onSave, schools, users = [], programs, clusters = [], loading, error }) {
+export function CreateUserWizard({ open, onClose, onSave, schools, users = [], programs, loading, error }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(createEmptyForm);
 
@@ -553,10 +487,10 @@ export function CreateUserWizard({ open, onClose, onSave, schools, users = [], p
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {step === 1 && (
-            <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, cluster_id: null, program_ids: [] }))} />
+            <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, program_ids: [] }))} />
           )}
           {step === 2 && (
-            <DetailsForm form={form} setForm={setForm} schools={schools} users={users} programs={programs} clusters={clusters} />
+            <DetailsForm form={form} setForm={setForm} schools={schools} users={users} programs={programs} />
           )}
         </div>
 

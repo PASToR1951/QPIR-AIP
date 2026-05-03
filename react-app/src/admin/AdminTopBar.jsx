@@ -36,7 +36,6 @@ const NOTIF_ICON = {
   under_review:            <Bell size={15} className="text-indigo-400 shrink-0 mt-0.5" />,
   for_recommendation:      <HourglassMedium size={15} className="text-blue-400 shrink-0 mt-0.5" />,
   for_ces_review:          <HourglassMedium size={15} className="text-violet-400 shrink-0 mt-0.5" />,
-  for_cluster_head_review: <HourglassMedium size={15} className="text-violet-400 shrink-0 mt-0.5" />,
   aip_edit_requested:      <PencilSimple size={15} className="text-orange-400 shrink-0 mt-0.5" />,
   aip_edit_approved:       <LockKeyOpen size={15} className="text-emerald-400 shrink-0 mt-0.5" />,
   aip_edit_denied:         <LockKey size={15} className="text-red-400 shrink-0 mt-0.5" />,

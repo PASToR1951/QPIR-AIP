@@ -2,20 +2,19 @@ import React from 'react';
 import { SearchableSelect } from '../../components/SearchableSelect.jsx';
 import { MultiSelect } from '../../components/MultiSelect.jsx';
 import {
-  getAvailableClusterCoordinatorOwnSchools,
   getAvailableSchoolRoleSchools,
 } from './schoolAssignmentOptions.js';
 
 const inputCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 const selectCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 
-export const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Admin', 'Observer'];
+export const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Admin', 'Observer'];
 const SALUTATIONS = ['Mr.', 'Ms.', 'Mrs.', 'Dr.'];
 
 export const EMPTY_USER_FORM = {
   id: null, salutation: '', name: '', first_name: '', middle_initial: '',
   last_name: '', position: '', email: '', password: '', role: 'School',
-  school_id: null, cluster_id: null, program_ids: [],
+  school_id: null, program_ids: [],
 };
 
 export function userDisplayName(u) {
@@ -27,17 +26,11 @@ export function userDisplayName(u) {
   return u.name || (u.role === 'School' ? u.school?.name : null) || u.email || '';
 }
 
-export function UserForm({ form, setForm, schools, users = [], programs, clusters = [] }) {
+export function UserForm({ form, setForm, schools, users = [], programs }) {
   const emailLocal = form.email.replace(/@deped\.gov\.ph$/, '');
   const availableSchoolRoleSchools = getAvailableSchoolRoleSchools({
     schools,
     users,
-    currentUserId: form.id,
-  });
-  const availableClusterCoordinatorSchools = getAvailableClusterCoordinatorOwnSchools({
-    schools,
-    users,
-    clusterId: form.cluster_id,
     currentUserId: form.id,
   });
 
@@ -48,7 +41,7 @@ export function UserForm({ form, setForm, schools, users = [], programs, cluster
 
   return (
     <div className="space-y-4">
-      {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Coordinator', 'Observer'].includes(form.role)) && (
+      {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Observer'].includes(form.role)) && (
         <div className="grid grid-cols-[100px_1fr] gap-3">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Title</label>
@@ -60,7 +53,7 @@ export function UserForm({ form, setForm, schools, users = [], programs, cluster
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Full Name</label>
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className={inputCls} placeholder={form.role === 'Cluster Coordinator' ? 'Cluster Coordinator Name' : form.role === 'Observer' ? 'Observer Name' : form.role.startsWith('CES') ? `${form.role} Name` : 'Administrator Name'} />
+              className={inputCls} placeholder={form.role === 'Observer' ? 'Observer Name' : form.role.startsWith('CES') ? `${form.role} Name` : 'Administrator Name'} />
           </div>
         </div>
       )}
@@ -137,7 +130,7 @@ export function UserForm({ form, setForm, schools, users = [], programs, cluster
               const tokens = f.name.trim().split(/\s+/);
               nameUpdate = { first_name: tokens[0] || '', last_name: tokens.slice(-1)[0] || '' };
             }
-            return { ...f, role: v, school_id: null, cluster_id: null, program_ids: [], ...nameUpdate };
+            return { ...f, role: v, school_id: null, program_ids: [], ...nameUpdate };
           })}
           placeholder="Select role"
         />
@@ -152,40 +145,6 @@ export function UserForm({ form, setForm, schools, users = [], programs, cluster
             placeholder="Select school"
           />
         </div>
-      )}
-      {form.role === 'Cluster Coordinator' && (
-        <>
-          <div>
-            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-              Assigned Cluster <span className="text-rose-500">*</span>
-            </label>
-            <SearchableSelect
-              options={clusters.map(c => ({ value: c.id, label: c.name || `Cluster ${c.cluster_number}` }))}
-              value={form.cluster_id}
-              onChange={v => setForm(f => ({ ...f, cluster_id: v, school_id: null }))}
-              placeholder="Select cluster"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-              Own School <span className="text-slate-400 font-normal normal-case">(if Cluster Head submits school AIPs/PIRs)</span>
-            </label>
-            <SearchableSelect
-              options={[
-                { value: null, label: 'None — division-level only' },
-                ...availableClusterCoordinatorSchools.map(s => ({ value: s.id, label: s.name })),
-              ]}
-              value={form.school_id}
-              onChange={v => setForm(f => ({ ...f, school_id: v }))}
-              placeholder={form.cluster_id ? 'Select school (optional)' : 'Select cluster first'}
-            />
-            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-              {form.cluster_id
-                ? 'Only schools in the selected cluster that do not already have an assigned Cluster Head are listed.'
-                : 'Choose the assigned cluster first to list eligible schools.'}
-            </p>
-          </div>
-        </>
       )}
       {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(form.role)) && (
         <div>

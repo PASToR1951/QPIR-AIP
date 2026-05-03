@@ -135,14 +135,13 @@ export function ImportUsersModal({ open, onClose, onImportComplete }) {
     setImporting(true);
     const validRows = parsed
       .filter(r => r._valid)
-      .map(({ email, role, name, first_name, last_name, middle_initial, school_id, cluster_id, program_ids }) => ({
+      .map(({ email, role, name, first_name, last_name, middle_initial, school_id, program_ids }) => ({
         email, role,
         ...(name?.trim() && { name }),
         ...(first_name?.trim() && { first_name }),
         ...(last_name?.trim() && { last_name }),
         ...(middle_initial?.trim() && { middle_initial }),
         ...(school_id && { school_id }),
-        ...(cluster_id && { cluster_id }),
         ...(program_ids?.length > 0 && { program_ids }),
       }));
 

@@ -6,7 +6,7 @@ import { SettingsCard } from './SettingsUI.jsx';
 
 // Maps raw "source" strings from the API to a display label + color
 const SOURCE_CONFIG = {
-  cluster_head:    { label: 'Cluster Head',      bg: 'bg-violet-100 dark:bg-violet-950/40',  text: 'text-violet-700 dark:text-violet-300' },
+  program_ces:     { label: 'Program CES',       bg: 'bg-blue-100 dark:bg-blue-950/40',      text: 'text-blue-700 dark:text-blue-300' },
   ces_sgod:        { label: 'CES – SGOD',         bg: 'bg-blue-100 dark:bg-blue-950/40',      text: 'text-blue-700 dark:text-blue-300' },
   ces_cid:         { label: 'CES – CID',          bg: 'bg-blue-100 dark:bg-blue-950/40',      text: 'text-blue-700 dark:text-blue-300' },
   ces_osds:        { label: 'CES – OSDS',         bg: 'bg-blue-100 dark:bg-blue-950/40',      text: 'text-blue-700 dark:text-blue-300' },
@@ -28,7 +28,6 @@ function RoleTag({ role }) {
   const colors = {
     'School':              'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300',
     'Division Personnel':  'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300',
-    'Cluster Coordinator': 'bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300',
     'CES-SGOD':            'bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300',
     'CES-CID':             'bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300',
     'CES-ASDS':            'bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300',
@@ -75,7 +74,7 @@ export function SignatoriesPanel() {
       iconBg="bg-indigo-100 dark:bg-indigo-950/40"
       iconColor="text-indigo-600 dark:text-indigo-400"
       title="Signatories"
-      description="Shows the resolved signatory that will appear on each user's documents (AIP / PIR). School users sign under their Cluster Head; Division Personnel sign under their functional division's CES chief."
+      description="Shows the resolved signatory that will appear on each user's documents (AIP / PIR). School and Division Personnel documents resolve through the program's functional division CES chief."
     >
       {/* Warning when some users have no signatory */}
       {!loading && unconfiguredCount > 0 && (
@@ -83,7 +82,7 @@ export function SignatoriesPanel() {
           <WarningCircle size={16} weight="fill" className="shrink-0 mt-0.5 text-rose-500" />
           <p className="text-xs font-bold text-rose-700 dark:text-rose-400">
             {unconfiguredCount} user{unconfiguredCount !== 1 ? 's' : ''} {unconfiguredCount !== 1 ? 'have' : 'has'} no signatory configured.
-            {' '}Assign a Cluster Head in <strong>Schools</strong> or add a CES user account to resolve this.
+            {' '}Add the relevant CES user account or division fallback to resolve this.
           </p>
         </div>
       )}

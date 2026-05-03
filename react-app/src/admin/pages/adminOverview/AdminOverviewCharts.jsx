@@ -243,7 +243,7 @@ export function AdminOverviewCharts({ pieData, quarterData, trimesterData = [], 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start gap-2">
               <h3 className="text-sm font-black leading-tight text-slate-900 dark:text-slate-100">Division Sections</h3>
-              <InfoTip text="PIR workload routed through each CES section this year. Pending = awaiting CES review. In Review = with Cluster Head or Admin. Based on assigned reviewer, falling back to program division." />
+              <InfoTip text="PIR workload routed through each CES section this year. Pending = awaiting CES review. In Review = currently opened by a reviewer. Based on assigned reviewer, falling back to program division." />
             </div>
           </div>
         </div>
@@ -278,7 +278,7 @@ export function AdminOverviewCharts({ pieData, quarterData, trimesterData = [], 
                     </div>
                     <div className="flex flex-col gap-0.5 border-b border-slate-100 px-5 py-3 dark:border-dark-border/60">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">In Review</span>
-                      <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 normal-case tracking-normal">with Cluster Head / Admin</span>
+                      <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 normal-case tracking-normal">with reviewer</span>
                       <span className="mt-0.5 text-xl font-black text-slate-800 dark:text-slate-100">{section.inReview}</span>
                     </div>
                     <div className="flex flex-col gap-0.5 border-r border-slate-100 px-5 py-3 dark:border-dark-border/60">
