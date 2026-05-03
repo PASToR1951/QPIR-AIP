@@ -9,6 +9,7 @@
 # Services:
 #   frontend  →  http://<host>:${FRONTEND_PORT:-80}
 #   backend   →  http://<host>:3001
+#   caddy     →  optional profile: docker compose --profile ssl up -d
 #   backup    →  optional profile: docker compose --profile backup up -d
 #   devtools  →  optional profile: docker compose --profile devtools up -d
 # =============================================================================
@@ -36,7 +37,7 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - "5432:5432"
+      - "${POSTGRES_BIND_ADDRESS:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
 
   # ── Backend (Deno + Prisma) ─────────────────────────────────────────────────
   backend:
@@ -67,7 +68,7 @@ services:
       - ./backups:/app/backups
       - uploaded_assets:/app/public
     ports:
-      - "3001:3001"
+      - "${BACKEND_BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-3001}:3001"
 
   # ── Frontend (React → Nginx) ────────────────────────────────────────────────
   frontend:
@@ -84,6 +85,25 @@ services:
       - backend
     ports:
       - "${FRONTEND_PORT:-80}:80"
+
+  # ── HTTPS Reverse Proxy (Caddy) ─────────────────────────────────────────────
+  caddy:
+    profiles:
+      - ssl
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-aip-pir.depedguihulngan.ph}
+    ports:
+      - "${HTTP_BIND_ADDRESS:-0.0.0.0}:80:80"
+      - "${HTTPS_BIND_ADDRESS:-0.0.0.0}:443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
 
   # ── Backup Service ──────────────────────────────────────────────────────────
   backup:
@@ -133,3 +153,5 @@ services:
 volumes:
   db_data:
   uploaded_assets:
+  caddy_data:
+  caddy_config:

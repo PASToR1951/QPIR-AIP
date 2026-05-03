@@ -1,0 +1,131 @@
+id,title,school_level_requirement,abbreviation,division
+1,Child Friendly School System,Both,CFSS,
+2,Drop-Out Reduction Program,Both,DORP,
+3,Early Registration / Oplan Balik Eskwela,Both,,
+4,Alternative Learning System (For school-based ALS),Select Schools,,
+5, Indigenous Peoples Education,Both,IPEd,
+6,Kindergarten Education,Elementary,,
+7,Inclusive Education for LDS,Both,,
+8,Learning Resource Materials Development and QA for LDS,Both,,
+9,Adopt-a-School for Learners in Disadvantage Situation,Both,,
+10,Alternative Delivery Modality for Learners in Disadvantage Situation,Both,,
+11,Curriculum / Learning Area Programs,Both,,
+12,Curricular Support Programs,Both,,
+13,Reading Remediation,Both,,
+14,Instructional Supervisory Program,Both,,
+15,Continuing Professional Development for Teachers,Both,,
+16,Learning Action Cells,Both,LAC,
+17,Learning Outcomes Assessment Program,Both,,
+18,Learning Intervention Program,Both,,
+19,Learning Materials Development and Quality Assurance Program,Both,,
+20,Basic Education Research Program,Both,,
+21,Learning Resource Centers Program,Both,,
+22,Programs for Senior High School: Immersion,Secondary,,
+23,National Certification,Secondary,,
+24,Senior High School Tracking,Secondary,SHS Tracking,
+25,Child Protection Program,Both,,
+26,Youth Development Program/SSG/SPG,Both,,
+27,Disaster Risk Reduction and Management,Both,DRRM,
+28,OK sa DepED,Both,,
+29,Enhanced School Sports,Both,,
+30,Guidance and Counseling Program,Both,,
+31,Mental Health and Psychosocial Support,Both,,
+32,Fitness and Wellness,Both,,
+33,Education in Emergencies (Alternative Delivery Modality),Both,,
+34,School-Based Management Program,Both,,
+35,Client Feedback Program,Both,,
+36,School Utilities and Services Maintenance Program,Both,,
+37,School-Based Repair and Maintenance,Both,,
+38,Fiscal Management,Both,,
+39,Performance Management Program,Both,,
+40,Procurement Management Program,Both,,
+41,Adopt-a-School Program,Both,,
+42,PTA Affairs Management,Both,,
+43,Development Planning Program,Both,,
+44,Program Implementation Review,Both,,
+45,PRAISE/Rewards and Incentives,Both,,
+46,"EBEIS, LIS, School Information Management Program",Both,,
+47,Crucial Resources Inventory Program,Both,,
+49,"Advocacy, Information, Education and Communications Program",Both,,
+50,Gender and Development,Both,GAD,
+51,General Administration and Support,Both,,
+52,Support to Schools and Learners,Both,,
+75,Alternative Learning System (ALS),Division,,CID
+76,ISP- MAPEH,Division,,CID
+77,Learning Intervention Program,Division,,CID
+78,ADM- Education in Emergencies,Division,,CID
+79,Instructional Supervisory Program (ISP),Division,,CID
+80,ISP- Edukasyon sa Pagpapakatao (ESP),Division,,CID
+81,ISP- English,Division,,CID
+82,Reading Remediation Program,Division,,CID
+83,ISP- Science,Division,,CID
+84,Learning Outcome Assessment Program,Division,,CID
+85,ISP- Mathematics,Division,,CID
+86,Learning Resource Development and Management Program,Division,,CID
+87,Learning Resource Center Program,Division,,CID
+88,ISP- TLE,Division,,CID
+89,ISP- Araling Panlipunan,Division,,CID
+90,Multigrade,Division,,CID
+91,ISP- Filipino,Division,,CID
+92,Continuous Improvement Program,Division,CI,CID
+93,Office Housekeeping Program (CID),Division,,CID
+94,Kindergarten Program,Division,,CID
+95,Special Education Program,Division,SPED,CID
+96,Senior High School Program,Division,,CID
+97,Office Housekeeping Program (OSDS),Division,,OSDS
+98,Field Coordination Program,Division,,OSDS
+99,Grievance and Employee Discipline Management Program,Division,,OSDS
+100,PRAISE,Division,,OSDS
+101,Fiscal Management Program,Division,,OSDS
+102,Client Feedback Program,Division,,OSDS
+103,Office Communication Management Program,Division,,OSDS
+104,Records Management Program,Division,,OSDS
+105,Division Utilities and Services Maintenance Program,Division,,OSDS
+106,Division Physical Facilities Improvement and Equipment Maintenance Program,Division,,OSDS
+107,Performance Management Program,Division,,OSDS
+108,Personnel Organizations Management Program,Division,,OSDS
+109,Computerization Program,Division,,OSDS
+110,Internet Connectivity Program,Division,,OSDS
+111,"Advocacy, Information, and Communication Program",Division,,OSDS
+112,Division ICT System and Infrastructure Management Program,Division,,OSDS
+113,Employee Welfare and Benefits Program,Division,,OSDS
+114,PRIMe- HRM,Division,,OSDS
+115,Secretariat Affairs Program,Division,,OSDS
+116,Crucial Resources Inventory and Acquisition Program,Division,,OSDS
+117,Procurement Management Program,Division,,OSDS
+118,School Site Titling Program,Division,,OSDS
+119,School Establishment Program,Division,,SGOD
+120,Human Resource Development Program,Division,,SGOD
+121,Learning Action Cells (LAC) Program,Division,,SGOD
+122,OK sa DepEd,Division,,SGOD
+123,School Dental Health Care Program,Division,,SGOD
+124,School-Based Repair and Maintenance Program,Division,,SGOD
+125,School-Based Feeding Program,Division,SBFP,SGOD
+126,Fitness and Wellness Program,Division,,SGOD
+127,Early Registration,Division,,SGOD
+128,Oplan Balik Eskwela,Division,,SGOD
+129,School Information Management Program,Division,,SGOD
+130,Strategic Development Planning Program,Division,,SGOD
+131,Brigada Eskwela,Division,,SGOD
+132,Division Partnership and Linkages Program,Division,,SGOD
+133,Enhanced School Sports Program,Division,,SGOD
+134,Adopt-a-School Program,Division,,SGOD
+135,PTA Affairs Management Program,Division,,SGOD
+136,School-Based Management Program,Division,SBMP,SGOD
+137,Child Protection Program,Division,,SGOD
+138,Youth Leadership Development Program,Division,,SGOD
+139,Child-Friendly School System,Division,,SGOD
+140,Adolescent Reproductive Health Program,Division,,SGOD
+141,Guidance and Counseling Program,Division,,SGOD
+142,Mental Health and Psycho-Social Support Program,Division,,SGOD
+143,Basic Education Research Program,Division,,SGOD
+144,Field Technical Assistance Program,Division,,SGOD
+145,Program Implementation Review,Division,,SGOD
+146,Regulatory and Developmental Services for Private Schools Program,Division,,SGOD
+147,National Drug Education Program,Division,,SGOD
+148,WINS,Division,,SGOD
+149,Enhanced Basic Education Information System / Learner Information System,Division,EBEIS/LIS,SGOD
+150,Disaster Risk Reduction and Management,Division,DRRM,SGOD
+151,Dropout Reduction Program,Division,DORP,SGOD
+152,Gender and Development,Division,GAD,OSDS
+153,Indigenous People&#x27;s Education,Division,IPEd,CID

@@ -1,0 +1,15 @@
+{
+	servers {
+		trusted_proxies static private_ranges
+		trusted_proxies_strict
+	}
+}
+
+{$APP_DOMAIN} {
+	encode gzip
+
+	@backend path /api/* /school-logos/* /cluster-logos/* /app-logo/*
+	reverse_proxy @backend backend:3001
+
+	reverse_proxy frontend:80
+}
