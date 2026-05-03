@@ -16,7 +16,6 @@ type EmailUser = {
   middle_initial: string | null;
   last_name: string | null;
   school: { id: number; name: string } | null;
-  cluster: { id: number; name: string; cluster_number: number } | null;
 };
 
 function buildDisplayName(user: EmailUser) {
@@ -30,11 +29,6 @@ function buildDisplayName(user: EmailUser) {
 
 function buildAffiliation(user: EmailUser) {
   if (user.role === "School") return user.school?.name ?? "School";
-  if (user.role === "Cluster Coordinator") {
-    if (user.cluster?.name) return user.cluster.name;
-    if (user.cluster?.cluster_number) return `Cluster ${user.cluster.cluster_number}`;
-    return "Cluster Coordinator";
-  }
   if (user.role === "Division Personnel") return "Division";
   if (user.role.startsWith("CES")) return "Curriculum Implementation Division";
   if (user.role === "Admin" || user.role === "Observer") return "Division Office";
@@ -63,7 +57,6 @@ async function getEmailUser(userId: number): Promise<EmailUser | null> {
       middle_initial: true,
       last_name: true,
       school: { select: { id: true, name: true } },
-      cluster: { select: { id: true, name: true, cluster_number: true } },
     },
   }) as Promise<EmailUser | null>;
 }
@@ -130,7 +123,6 @@ export async function listEmailRecipients() {
       middle_initial: true,
       last_name: true,
       school: { select: { id: true, name: true } },
-      cluster: { select: { id: true, name: true, cluster_number: true } },
     },
     orderBy: [{ role: "asc" }, { email: "asc" }],
   });

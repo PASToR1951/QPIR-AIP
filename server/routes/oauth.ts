@@ -8,10 +8,17 @@
 //   GET /google                 — Initiate Google OAuth flow
 //   GET /google/callback        — Google authorization code callback
 
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import { logger } from "../lib/logger.ts";
 import { getClientIp } from "../lib/clientIp.ts";
+import {
+  DEFAULT_ALLOWED_ORIGIN,
+  getAllowedOrigins,
+  getPrimaryAllowedOrigin,
+  isAllowedOrigin,
+  normalizeOrigin,
+} from "../lib/origins.ts";
 import { writeUserLog } from "../lib/userActivityLog.ts";
 import { createSessionCookie } from "../lib/userSessions.ts";
 import {
@@ -31,20 +38,55 @@ function getEnv(key: string): string {
   return Deno.env.get(key) ?? "";
 }
 
+function isLoopbackHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "::1" ||
+    host === "[::1]";
+}
+
 /** URL that the IdP sends the auth code back to (backend base URL) */
-function redirectBase(): string {
-  return getEnv("OAUTH_REDIRECT_BASE_URL") || "http://localhost:3001";
+function redirectBase(c: Context): string {
+  const configured = getEnv("OAUTH_REDIRECT_BASE_URL");
+  const requestUrl = new URL(c.req.url);
+  if (isLoopbackHost(requestUrl.hostname)) return requestUrl.origin;
+  return configured || requestUrl.origin || "http://localhost:3001";
 }
 
 /** URL of the React frontend — used for the final redirect after login */
-function frontendUrl(): string {
-  return getEnv("ALLOWED_ORIGIN") || "http://localhost:5173";
+function frontendUrl(c?: Context): string {
+  const requestFrontendOrigin = c
+    ? normalizeOrigin(c.req.header("Origin") || c.req.header("Referer"))
+    : null;
+
+  if (requestFrontendOrigin && isAllowedOrigin(requestFrontendOrigin)) {
+    return requestFrontendOrigin;
+  }
+
+  if (c) {
+    const requestHostname = new URL(c.req.url).hostname.toLowerCase();
+    const matchingOrigin = getAllowedOrigins(
+      getEnv("ALLOWED_ORIGIN") || DEFAULT_ALLOWED_ORIGIN,
+    ).find((origin) =>
+      new URL(origin).hostname.toLowerCase() === requestHostname
+    );
+    if (matchingOrigin) return matchingOrigin;
+  }
+
+  return getPrimaryAllowedOrigin(
+    getEnv("ALLOWED_ORIGIN") || DEFAULT_ALLOWED_ORIGIN,
+  );
 }
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 /** Build a signed state string and persist the PKCE verifier in OAuthState. */
-async function createOAuthState(provider: "google"): Promise<{
+async function createOAuthState(
+  provider: "google",
+  options?: {
+    frontendOrigin?: string;
+    redirectBase?: string;
+  },
+): Promise<{
   state: string;
   codeVerifier: string;
   codeChallenge: string;
@@ -56,7 +98,12 @@ async function createOAuthState(provider: "google"): Promise<{
   const codeChallenge = await generateCodeChallenge(codeVerifier);
   const nonce = crypto.randomUUID();
   const payloadStr = base64url(
-    new TextEncoder().encode(JSON.stringify({ nonce, provider })),
+    new TextEncoder().encode(JSON.stringify({
+      nonce,
+      provider,
+      frontendOrigin: options?.frontendOrigin,
+      redirectBase: options?.redirectBase,
+    })),
   );
   const hmacSig = await signHmac(payloadStr, secret);
   const state = `${payloadStr}.${hmacSig}`;
@@ -96,7 +143,15 @@ let googleJwksCache: { expiresAt: number; keys: GoogleJwk[] } | null = null;
 async function consumeOAuthState(
   state: string | undefined,
   expectedProvider: OAuthProvider,
-): Promise<{ ok: true; codeVerifier: string } | { ok: false; error: string }> {
+): Promise<
+  | {
+    ok: true;
+    codeVerifier: string;
+    frontendOrigin?: string;
+    redirectBase?: string;
+  }
+  | { ok: false; error: string }
+> {
   if (!state) return { ok: false, error: "missing_state" };
 
   const secret = getEnv("OAUTH_STATE_SECRET");
@@ -115,12 +170,20 @@ async function consumeOAuthState(
 
   let nonce: string;
   let provider: string;
+  let frontendOrigin: string | undefined;
+  let stateRedirectBase: string | undefined;
   try {
     const decoded = JSON.parse(
       new TextDecoder().decode(base64urlDecode(payloadStr)),
     );
     nonce = decoded.nonce;
     provider = decoded.provider;
+    const decodedFrontendOrigin = normalizeOrigin(decoded.frontendOrigin);
+    frontendOrigin = decodedFrontendOrigin &&
+        isAllowedOrigin(decodedFrontendOrigin)
+      ? decodedFrontendOrigin
+      : undefined;
+    stateRedirectBase = normalizeOrigin(decoded.redirectBase) ?? undefined;
   } catch {
     return { ok: false, error: "invalid_state" };
   }
@@ -137,7 +200,12 @@ async function consumeOAuthState(
 
   if (row.expires_at < new Date()) return { ok: false, error: "state_expired" };
 
-  return { ok: true, codeVerifier: row.code_verifier };
+  return {
+    ok: true,
+    codeVerifier: row.code_verifier,
+    frontendOrigin,
+    redirectBase: stateRedirectBase,
+  };
 }
 
 /** After verifying the user's identity, find/create their DB record and issue a session. */
@@ -152,7 +220,6 @@ async function finishOAuthLogin(
       id: number;
       role: string;
       school_id: number | null;
-      cluster_id: number | null;
       school: { cluster_id: number | null } | null;
     };
   }
@@ -209,7 +276,6 @@ async function finishOAuthLogin(
       id: user.id,
       role: user.role,
       school_id: user.school_id,
-      cluster_id: user.cluster_id ?? null,
       school: user.school
         ? { cluster_id: user.school.cluster_id ?? null }
         : null,
@@ -312,15 +378,19 @@ oauthRoutes.get("/google", async (c) => {
   const clientId = getEnv("GOOGLE_CLIENT_ID");
   if (!clientId) {
     logger.error("Google OAuth is not configured (missing GOOGLE_CLIENT_ID)");
-    return c.redirect(`${frontendUrl()}/login?error=oauth_misconfigured`);
+    return c.redirect(`${frontendUrl(c)}/login?error=oauth_misconfigured`);
   }
 
   try {
-    const { state, codeChallenge } = await createOAuthState("google");
+    const base = redirectBase(c);
+    const { state, codeChallenge } = await createOAuthState("google", {
+      frontendOrigin: frontendUrl(c),
+      redirectBase: base,
+    });
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: "code",
-      redirect_uri: `${redirectBase()}/api/auth/oauth/google/callback`,
+      redirect_uri: `${base}/api/auth/oauth/google/callback`,
       scope: "openid profile email",
       state,
       code_challenge: codeChallenge,
@@ -332,21 +402,29 @@ oauthRoutes.get("/google", async (c) => {
     return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
   } catch (err) {
     logger.error("Google OAuth initiation failed", err);
-    return c.redirect(`${frontendUrl()}/login?error=oauth_error`);
+    return c.redirect(`${frontendUrl(c)}/login?error=oauth_error`);
   }
 });
 
 oauthRoutes.get("/google/callback", async (c) => {
   const { code, state, error } = c.req.query();
-  const fe = frontendUrl();
+  const fallbackFrontend = frontendUrl();
 
-  if (error) return c.redirect(`${fe}/login?error=oauth_denied`);
+  if (error) {
+    const stateResult = await consumeOAuthState(state, "google");
+    const fe = stateResult.ok
+      ? stateResult.frontendOrigin || fallbackFrontend
+      : fallbackFrontend;
+    return c.redirect(`${fe}/login?error=oauth_denied`);
+  }
 
   const stateResult = await consumeOAuthState(state, "google");
   if (!stateResult.ok) {
-    return c.redirect(`${fe}/login?error=${stateResult.error}`);
+    return c.redirect(`${fallbackFrontend}/login?error=${stateResult.error}`);
   }
 
+  const fe = stateResult.frontendOrigin || fallbackFrontend;
+  const callbackRedirectBase = stateResult.redirectBase || redirectBase(c);
   const clientId = getEnv("GOOGLE_CLIENT_ID");
   const clientSecret = getEnv("GOOGLE_CLIENT_SECRET");
   if (!clientId || !clientSecret) {
@@ -365,7 +443,7 @@ oauthRoutes.get("/google/callback", async (c) => {
         client_id: clientId,
         client_secret: clientSecret,
         code,
-        redirect_uri: `${redirectBase()}/api/auth/oauth/google/callback`,
+        redirect_uri: `${callbackRedirectBase}/api/auth/oauth/google/callback`,
         grant_type: "authorization_code",
         code_verifier: stateResult.codeVerifier,
       }).toString(),

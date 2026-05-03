@@ -1,30 +1,26 @@
 import type { MiddlewareHandler } from "hono";
 import { getCookie } from "hono/cookie";
+import {
+  DEFAULT_ALLOWED_ORIGIN,
+  getAllowedOrigins,
+  normalizeOrigin,
+} from "./origins.ts";
 
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-
-function normalizedOrigin(value: string | null | undefined): string | null {
-  if (!value) return null;
-  try {
-    return new URL(value).origin;
-  } catch {
-    return null;
-  }
-}
 
 export function isAllowedCookieOrigin(
   origin: string | null | undefined,
   referer: string | null | undefined,
-  allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "http://localhost:5173",
+  allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? DEFAULT_ALLOWED_ORIGIN,
 ): boolean {
-  const allowed = normalizedOrigin(allowedOrigin);
-  if (!allowed) return false;
+  const allowedOrigins = getAllowedOrigins(allowedOrigin);
+  if (allowedOrigins.length === 0) return false;
 
-  const requestOrigin = normalizedOrigin(origin);
-  if (requestOrigin) return requestOrigin === allowed;
+  const requestOrigin = normalizeOrigin(origin);
+  if (requestOrigin) return allowedOrigins.includes(requestOrigin);
 
-  const refererOrigin = normalizedOrigin(referer);
-  return refererOrigin === allowed;
+  const refererOrigin = normalizeOrigin(referer);
+  return Boolean(refererOrigin && allowedOrigins.includes(refererOrigin));
 }
 
 export function csrfProtection(): MiddlewareHandler {

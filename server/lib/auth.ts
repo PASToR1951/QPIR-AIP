@@ -26,7 +26,6 @@ const VALID_ROLES = [
   "CES-SGOD",
   "CES-ASDS",
   "CES-CID",
-  "Cluster Coordinator",
   "Pending",
   "Observer",
 ] as const;

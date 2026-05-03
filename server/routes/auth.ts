@@ -74,17 +74,13 @@ function buildSessionUserPayload(user: Record<string, unknown>) {
     role: user.role,
     school_id: user.school_id,
     school_name: (user.school as { name?: string } | null)?.name,
-    cluster_id: user.cluster_id ??
-      (user.school as { cluster_id?: number | null } | null)?.cluster_id ??
-      null,
-    cluster_number: (user.cluster as { cluster_number?: number | null } | null)
-      ?.cluster_number ??
-      ((user.school as
+    cluster_id: (user.school as { cluster_id?: number | null } | null)
+      ?.cluster_id ?? null,
+    cluster_number: ((user.school as
         | { cluster?: { cluster_number?: number | null } }
         | null)?.cluster?.cluster_number ?? null),
-    cluster_logo: (user.cluster as { logo?: string | null } | null)?.logo ??
-      ((user.school as { cluster?: { logo?: string | null } } | null)?.cluster
-        ?.logo ?? null),
+    cluster_logo: (user.school as { cluster?: { logo?: string | null } } | null)
+      ?.cluster?.logo ?? null,
     school_logo: (user.school as { logo?: string | null } | null)?.logo ?? null,
     salutation: user.salutation,
     name: user.name,
@@ -129,7 +125,6 @@ async function completeSessionLogin(
     id: Number(user.id),
     role: String(user.role),
     school_id: (user.school_id as number | null | undefined) ?? null,
-    cluster_id: (user.cluster_id as number | null | undefined) ?? null,
     school: user.school as { cluster_id?: number | null } | null | undefined,
   });
   return c.json({
@@ -234,7 +229,7 @@ authRoutes.post("/login", async (c) => {
   try {
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { school: { include: { cluster: true } }, cluster: true },
+      include: { school: { include: { cluster: true } } },
     });
     if (!user || !user.is_active || !user.password) {
       // Also reject OAuth-only accounts (no password set) — they must use SSO
@@ -354,7 +349,7 @@ authRoutes.get("/me", async (c) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: tokenUser.id },
-      include: { school: { include: { cluster: true } }, cluster: true },
+      include: { school: { include: { cluster: true } } },
     });
     if (!user || !user.is_active) return c.json({ error: "Unauthorized" }, 401);
 
@@ -379,10 +374,9 @@ authRoutes.get("/me", async (c) => {
       position: user.position,
       school_id: user.school_id,
       school_name: user.school?.name ?? null,
-      cluster_id: user.cluster_id ?? user.school?.cluster_id ?? null,
-      cluster_number: user.cluster?.cluster_number ??
-        user.school?.cluster?.cluster_number ?? null,
-      cluster_logo: user.cluster?.logo ?? user.school?.cluster?.logo ?? null,
+      cluster_id: user.school?.cluster_id ?? null,
+      cluster_number: user.school?.cluster?.cluster_number ?? null,
+      cluster_logo: user.school?.cluster?.logo ?? null,
       school_logo: user.school?.logo ?? null,
       must_change_password: user.must_change_password,
       ...buildOnboardingPayload(user as Record<string, unknown>),

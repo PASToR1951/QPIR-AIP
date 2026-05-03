@@ -171,3 +171,45 @@ Deno.test("cookie CSRF origin checks accept only the configured frontend origin"
     "foreign origin should fail",
   );
 });
+
+Deno.test("cookie CSRF origin checks accept comma-separated frontend origins", () => {
+  const allowedOrigins =
+    "http://192.168.101.3:5173,http://localhost:5173,http://127.0.0.1:5173";
+
+  assertEquals(
+    isAllowedCookieOrigin(
+      "http://localhost:5173",
+      null,
+      allowedOrigins,
+    ),
+    true,
+    "localhost origin should pass when listed",
+  );
+  assertEquals(
+    isAllowedCookieOrigin(
+      null,
+      "http://192.168.101.3:5173/dashboard",
+      allowedOrigins,
+    ),
+    true,
+    "LAN referer should pass when listed",
+  );
+  assertEquals(
+    isAllowedCookieOrigin(
+      "http://127.0.0.1:5173",
+      null,
+      allowedOrigins,
+    ),
+    true,
+    "loopback IP origin should pass when listed",
+  );
+  assertEquals(
+    isAllowedCookieOrigin(
+      "http://localhost:3000",
+      null,
+      allowedOrigins,
+    ),
+    false,
+    "unlisted localhost port should fail",
+  );
+});

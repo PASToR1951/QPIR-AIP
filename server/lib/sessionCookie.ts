@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { getAllowedOrigins } from "./origins.ts";
 
 function isHttpsRequest(c: Context): boolean {
   const forwardedProto = c.req.header("x-forwarded-proto")?.split(",")[0]
@@ -20,7 +21,7 @@ function isHttpsRequest(c: Context): boolean {
 
   return [
     Deno.env.get("OAUTH_REDIRECT_BASE_URL"),
-    Deno.env.get("ALLOWED_ORIGIN"),
+    ...getAllowedOrigins(Deno.env.get("ALLOWED_ORIGIN")),
   ]
     .some((url) => url?.startsWith("https://"));
 }
