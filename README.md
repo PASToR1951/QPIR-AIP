@@ -13,8 +13,7 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 **User roles:**
 - **School** — tied 1-to-1 with a school; submits and manages their school's AIP and PIRs
 - **Division Personnel** — manages programs they are assigned to; maintains independent AIP/PIR records
-- **CES-SGOD / CES-ASDS / CES-CID** — reviews division-level PIRs within their functional division
-- **Cluster Coordinator** — reviews school PIRs for all schools within their assigned cluster
+- **CES-SGOD / CES-ASDS / CES-CID** — reviews AIPs/PIRs within their functional division after focal recommendation
 - **Admin** — full system access; manages users, schools, programs, deadlines, email, and submissions
 - **Observer** — read-only access to submitted AIPs and PIRs across the division
 - **Pending** — newly created accounts awaiting role assignment by an Admin
@@ -23,7 +22,7 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 
 ## What's New in AIP-PIR Beta 3
 
-- School AIP/PIR submissions now enter a **For Recommendation** focal person queue before CES and Cluster Head review.
+- School AIP/PIR submissions now enter a **For Recommendation** focal person queue before CES review.
 - Admins can assign active Division Personnel as program focal persons.
 - CES reviewers now have an AIP review queue for focal-recommended school AIPs.
 - School reporting windows now use admin-managed trimesters, while division-level quarter workflows remain available where implemented.
@@ -57,7 +56,6 @@ AIP-PIR/
 │   │   │   │                   # Submissions, Reports, Settings, Backups, PIR Review
 │   │   │   └── components/     # DataTable, FormModal, CreateUserWizard, etc.
 │   │   ├── ces/                # CES reviewer dashboard and PIR review flow
-│   │   ├── cluster-head/       # Cluster Coordinator dashboard
 │   │   ├── components/
 │   │   │   ├── forms/pir/      # PIR form section components
 │   │   │   └── ui/             # Shared UI: DashboardHeader, NotificationBell, etc.
@@ -125,6 +123,8 @@ DATABASE_URL="postgresql://postgres:password@localhost:5432/pir_system?schema=pu
 JWT_SECRET="your-strong-random-secret"
 PORT=3001
 ALLOWED_ORIGIN=http://localhost:5173
+# For LAN + local development, this may be comma-separated:
+# ALLOWED_ORIGIN=http://192.168.1.100:5173,http://localhost:5173,http://127.0.0.1:5173
 NODE_ENV=development
 
 # OAuth SSO - required only when enabling Google sign-in
@@ -214,7 +214,7 @@ The `backup` service runs scheduled backups and processes manual backup requests
 
 The first time the Docker Postgres volume is initialized, Compose creates the read-only backup database user from `BACKUP_DB_USER` and `BACKUP_DB_PASSWORD`. If you already have an existing `db_data` volume, run `server/scripts/db_readonly_user.sql` manually or create the user yourself.
 
-If you serve the frontend from a non-Vite origin such as `http://localhost` on port 80, make sure `.env` has a matching `ALLOWED_ORIGIN`. Do the same for the `OAUTH_*`, `GOOGLE_*`, and reCAPTCHA values when enabling those features in Docker.
+If you serve the frontend from multiple development origins, `ALLOWED_ORIGIN` accepts a comma-separated allow-list such as `http://192.168.1.100:5173,http://localhost:5173,http://127.0.0.1:5173`. Do the same for the `OAUTH_*`, `GOOGLE_*`, and reCAPTCHA values when enabling those features in Docker.
 
 ---
 
@@ -222,7 +222,7 @@ If you serve the frontend from a non-Vite origin such as `http://localhost` on p
 
 - **Gated Workflow** — PIR submission is locked until the school's AIP for that program and year is approved.
 - **Full Admin Panel** — manage users, schools, clusters, programs, deadlines, announcements, email config, and system settings.
-- **PIR Review Pipeline** — structured multi-stage review: CES notation → Cluster Head review → Admin approval/return, with per-activity evaluation notes.
+- **PIR Review Pipeline** — structured review through focal recommendation and CES approval/return, with per-activity evaluation notes.
 - **OAuth SSO** — Google sign-in with PKCE and DepEd domain enforcement; email/password login also supported.
 - **SMTP Email** — configurable division SMTP for transactional email, magic link sign-in, and admin email blasts.
 - **Magic Link Login** — admin-generated one-time sign-in URLs for account provisioning; single-use with expiry.
@@ -333,10 +333,6 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 | `POST` | `/api/admin/ces/pirs/:id/start-review` | Mark a PIR as actively reviewed by CES |
 | `POST` | `/api/admin/ces/pirs/:id/note` | CES approve/note action |
 | `POST` | `/api/admin/ces/pirs/:id/return` | CES return action |
-| `GET` | `/api/admin/cluster-head/pirs` | Cluster Coordinator review queue |
-| `POST` | `/api/admin/cluster-head/pirs/:id/start-review` | Mark a PIR as actively reviewed by Cluster Coordinator |
-| `POST` | `/api/admin/cluster-head/pirs/:id/note` | Cluster Coordinator approve/note action |
-| `POST` | `/api/admin/cluster-head/pirs/:id/return` | Cluster Coordinator return action |
 | `GET` | `/api/admin/reports/years` | Years available for reports |
 | `GET` | `/api/admin/reports/{compliance,quarterly,budget,workload,accomplishment,factors,aip-funnel,cluster-pir-summary}` | Report datasets |
 | `GET` | `/api/admin/reports/:type/export` | CSV/XLSX report export |
@@ -360,7 +356,7 @@ Active beta — **Beta 3** (`v1.2.0-beta`, 2026-04-30).
 
 - Core workflows (AIP, PIR, dashboard) are complete and validated.
 - Admin panel is feature-complete — users, schools, clusters, programs, deadlines, submissions, reports, backups, settings, announcements, email config, email blasts, and logs.
-- School AIP/PIR submissions now enter a **For Recommendation** focal person queue before CES and Cluster Head review.
+- School AIP/PIR submissions now enter a **For Recommendation** focal person queue before CES review.
 - School reporting periods now use trimesters with admin-managed trimester windows; division-level reporting continues to use quarter-based flows where still implemented.
 - CES reviewers now have an AIP review queue for focal-recommended school AIPs.
 - PIR monitoring factors are activity-scoped and render consistently in review, reports, and PDF output.
@@ -382,7 +378,7 @@ Active beta — **Beta 3** (`v1.2.0-beta`, 2026-04-30).
 | [User Manual](docs/USER_MANUAL.md) | Role-based user guidance and common workflows |
 | [API Docs](docs/API_DOCS.md) | REST endpoint reference and schema notes |
 | [Database Schema](docs/DATABASE_SCHEMA.md) | Prisma/PostgreSQL schema and ERD |
-| [PIR Routing Chain](docs/PIR-ROUTING-CHAIN.md) | Focal, CES, and Cluster Head review flow |
+| [PIR Routing Chain](docs/PIR-ROUTING-CHAIN.md) | Focal and CES review flow |
 | [Roadmap](docs/ROADMAP.md) | Milestone and backlog tracking |
 | [Changelog](docs/CHANGELOG.md) | Release history |
 

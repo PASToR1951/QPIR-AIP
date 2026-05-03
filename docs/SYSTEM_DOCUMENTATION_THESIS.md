@@ -134,9 +134,9 @@ The database is modeled using a deeply relational approach to eliminate data red
 
 1. **Cluster:** A macro-grouping of multiple schools.
 2. **School Entity:** Represents a physical or conceptual educational institution. Associated with a `Cluster`.
-3. **User Entity:** Represents an individual authenticating into the system via email/password or Google OAuth SSO. The seven active workflow roles are `"School"`, `"Division Personnel"`, `"Admin"`, `"CES-SGOD"`, `"CES-ASDS"`, `"CES-CID"`, and `"Cluster Coordinator"`. `"Observer"` is a constrained read-only oversight role outside the approval workflow, and `"Pending"` is a staging state for accounts awaiting role assignment. Division Personnel store their name as split `first_name`, `middle_initial`, and `last_name` fields; School and Admin users use the legacy `name` field. `salutation` and `position` fields support formal document headers.
-   - *Relationship:* School Users have a **Many-to-One** relationship with `School` (`school_id`), but the database enforces one active School-role user per school via a partial unique index. Cluster Coordinators have a Many-to-One relationship with `Cluster` (`cluster_id`). All other roles have both FKs null.
-   - *Account Constraints:* CES roles are singleton (one account per role). Cluster Coordinators are capped at 10 accounts system-wide.
+3. **User Entity:** Represents an individual authenticating into the system via email/password or Google OAuth SSO. The six active workflow roles are `"School"`, `"Division Personnel"`, `"Admin"`, `"CES-SGOD"`, `"CES-ASDS"`, and `"CES-CID"`. `"Observer"` is a constrained read-only oversight role outside the approval workflow, and `"Pending"` is a staging state for accounts awaiting role assignment. Division Personnel store their name as split `first_name`, `middle_initial`, and `last_name` fields; School and Admin users use the legacy `name` field. `salutation` and `position` fields support formal document headers.
+   - *Relationship:* School Users have a **Many-to-One** relationship with `School` (`school_id`), but the database enforces one active School-role user per school via a partial unique index. All non-school workflow roles have both school and cluster FKs null.
+   - *Account Constraints:* CES roles are singleton (one account per role).
    - *Security and Privacy:* OAuth fields link Google accounts; `password` is nullable for OAuth-only users; `deleted_at` supports soft-delete/anonymization workflows; `must_change_password` enforces a password reset on next login when set by Admin.
    - *Onboarding:* `onboarding_version_seen`, `onboarding_show_on_login`, `onboarding_dismissed_at`, `onboarding_completed_at`, and `checklist_progress` track each user's onboarding tour and practice mode completion state.
 4. **Program Entity:** Represents a school-level educational initiative (e.g., SPED, ALS). The `division` field (`"SGOD"` | `"OSDS"` | `"CID"`) indicates which functional division the program belongs to, determining CES routing. Replaced the former `category` KRA grouping field (dropped in v1.0.10).
@@ -146,7 +146,7 @@ The database is modeled using a deeply relational approach to eliminate data red
 4c. **ProgramFocalPerson Entity:** Composite join table (`program_id`, `user_id`) linking programs to Division Personnel focal persons. It scopes the `/division` recommendation queue and prevents school submissions for programs without an active focal person assignment.
 5. **AIP (Annual Implementation Plan) Entity:** The parent document for a given fiscal year, constrained to a unique combination of School, Program, and Year. `edit_requested_at` and `edit_request_count` track the edit-request lifecycle (max 3 lifetime requests). Beta 3 adds focal-person and CES AIP review metadata (`focal_person_id`, `focal_recommended_at`, `focal_remarks`, `ces_reviewer_id`, `ces_noted_at`, `ces_remarks`).
 6. **AIPActivity Entity:** Activities segmented by phase (Planning, Implementation, Monitoring). Child to `AIP`.
-7. **PIR (Program Implementation Review) Entity:** The periodic evaluation report strictly dependent on an approved parent `AIP`. School PIRs now route through `"For Recommendation"` and `"For CES Review"` before `"For Cluster Head Review"`; division-level and Cluster Coordinator-owned PIRs route to `"For CES Review"`. Reviewer metadata is tracked via focal, CES, and active-review fields.
+7. **PIR (Program Implementation Review) Entity:** The periodic evaluation report strictly dependent on an approved parent `AIP`. School PIRs now route through `"For Recommendation"` and `"For CES Review"`; division-level PIRs route to `"For CES Review"`. Reviewer metadata is tracked via focal, CES, and active-review fields.
 8. **PIRActivityReview & PIRFactor:** Highly granular evaluation metrics comparing the baseline `AIPActivity` against actual physical and financial accomplishments. Supports unplanned activities (null `aip_activity_id`). Beta 3 activity-scoped factors store facilitating/hindering entries per factor type and activity.
 9. **Deadline & TrimesterDeadline Entities:** Standalone administrative configuration tables for submission windows. `Deadline` stores division-level quarter deadlines; `TrimesterDeadline` stores school trimester windows (`year`, `trimester`, `open_date`, `date`, `grace_period_days`).
 10. **EmailConfig & MagicLinkToken & EmailBlastLog:** Support the transactional email system. `EmailConfig` stores SMTP settings (singleton row). `MagicLinkToken` stores hashed single-use tokens for welcome emails, login links, and deadline reminders. `EmailBlastLog` deduplicates admin-triggered email blasts per user.
@@ -183,9 +183,9 @@ Unlike traditional server-side sessions, which require the server to store sessi
 
 ### 4.2 Role-Based Access Control (RBAC) Architecture
 
-The system employs a strict RBAC model spanning multiple user roles, each with precisely scoped authorization boundaries. The primary data-entry roles are the School User and Division Personnel; the review chain introduces Division Personnel focal review, CES review, and Cluster Coordinator review; and the Admin role retains full system oversight.
+The system employs a strict RBAC model spanning multiple user roles, each with precisely scoped authorization boundaries. The primary data-entry roles are the School User and Division Personnel; the review chain introduces Division Personnel focal review and CES review; and the Admin role retains full system oversight.
 
-The M&E Manual role mapping is implemented as an operational mapping rather than a one-to-one copy of job titles. School users correspond to **Program Coordinator / Program Owner** for school-level submissions. Division Personnel assigned as focal persons correspond to the **M&E Focal Person with PIR Secretariats** validation role. CES-SGOD, CES-CID, and CES-ASDS correspond to **Functional Division Chief / ASDS** management-response reviewers. Cluster Coordinators are a system-specific middle/final reviewer for school PIRs and have no direct one-to-one M&E Manual role. Admin users administer the portal and are explicitly outside the M&E approval chain.
+The M&E Manual role mapping is implemented as an operational mapping rather than a one-to-one copy of job titles. School users correspond to **Program Coordinator / Program Owner** for school-level submissions. Division Personnel assigned as focal persons correspond to the **M&E Focal Person with PIR Secretariats** validation role. CES-SGOD, CES-CID, and CES-ASDS correspond to **Functional Division Chief / ASDS** management-response reviewers. Admin users administer the portal and are explicitly outside the M&E approval chain.
 
 #### 4.2.1 The School User
 
@@ -205,25 +205,17 @@ The M&E Manual role mapping is implemented as an operational mapping rather than
 
 Three CES role values exist in the system — `CES-SGOD`, `CES-ASDS`, and `CES-CID` — each corresponding to one of the three functional divisions of the Schools Division Office (SGOD, OSDS, and CID respectively). Each CES role is a **singleton**: the system enforces a maximum of one active account per role type to reflect the real-world organizational structure.
 
-- **Authorization Boundary:** CES users can see division-level PIRs routed to their functional division and school AIPs/PIRs that have already been recommended by focal persons. CES-CID additionally receives Cluster Coordinator-owned PIRs. CES users cannot access AIP creation, admin panels, or submissions outside their queue.
+- **Authorization Boundary:** CES users can see division-level PIRs routed to their functional division and school AIPs/PIRs that have already been recommended by focal persons. CES users cannot access AIP creation, admin panels, or submissions outside their queue.
 - **Capabilities:** CES users access a dedicated **CES Portal** (`/ces`). They can review focal-recommended AIPs, approve or return them with CES remarks, review full PIR details, start active PIR review, approve/note PIRs, or return PIRs to submitters. All CES actions are audit-logged and trigger in-app notifications.
-- **Routing Logic:** CES routing resolves the parent program's `division` field. CES-SGOD handles programs with `division = 'SGOD'`; CES-ASDS handles `division = 'OSDS'`; CES-CID handles `division = 'CID'` plus Cluster Coordinator-owned PIRs. For school submissions, the CES queue is reached only after a focal person recommendation.
+- **Routing Logic:** CES routing resolves the parent program's `division` field. CES-SGOD handles programs with `division = 'SGOD'`; CES-ASDS handles `division = 'OSDS'`; CES-CID handles `division = 'CID'` and programs without a declared division. For school submissions, the CES queue is reached only after a focal person recommendation.
 
-#### 4.2.4 The Cluster Coordinator (Cluster Head)
-
-Cluster Coordinators (`role = 'Cluster Coordinator'`) are linked to a specific `Cluster` entity via the `cluster_id` foreign key. The system caps Cluster Coordinator accounts at **10 system-wide**, reflecting the organizational limit of cluster groupings within the Division. Admin may additionally designate one Cluster Coordinator as the **cluster head** via the `Cluster.cluster_head_id` field; this assignment auto-fills the PIR "Noted by" signature block.
-
-- **Authorization Boundary:** Cluster Coordinators see only school PIRs in `"For Cluster Head Review"` or active `"Under Review"` status after focal and CES review, filtered to schools within their assigned cluster.
-- **Capabilities:** Cluster Coordinators access a dedicated **Cluster Head Portal** (`/cluster-head`). They can start an active review, approve/note a school PIR as final, or return it to the submitter with remarks.
-- **Position in Workflow:** The Cluster Coordinator role is the final reviewer for school PIRs. Division-level PIRs are reviewed directly by CES users instead.
-
-#### 4.2.5 The Observer
+#### 4.2.4 The Observer
 
 Observer (`role = 'Observer'`) is a read-only role with access to review dashboards and submitted documents without the ability to take any workflow action. Used for supervisory or monitoring access outside the normal review chain.
 
-#### 4.2.6 The Admin
+#### 4.2.5 The Admin
 
-Admin (`role = 'Admin'`) is the system administrator role. Admin users manage accounts, schools, clusters, programs, focal-person assignments, deadlines, settings, announcements, reports, and oversight views. They can correct administrative metadata and monitor workflow health, but the active PIR approval chain remains with focal reviewers, CES users, and Cluster Coordinators. Admin is therefore outside the M&E Manual's management response chain and cannot serve as the normal PIR approving reviewer.
+Admin (`role = 'Admin'`) is the system administrator role. Admin users manage accounts, schools, clusters, programs, focal-person assignments, deadlines, settings, announcements, reports, and oversight views. They can correct administrative metadata and monitor workflow health, but the active PIR approval chain remains with focal reviewers and CES users. Admin is therefore outside the M&E Manual's management response chain and cannot serve as the normal PIR approving reviewer.
 
 ### 4.3 Client-Side Route Guards vs Server-Side Verification
 
@@ -286,13 +278,13 @@ To mitigate this, the system leverages a hybridized auto-save architecture:
 
 ### 5.5 PIR Review Routing Chain
 
-Prior to v1.0.10, submitted PIRs were directed straight to an Admin queue under a flat status flow (`Draft → Submitted → Under Review → Approved`). The current Beta 3 build adds a focal-person gateway for school submissions: school PIRs pass through Division Personnel recommendation, CES review, and Cluster Head review, while division-level and Cluster Coordinator-owned PIRs route to CES.
+Prior to v1.0.10, submitted PIRs were directed straight to an Admin queue under a flat status flow (`Draft → Submitted → Under Review → Approved`). The current Beta 3 build adds a focal-person gateway for school submissions: school PIRs pass through Division Personnel recommendation and CES review, while division-level PIRs route to CES.
 
 #### 5.5.1 Status Transition Model
 
 ```text
 School PIR:
-Draft -> For Recommendation -> For CES Review -> For Cluster Head Review -> Approved
+Draft -> For Recommendation -> For CES Review -> Approved
                     \-> Returned -> For Recommendation
 
 Division-level PIR:
@@ -306,29 +298,20 @@ Draft -> For CES Review -> Approved
 | Focal person recommends school PIR | `POST /admin/focal/pirs/:id/recommend` | `For CES Review` |
 | Focal person returns school PIR | `POST /admin/focal/pirs/:id/return` | `Returned` |
 | Division Personnel submits PIR | `POST /api/pirs` | `For CES Review` |
-| Cluster Coordinator submits own PIR | `POST /api/pirs` | `For CES Review` |
 | CES starts review | `POST /admin/ces/pirs/:id/start-review` | `Under Review` |
-| CES notes / forwards school PIR | `POST /admin/ces/pirs/:id/note` | `For Cluster Head Review` |
-| CES notes / approves division-level PIR | `POST /admin/ces/pirs/:id/note` | `Approved` |
+| CES notes / approves PIR | `POST /admin/ces/pirs/:id/note` | `Approved` |
 | CES returns to submitter | `POST /admin/ces/pirs/:id/return` | `Returned` |
-| Cluster Head starts review | `POST /admin/cluster-head/pirs/:id/start-review` | `Under Review` |
-| Cluster Head notes / approves | `POST /admin/cluster-head/pirs/:id/note` | `Approved` |
-| Cluster Head returns to submitter | `POST /admin/cluster-head/pirs/:id/return` | `Returned` |
 | User re-saves a returned school PIR | `PUT /api/pirs/:id` | `For Recommendation` |
 | User re-saves a returned division-level PIR | `PUT /api/pirs/:id` | `For CES Review` |
 | Admin override | `PATCH /admin/submissions/:id/status` | Any valid status |
 
 #### 5.5.2 CES Routing Logic
 
-CES assignment is determined by the parent program's `division` field. Division Personnel PIRs route to the CES corresponding to their program's declared division (`SGOD`, `OSDS`, or `CID`). Programs without a declared division fall back to `CES-CID`, and Cluster Coordinator-owned PIRs also route to `CES-CID`. School submissions reach CES only after the assigned focal person recommends them.
+CES assignment is determined by the parent program's `division` field. Division Personnel PIRs route to the CES corresponding to their program's declared division (`SGOD`, `OSDS`, or `CID`). Programs without a declared division fall back to `CES-CID`. School submissions reach CES only after the assigned focal person recommends them.
 
-#### 5.5.3 Cluster Head Routing Logic
+#### 5.5.3 Academic Justification (Multi-Tier Approval Workflows)
 
-School PIRs reach the Cluster Head portal after focal and CES review and are filtered by `cluster_id`. The Cluster Coordinator sees only school PIRs from their assigned cluster. Division Personnel PIRs have no `school_id` and therefore do not appear in the Cluster Head queue.
-
-#### 5.5.4 Academic Justification (Multi-Tier Approval Workflows)
-
-The routing chain architecturally implements role-specific approval gateways in Business Process Management (BPM), where each reviewer contributes a distinct control point (Weske, 2012). Focal review provides program-level screening by assigned Division Personnel, CES review provides division-level programmatic evaluation, and Cluster Head review provides localized supervisory accountability for school submissions.
+The routing chain architecturally implements role-specific approval gateways in Business Process Management (BPM), where each reviewer contributes a distinct control point (Weske, 2012). Focal review provides program-level screening by assigned Division Personnel, and CES review provides division-level programmatic evaluation.
 
 ### 5.6 Read-Only Submitted View
 

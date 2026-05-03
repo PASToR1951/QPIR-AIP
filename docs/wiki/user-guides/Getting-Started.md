@@ -27,7 +27,6 @@ Your role determines what you can see and do in the portal. After signing in, th
 | **CES-SGOD** | Review and endorse PIR submissions before CES-ASDS |
 | **CES-ASDS** | Second-level review and routing of PIR submissions |
 | **CES-CID** | Review and technical evaluation of PIR submissions |
-| **Cluster Coordinator** | Oversee and review submissions from your cluster of schools |
 | **Admin** | Full system management: users, schools, clusters, settings |
 
 ---
@@ -62,7 +61,7 @@ PIRs are filed **per quarter** against an approved AIP.
 Once a school submits a PIR, it moves through the following chain:
 
 ```
-School Submits → CES Review (SGOD / ASDS / CID) → Cluster Head Review → Admin Approval
+School Submits → Focal Recommendation → CES Review (SGOD / ASDS / CID) → Approved or Returned
 ```
 
 Each reviewer can **approve**, **return for revision**, or **comment** on the submission. You will receive notifications at each stage.

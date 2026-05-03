@@ -1,7 +1,6 @@
 # ── Personal dev scripts & automation ────────────────────────────────────────
-tunnel.sh
 commit-batch.sh
-setup-production.sh
+start.sh
 
 # ── Internal documentation (not for public/repo consumers) ───────────────────
 /docs/*
@@ -17,18 +16,8 @@ server/prisma/dbml/
 # ── LLM prompt output ────────────────────────────────────────────────────────
 *.prompt.txt
 
-# ── Local LLM / AI assistant artifacts ───────────────────────────────────────
-/.claude/
-/.codex
-CLAUDE.md
-
 # ── Audit scripts & ephemeral token cache ────────────────────────────────────
 server/scripts/.audit_tokens.json
-server/scripts/.populate_aip_pir_sample_manifest.json
-
-# ── Local mock-data helpers ──────────────────────────────────────────────────
-populate-aip-pir.sh
-server/scripts/populate_aip_pir_sample.ts
 
 # ── Environment variables ─────────────────────────────────────────────────────
 .env
@@ -71,6 +60,7 @@ server/generated/
 
 # ── Backup & temp files ──────────────────────────────────────────────────────
 /backups/
+/.local-backups/
 /.docker/rclone/
 *.dump
 *.dump.enc
@@ -82,9 +72,6 @@ server/generated/
 *.backup
 !server/Dockerfile.backup
 *~
-
-# ── External tools ────────────────────────────────────────────────────────────
-claude-devtools/
 
 # ── OS & editor ───────────────────────────────────────────────────────────────
 .DS_Store
