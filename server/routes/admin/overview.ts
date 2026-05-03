@@ -229,12 +229,9 @@ overviewRoutes.get("/overview", async (c) => {
       forCESReview: quarterPirs.filter((pir) =>
         pir.status === "For CES Review"
       ).length,
-      forClusterHeadReview: quarterPirs.filter((pir) =>
-        pir.status === "For Cluster Head Review"
-      ).length,
       approved: quarterPirs.filter((pir) => pir.status === "Approved").length,
       underReview: quarterPirs.filter((pir) =>
-        ["Under Review", "For Recommendation", "For CES Review", "For Cluster Head Review"].includes(
+        ["Under Review", "For Recommendation", "For CES Review"].includes(
           pir.status,
         )
       ).length,
@@ -266,12 +263,9 @@ overviewRoutes.get("/overview", async (c) => {
       forCESReview: trimesterPirs.filter((pir) =>
         pir.status === "For CES Review"
       ).length,
-      forClusterHeadReview: trimesterPirs.filter((pir) =>
-        pir.status === "For Cluster Head Review"
-      ).length,
       approved: trimesterPirs.filter((pir) => pir.status === "Approved").length,
       underReview: trimesterPirs.filter((pir) =>
-        ["Under Review", "For Recommendation", "For CES Review", "For Cluster Head Review"].includes(
+        ["Under Review", "For Recommendation", "For CES Review"].includes(
           pir.status,
         )
       ).length,
@@ -517,7 +511,7 @@ overviewRoutes.get("/overview", async (c) => {
       ).length,
       inReview:
         sectionPirs.filter((pir) =>
-          ["For Cluster Head Review", "Under Review"].includes(pir.status)
+          pir.status === "Under Review"
         ).length,
       approved: sectionPirs.filter((pir) => pir.status === "Approved").length,
       returned: sectionPirs.filter((pir) => pir.status === "Returned").length,
@@ -590,7 +584,6 @@ overviewRoutes.get("/onboarding-overview", async (c) => {
     "CES-SGOD",
     "CES-ASDS",
     "CES-CID",
-    "Cluster Coordinator",
     "Admin",
   ];
 

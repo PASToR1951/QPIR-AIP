@@ -292,7 +292,7 @@ settingsRoutes.delete("/settings/app-logo", async (c) => {
 });
 
 settingsRoutes.get("/settings/signatories", async (c) => {
-  const [users, config, clusters, programs] = await Promise.all([
+  const [users, config, programs] = await Promise.all([
     prisma.user.findMany({
       where: {
         is_active: true,
@@ -305,20 +305,18 @@ settingsRoutes.get("/settings/signatories", async (c) => {
         first_name: true,
         last_name: true,
         role: true,
-        school: { select: { id: true, name: true, cluster_id: true } },
-        cluster: { select: { id: true, name: true, cluster_number: true } },
+        school: {
+          select: {
+            id: true,
+            name: true,
+            cluster: { select: { cluster_number: true } },
+          },
+        },
         programs: { select: { id: true, title: true, division: true } },
       },
       orderBy: [{ role: "asc" }, { name: "asc" }],
     }),
     prisma.divisionConfig.findFirst(),
-    prisma.cluster.findMany({
-      include: {
-        cluster_head: {
-          select: { id: true, name: true, first_name: true, last_name: true, position: true },
-        },
-      },
-    }),
     prisma.program.findMany({ select: { id: true, title: true, division: true } }),
   ]);
 
@@ -359,18 +357,6 @@ settingsRoutes.get("/settings/signatories", async (c) => {
     },
   };
 
-  // Build cluster head lookup: clusterId → { name, title }
-  const clusterHeadByClusterId: Record<number, { name: string; title: string }> = {};
-  for (const cl of clusters) {
-    if (cl.cluster_head) {
-      const h = cl.cluster_head;
-      clusterHeadByClusterId[cl.id] = {
-        name:  h.name || [h.first_name, h.last_name].filter(Boolean).join(" "),
-        title: h.position || "Cluster Coordinator",
-      };
-    }
-  }
-
   // Build program division lookup: programId → Division
   const programDivision: Record<number, string | null> = {};
   for (const p of programs) {
@@ -387,18 +373,7 @@ settingsRoutes.get("/settings/signatories", async (c) => {
     let signatory: { name: string; title: string; source: string };
 
     if (u.role === "School") {
-      const clusterId = u.school?.cluster_id;
-      const head = clusterId ? clusterHeadByClusterId[clusterId] : null;
-      if (head?.name) {
-        signatory = { ...head, source: "cluster_head" };
-      } else {
-        signatory = { name: "", title: "", source: "none" };
-      }
-    } else if (u.role === "Cluster Coordinator") {
-      const cid = cesFallback["CES-CID"];
-      signatory = cid.name
-        ? { ...cid, source: "ces_cid" }
-        : { name: "", title: "", source: "none" };
+      signatory = { name: "", title: "", source: "program_ces" };
     } else if (u.role === "Division Personnel") {
       // Use the first program's division to determine the CES chief
       const firstDivision = u.programs.map(p => programDivision[p.id]).find(Boolean);
@@ -426,11 +401,9 @@ settingsRoutes.get("/settings/signatories", async (c) => {
         name: u.name || [u.first_name, u.last_name].filter(Boolean).join(" ") || u.first_name || "",
         role: u.role,
         school: u.school?.name ?? null,
-        cluster: u.cluster
-          ? `Cluster ${u.cluster.cluster_number}`
-          : u.school?.cluster_id
-            ? `Cluster ${clusters.find(c => c.id === u.school?.cluster_id)?.cluster_number ?? "?"}`
-            : null,
+        cluster: u.school?.cluster?.cluster_number
+          ? `Cluster ${u.school.cluster.cluster_number}`
+          : null,
         programs: u.programs.map(p => p.title),
       },
       signatory,

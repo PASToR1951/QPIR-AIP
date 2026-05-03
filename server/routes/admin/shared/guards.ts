@@ -32,14 +32,6 @@ export async function requireCES(
   return user;
 }
 
-export async function requireClusterHead(
-  c: Context | string | undefined,
-): Promise<TokenPayload | null> {
-  const user = await getUserFromToken(c);
-  if (!user || user.role !== "Cluster Coordinator") return null;
-  return user;
-}
-
 export const adminOnly: MiddlewareHandler = async (c, next) => {
   const user = await getUserFromToken(c);
   if (!user || user.role !== "Admin") {
@@ -55,4 +47,3 @@ export const adminOrObserverOnly: MiddlewareHandler = async (c, next) => {
   }
   await next();
 };
-

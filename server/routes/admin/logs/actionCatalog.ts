@@ -43,8 +43,6 @@ const CATALOG: Record<string, EntryDef> = {
   started_pir_review:           { label: "Started PIR Review",          category: "submission",   severity: "notice",   icon: "MagnifyingGlass",     color: "indigo"  },
   ces_noted_pir:                { label: "CES Noted PIR",               category: "submission",   severity: "notice",   icon: "CheckCircle",         color: "emerald" },
   ces_returned_pir:             { label: "CES Returned PIR",            category: "submission",   severity: "warn",     icon: "ArrowUUpLeft",        color: "amber"   },
-  cluster_head_noted_pir:       { label: "Cluster Head Noted PIR",      category: "submission",   severity: "notice",   icon: "CheckCircle",         color: "emerald" },
-  cluster_head_returned_pir:    { label: "Cluster Head Returned PIR",   category: "submission",   severity: "warn",     icon: "ArrowUUpLeft",        color: "amber"   },
   read_pir:                     { label: "Viewed PIR",                  category: "submission",   severity: "info",     icon: "Eye",                 color: "slate"   },
   toggle_presented:             { label: "Toggled PIR Presented",       category: "submission",   severity: "notice",   icon: "Checks",              color: "blue"    },
 
@@ -71,8 +69,6 @@ const CATALOG: Record<string, EntryDef> = {
   created_cluster:              { label: "Created Cluster",             category: "organization", severity: "notice",   icon: "SquaresFour",         color: "blue"    },
   updated_cluster:              { label: "Updated Cluster",             category: "organization", severity: "notice",   icon: "SquaresFour",         color: "indigo"  },
   deleted_cluster:              { label: "Deleted Cluster",             category: "organization", severity: "critical", icon: "SquaresFour",         color: "rose"    },
-  assigned_cluster_head:        { label: "Assigned Cluster Head",       category: "organization", severity: "notice",   icon: "UserCirclePlus",      color: "emerald" },
-  unassigned_cluster_head:      { label: "Unassigned Cluster Head",     category: "organization", severity: "warn",     icon: "UserCircleMinus",     color: "amber"   },
   uploaded_cluster_logo:        { label: "Uploaded Cluster Logo",       category: "organization", severity: "notice",   icon: "ImageSquare",         color: "blue"    },
   removed_cluster_logo:         { label: "Removed Cluster Logo",        category: "organization", severity: "warn",     icon: "ImageSquare",         color: "amber"   },
 

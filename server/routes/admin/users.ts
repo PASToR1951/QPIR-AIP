@@ -17,8 +17,9 @@ usersRoutes.use("/users", adminOnly);
 usersRoutes.use("/users/*", adminOnly);
 
 const CES_ROLES: string[] = ["CES-SGOD", "CES-ASDS", "CES-CID"];
-const SYSTEM_ROLES = new Set(["Admin", ...CES_ROLES, "Cluster Coordinator", OBSERVER_ROLE]);
+const SYSTEM_ROLES = new Set(["Admin", ...CES_ROLES, OBSERVER_ROLE]);
 const VALID_ROLES = new Set([...SYSTEM_ROLES, "Division Personnel", "School"]);
+const PATCHABLE_ROLES = new Set([...VALID_ROLES, "Pending"]);
 
 interface ImportRow {
   email: string;
@@ -28,7 +29,6 @@ interface ImportRow {
   last_name?: string;
   middle_initial?: string;
   school_id_int?: number;
-  cluster_id_int?: number;
   program_ids?: number[];
 }
 
@@ -125,10 +125,8 @@ function serializeAdminUser(
     email: string;
     role: string;
     is_active: boolean;
-    cluster_id: number | null;
     created_at: Date;
     school: { id: number; name: string; level: string } | null;
-    cluster?: { id: number; name: string | null; cluster_number: number | null } | null;
     programs: Array<{ id: number; title: string; division: string | null }>;
   },
   allPrograms: Array<{
@@ -150,55 +148,10 @@ function serializeAdminUser(
     email: user.email,
     role: user.role,
     is_active: user.is_active,
-    cluster_id: user.cluster_id,
     school: user.school ? { id: user.school.id, name: user.school.name } : null,
-    cluster: user.cluster
-      ? { id: user.cluster.id, name: user.cluster.name, cluster_number: user.cluster.cluster_number }
-      : null,
     programs: buildUserPrograms(user, allPrograms),
     created_at: user.created_at,
   };
-}
-
-type UserValidationClient = Pick<typeof prisma, "school" | "user">;
-
-async function validateClusterCoordinatorSchoolAssignment(
-  db: UserValidationClient,
-  { clusterId, schoolId, excludeUserId }: {
-    clusterId?: number | null;
-    schoolId?: number | null;
-    excludeUserId?: number;
-  },
-): Promise<{ error: string; status: 400 | 409 } | null> {
-  if (schoolId == null) return null;
-
-  if (clusterId == null) {
-    return { error: "Select an assigned cluster before choosing an own school.", status: 400 };
-  }
-
-  const school = await db.school.findUnique({
-    where: { id: schoolId },
-    select: { id: true, cluster_id: true },
-  });
-  if (!school) return { error: "Selected school not found", status: 400 };
-
-  if (school.cluster_id !== clusterId) {
-    return { error: "Selected school must belong to the assigned cluster", status: 400 };
-  }
-
-  const existing = await db.user.findFirst({
-    where: {
-      role: "Cluster Coordinator",
-      school_id: schoolId,
-      ...(excludeUserId ? { NOT: { id: excludeUserId } } : {}),
-    },
-    select: { id: true },
-  });
-  if (existing) {
-    return { error: "This school already has an assigned Cluster Head.", status: 409 };
-  }
-
-  return null;
 }
 
 usersRoutes.get("/users", async (c) => {
@@ -221,7 +174,7 @@ usersRoutes.get("/users", async (c) => {
           ],
         }),
       },
-      include: { school: { include: { cluster: true } }, cluster: true, programs: true },
+      include: { school: { include: { cluster: true } }, programs: true },
       orderBy: { created_at: "desc" },
     }),
     fetchAllPrograms(),
@@ -238,7 +191,7 @@ usersRoutes.get("/users/:id/profile", async (c) => {
   const [user, allPrograms] = await Promise.all([
     prisma.user.findUnique({
       where: { id },
-      include: { school: { include: { cluster: true } }, cluster: true, programs: true },
+      include: { school: { include: { cluster: true } }, programs: true },
     }),
     fetchAllPrograms(),
   ]);
@@ -266,7 +219,6 @@ usersRoutes.post("/users", async (c) => {
     password,
     role,
     school_id,
-    cluster_id,
     program_ids,
   } = sanitizeObject(await c.req.json());
 
@@ -278,6 +230,9 @@ usersRoutes.post("/users", async (c) => {
   }
   if (!email || !password || !role) {
     return c.json({ error: "email, password, role are required" }, 400);
+  }
+  if (!VALID_ROLES.has(role)) {
+    return c.json({ error: `Unknown role: "${role}"` }, 400);
   }
   if (password.length < 6) {
     return c.json({ error: "Minimum 6 characters required" }, 400);
@@ -293,26 +248,9 @@ usersRoutes.post("/users", async (c) => {
   const cesError = await validateCesSingleton(role);
   if (cesError) return c.json({ error: cesError }, 409);
 
-  if (role === "Cluster Coordinator") {
-    const count = await prisma.user.count({ where: { role: "Cluster Coordinator" } });
-    if (count >= 10) {
-      return c.json({ error: "Maximum of 10 Cluster Coordinator accounts allowed." }, 409);
-    }
-  }
-
   if (role === "School" && school_id) {
     const schoolError = await validateSchoolSingleton(school_id);
     if (schoolError) return c.json({ error: schoolError }, 409);
-  }
-
-  if (role === "Cluster Coordinator") {
-    const schoolAssignmentError = await validateClusterCoordinatorSchoolAssignment(prisma, {
-      clusterId: cluster_id ?? null,
-      schoolId: school_id ?? null,
-    });
-    if (schoolAssignmentError) {
-      return c.json({ error: schoolAssignmentError.error }, schoolAssignmentError.status);
-    }
   }
 
   const hashed = await hashPassword(password);
@@ -331,7 +269,6 @@ usersRoutes.post("/users", async (c) => {
           password: hashed,
           role,
           ...(school_id && { school_id }),
-          ...(cluster_id && { cluster_id }),
           ...(program_ids?.length && {
             programs: { connect: program_ids.map((id: number) => ({ id })) },
           }),
@@ -343,7 +280,7 @@ usersRoutes.post("/users", async (c) => {
           action: "created_user",
           entity_type: "User",
           entity_id: created.id,
-          details: { role, school_id: school_id ?? null, cluster_id: cluster_id ?? null },
+          details: { role, school_id: school_id ?? null },
         },
       });
       return created;
@@ -408,7 +345,6 @@ usersRoutes.post("/users/import", async (c) => {
       continue;
     }
 
-    const clusterId = parsePositiveInt(row.cluster_id) ?? undefined;
     const rawProgramIds = row.program_ids;
     const programIds: number[] = Array.isArray(rawProgramIds)
       ? (rawProgramIds as unknown[]).map(Number).filter((v) => Number.isInteger(v) && v > 0)
@@ -422,7 +358,6 @@ usersRoutes.post("/users/import", async (c) => {
       last_name: (row.last_name as string)?.trim() || undefined,
       middle_initial: (row.middle_initial as string)?.trim() || undefined,
       school_id_int: schoolId,
-      cluster_id_int: clusterId,
       program_ids: programIds,
     });
   }
@@ -456,7 +391,6 @@ usersRoutes.post("/users/import", async (c) => {
           ...(row.last_name && { last_name: row.last_name }),
           ...(row.middle_initial && { middle_initial: row.middle_initial }),
           ...(row.school_id_int && { school_id: row.school_id_int }),
-          ...(row.cluster_id_int && { cluster_id: row.cluster_id_int }),
           ...(row.program_ids?.length && {
             programs: { connect: row.program_ids.map((id) => ({ id })) },
           }),
@@ -502,22 +436,24 @@ usersRoutes.patch("/users/:id", async (c) => {
     position,
     role,
     school_id,
-    cluster_id,
     program_ids,
     is_active,
   } = body;
 
   const existingUser = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, is_active: true, role: true, school_id: true, cluster_id: true },
+    select: { id: true, is_active: true, role: true, school_id: true },
   });
   if (!existingUser) return c.json({ error: "Not found" }, 404);
 
   const nextRole = role ?? existingUser.role;
   const nextSchoolId = school_id !== undefined ? school_id : existingUser.school_id;
-  const nextClusterId = cluster_id !== undefined ? cluster_id : existingUser.cluster_id;
 
   if (role !== undefined) {
+    if (!PATCHABLE_ROLES.has(role)) {
+      return c.json({ error: `Unknown role: "${role}"` }, 400);
+    }
+
     const cesError = await validateCesSingleton(role, id);
     if (cesError) return c.json({ error: cesError }, 409);
 
@@ -536,17 +472,6 @@ usersRoutes.patch("/users/:id", async (c) => {
     if (schoolError) return c.json({ error: schoolError }, 409);
   }
 
-  if (nextRole === "Cluster Coordinator") {
-    const schoolAssignmentError = await validateClusterCoordinatorSchoolAssignment(prisma, {
-      clusterId: nextClusterId ?? null,
-      schoolId: nextSchoolId ?? null,
-      excludeUserId: id,
-    });
-    if (schoolAssignmentError) {
-      return c.json({ error: schoolAssignmentError.error }, schoolAssignmentError.status);
-    }
-  }
-
   const updateData: Record<string, unknown> = {};
   if (salutation !== undefined) updateData.salutation = salutation;
   if (name !== undefined) updateData.name = name;
@@ -559,15 +484,10 @@ usersRoutes.patch("/users/:id", async (c) => {
 
   if (role === "School" && school_id !== undefined) {
     updateData.school_id = school_id;
-    updateData.cluster_id = null;
-  } else if (role === "Cluster Coordinator") {
-    if (school_id !== undefined) updateData.school_id = school_id;
-    if (cluster_id !== undefined) updateData.cluster_id = cluster_id;
   } else if (
     ["Division Personnel", "Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Pending", OBSERVER_ROLE].includes(role)
   ) {
     updateData.school_id = null;
-    updateData.cluster_id = null;
   }
 
   try {

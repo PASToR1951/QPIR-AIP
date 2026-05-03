@@ -32,7 +32,7 @@ statusRouter.patch(
       if (type === "pir") {
         return c.json(
           {
-            error: "Forbidden: PIR approval is handled by CES or Cluster Head",
+            error: "Forbidden: PIR approval is handled by CES reviewers",
           },
           403,
         );

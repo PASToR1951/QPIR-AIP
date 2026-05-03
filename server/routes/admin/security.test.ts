@@ -10,22 +10,25 @@ function assertEquals(actual: unknown, expected: unknown, message: string) {
   }
 }
 
-Deno.test("Cluster Coordinators can read only PIRs from their own cluster", () => {
-  const coordinator = { role: "Cluster Coordinator", cluster_id: 7 };
+Deno.test("purged Cluster Coordinator role cannot read PIRs", () => {
+  const retiredRole = { role: "Cluster Coordinator" };
 
   assertEquals(
-    canReadPirRecord(coordinator, { aip: { school: { cluster_id: 7 } } }),
+    canReadPirRecord(retiredRole, { aip: { school: { cluster_id: 7 } } }),
+    false,
+    "retired role should not be readable",
+  );
+});
+
+Deno.test("admin-facing reviewer roles can read non-draft PIRs", () => {
+  assertEquals(
+    canReadPirRecord({ role: "CES-CID" }, { aip: { school: null } }),
     true,
-    "matching cluster should be readable",
+    "CES-CID should be readable",
   );
   assertEquals(
-    canReadPirRecord(coordinator, { aip: { school: { cluster_id: 8 } } }),
+    canReadPirRecord({ role: "School" }, { aip: { school: { cluster_id: 7 } } }),
     false,
-    "different cluster should be forbidden",
-  );
-  assertEquals(
-    canReadPirRecord(coordinator, { aip: { school: null } }),
-    false,
-    "division-owned PIRs should not be readable through cluster coordinator scope",
+    "submitter roles should not be readable through admin PIR access",
   );
 });

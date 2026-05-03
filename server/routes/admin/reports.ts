@@ -45,7 +45,6 @@ const FUNNEL_STATUSES = [
   "Under Review",
   "For Recommendation",
   "For CES Review",
-  "For Cluster Head Review",
   "Approved",
   "Returned",
 ];
@@ -356,7 +355,7 @@ reportsRoutes.get("/reports/quarterly", async (c) => {
           pir.status !== "Draft"
         ).length,
         pending: quarterPirs.filter((pir) =>
-          ["Submitted", "For Recommendation", "For CES Review", "For Cluster Head Review", "Under Review"].includes(pir.status)
+          ["Submitted", "For Recommendation", "For CES Review", "Under Review"].includes(pir.status)
         ).length,
         approved: quarterPirs.filter((pir) => pir.status === "Approved").length,
         returned: quarterPirs.filter((pir) => pir.status === "Returned").length,
