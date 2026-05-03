@@ -6,7 +6,6 @@ import { getOAuthErrorMessage, LOGIN_COPY } from './lib/authCopy.js';
 function roleToDashboard(role) {
   if (auth.isAdminPanelRole(role)) return '/admin';
   if (['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(role)) return '/ces';
-  if (role === 'Cluster Coordinator') return '/cluster-head';
   return '/';
 }
 

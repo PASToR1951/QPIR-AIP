@@ -1,8 +1,9 @@
 import axios from 'axios';
+import { API_BASE_URL } from './apiBase.js';
 import { getFriendlyError } from './errorMessages.js';
 import { auth } from './auth.js';
 
-export const API = import.meta.env.VITE_API_URL;
+export const API = API_BASE_URL;
 
 const api = axios.create({
   baseURL: API,

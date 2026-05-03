@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAppLogo } from './context/BrandingContext.jsx';
 import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, EnvelopeIcon as Mail, ArrowLeft } from '@phosphor-icons/react';
 import { Input } from './components/ui/Input';
+import { apiUrl } from './lib/apiBase.js';
 import { auth } from './lib/auth';
 import { getOAuthErrorMessage, LOGIN_COPY, SIGN_IN_FAILED_TITLE } from './lib/authCopy.js';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
@@ -15,7 +16,6 @@ const LOGIN_VIEW_TRANSITION_MS = 380;
 function roleToDashboard(role) {
   if (auth.isAdminPanelRole(role)) return '/admin';
   if (['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(role)) return '/ces';
-  if (role === 'Cluster Coordinator') return '/cluster-head';
   return '/';
 }
 
@@ -206,7 +206,7 @@ export default function Login() {
     }
 
     try {
-      const { data } = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
+      const { data } = await axios.post(apiUrl('/api/auth/login'), {
         email: finalEmail,
         password,
         recaptchaToken: token,
@@ -391,7 +391,7 @@ export default function Login() {
                   <div className="login-panel-content space-y-4 p-1">
                     {googleOAuthAvailable ? (
                       <a
-                        href={`${import.meta.env.VITE_API_URL}/api/auth/oauth/google`}
+                        href={apiUrl('/api/auth/oauth/google')}
                         tabIndex={loginView === GOOGLE_VIEW ? 0 : -1}
                         className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-[#0F3460] bg-white dark:bg-[#1A1A2E] text-slate-700 dark:text-gray-200 text-sm font-semibold transition-all shadow-sm hover:bg-slate-50 dark:hover:bg-[#0F3460]/60"
                       >

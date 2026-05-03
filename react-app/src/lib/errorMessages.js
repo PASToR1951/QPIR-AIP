@@ -45,8 +45,6 @@ const EXACT_MAP = {
     'A program with that title already exists in that division. Please use a unique title.',
   'Cannot delete a cluster that has schools assigned to it':
     'This cluster cannot be deleted because it still has schools assigned to it.',
-  'Maximum of 10 Cluster Coordinator accounts allowed.':
-    'The maximum number of Cluster Coordinator accounts (10) has already been reached.',
 
   // ── Submission window ────────────────────────────────────────────────────────
   'Submission window has not opened yet for this quarter.':
@@ -97,8 +95,6 @@ const EXACT_MAP = {
     'This PIR is already under review.',
   'PIR is not pending CES review':
     'This PIR is not currently pending CES review.',
-  'PIR is not pending Cluster Head review':
-    'This PIR is not currently pending Cluster Head review.',
   'Cannot delete your own account':
     'You cannot delete your own account.',
 
@@ -139,14 +135,10 @@ const EXACT_MAP = {
     'First name and last name are required for Division Personnel accounts.',
   'email, password, role are required':
     'Email, password, and role are all required to create a new user.',
-  'Select an assigned cluster before choosing an own school.':
-    'Please choose the Cluster Head’s assigned cluster before selecting an own school.',
   'Selected school not found':
     'The selected school could not be found. Please choose another school.',
   'Selected school must belong to the assigned cluster':
     'Please choose a school that belongs to the selected cluster.',
-  'This school already has an assigned Cluster Head.':
-    'That school already has a Cluster Head assigned. Please choose another school.',
   'Minimum 8 characters required':
     'Password must be at least 8 characters long.',
   'Must contain an uppercase letter':

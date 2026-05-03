@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiUrl } from './apiBase.js';
 
 const SESSION_EVENT = 'auth:session-updated';
 const LOGOUT_BLOCK_KEY = 'auth:explicitLogout';
@@ -89,7 +90,7 @@ export const auth = {
     dispatchSessionUpdate(user);
   },
   refreshSession: async () => {
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
+    const res = await fetch(apiUrl('/api/auth/me'), {
       credentials: 'include'
     });
     if (!res.ok) throw new Error('SESSION_REFRESH_FAILED');
@@ -113,7 +114,7 @@ export const auth = {
   },
   expireSession: async () => {
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+      await fetch(apiUrl('/api/auth/logout'), {
         method: 'POST', credentials: 'include'
       });
     } catch {
@@ -125,7 +126,7 @@ export const auth = {
     setLogoutBlock();
     let logoutError = null;
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/logout`, {
+      const res = await fetch(apiUrl('/api/auth/logout'), {
         method: 'POST', credentials: 'include'
       });
       if (!res.ok) throw new Error('LOGOUT_CONFIRMATION_FAILED');

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { apiUrl } from './lib/apiBase.js';
 import { auth } from './lib/auth';
 
 function roleToDashboard(role) {
   if (auth.isAdminPanelRole(role)) return '/admin';
   if (['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(role)) return '/ces';
-  if (role === 'Cluster Coordinator') return '/cluster-head';
   return '/';
 }
 
@@ -30,7 +30,7 @@ export default function MagicLinkCallback() {
       return;
     }
 
-    fetch(`${import.meta.env.VITE_API_URL}/api/auth/magic-link/verify`, {
+    fetch(apiUrl('/api/auth/magic-link/verify'), {
       method: 'POST',
       credentials: 'include',
       headers: {
