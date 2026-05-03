@@ -5,13 +5,22 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMMIT_BATCH="$REPO_ROOT/commit-batch.sh"
 
 WAVE_ORDER=(
-  "schema"
-  "server-lib"
+  "db-schema"
+  "server-auth"
+  "server-cluster-removal"
   "server-admin"
-  "server-admin-submissions"
   "server-data"
-  "frontend"
-  "root"
+  "server-bootstrap"
+  "frontend-cluster-removal"
+  "frontend-auth"
+  "frontend-onboarding"
+  "frontend-admin"
+  "frontend-forms"
+  "frontend-misc"
+  "frontend-version"
+  "deploy"
+  "docs-root"
+  "tooling"
 )
 
 SUMMARY_ITEMS=()
@@ -31,13 +40,22 @@ Commits the working tree in predefined waves and delegates each wave to
 commit-batch.sh so every category gets its own batch note and commit.
 
 Default waves:
-  schema                 ProgramFocalPerson model + focal person migration
-  server-lib             routing.ts comment update for focal flow
-  server-admin           admin routes: programs, overview, reports, pirReview, focalPersonReview, index
-  server-admin-submissions  submissions: validation, status guard, notification label
-  server-data            aips, pirs, lookups, dashboard — focal person submission routing
-  frontend               all react-app/src changes: division UI, CES AIP review, status badge
-  root                   root tooling: commit-stages.sh update
+  db-schema                 schema.prisma + table-rename / drift-fix / cluster-purge migrations
+  server-auth               auth, csrf, magic link, session cookie, oauth, origins lib
+  server-cluster-removal    server-side Cluster Coordinator role takedown (routing, schoolsClusters)
+  server-admin              admin routes: overview, pirReview, reports, settings, users, guards, submissions, logs
+  server-data               data routes: aips, pirs, dashboard, drafts, lookups, notifications
+  server-bootstrap          server.ts entry + scripts/seed.ts
+  frontend-cluster-removal  delete cluster-head dashboard/layout, cluster onboarding role, cluster admin UI
+  frontend-auth             Login, MagicLinkCallback, OAuthCallback, lib/{api,apiBase,auth,errorMessages}
+  frontend-onboarding       OnboardingTour rewrite, role configs, validate-onboarding script, hint component
+  frontend-admin            admin pages and components beyond cluster removal
+  frontend-forms            AIP/PIR form containers, hooks, signatories
+  frontend-misc             public pages, ui components, vite/package config, base styles, reportExport
+  frontend-version          react-app/src/version.js — changelog rewrite
+  deploy                    docker-compose, Caddyfile, deploy/lockdown scripts, data CSV seeds
+  docs-root                 README, .gitignore, system-doc thesis, wiki, dataset.json removal
+  tooling                   commit-stages.sh wave rewrite for the cluster-removal cycle
 
 Options:
   --wave NAME        Commit only this wave. Can be repeated.
@@ -73,13 +91,22 @@ require_value() {
 
 wave_title() {
   case "$1" in
-    schema)                   printf 'ProgramFocalPerson model and focal person migration' ;;
-    server-lib)               printf 'routing.ts comment update for focal person flow' ;;
-    server-admin)             printf 'admin routes: programs, overview, reports, pirReview, focalPersonReview' ;;
-    server-admin-submissions) printf 'submissions: validation status, admin guard, notification label' ;;
-    server-data)              printf 'aips, pirs, lookups, dashboard — focal person submission routing' ;;
-    frontend)                 printf 'division UI, CES AIP review queue, status badge, focal flow wiring' ;;
-    root)                     printf 'root tooling: commit-stages.sh for focal person flow cycle' ;;
+    db-schema)                printf 'schema.prisma cleanup and table-rename, schema-drift, cluster-purge migrations' ;;
+    server-auth)              printf 'auth, csrf, magic link, session cookie, oauth, new origins library' ;;
+    server-cluster-removal)   printf 'server-side Cluster Coordinator role takedown (routing, schoolsClusters)' ;;
+    server-admin)             printf 'admin routes: overview, pirReview, reports, settings, users, guards, submissions, logs' ;;
+    server-data)              printf 'data routes: aips, pirs, dashboard, drafts, lookups, notifications' ;;
+    server-bootstrap)         printf 'server.ts entry trim and scripts/seed.ts updates' ;;
+    frontend-cluster-removal) printf 'delete cluster-head dashboard/layout, cluster onboarding role, cluster admin UI' ;;
+    frontend-auth)            printf 'Login, MagicLinkCallback, OAuthCallback, lib/{api,apiBase,auth,errorMessages}' ;;
+    frontend-onboarding)      printf 'OnboardingTour rewrite, role configs, validate-onboarding script, hint component' ;;
+    frontend-admin)           printf 'admin pages and components beyond cluster removal' ;;
+    frontend-forms)           printf 'AIP/PIR form containers, hooks, signatories' ;;
+    frontend-misc)            printf 'public pages, ui components, vite/package config, base styles, reportExport' ;;
+    frontend-version)         printf 'react-app/src/version.js — changelog rewrite and 1.1.0-beta entry' ;;
+    deploy)                   printf 'docker-compose, Caddyfile, deploy/lockdown scripts, data CSV seeds' ;;
+    docs-root)                printf 'README, .gitignore, system-doc thesis, wiki, dataset.json removal' ;;
+    tooling)                  printf 'commit-stages.sh wave rewrite for the cluster-removal cycle' ;;
     *) die "Unknown wave: $1" ;;
   esac
 }
@@ -93,56 +120,189 @@ wave_commit_message() {
   fi
 
   case "$wave" in
-    schema)                   printf 'feat(db): add ProgramFocalPerson model and focal person fields on AIP/PIR' ;;
-    server-lib)               printf 'chore(server): update routing.ts comment for focal person flow' ;;
-    server-admin)             printf 'feat(admin): focal person review routes and program focal-persons management' ;;
-    server-admin-submissions) printf 'feat(admin): add For Recommendation status to submissions pipeline' ;;
-    server-data)              printf 'feat(server): route school AIP/PIR submissions through focal person flow' ;;
-    frontend)                 printf 'feat(frontend): division focal person queue, CES AIP review, status badge updates' ;;
-    root)                     printf 'chore(tooling): update commit-stages.sh for focal person flow cycle' ;;
+    db-schema)                printf 'feat(db): drop Cluster Coordinator role and align schema with snake_case tables' ;;
+    server-auth)              printf 'feat(server): origin-aware auth, OAuth, CSRF, and session cookie hardening' ;;
+    server-cluster-removal)   printf 'refactor(server): remove Cluster Coordinator routing and admin endpoints' ;;
+    server-admin)             printf 'refactor(server): align admin routes with cluster-less review flow' ;;
+    server-data)              printf 'refactor(server): align data routes with cluster-less review flow' ;;
+    server-bootstrap)         printf 'chore(server): trim server bootstrap and seed script' ;;
+    frontend-cluster-removal) printf 'refactor(frontend): remove Cluster Coordinator dashboard, onboarding, and admin UI' ;;
+    frontend-auth)            printf 'feat(frontend): origin-aware API client and auth callback hardening' ;;
+    frontend-onboarding)      printf 'feat(frontend): rewrite onboarding tour with anchored hints and viewport tracking' ;;
+    frontend-admin)           printf 'refactor(frontend): admin pages and components beyond cluster removal' ;;
+    frontend-forms)           printf 'refactor(frontend): align AIP/PIR forms with focal-flow review states' ;;
+    frontend-misc)            printf 'chore(frontend): public pages, ui polish, vite/package config, base styles' ;;
+    frontend-version)         printf 'docs(changelog): rewrite 1.1.0-beta entry and add beta-3 highlights' ;;
+    deploy)                   printf 'chore(deploy): Caddy SSL profile, host firewall scripts, and seed CSV dataset' ;;
+    docs-root)                printf 'docs: refresh README, system thesis, wiki, and gitignore' ;;
+    tooling)                  printf 'chore(tooling): rewrite commit-stages.sh waves for the cluster-removal cycle' ;;
     *) die "Unknown wave: $wave" ;;
   esac
 }
 
 wave_paths() {
   case "$1" in
-    schema)
+    db-schema)
       printf '%s\n' \
         'server/prisma/schema.prisma' \
-        'server/prisma/migrations/20260429000001_focal_person_flow'
+        'server/prisma/migrations/20260427000001_rename_tables_to_snake_case' \
+        'server/prisma/migrations/20260501000001_schema_drift_fix_v2' \
+        'server/prisma/migrations/20260501000002_purge_cluster_coordinators'
       ;;
-    server-lib)
+    server-auth)
       printf '%s\n' \
-        'server/lib/routing.ts'
+        'server/lib/auth.ts' \
+        'server/lib/csrf.ts' \
+        'server/lib/magicLink.ts' \
+        'server/lib/sessionCookie.ts' \
+        'server/lib/userSessions.ts' \
+        'server/lib/accountEmails.ts' \
+        'server/lib/config.ts' \
+        'server/lib/security.test.ts' \
+        'server/lib/origins.ts' \
+        'server/routes/auth.ts' \
+        'server/routes/oauth.ts'
+      ;;
+    server-cluster-removal)
+      printf '%s\n' \
+        'server/lib/routing.ts' \
+        'server/routes/admin/schoolsClusters.ts'
       ;;
     server-admin)
       printf '%s\n' \
-        'server/routes/admin/index.ts' \
         'server/routes/admin/overview.ts' \
         'server/routes/admin/pirReview.ts' \
-        'server/routes/admin/programs.ts' \
         'server/routes/admin/reports.ts' \
-        'server/routes/admin/focalPersonReview.ts'
-      ;;
-    server-admin-submissions)
-      printf '%s\n' \
+        'server/routes/admin/settings.ts' \
+        'server/routes/admin/users.ts' \
+        'server/routes/admin/security.test.ts' \
+        'server/routes/admin/shared/guards.ts' \
+        'server/routes/admin/shared/pirAccess.ts' \
         'server/routes/admin/submissions/notifications.ts' \
         'server/routes/admin/submissions/status.ts' \
-        'server/routes/admin/submissions/validation.ts'
+        'server/routes/admin/submissions/validation.ts' \
+        'server/routes/admin/logs/actionCatalog.ts'
       ;;
     server-data)
       printf '%s\n' \
         'server/routes/data/aips.ts' \
         'server/routes/data/dashboard.ts' \
+        'server/routes/data/drafts.ts' \
         'server/routes/data/lookups.ts' \
-        'server/routes/data/pirs.ts'
+        'server/routes/data/notifications.ts' \
+        'server/routes/data/pirs.ts' \
+        'server/routes/data/shared/lookups.ts'
       ;;
-    frontend)
+    server-bootstrap)
       printf '%s\n' \
-        'react-app/src'
+        'server/server.ts' \
+        'server/scripts/seed.ts'
       ;;
-    root)
-      printf '%s\n' '.' ':(top,exclude)react-app/**' ':(top,exclude)server/**' ':(top,exclude)docs/**'
+    frontend-cluster-removal)
+      printf '%s\n' \
+        'react-app/src/cluster-head/ClusterHeadDashboard.jsx' \
+        'react-app/src/cluster-head/ClusterHeadLayout.jsx' \
+        'react-app/src/lib/onboarding/roles/cluster.js' \
+        'react-app/src/lib/onboarding/roles/index.js' \
+        'react-app/src/lib/clusterLogo.js' \
+        'react-app/src/lib/routeTheme.js' \
+        'react-app/src/admin/pages/AdminSchools.jsx' \
+        'react-app/src/admin/pages/adminSchools/ClusterCard.jsx' \
+        'react-app/src/admin/pages/adminSchools/useSchoolsData.js'
+      ;;
+    frontend-auth)
+      printf '%s\n' \
+        'react-app/src/Login.jsx' \
+        'react-app/src/MagicLinkCallback.jsx' \
+        'react-app/src/OAuthCallback.jsx' \
+        'react-app/src/lib/api.js' \
+        'react-app/src/lib/auth.js' \
+        'react-app/src/lib/apiBase.js' \
+        'react-app/src/lib/errorMessages.js'
+      ;;
+    frontend-onboarding)
+      printf '%s\n' \
+        'react-app/src/components/ui/OnboardingChecklist.jsx' \
+        'react-app/src/components/ui/OnboardingController.jsx' \
+        'react-app/src/components/ui/OnboardingTour.jsx' \
+        'react-app/src/components/ui/OnboardingHint.jsx' \
+        'react-app/src/components/ui/onboardingTour' \
+        'react-app/src/lib/onboarding/roles/ces.js' \
+        'react-app/src/lib/onboarding/roles/division.js' \
+        'react-app/src/lib/onboarding/roles/school.js' \
+        'react-app/src/lib/onboarding/validateTargets.dev.js' \
+        'react-app/src/lib/onboardingConfig.js' \
+        'react-app/src/lib/onboardingUtils.js' \
+        'react-app/src/lib/portalHelpConfig.js' \
+        'react-app/src/hooks/useOnboarding.jsx' \
+        'react-app/scripts/validate-onboarding.mjs'
+      ;;
+    frontend-admin)
+      printf '%s\n' \
+        'react-app/src/admin/AdminTopBar.jsx' \
+        'react-app/src/admin/components/CreateUserWizard.jsx' \
+        'react-app/src/admin/components/ImportUsersModal.jsx' \
+        'react-app/src/admin/components/StatusBadge.jsx' \
+        'react-app/src/admin/components/importUsersModal/PasteStep.jsx' \
+        'react-app/src/admin/components/importUsersModal/importUsersCsv.js' \
+        'react-app/src/admin/pages/AdminConsolidationTemplate.jsx' \
+        'react-app/src/admin/pages/AdminSessions.jsx' \
+        'react-app/src/admin/pages/AdminUsers.jsx' \
+        'react-app/src/admin/pages/adminOverview/AdminOverviewCharts.jsx' \
+        'react-app/src/admin/pages/adminSettings/SignatoriesPanel.jsx' \
+        'react-app/src/admin/pages/adminSubmissions/submissionsConstants.js' \
+        'react-app/src/admin/pages/adminUsers/UserForm.jsx' \
+        'react-app/src/admin/pages/adminUsers/schoolAssignmentOptions.js' \
+        'react-app/src/admin/pages/adminUsers/useUserData.js' \
+        'react-app/src/admin/pages/adminUsers/useUserMutations.js' \
+        'react-app/src/admin/pages/pirReview/PIRFullFormView.jsx'
+      ;;
+    frontend-forms)
+      printf '%s\n' \
+        'react-app/src/forms/aip/AIPFormContainer.jsx' \
+        'react-app/src/forms/aip/useAipProgramState.js' \
+        'react-app/src/forms/aip/useAipSignatories.js' \
+        'react-app/src/forms/pir/PIRFormContainer.jsx' \
+        'react-app/src/forms/pir/PIRFormEditor.jsx' \
+        'react-app/src/forms/shared/useProgramsAndConfig.js'
+      ;;
+    frontend-misc)
+      printf '%s\n' \
+        'react-app/src/AnimatedContent.jsx' \
+        'react-app/src/components/FAQ.jsx' \
+        'react-app/src/components/PrivacyPolicy.jsx' \
+        'react-app/src/components/ui/AnnouncementBanner.jsx' \
+        'react-app/src/components/ui/ForceChangePasswordModal.jsx' \
+        'react-app/src/components/ui/NotificationBell.jsx' \
+        'react-app/src/components/ui/PracticeInteractionModal.jsx' \
+        'react-app/src/components/ui/WelcomeCard.jsx' \
+        'react-app/src/lib/reportExport.js' \
+        'react-app/src/styles/base.css' \
+        'react-app/vite.config.js' \
+        'react-app/package.json'
+      ;;
+    frontend-version)
+      printf '%s\n' \
+        'react-app/src/version.js'
+      ;;
+    deploy)
+      printf '%s\n' \
+        'docker-compose.yml' \
+        'deploy' \
+        'scripts' \
+        'data'
+      ;;
+    docs-root)
+      printf '%s\n' \
+        'README.md' \
+        '.gitignore' \
+        'docs/SYSTEM_DOCUMENTATION_THESIS.md' \
+        'docs/wiki/user-guides/Getting-Started.md' \
+        'dataset.json'
+      ;;
+    tooling)
+      printf '%s\n' \
+        'commit-stages.sh'
       ;;
     *)
       die "Unknown wave: $1"
@@ -160,50 +320,100 @@ wave_force_paths() {
 
 wave_summary() {
   case "$1" in
-    schema)
+    db-schema)
       printf '%s\n' \
-        'Added ProgramFocalPerson join table linking Division Personnel users to programs as focal persons.' \
-        'Added focal_person_id, focal_recommended_at, focal_remarks fields to AIP and PIR.' \
-        'Added ces_reviewer_id, ces_noted_at, ces_remarks fields to AIP for CES noting workflow.' \
-        'Added migration 20260429000001_focal_person_flow with all DDL changes.'
+        'Removed Cluster Coordinator role, cluster_head/coordinator_users relations, and "For Cluster Head Review" PIR status from schema.prisma.' \
+        'Added 20260427000001_rename_tables_to_snake_case migration that backfills the Program/School/Cluster → snake_case rename that was previously applied via prisma db push.' \
+        'Added 20260501000001_schema_drift_fix_v2 to align constraint and index names with the renamed tables (idempotent).' \
+        'Added 20260501000002_purge_cluster_coordinators to migrate "For Cluster Head Review" PIRs back to "For CES Review" and downgrade Cluster Coordinator users to inactive Pending records.'
       ;;
-    server-lib)
+    server-auth)
       printf '%s\n' \
-        'Updated getCESRoleForDivisionPIR JSDoc to reflect its new role in the focal-recommendation path for school AIPs/PIRs.'
+        'Added server/lib/origins.ts with normalizeOrigin / parseAllowedOrigins / getAllowedOrigins helpers for CORS allowlist parsing.' \
+        'Routed CSRF, session cookie, magic link, and userSessions through the origin helpers so trust decisions use a single normalized form.' \
+        'Hardened server/routes/oauth.ts with allowed-origin validation and tightened error paths.' \
+        'Trimmed accountEmails, auth.ts, magicLink, and config.ts to align with the new origin contract.'
+      ;;
+    server-cluster-removal)
+      printf '%s\n' \
+        'Updated routing.ts JSDoc to drop the Cluster Coordinator routing branch; getCESRoleForDivisionPIR is now used only for Division Personnel and focal-recommended school AIPs/PIRs.' \
+        'Stripped Cluster Coordinator handling from server/routes/admin/schoolsClusters.ts.'
       ;;
     server-admin)
       printf '%s\n' \
-        'Added focalPersonReview.ts (667 lines) with focal recommendation, CES noting, and cluster head approval endpoints for school AIPs and PIRs.' \
-        'Mounted focalReviewRoutes in admin/index.ts.' \
-        'Updated programs.ts to expose focal_persons list and added PUT /programs/:id/focal-persons management endpoint.' \
-        'Updated overview.ts stats to include For Recommendation status in submitted/underReview/pending counts.' \
-        'Updated reports.ts funnel statuses and quarterly report pending logic to include For Recommendation, For CES Review, For Cluster Head Review.'
-      ;;
-    server-admin-submissions)
-      printf '%s\n' \
-        'Added For Recommendation to VALID_STATUSES in validation.ts.' \
-        'Added guard in status.ts blocking admin status changes on school AIPs already in focal or CES review.' \
-        'Added For Recommendation push-notification message template in notifications.ts.'
+        'Removed "For Cluster Head Review" handling from overview, pirReview, reports, settings, and users routes.' \
+        'Updated submissions/{notifications,status,validation}.ts to drop the cluster-review status from the pipeline.' \
+        'Updated shared guards and pirAccess to remove cluster-head review hooks.' \
+        'Refreshed the action catalog to drop Cluster Coordinator audit verbs.'
       ;;
     server-data)
       printf '%s\n' \
-        'School AIP submissions now require at least one active focal person for the program; submission is blocked otherwise.' \
-        'School AIP submissions now land in For Recommendation status instead of Approved.' \
-        'School PIR submissions now require an approved AIP and active focal persons; PIRs land in For Recommendation status.' \
-        'Updated lookups.ts and dashboard.ts filed/active status arrays to include For Recommendation, For CES Review, and For Cluster Head Review.'
+        'Updated aips, pirs, dashboard, drafts, lookups, and notifications routes to drop "For Cluster Head Review" from filed/active status arrays.' \
+        'Aligned shared/lookups with the cluster-less status set so dashboards and filters return consistent counts.'
       ;;
-    frontend)
+    server-bootstrap)
       printf '%s\n' \
-        'Added react-app/src/division/ with DivisionLayout, FocalPersonQueue, and FocalPersonReview components for the Division Personnel focal-review workflow.' \
-        'Added CESAIPReview.jsx for CES AIP noting queue alongside the existing PIR review queue.' \
-        'Updated CESDashboard to fetch and display both PIRs and AIPs in tabbed queues.' \
-        'Added For Recommendation to StatusBadge, submissionsConstants, and useSubmissionActions.' \
-        'Updated AnimatedContent, AdminTopBar, DashboardHeader, NotificationBell, PIRFormEditor, CESLayout, AdminPrograms, and errorMessages for focal flow support.'
+        'Trimmed server.ts to drop Cluster Coordinator-specific bootstrap branches.' \
+        'Updated scripts/seed.ts to seed without the Cluster Coordinator role.'
       ;;
-    root)
+    frontend-cluster-removal)
       printf '%s\n' \
-        'Updated commit-stages.sh wave definitions to match the focal person flow release cycle.' \
-        'Replaced session/admin-overhaul waves with schema, server-lib, server-admin, server-admin-submissions, server-data, frontend, and root waves.'
+        'Deleted react-app/src/cluster-head/ClusterHeadDashboard.jsx and ClusterHeadLayout.jsx.' \
+        'Deleted react-app/src/lib/onboarding/roles/cluster.js and removed it from the role index.' \
+        'Stripped Cluster Coordinator branches from clusterLogo.js, routeTheme.js, AdminSchools.jsx, ClusterCard.jsx, and useSchoolsData.js.'
+      ;;
+    frontend-auth)
+      printf '%s\n' \
+        'Added react-app/src/lib/apiBase.js for API base URL resolution shared across api.js and auth.js.' \
+        'Updated Login, MagicLinkCallback, and OAuthCallback to use the shared apiBase and surface origin-aware errors.' \
+        'Refreshed errorMessages.js to cover the new auth error codes.'
+      ;;
+    frontend-onboarding)
+      printf '%s\n' \
+        'Added OnboardingHint component plus useAnchoredPosition and useViewportSize hooks for resilient anchored tooltips.' \
+        'Rewrote OnboardingTour, OnboardingChecklist, OnboardingController and the onboardingTour/* helpers around the new anchoring model.' \
+        'Refactored role configs (ces, division, school), onboardingConfig, onboardingUtils, portalHelpConfig, and useOnboarding to drive the new tour shape.' \
+        'Added scripts/validate-onboarding.mjs and lib/onboarding/validateTargets.dev.js so onboarding targets can be validated in dev.'
+      ;;
+    frontend-admin)
+      printf '%s\n' \
+        'Refreshed AdminTopBar, AdminUsers, AdminSessions, AdminConsolidationTemplate, and PIRFullFormView to align with the cluster-less review flow.' \
+        'Updated CreateUserWizard, ImportUsersModal, importUsersModal/* and StatusBadge for the new role/status set.' \
+        'Updated adminOverview/AdminOverviewCharts, adminSettings/SignatoriesPanel, adminSubmissions/submissionsConstants, and adminUsers/* helpers to match.'
+      ;;
+    frontend-forms)
+      printf '%s\n' \
+        'Updated AIPFormContainer, useAipProgramState, and useAipSignatories so school AIPs flow through the focal recommendation step.' \
+        'Updated PIRFormContainer and PIRFormEditor to drop "For Cluster Head Review" handling and rely on CES review only.' \
+        'Aligned forms/shared/useProgramsAndConfig with the cluster-less program list.'
+      ;;
+    frontend-misc)
+      printf '%s\n' \
+        'Refreshed AnimatedContent, FAQ, PrivacyPolicy, AnnouncementBanner, ForceChangePasswordModal, NotificationBell, PracticeInteractionModal, and WelcomeCard for the new flow.' \
+        'Updated reportExport.js status mappings, base.css polish, vite.config.js, and react-app/package.json deps to support the rewritten tour and auth changes.'
+      ;;
+    frontend-version)
+      printf '%s\n' \
+        'Rewrote the 1.1.0-beta changelog entry with the full Beta 2 feature inventory (SMTP, magic links, Observer role, onboarding tour, practice mode, program templates, admin/AIP refactor).' \
+        'Updated the in-progress 1.2.0-beta entry to note the Cluster Coordinator role retirement.'
+      ;;
+    deploy)
+      printf '%s\n' \
+        'Added docker-compose Caddy SSL profile and bound Postgres/backend ports to the loopback by default for production hardening.' \
+        'Added deploy/Caddyfile for the optional HTTPS reverse proxy.' \
+        'Added scripts/{deploy-windows.ps1, lockdown-linux-ufw.sh, lockdown-windows-firewall.ps1} for OS-level deploy and firewall lockdown automation.' \
+        'Added data/{clusters,programs,schools}.csv as the canonical seed dataset for fresh installs.'
+      ;;
+    docs-root)
+      printf '%s\n' \
+        'Refreshed README.md, docs/SYSTEM_DOCUMENTATION_THESIS.md, and docs/wiki/user-guides/Getting-Started.md for the cluster-less flow and new deploy story.' \
+        'Updated .gitignore: dropped retired entries (tunnel.sh, setup-production.sh, /.claude/, /.codex, CLAUDE.md, claude-devtools/, populate-aip-pir helpers); added start.sh and /.local-backups/.' \
+        'Removed the obsolete root dataset.json now that data/*.csv is the canonical seed source.'
+      ;;
+    tooling)
+      printf '%s\n' \
+        'Rewrote WAVE_ORDER, wave_paths, wave_summary, wave_handoff, wave_title, and wave_commit_message for the cluster-removal release cycle (db-schema, server-auth, server-cluster-removal, server-admin, server-data, server-bootstrap, frontend-cluster-removal, frontend-auth, frontend-onboarding, frontend-admin, frontend-forms, frontend-misc, frontend-version, deploy, docs-root, tooling).' \
+        'Replaced the focal-flow-era wave map (whose targets were already shipped) with explicit per-file pathspecs so this run produces narrowly-scoped batch commits.'
       ;;
     *)
       die "Unknown wave: $1"
@@ -213,43 +423,92 @@ wave_summary() {
 
 wave_handoff() {
   case "$1" in
-    schema)
+    db-schema)
       printf '%s\n' \
-        'Confirm Prisma client was regenerated after schema change (prisma generate).' \
-        'Verify no remaining unhandled references to the new focal_person_id/ces_reviewer_id fields in any route not yet updated.' \
-        'Update DATABASE_SCHEMA.md ERD and SYSTEM_DOCUMENTATION_THESIS.md ERD in the next docs pass.'
+        'Run prisma migrate deploy on a staging database to confirm the three new migrations apply cleanly in order, including the idempotent rename and drift-fix steps.' \
+        'Regenerate the Prisma client and confirm no route still imports a removed Cluster relation.' \
+        'Update DATABASE_SCHEMA.md and the SYSTEM_DOCUMENTATION_THESIS ERD in the next docs pass.'
       ;;
-    server-lib)
+    server-auth)
       printf '%s\n' \
-        'No functional change — comment-only update. Confirm getCESRoleForDivisionPIR call sites are correct in focalPersonReview.ts.'
+        'Smoke-test OAuth login from each allowed origin in ALLOWED_ORIGIN; confirm rejected origins return the correct error.' \
+        'Confirm magic link emails carry a URL whose origin matches the configured allowlist.' \
+        'Re-run server/lib/security.test.ts and any auth route tests against the new origin contract.'
+      ;;
+    server-cluster-removal)
+      printf '%s\n' \
+        'Grep the server tree for any remaining "Cluster Coordinator" or "Cluster Head" string before the next docs refresh.' \
+        'Confirm getCESRoleForDivisionPIR call sites no longer pass a Cluster Coordinator branch.'
       ;;
     server-admin)
       printf '%s\n' \
-        'Review focalPersonReview.ts endpoints against the focal person flow spec: recommend, CES note, cluster head approve/return.' \
-        'Confirm PUT /programs/:id/focal-persons is wired correctly in AdminPrograms.jsx.' \
-        'Document new focal person endpoints in API_DOCS.md during the next docs pass.'
-      ;;
-    server-admin-submissions)
-      printf '%s\n' \
-        'Confirm the admin status guard in status.ts does not block any legitimate admin workflow.' \
-        'Test the For Recommendation push notification end-to-end against the focal person review flow.'
+        'Walk the admin overview, reports, and PIR review pages and confirm no UI affordance still expects "For Cluster Head Review" status.' \
+        'Confirm submissions status guard does not block any legitimate admin workflow now that the cluster-review branch is gone.' \
+        'Refresh API_DOCS.md to drop the cluster-review endpoints in the next docs pass.'
       ;;
     server-data)
       printf '%s\n' \
-        'Test that a school user cannot submit an AIP when no focal persons are assigned to the program.' \
-        'Confirm PIR submission guard (AIP must be Approved) works after the focal flow lands the AIP in Approved state.' \
-        'Verify dashboard and lookup queries return correct counts for the new statuses.'
+        'Verify dashboard and lookup queries return correct counts for the cluster-less status set in staging.' \
+        'Confirm school PIR drafts/submissions still progress correctly through For Recommendation → For CES Review.'
       ;;
-    frontend)
+    server-bootstrap)
       printf '%s\n' \
-        'Walk through the Division Personnel focal-review flow end-to-end in the browser (queue → review → recommend/return).' \
-        'Confirm CESDashboard AIP tab loads correctly and the CESAIPReview modal works.' \
-        'Verify StatusBadge renders For Recommendation in yellow for all table contexts.'
+        'Run the seed script against a clean database and verify no Cluster Coordinator user is created.' \
+        'Confirm server boot logs no longer reference the Cluster Coordinator role.'
       ;;
-    root)
+    frontend-cluster-removal)
       printf '%s\n' \
-        'This commit-stages.sh covers the focal person flow release cycle. Update wave definitions at the start of the next release.' \
-        'Verify README.md version badge and highlights section match the CHANGELOG entry after the next docs pass.'
+        'Confirm the React Router config has no remaining /cluster-head route after these deletions.' \
+        'Visually verify AdminSchools and ClusterCard render correctly without the cluster-head assignment UI.' \
+        'Update screenshots in the user guide that previously showed the Cluster Coordinator dashboard.'
+      ;;
+    frontend-auth)
+      printf '%s\n' \
+        'Test login, magic link callback, and OAuth callback in dev with VITE_API_BASE pointing at a separate origin to validate apiBase.js.' \
+        'Confirm all surfaces that previously imported api.js still resolve through the new apiBase.'
+      ;;
+    frontend-onboarding)
+      printf '%s\n' \
+        'Run scripts/validate-onboarding.mjs against every role and resolve any unmatched targets.' \
+        'Walk the onboarding tour end-to-end as Admin, CES, Division Personnel, and School in the browser; confirm hints anchor correctly across viewport resizes.' \
+        'Refresh onboarding screenshots in docs/wiki on the next docs pass.'
+      ;;
+    frontend-admin)
+      printf '%s\n' \
+        'Smoke-test CreateUserWizard and ImportUsersModal flows; confirm the role dropdown no longer offers Cluster Coordinator.' \
+        'Walk AdminUsers, AdminSessions, and AdminConsolidationTemplate; confirm the new status set renders correctly in tables.'
+      ;;
+    frontend-forms)
+      printf '%s\n' \
+        'Submit a school AIP and confirm it lands in For Recommendation, then walk it through the focal recommendation → CES approval path.' \
+        'Submit a school PIR after AIP approval and confirm it follows the same path without ever entering For Cluster Head Review.'
+      ;;
+    frontend-misc)
+      printf '%s\n' \
+        'Spot-check public pages (FAQ, PrivacyPolicy) for stale Cluster Coordinator references.' \
+        'Confirm reportExport.js exports the expected status set and that base.css polish has not regressed any layout.'
+      ;;
+    frontend-version)
+      printf '%s\n' \
+        'Cross-reference the rewritten 1.1.0-beta changelog against git log entries between the 1.0 and 1.1 tags; flag missing items.' \
+        'Sync the README highlights and version badge with the changelog in the next docs pass.'
+      ;;
+    deploy)
+      printf '%s\n' \
+        'Run the Caddy SSL profile against a staging host and verify the reverse proxy issues a cert.' \
+        'Dry-run the lockdown scripts on a clean Linux and Windows host before applying them in production.' \
+        'Document the new seed CSV import path in the deployment guide.'
+      ;;
+    docs-root)
+      printf '%s\n' \
+        'After this wave, run a docs lint pass to catch any remaining Cluster Coordinator strings in the wiki.' \
+        'Confirm /.local-backups/ is in fact ignored by running git check-ignore on a sample file inside it.' \
+        'Note that dataset.json was retired in favor of data/*.csv; remove any tooling that still reads dataset.json.'
+      ;;
+    tooling)
+      printf '%s\n' \
+        'Update wave definitions at the start of the next release cycle so commit-stages.sh stays aligned with current uncommitted work.' \
+        'Confirm the new tooling wave fires last so the wave-rewrite commit lands after every wave it describes.'
       ;;
     *)
       die "Unknown wave: $1"
