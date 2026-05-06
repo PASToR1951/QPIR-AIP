@@ -50,6 +50,17 @@
 }
 .login-shake { animation: login-shake 0.3s ease-in-out; }
 
+@keyframes login-notice-enter {
+  from { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.login-notice-enter {
+  animation: login-notice-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-notice-enter { animation: none; }
+}
+
 .login-panel-shell {
   overflow: hidden;
   will-change: height;

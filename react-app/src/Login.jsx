@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAppLogo } from './context/BrandingContext.jsx';
-import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, EnvelopeIcon as Mail, ArrowLeft } from '@phosphor-icons/react';
+import { WarningCircle as AlertCircle, SpinnerGap as Loader2, Eye, EyeSlash as EyeOff, EnvelopeIcon as Mail, ArrowLeft, SignOut as SignOutIcon } from '@phosphor-icons/react';
 import { Input } from './components/ui/Input';
 import { apiUrl } from './lib/apiBase.js';
 import { auth } from './lib/auth';
@@ -358,19 +358,19 @@ export default function Login() {
           )}
 
           {notice && !error && (
-            <div className="mb-4 rounded-2xl overflow-hidden border border-indigo-200 dark:border-indigo-900/60 shadow-sm shadow-indigo-100/50 dark:shadow-none">
-              <div className="flex items-start gap-3 bg-indigo-50 dark:bg-indigo-950/30 px-4 py-3">
-                <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-500 dark:text-indigo-400">
-                  <AlertCircle size={15} weight="fill" />
+            <div className="login-notice-enter mb-4 rounded-2xl overflow-hidden border border-indigo-200/70 dark:border-indigo-900/60 shadow-sm shadow-indigo-100/60 dark:shadow-none">
+              <div className="flex items-start gap-3 bg-gradient-to-br from-indigo-50 via-white to-violet-50 dark:from-indigo-950/40 dark:via-dark-surface/60 dark:to-violet-950/40 px-4 py-3">
+                <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-xl bg-white dark:bg-indigo-900/40 ring-1 ring-indigo-200/80 dark:ring-indigo-800/60 shadow-sm flex items-center justify-center text-indigo-600 dark:text-indigo-300">
+                  <SignOutIcon size={16} weight="duotone" />
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400 mb-0.5">Signed Out</p>
-                  <p className="text-sm text-indigo-700 dark:text-indigo-300 font-medium leading-snug">{notice}</p>
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-indigo-600/90 dark:text-indigo-300/90 mb-0.5">See you again soon</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200 font-medium leading-snug">{notice}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setNotice('')}
-                  className="flex-shrink-0 mt-0.5 text-indigo-300 dark:text-indigo-700 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+                  className="flex-shrink-0 mt-0.5 rounded-md p-0.5 text-indigo-400/70 dark:text-indigo-500/70 hover:text-indigo-600 dark:hover:text-indigo-300 hover:bg-indigo-100/60 dark:hover:bg-indigo-900/40 transition-colors"
                   aria-label="Dismiss notice"
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
@@ -504,20 +504,22 @@ export default function Login() {
         </div>
       </div>
 
-      <footer className="w-full z-40 px-4 pb-5 pt-2">
-        <div className="mx-auto max-w-3xl rounded-2xl md:rounded-full border border-slate-200/80 dark:border-dark-border bg-white/80 dark:bg-dark-surface/80 backdrop-blur-md px-4 py-3 shadow-sm">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-3 text-center text-[11px] text-slate-500 dark:text-slate-400">
-            <div className="flex items-center gap-2">
-              <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-7 w-auto" fetchPriority="low" />
-              <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-7 w-auto" fetchPriority="low" />
-              <img src="/Division_Logo.webp" alt="Division Logo" className="h-7 w-auto" fetchPriority="low" />
+      <footer className="w-full z-40 px-4 pb-6 pt-2">
+        <div className="mx-auto max-w-2xl rounded-3xl md:rounded-full border border-white/40 dark:border-white/10 bg-white/50 dark:bg-dark-surface/50 backdrop-blur-xl px-5 py-3.5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] ring-1 ring-inset ring-white/50 dark:ring-white/5 transition-all duration-500 hover:bg-white/70 dark:hover:bg-dark-surface/70">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 text-center">
+            <div className="flex items-center gap-3">
+              <img src="/DepEd_Seal.webp" alt="DepEd Seal" className="h-8 w-auto drop-shadow-sm hover:scale-110 hover:rotate-6 transition-transform duration-300" fetchPriority="low" />
+              <img src="/DepEd NIR Logo.webp" alt="DepEd NIR Logo" className="h-8 w-auto drop-shadow-sm hover:scale-110 transition-transform duration-300" fetchPriority="low" />
+              <img src="/Division_Logo.webp" alt="Division Logo" className="h-8 w-auto drop-shadow-sm hover:scale-110 -hover:rotate-6 transition-transform duration-300" fetchPriority="low" />
             </div>
-            <span className="hidden md:inline text-slate-300 dark:text-slate-600">•</span>
+            
+            <div className="hidden md:block w-px h-6 bg-gradient-to-b from-transparent via-slate-300 dark:via-slate-600 to-transparent"></div>
+            
             <a
               href="mailto:guihulngan.city@deped.gov.ph"
-              className="inline-flex items-center gap-1.5 font-medium text-slate-600 dark:text-slate-300 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400 py-2 md:py-0 text-xs md:text-[11px]"
+              className="group inline-flex items-center gap-2 font-semibold text-slate-600 dark:text-slate-300 transition-all duration-300 hover:text-indigo-600 dark:hover:text-indigo-400 py-1.5 md:py-0 text-xs sm:text-[13px] bg-white/40 dark:bg-black/20 px-4 rounded-full ring-1 ring-slate-200/50 dark:ring-white/10 hover:bg-white dark:hover:bg-dark-surface hover:ring-indigo-200 dark:hover:ring-indigo-900/50 hover:shadow-md"
             >
-              <Mail size={14} />
+              <Mail size={16} className="text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" weight="duotone" />
               Need help signing in? Contact SDO IT
             </a>
           </div>

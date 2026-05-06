@@ -3,6 +3,10 @@
 Deploys the AIP-PIR Docker Compose stack from a Windows PowerShell session.
 
 .DESCRIPTION
+For end-to-end deployment, prefer the master wizard:
+  scripts\deploy-windows-wizard.ps1
+This script is the workhorse it delegates to and can also be run standalone.
+
 Creates or updates the root .env file, generates missing secrets, builds the
 Docker images, starts the Compose services, and checks the backend health
 endpoint. The defaults are tuned for direct testing through the assigned static

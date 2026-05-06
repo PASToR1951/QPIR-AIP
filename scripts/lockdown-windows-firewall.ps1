@@ -3,6 +3,11 @@
 Locks down a Windows Server host so only intended public ports are allowed.
 
 .DESCRIPTION
+For end-to-end deployment, prefer the master wizard:
+  scripts\deploy-windows-wizard.ps1
+That wizard prompts for a management CIDR and calls this script with -Apply.
+You can also run this script standalone (defaults to dry-run).
+
 Dry-run by default. With -Apply, enables Windows Firewall, sets inbound traffic
 to block by default, allows HTTP/HTTPS publicly, and optionally allows RDP/SSH
 only from a management IP/CIDR.
