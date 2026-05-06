@@ -20,7 +20,9 @@ RUN npm ci
 COPY prisma/ ./prisma/
 ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/pir_system?schema=public"
 RUN npx prisma generate
-RUN npm prune --omit=dev
+# Keep the Prisma CLI in the runtime image. The container entrypoint runs
+# migrations on startup, so pruning dev dependencies would make `npx prisma`
+# unavailable or force a runtime network fetch.
 
 # ── Deno config ───────────────────────────────────────────────────────────────
 COPY deno.json deno.lock ./

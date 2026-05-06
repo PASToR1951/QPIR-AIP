@@ -18,10 +18,22 @@ SHA_PATH="${FINAL_PATH}.sha256"
 
 log() { echo "[$(date -Iseconds)] [backup_daily] $*"; }
 
+require_env() {
+  local name="$1"
+  if [ -z "${!name:-}" ]; then
+    log "ERROR: ${name} is not set."
+    exit 1
+  fi
+}
+
 cleanup_tmp() {
   rm -f "${TMP_SQL}" "${TMP_GZ}" "${TMP_ENC}" 2>/dev/null || true
 }
 trap cleanup_tmp EXIT
+
+require_env "BACKUP_DB_PASSWORD"
+require_env "BACKUP_ENCRYPTION_KEY"
+mkdir -p "${BACKUP_DIR}"
 
 log "Starting daily backup: ${FINAL_NAME}"
 

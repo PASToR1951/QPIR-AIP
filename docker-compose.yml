@@ -2,7 +2,7 @@
 # AIP-PIR — Docker Compose
 #
 # Quick start:
-#   1. cp .env.docker .env
+#   1. cp .env.docker.example .env
 #   2. Edit .env — set passwords/secrets and VITE_API_URL
 #   3. docker compose up -d --build
 #
@@ -11,8 +11,9 @@
 #   backend   →  http://<host>:3001
 #   caddy     →  optional profile: docker compose --profile ssl up -d
 #   backup    →  optional profile: docker compose --profile backup up -d
-#   devtools  →  optional profile: docker compose --profile devtools up -d
 # =============================================================================
+
+name: qpir-aip
 
 services:
 
@@ -63,12 +64,22 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-false}
       TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-}
       RECAPTCHA_BYPASS_PRIVATE_IPS: ${RECAPTCHA_BYPASS_PRIVATE_IPS:-false}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@qpir.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_ADMIN_MUST_CHANGE_PASSWORD: ${SEED_ADMIN_MUST_CHANGE_PASSWORD:-true}
       BACKUP_TRIGGER_DIR: /app/backups/triggers
     volumes:
       - ./backups:/app/backups
+      - ./data:/data:ro
       - uploaded_assets:/app/public
     ports:
       - "${BACKEND_BIND_ADDRESS:-127.0.0.1}:${BACKEND_PORT:-3001}:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/api/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   # ── Frontend (React → Nginx) ────────────────────────────────────────────────
   frontend:
@@ -82,7 +93,8 @@ services:
         VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY:-}
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "${FRONTEND_PORT:-80}:80"
 
@@ -93,8 +105,10 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy
     environment:
       APP_DOMAIN: ${APP_DOMAIN:-aip-pir.depedguihulngan.ph}
     ports:
@@ -131,24 +145,7 @@ services:
       BACKUP_CLOUD_ENABLED: ${BACKUP_CLOUD_ENABLED:-false}
       BACKUP_RCLONE_REMOTE: ${BACKUP_RCLONE_REMOTE:-my_remote}
       BACKUP_RCLONE_PATH: ${BACKUP_RCLONE_PATH:-/AIP-PIR-Backups}
-
-  # ── Claude DevTools ──────────────────────────────────────────────────────────
-  devtools:
-    profiles:
-      - devtools
-    build:
-      context: ./claude-devtools
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    volumes:
-      - ${CLAUDE_DIR:-~/.claude}:/data/.claude:ro
-    environment:
-      NODE_ENV: production
-      CLAUDE_ROOT: /data/.claude
-      HOST: 0.0.0.0
-      PORT: 3456
-    ports:
-      - "3456:3456"
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-qpir-aip}
 
 volumes:
   db_data:

@@ -16,11 +16,8 @@ openssl rand -hex 32
 ### 2. Create read-only database user
 
 ```bash
-# Edit the password in db_readonly_user.sql first, then:
-docker compose exec -T db psql -U postgres -d pir_system \
-  < server/scripts/db_readonly_user.sql
-
-# Set the same password as BACKUP_DB_PASSWORD in .env
+# Set BACKUP_DB_USER and BACKUP_DB_PASSWORD in .env first, then run:
+docker compose --env-file .env exec -T db /docker-entrypoint-initdb.d/20-backup-user.sh
 ```
 
 ### 3. Update .env
@@ -52,13 +49,13 @@ rclone lsd my_remote:
 # BACKUP_CLOUD_ENABLED=true
 # BACKUP_RCLONE_REMOTE=my_remote
 # BACKUP_RCLONE_PATH=/AIP-PIR-Backups
-# RCLONE_CONFIG_PATH=~/.config/rclone/rclone.conf
+# RCLONE_CONFIG_DIR=~/.config/rclone
 ```
 
 ### 5. Build and start the backup service
 
 ```bash
-docker compose up -d --build backup
+docker compose --profile backup up -d --build backup
 
 # Verify it's running
 docker compose ps backup
@@ -97,8 +94,8 @@ docker compose exec backup /app/scripts/backup/backup_verify.sh
 
 | Script | Purpose | When it runs |
 |--------|---------|-------------|
-| `backup_hourly.sh` | pg_dump custom format → encrypt → checksum | Every hour (cron) or manually |
-| `backup_daily.sh` | pg_dump plain SQL → gzip → encrypt → checksum | Daily at 2:00 AM (cron) or manually |
+| `backup_hourly.sh` | pg_dump custom format → encrypt → checksum | Every hour (backup service loop) or manually |
+| `backup_daily.sh` | pg_dump plain SQL → gzip → encrypt → checksum | Daily at 2:00 AM (backup service loop) or manually |
 | `backup_cleanup.sh` | Delete old backups + sidecars beyond retention | Called by hourly/daily |
 | `backup_upload.sh` | rclone sync to cloud (if enabled) | Called by hourly/daily |
 | `backup_verify.sh` | Re-check all checksums | Manually |
@@ -120,7 +117,15 @@ The script will:
 2. Prompt you to select one by number
 3. Verify the checksum
 4. Ask for `yes` confirmation
-5. Decrypt, stop backend, drop DB, restore, restart backend
+5. Decrypt, drop DB, restore, and refresh backup health status
+
+For the cleanest restore, stop the backend from the host before running the restore, then start it again after the script succeeds:
+
+```bash
+docker compose stop backend
+docker compose exec backup /app/scripts/backup/restore.sh
+docker compose start backend
+```
 
 ### Decrypt a backup manually (inspect without restoring)
 
@@ -154,7 +159,9 @@ zcat /tmp/decrypted.sql.gz | head -100
    ```
 2. Run restore:
    ```bash
+   docker compose stop backend
    docker compose exec backup /app/scripts/backup/restore.sh
+   docker compose start backend
    ```
 3. Select the backup just before the incident.
 4. Verify application is working:
@@ -183,7 +190,7 @@ zcat /tmp/decrypted.sql.gz | head -100
    ```
 6. Run restore:
    ```bash
-   docker compose run --rm backup /app/scripts/backup/restore.sh
+   docker compose --profile backup run --rm backup /app/scripts/backup/restore.sh
    ```
 7. Start the full stack:
    ```bash

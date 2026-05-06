@@ -11,6 +11,8 @@ NOW_EPOCH=$(date +%s)
 
 log() { echo "[$(date -Iseconds)] [backup_healthcheck] $*"; }
 
+mkdir -p "${BACKUP_DIR}/hourly" "${BACKUP_DIR}/daily"
+
 # --- Find newest hourly backup ---
 NEWEST_HOURLY_FILE=$(find "${BACKUP_DIR}/hourly" -maxdepth 1 -name "*.enc" -not -name "*.sha256" \
   2>/dev/null | sort | tail -n1)

@@ -164,6 +164,16 @@ function Get-EnvEntry {
   return $null
 }
 
+function Test-EnvPlaceholder {
+  param([AllowNull()][string]$Value)
+
+  if ([string]::IsNullOrWhiteSpace($Value)) { return $true }
+  $trimmed = $Value.Trim().Trim('"').Trim("'")
+  return $trimmed.StartsWith("change-me") -or
+         $trimmed.StartsWith("your-") -or
+         ($trimmed.StartsWith("<") -and $trimmed.EndsWith(">"))
+}
+
 function Set-EnvEntry {
   param(
     [System.Collections.Generic.List[string]]$Lines,
@@ -175,7 +185,8 @@ function Set-EnvEntry {
   $pattern = "^\s*$([Regex]::Escape($Key))="
   for ($i = 0; $i -lt $Lines.Count; $i++) {
     if ($Lines[$i] -match $pattern) {
-      if ($Overwrite -or [string]::IsNullOrWhiteSpace((Get-EnvEntry -Lines $Lines -Key $Key))) {
+      $current = Get-EnvEntry -Lines $Lines -Key $Key
+      if ($Overwrite -or (Test-EnvPlaceholder -Value $current)) {
         $Lines[$i] = "$Key=$Value"
       }
       return
@@ -301,6 +312,10 @@ Set-EnvEntry -Lines $envLines -Key "GOOGLE_CLIENT_SECRET" -Value "" -Overwrite:$
 Set-EnvEntry -Lines $envLines -Key "RECAPTCHA_SECRET_KEY" -Value "" -Overwrite:$false
 Set-EnvEntry -Lines $envLines -Key "VITE_RECAPTCHA_SITE_KEY" -Value "" -Overwrite:$false
 Set-EnvEntry -Lines $envLines -Key "RECAPTCHA_BYPASS_PRIVATE_IPS" -Value "false" -Overwrite:$false
+
+Set-EnvEntry -Lines $envLines -Key "SEED_ADMIN_EMAIL" -Value "admin@qpir.local" -Overwrite:$false
+Set-SecretEntry -Lines $envLines -Key "SEED_ADMIN_PASSWORD" -Value (New-RandomText 32)
+Set-EnvEntry -Lines $envLines -Key "SEED_ADMIN_MUST_CHANGE_PASSWORD" -Value "true" -Overwrite:$false
 
 Set-EnvEntry -Lines $envLines -Key "TRUST_PROXY" -Value $trustProxy
 Set-EnvEntry -Lines $envLines -Key "TRUSTED_PROXY_CIDRS" -Value $trustedProxyCidrs -Overwrite:$EnableSsl

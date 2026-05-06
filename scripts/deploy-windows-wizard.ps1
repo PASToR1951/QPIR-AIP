@@ -144,6 +144,19 @@ function Save-State {
   $State | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding UTF8
 }
 
+function Get-EnvValue {
+  param(
+    [string]$Path,
+    [string]$Key
+  )
+  if (-not (Test-Path $Path)) { return $null }
+  $pattern = "^\s*$([Regex]::Escape($Key))=(.*)$"
+  foreach ($line in Get-Content -LiteralPath $Path) {
+    if ($line -match $pattern) { return $Matches[1] }
+  }
+  return $null
+}
+
 $state = Load-State
 if (-not $Resume) { $state = New-DefaultState }
 
@@ -475,7 +488,7 @@ function Invoke-HttpSmoke {
 # --------------------------------------------------------------------------
 function Invoke-Seed {
   Write-Banner "STAGE 5 of 7 -- Seed database"
-  Write-Info "Seeds clusters, programs, schools (from data/*.csv) and creates the default admin."
+  Write-Info "Seeds clusters, programs, schools (from data/*.csv) and creates the bootstrap admin."
   Write-Info "Idempotent: safe to skip or re-run."
   if (-not (Confirm-Step "Run the seed now?" -Default "Y")) {
     Write-Warn2 "Skipping seed. The system will have no users -- you must seed before login works."
@@ -492,11 +505,13 @@ function Invoke-Seed {
   }
 
   Write-Host ""
-  Write-Ok "Seed complete. Default admin credentials:"
-  Write-Host "    email    : admin@qpir.local"
-  Write-Host "    password : admin123"
+  $seedAdminEmail = Get-EnvValue -Path (Join-Path $repoRoot $EnvFile) -Key "SEED_ADMIN_EMAIL"
+  if ([string]::IsNullOrWhiteSpace($seedAdminEmail)) { $seedAdminEmail = "admin@qpir.local" }
+  Write-Ok "Seed complete. Bootstrap admin credentials:"
+  Write-Host "    email    : $seedAdminEmail"
+  Write-Host "    password : stored in $EnvFile as SEED_ADMIN_PASSWORD"
   Write-Host ""
-  Write-Warn2 "CHANGE THE ADMIN PASSWORD BEFORE EXPOSING THE SYSTEM."
+  Write-Warn2 "The bootstrap admin is marked must-change-password by default."
   Write-Info  "Per project rule: Admin cannot approve/return PIRs -- also create a CES or"
   Write-Info  "Cluster Head account before user testing."
   Write-Host ""
@@ -676,7 +691,7 @@ function Show-Handover {
   Write-Warn2 "BEFORE LEAVING THE SERVER:"
   Write-Host  "  1. Copy $envPath to a password manager (it contains all secrets)."
   if ($state.seeded) {
-    Write-Host  "  2. Log in as admin@qpir.local / admin123 and CHANGE the password immediately."
+    Write-Host  "  2. Log in with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD from $EnvFile and set a permanent password."
   } else {
     Write-Host  "  2. Run the seed when ready: docker compose --env-file $EnvFile exec backend deno run -A scripts/seed.ts"
   }

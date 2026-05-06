@@ -146,7 +146,7 @@ VITE_API_URL=http://localhost:3001
 For Docker, copy the checked-in template instead:
 
 ```bash
-cp .env.docker .env
+cp .env.docker.example .env
 ```
 
 Then fill the root `.env` values for PostgreSQL, `JWT_SECRET`, `EMAIL_CONFIG_SECRET`, backups, OAuth, `ALLOWED_ORIGIN`, and `VITE_API_URL`.
@@ -159,8 +159,10 @@ Create the `pir_system` PostgreSQL database first if it does not exist, then run
 cd server
 deno task prisma:deploy    # Apply all migrations
 deno task prisma:generate  # Generate Prisma client
-deno task seed             # Seed schools, clusters, and programs
+deno task seed             # Seed schools, clusters, programs, and optional bootstrap admin
 ```
+
+In production, `deno task seed` creates the bootstrap admin only when `SEED_ADMIN_PASSWORD` is set. For local development, it falls back to `admin@qpir.local` / `admin123`.
 
 ---
 
@@ -197,7 +199,7 @@ These scripts are listed in `.gitignore`, so fresh clones should use the manual 
 
 ### Docker Compose
 
-After filling the root `.env` from `.env.docker`, start the core application services:
+After filling the root `.env` from `.env.docker.example`, start the core application services:
 
 ```bash
 docker compose up -d --build
@@ -207,14 +209,40 @@ Optional services:
 
 ```bash
 docker compose --profile backup up -d --build backup
-docker compose --profile devtools up -d --build devtools
 ```
 
 The `backup` service runs scheduled backups and processes manual backup requests from the Admin UI. Start the `backup` profile before relying on the Backups panel in production.
 
-The first time the Docker Postgres volume is initialized, Compose creates the read-only backup database user from `BACKUP_DB_USER` and `BACKUP_DB_PASSWORD`. If you already have an existing `db_data` volume, run `server/scripts/db_readonly_user.sql` manually or create the user yourself.
+The first time the Docker Postgres volume is initialized, Compose creates the read-only backup database user from `BACKUP_DB_USER` and `BACKUP_DB_PASSWORD`. If you already have an existing `db_data` volume, run `docker compose --env-file .env exec -T db /docker-entrypoint-initdb.d/20-backup-user.sh` after setting those values.
 
 If you serve the frontend from multiple development origins, `ALLOWED_ORIGIN` accepts a comma-separated allow-list such as `http://192.168.1.100:5173,http://localhost:5173,http://127.0.0.1:5173`. Do the same for the `OAUTH_*`, `GOOGLE_*`, and reCAPTCHA values when enabling those features in Docker.
+
+### Linux Server Deployment Helper
+
+For a Linux server, the deployment helper can generate missing secrets, prepare runtime folders, start Docker Compose, and optionally seed the database:
+
+```bash
+scripts/deploy-linux.sh --enable-ssl --domain aip-pir.example.edu --enable-backup --seed
+```
+
+For direct HTTP testing without Caddy, expose the backend API explicitly:
+
+```bash
+scripts/deploy-linux.sh \
+  --frontend-url http://203.0.113.10 \
+  --api-url http://203.0.113.10:3001 \
+  --expose-backend-port \
+  --seed
+```
+
+To apply UFW lockdown during deployment, pass your admin IP/CIDR:
+
+```bash
+scripts/deploy-linux.sh --enable-ssl --domain aip-pir.example.edu \
+  --configure-firewall --admin-cidr 203.0.113.10/32
+```
+
+When using the `ssl` profile manually, set `FRONTEND_PORT=127.0.0.1:8080` so Caddy can own host ports 80 and 443.
 
 ---
 

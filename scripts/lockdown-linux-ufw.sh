@@ -4,13 +4,14 @@ set -euo pipefail
 # Locks down a Linux server/VM with UFW.
 #
 # Dry-run by default. Pass --apply to actually change the firewall.
-# Public ports allowed: 80/tcp and 443/tcp.
+# Public ports allowed by default: 80/tcp and 443/tcp.
 # Admin SSH is allowed only when --admin-cidr is supplied, unless --no-ssh is used.
 #
 # Examples:
 #   bash scripts/lockdown-linux-ufw.sh
 #   bash scripts/lockdown-linux-ufw.sh --apply --admin-cidr 203.0.113.10/32
 #   bash scripts/lockdown-linux-ufw.sh --apply --admin-cidr 203.0.113.10/32 --ssh-port 2222
+#   bash scripts/lockdown-linux-ufw.sh --apply --admin-cidr 203.0.113.10/32 --public-port 80 --public-port 3001
 #   bash scripts/lockdown-linux-ufw.sh --apply --no-ssh
 
 APPLY=false
@@ -18,6 +19,7 @@ ADMIN_CIDR=""
 SSH_PORT="22"
 ALLOW_SSH=true
 PUBLIC_PORTS=("80" "443")
+PUBLIC_PORTS_CUSTOM=false
 
 usage() {
   sed -n '1,14p' "$0"
@@ -32,6 +34,14 @@ run_cmd() {
     printf '[dry-run] '
     printf '%q ' "$@"
     printf '\n'
+  fi
+}
+
+validate_port() {
+  local value="$1"
+  if ! [[ "$value" =~ ^[0-9]+$ ]] || [ "$value" -lt 1 ] || [ "$value" -gt 65535 ]; then
+    echo "Invalid TCP port: $value" >&2
+    exit 2
   fi
 }
 
@@ -55,6 +65,21 @@ while [ "$#" -gt 0 ]; do
         echo "Missing value for --ssh-port" >&2
         exit 2
       fi
+      validate_port "$SSH_PORT"
+      shift 2
+      ;;
+    --public-port)
+      public_port="${2:-}"
+      if [ -z "$public_port" ]; then
+        echo "Missing value for --public-port" >&2
+        exit 2
+      fi
+      validate_port "$public_port"
+      if [ "$PUBLIC_PORTS_CUSTOM" = false ]; then
+        PUBLIC_PORTS=()
+        PUBLIC_PORTS_CUSTOM=true
+      fi
+      PUBLIC_PORTS+=("$public_port")
       shift 2
       ;;
     --no-ssh)

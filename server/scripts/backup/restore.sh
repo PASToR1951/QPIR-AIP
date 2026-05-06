@@ -31,11 +31,27 @@ warn() { echo "[$(date -Iseconds)] [restore] WARNING: $*" | tee -a "${RESTORE_LO
 cleanup_tmp() { rm -f "${TMP_DECRYPTED}" 2>/dev/null || true; }
 trap cleanup_tmp EXIT
 
+require_env() {
+  local name="$1"
+  if [ -z "${!name:-}" ]; then
+    echo "ERROR: ${name} is not set." >&2
+    exit 1
+  fi
+}
+
+validate_pg_identifier() {
+  local value="$1"
+  local label="$2"
+  if ! [[ "${value}" =~ ^[A-Za-z0-9_]+$ ]]; then
+    echo "ERROR: ${label} must contain only letters, numbers, and underscores." >&2
+    exit 1
+  fi
+}
+
 # --- Check required env vars ---
-if [ -z "${BACKUP_ENCRYPTION_KEY:-}" ]; then
-  echo "ERROR: BACKUP_ENCRYPTION_KEY is not set. Cannot decrypt backups." >&2
-  exit 1
-fi
+require_env "BACKUP_ENCRYPTION_KEY"
+require_env "POSTGRES_PASSWORD"
+validate_pg_identifier "${DB_NAME}" "POSTGRES_DB"
 
 export PGPASSWORD="${POSTGRES_PASSWORD}"
 
@@ -153,7 +169,7 @@ fi
 # --- Stop backend container ---
 log "Stopping backend container..."
 if command -v docker &>/dev/null; then
-  COMPOSE_PROJECT=$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -d ' ')
+  COMPOSE_PROJECT="${COMPOSE_PROJECT_NAME:-qpir-aip}"
   BACKEND_CONTAINER="${COMPOSE_PROJECT}-backend-1"
   docker stop "${BACKEND_CONTAINER}" 2>/dev/null || \
     warn "Could not stop backend container '${BACKEND_CONTAINER}'. Proceeding anyway."

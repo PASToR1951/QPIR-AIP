@@ -11,6 +11,11 @@ DAILY_DIR="/app/backups/daily"
 
 log() { echo "[$(date -Iseconds)] [backup_cleanup] $*"; }
 
+if ! [[ "${RETENTION_DAYS}" =~ ^[0-9]+$ ]]; then
+  log "ERROR: BACKUP_RETENTION_DAYS must be a non-negative integer."
+  exit 1
+fi
+
 cleanup_dir() {
   local dir="$1"
   local label="$2"

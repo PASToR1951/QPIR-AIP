@@ -108,22 +108,35 @@ async function main() {
     console.log(`⚠️ schools.csv not found or error parsing: ${e}`);
   }
 
-  // 4. Seed default Admin user (bootstrap)
+  // 4. Seed bootstrap Admin user
   try {
-    const adminEmail = 'admin@qpir.local';
+    const configuredAdminEmail = (Deno.env.get("SEED_ADMIN_EMAIL") || "").trim();
+    const adminEmail = configuredAdminEmail || "admin@qpir.local";
+    const configuredAdminPassword = (Deno.env.get("SEED_ADMIN_PASSWORD") || "").trim();
+    const isProduction = Deno.env.get("NODE_ENV") === "production";
+    const adminPassword = configuredAdminPassword || (isProduction ? "" : "admin123");
+    const mustChangePassword = (Deno.env.get("SEED_ADMIN_MUST_CHANGE_PASSWORD") || (isProduction ? "true" : "false")).toLowerCase() !== "false";
+
+    if (!adminPassword) {
+      console.log("⚠️ Skipping bootstrap admin creation. Set SEED_ADMIN_PASSWORD to create an admin in production.");
+      console.log("✅ Data seed completed without creating a default admin.");
+      return;
+    }
+
     const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
     if (!existing) {
       const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash('admin123', salt);
+      const hashedPassword = await bcrypt.hash(adminPassword, salt);
       await prisma.user.create({
         data: {
           email: adminEmail,
           password: hashedPassword,
           role: 'Admin',
           name: 'System Administrator',
+          must_change_password: mustChangePassword,
         },
       });
-      console.log('✅ Default admin user created (admin@qpir.local / admin123)');
+      console.log(`✅ Bootstrap admin user created (${adminEmail}).`);
     } else {
       console.log('ℹ️ Admin user already exists, skipping.');
     }
