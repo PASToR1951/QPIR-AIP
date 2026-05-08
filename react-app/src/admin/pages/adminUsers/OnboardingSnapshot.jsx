@@ -2,7 +2,7 @@ import React from 'react';
 
 export function OnboardingSnapshot({ onboardingData, onboardingDays, setOnboardingDays, onboardingError }) {
   return (
-    <div className="mt-6 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
+    <div data-tour="admin-onboarding-analytics" className="mt-6 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Onboarding</p>

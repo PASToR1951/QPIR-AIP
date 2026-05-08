@@ -333,7 +333,7 @@ const AdminConsolidationTemplate = () => {
   const editableColCount = ['gaps', 'recommendations', 'management_response'].filter(f => canEdit(f)).length;
 
   return (
-    <div className={isFullscreen
+    <div data-tour="admin-consolidation-workspace" className={isFullscreen
       ? 'fixed inset-0 z-50 flex flex-col gap-3 p-3 bg-white/[0.97] dark:bg-[#0f1117]/[0.97] backdrop-blur-xl'
       : 'flex min-h-full w-full flex-col gap-3'
     }>

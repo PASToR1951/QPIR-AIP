@@ -8,6 +8,7 @@ import {
   isChecklistRole,
   isChecklistLandingPage,
 } from '../../lib/onboardingUtils.js';
+import { resolveTaskTourSteps } from '../../lib/tourChapters.js';
 import OnboardingCompletionCard from './OnboardingCompletionCard.jsx';
 import WelcomeCard from './WelcomeCard.jsx';
 import OnboardingChecklist from './OnboardingChecklist.jsx';
@@ -27,6 +28,11 @@ function getRouteSignal(roleKey, pathname) {
     if (pathname === '/pir') return 'author.pir_form_visited';
   }
 
+  if (roleKey === 'division') {
+    if (pathname === '/division') return 'division.focal_queue_visited';
+    if (pathname.startsWith('/division/')) return 'division.focal_review_opened';
+  }
+
   if (roleKey === 'ces') {
     if (pathname === '/ces') return 'ces.queue_visited';
     if (pathname === '/aip') return 'ces.aip_form_visited';
@@ -38,10 +44,24 @@ function getRouteSignal(roleKey, pathname) {
     if (pathname === '/admin/users') return 'admin.users_visited';
     if (pathname === '/admin/schools' || pathname === '/admin/programs') return 'admin.resources_visited';
     if (pathname === '/admin/submissions') return 'admin.submissions_visited';
-    if (pathname === '/admin/reports' || pathname === '/admin/settings') return 'admin.reports_settings_visited';
+    if (pathname === '/admin/reports' || pathname === '/admin/settings' || pathname === '/admin/consolidation-template') return 'admin.reports_settings_visited';
+  }
+
+  if (roleKey === 'observer') {
+    if (pathname === '/admin') return 'observer.overview_visited';
+    if (pathname === '/admin/submissions') return 'observer.submissions_visited';
+    if (pathname === '/admin/consolidation-template') return 'observer.consolidation_visited';
   }
 
   return null;
+}
+
+function taskMatchesPath(task, pathname) {
+  if (!task) return false;
+  if (task.route === pathname) return true;
+  if (task.routePrefix && pathname.startsWith(task.routePrefix)) return true;
+  if (Array.isArray(task.routes) && task.routes.includes(pathname)) return true;
+  return false;
 }
 
 function OnboardingHints() {
@@ -135,9 +155,17 @@ export default function OnboardingController() {
   // If the task lives on the current route, activates immediately.
   // If it requires a different route, arms pendingTourRef so it activates on arrival.
   const launchTour = useCallback((task) => {
-    if (!task?.tourSteps?.length) return;
-    const data = { id: task.id, title: task.label, steps: task.tourSteps, route: task.route ?? null };
-    if (!task.route || task.route === location.pathname) {
+    const steps = resolveTaskTourSteps(task);
+    if (!steps.length) return;
+    const data = {
+      id: task.id,
+      title: task.label,
+      steps,
+      route: task.route ?? null,
+      routePrefix: task.routePrefix ?? null,
+      routes: task.routes ?? null,
+    };
+    if (!task.route || taskMatchesPath(task, location.pathname)) {
       pendingTourRef.current = null;
       setActiveTaskTour(data);
     } else {
@@ -151,15 +179,15 @@ export default function OnboardingController() {
   // route changes — not on the render where setActiveTaskTour itself fires, which
   // would immediately close a just-launched cross-route tour.
   useEffect(() => {
-    if (pendingTourRef.current?.route === location.pathname) {
+    if (taskMatchesPath(pendingTourRef.current, location.pathname)) {
       setActiveTaskTour(pendingTourRef.current);
       pendingTourRef.current = null;
       return;
     }
     setActiveTaskTour((cur) =>
-      cur?.route && location.pathname !== cur.route ? null : cur
+      cur?.route && !taskMatchesPath(cur, location.pathname) ? null : cur
     );
-  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   useEffect(() => {
     const signal = getRouteSignal(roleKey, location.pathname);
@@ -266,8 +294,8 @@ export default function OnboardingController() {
           // fall back to the first incomplete task overall (pending on nav).
           const doneIds = onboarding.checklist_progress.completed_task_ids;
           const first =
-            tasks.find((t) => !doneIds.includes(t.id) && t.tourSteps?.length && t.route === location.pathname) ??
-            tasks.find((t) => !doneIds.includes(t.id) && t.tourSteps?.length);
+            tasks.find((t) => !doneIds.includes(t.id) && resolveTaskTourSteps(t).length && taskMatchesPath(t, location.pathname)) ??
+            tasks.find((t) => !doneIds.includes(t.id) && resolveTaskTourSteps(t).length);
           if (first) launchTour(first);
         }}
         onSkip={skipWelcome}
@@ -319,8 +347,8 @@ export default function OnboardingController() {
                   const next = tasks.find((t) =>
                     t.id !== activeTaskTour.id &&
                     !doneIds.includes(t.id) &&
-                    t.tourSteps?.length &&
-                    t.route === location.pathname
+                    resolveTaskTourSteps(t).length &&
+                    taskMatchesPath(t, location.pathname)
                   );
                   if (next) {
                     launchTour(next);

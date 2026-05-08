@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowUUpLeft, CheckCircle, Stamp } from '@phosphor-icons/react';
 import api from '../lib/api.js';
+import { emitOnboardingSignal } from '../lib/onboardingSignals.js';
 
 const formatCurrency = (value) => {
   const amount = Number(value);
@@ -37,6 +38,16 @@ export default function CESAIPReview() {
       .catch(() => setAip(null))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!aip) return;
+    emitOnboardingSignal('ces.review_opened', { aipId: id, type: 'aip' });
+  }, [aip, id]);
+
+  useEffect(() => {
+    if (aip?.status !== 'For CES Review') return;
+    emitOnboardingSignal('ces.action_area_viewed', { aipId: id, type: 'aip' });
+  }, [aip?.status, id]);
 
   const handleAction = async () => {
     if (modal === 'return' && !remarks.trim()) {
@@ -89,7 +100,7 @@ export default function CESAIPReview() {
           Back to Queue
         </button>
         {aip.status === 'For CES Review' && (
-          <div className="flex items-center gap-2">
+          <div data-tour="ces-review-actions" className="flex items-center gap-2">
             <button onClick={() => { setModal('return'); setRemarks(''); setError(''); }} className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-300">
               <ArrowUUpLeft size={13} />
               Return
@@ -102,7 +113,7 @@ export default function CESAIPReview() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-dark-border dark:bg-dark-surface">
+      <div data-tour="ces-review-content" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-dark-border dark:bg-dark-surface">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-black text-slate-800 dark:text-slate-100">{aip.program}</h1>

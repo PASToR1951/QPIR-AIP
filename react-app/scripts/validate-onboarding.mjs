@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(__dirname, '..');
@@ -9,6 +9,7 @@ const srcRoot = path.join(appRoot, 'src');
 const configRoots = [
   path.join(srcRoot, 'lib', 'onboarding', 'roles'),
   path.join(srcRoot, 'lib', 'portalHelpConfig.js'),
+  path.join(srcRoot, 'lib', 'tourChapters.js'),
 ];
 
 function walk(entry) {
@@ -92,6 +93,32 @@ function collectEmittedSignals(files) {
   return signals;
 }
 
+function validateTourChapterReferences(roleRegistry, tourChapters) {
+  const failures = [];
+
+  for (const [roleKey, role] of Object.entries(roleRegistry)) {
+    for (const task of role.tasks ?? []) {
+      if (!task.tourChapterId) continue;
+      const chapter = tourChapters[task.tourChapterId];
+      if (!chapter) {
+        failures.push(`${roleKey}.${task.id} references missing chapter "${task.tourChapterId}"`);
+        continue;
+      }
+
+      if (!Array.isArray(task.tourStepIds) || task.tourStepIds.length === 0) continue;
+
+      const chapterStepIds = new Set((chapter.steps ?? []).map((step) => step.id));
+      for (const stepId of task.tourStepIds) {
+        if (!chapterStepIds.has(stepId)) {
+          failures.push(`${roleKey}.${task.id} references missing step "${task.tourChapterId}.${stepId}"`);
+        }
+      }
+    }
+  }
+
+  return failures;
+}
+
 function printFailures(title, failures) {
   if (failures.length === 0) return;
 
@@ -103,6 +130,9 @@ function printFailures(title, failures) {
 
 const configFiles = configRoots.flatMap((entry) => walk(entry)).filter((file) => /\.jsx?$/.test(file));
 const sourceFiles = jsSourceFiles(srcRoot);
+
+const { ROLE_REGISTRY } = await import(pathToFileURL(path.join(srcRoot, 'lib', 'onboarding', 'roles', 'index.js')));
+const { TOUR_CHAPTERS } = await import(pathToFileURL(path.join(srcRoot, 'lib', 'tourChapters.js')));
 
 const configuredTargets = collectConfiguredTargets(configFiles);
 const actualTargets = collectActualTourTargets(sourceFiles);
@@ -117,11 +147,13 @@ const missingSignals = [...configuredSignals.keys()]
   .filter((signal) => !signal.startsWith('practice.') && !emittedSignals.has(signal))
   .sort()
   .map((signal) => `${signal} (${configuredSignals.get(signal).join(', ')})`);
+const missingChapterRefs = validateTourChapterReferences(ROLE_REGISTRY, TOUR_CHAPTERS);
 
 printFailures('Missing data-tour targets referenced by onboarding/help config:', missingTargets);
 printFailures('Missing emitted route/action signals referenced by onboarding config:', missingSignals);
+printFailures('Invalid onboarding tour chapter references:', missingChapterRefs);
 
-if (missingTargets.length > 0 || missingSignals.length > 0) {
+if (missingTargets.length > 0 || missingSignals.length > 0 || missingChapterRefs.length > 0) {
   process.exitCode = 1;
 } else {
   console.log('Onboarding validation passed.');

@@ -585,6 +585,7 @@ overviewRoutes.get("/onboarding-overview", async (c) => {
     "CES-ASDS",
     "CES-CID",
     "Admin",
+    "Observer",
   ];
 
   const users = await prisma.user.findMany({

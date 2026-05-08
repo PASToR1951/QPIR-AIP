@@ -1,10 +1,11 @@
 import { ROLE_REGISTRY } from './roles/index.js';
+import { resolveTaskTourSteps } from '../tourChapters.js';
 
 function collectTargets(role) {
   const targets = new Set();
 
   for (const task of role.tasks ?? []) {
-    for (const step of task.tourSteps ?? []) {
+    for (const step of resolveTaskTourSteps(task)) {
       const names = Array.isArray(step.target) ? step.target : [step.target];
       for (const name of names) {
         if (name) targets.add(name);

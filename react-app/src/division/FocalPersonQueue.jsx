@@ -62,7 +62,7 @@ export default function FocalPersonQueue() {
         </p>
       </div>
 
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div data-tour="division-focal-filters" className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-1.5">
           {tabs.map(tab => (
             <button
@@ -88,7 +88,7 @@ export default function FocalPersonQueue() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-dark-border dark:bg-dark-surface">
+      <div data-tour="division-focal-queue" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-dark-border dark:bg-dark-surface">
         {loading ? (
           <div className="flex justify-center p-12">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-blue-500 dark:border-slate-600" />

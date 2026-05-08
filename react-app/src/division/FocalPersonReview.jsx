@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowUUpLeft, CheckCircle, FileText, Table } from '@phosphor-icons/react';
 import api from '../lib/api.js';
+import { emitOnboardingSignal } from '../lib/onboardingSignals.js';
 
 const formatCurrency = (value) => {
   const amount = Number(value);
@@ -43,6 +44,16 @@ export default function FocalPersonReview({ type }) {
   }, [endpointBase]);
 
   const canAct = document?.status === 'For Recommendation';
+
+  useEffect(() => {
+    if (!document) return;
+    emitOnboardingSignal('division.focal_review_opened', { type, id });
+  }, [document, id, type]);
+
+  useEffect(() => {
+    if (!canAct) return;
+    emitOnboardingSignal('division.focal_action_area_viewed', { type, id });
+  }, [canAct, id, type]);
 
   const titleMeta = useMemo(() => {
     if (!document) return '';
@@ -104,7 +115,7 @@ export default function FocalPersonReview({ type }) {
           Back to Queue
         </button>
         {canAct && (
-          <div className="flex items-center gap-2">
+          <div data-tour="division-focal-actions" className="flex items-center gap-2">
             <button onClick={() => { setModal('return'); setRemarks(''); setError(''); }} className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-300">
               <ArrowUUpLeft size={13} />
               Return
@@ -117,7 +128,7 @@ export default function FocalPersonReview({ type }) {
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-dark-border dark:bg-dark-surface">
+      <div data-tour="division-focal-content" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-dark-border dark:bg-dark-surface">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="mb-2 inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-600 dark:bg-dark-border dark:text-slate-300">

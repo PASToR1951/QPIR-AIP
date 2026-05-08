@@ -182,11 +182,17 @@ export default function WelcomeCard({
                     </p>
                   </div>
 
-                  {/* Feature highlights */}
+                  {/* Guided journey preview */}
                   <div className="mt-3 space-y-2 sm:mt-6 sm:space-y-3">
+                    {!isPending && (
+                      <p className={`text-[10px] font-black uppercase tracking-[0.18em] ${t.tourLabel}`}>
+                        Your guided path
+                      </p>
+                    )}
                     {content.bullets.map((bullet) => {
-                      const [head, ...rest] = bullet.split(' — ');
-                      const tail = rest.join(' — ');
+                      const separator = bullet.includes(' — ') ? ' — ' : ' - ';
+                      const [head, ...rest] = bullet.split(separator);
+                      const tail = rest.join(separator);
                       return (
                         <div
                           key={bullet}
@@ -197,7 +203,7 @@ export default function WelcomeCard({
                             {tail ? (
                               <>
                                 <span className="font-medium text-slate-800 dark:text-slate-100">{head}</span>
-                                {' — '}{tail}
+                                {' - '}{tail}
                               </>
                             ) : bullet}
                           </p>

@@ -1,6 +1,6 @@
 import { ROLE_REGISTRY } from './onboarding/roles/index.js';
 
-export const ONBOARDING_VERSION = 2;
+export const ONBOARDING_VERSION = 3;
 
 export const DEFAULT_CHECKLIST_PROGRESS = {
   completed_task_ids: [],

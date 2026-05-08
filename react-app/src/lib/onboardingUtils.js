@@ -31,6 +31,7 @@ export function isChecklistLandingPage(roleKey, pathname = '') {
     case 'ces':
       return pathname === '/ces';
     case 'admin':
+    case 'observer':
       return pathname === '/admin';
     default:
       return false;

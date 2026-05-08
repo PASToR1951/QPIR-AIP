@@ -519,7 +519,6 @@ function A11yTabContent({ settings, update, reset, themeName, onResetPosition, o
 
 export default function HelpLauncher() {
   const location  = useLocation();
-  const helpConfig = useMemo(() => getPortalHelp(location.pathname), [location.pathname]);
   const { settings, update, reset, resetLauncher } = useAccessibility();
   const [isOpen, setIsOpen]       = useState(false);
   const [activeTab, setActiveTab] = useState('help');
@@ -532,15 +531,18 @@ export default function HelpLauncher() {
     hasChecklist, checklistOpen, toggleChecklist, resetOnboarding,
     roleKey, showUpdatedContentBadge,
   } = useOnboarding();
+  const helpConfig = useMemo(
+    () => getPortalHelp(location.pathname, roleKey),
+    [location.pathname, roleKey],
+  );
   const { canPractice, active: practiceActive, openIntro } = usePracticeMode();
 
   const themeName = resolveRouteThemeName(location.pathname);
-  const t = THEMES[themeName];
 
   const showChecklistActions =
     hasChecklist &&
     isChecklistLandingPage(roleKey, location.pathname) &&
-    !['observer', 'pending'].includes(roleKey);
+    roleKey !== 'pending';
 
   // Derived layout
   const anchor     = { left: drag.position.left + drag.fabSize.width / 2, top: drag.position.top + drag.fabSize.height / 2 };
