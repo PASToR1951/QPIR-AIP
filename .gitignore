@@ -5,6 +5,7 @@ start.sh
 # ── Internal documentation (not for public/repo consumers) ───────────────────
 /docs/*
 !/docs/SYSTEM_DOCUMENTATION_THESIS.md
+!/docs/SYSTEM_DOCUMENTATION_THESIS_REVISION_PLAN.md
 !/docs/SECURE_SESSION_RESTORE_AND_LOGOUT.md
 !/docs/wiki/
 !/docs/wiki/user-guides/
