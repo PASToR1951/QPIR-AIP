@@ -1,10 +1,11 @@
+import {
+  activityOverlapsMonthRange,
+  DEFAULT_TRIMESTER_MONTHS,
+} from "./periodRanges.ts";
+
 export const TRIMESTER_COUNT = 3;
 
-export const TRIMESTER_MONTHS: Record<number, { start: number; end: number }> = {
-  1: { start: 6, end: 9 },
-  2: { start: 9, end: 12 },
-  3: { start: 1, end: 4 },
-};
+export const TRIMESTER_MONTHS = DEFAULT_TRIMESTER_MONTHS;
 
 const TRIMESTER_LABEL_PATTERN =
   /^([1-3])(?:st|nd|rd|th)\s+trimester\s+cy\s+(\d{4})$/i;
@@ -53,7 +54,10 @@ export function getSchoolYearStart(date = new Date()): number {
   return month >= 6 ? date.getFullYear() : date.getFullYear() - 1;
 }
 
-export function getDefaultReportingYear(role: string, date = new Date()): number {
+export function getDefaultReportingYear(
+  role: string,
+  date = new Date(),
+): number {
   return role === "School" ? getSchoolYearStart(date) : date.getFullYear();
 }
 
@@ -64,5 +68,5 @@ export function activityOverlapsTrimester(
 ): boolean {
   const months = TRIMESTER_MONTHS[trimester];
   if (!months) return false;
-  return startMonth <= months.end && endMonth >= months.start;
+  return activityOverlapsMonthRange(startMonth, endMonth, months);
 }

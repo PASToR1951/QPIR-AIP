@@ -7,7 +7,7 @@ export function getQuarterNumbers(): number[] {
 
 export function isValidQuarter(quarter: unknown): quarter is number {
   return Number.isInteger(quarter) &&
-    (quarter as number) >= 0 &&
+    (quarter as number) >= 1 &&
     (quarter as number) <= QUARTERS_PER_YEAR;
 }
 

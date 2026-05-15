@@ -8,6 +8,7 @@ import oauthRoutes from "./routes/oauth.ts";
 import dataRoutes from "./routes/data.ts";
 import adminRoutes from "./routes/admin.ts";
 import backupRoutes from "./routes/backup.ts";
+import faqsRoutes from "./routes/faqs.ts";
 import { prisma as _prisma } from "./db/client.ts";
 import { getUserFromToken } from "./lib/auth.ts";
 import { ALLOWED_ORIGINS } from "./lib/config.ts";
@@ -219,6 +220,7 @@ app.get("/api/announcement", async (c) => {
 // OAuth must be mounted BEFORE /api/auth to prevent path shadowing
 app.route("/api/auth/oauth", oauthRoutes);
 app.route("/api/auth", authRoutes);
+app.route("/api", faqsRoutes);
 app.route("/api", dataRoutes);
 app.route("/api/admin", adminRoutes);
 app.route("/api/admin/backup", backupRoutes);

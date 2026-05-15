@@ -9,12 +9,44 @@ import {
   isValidQuarter,
 } from "./shared/dates.ts";
 import { adminOnly } from "./shared/guards.ts";
+import { getTrimesterNumbers, isValidTrimester } from "../../lib/trimesters.ts";
 import {
-  getTrimesterNumbers,
-  isValidTrimester,
-} from "../../lib/trimesters.ts";
+  getDefaultQuarterRange,
+  getDefaultTrimesterRange,
+  isValidMonthRange,
+  type PeriodRange,
+  resolveMonthRange,
+} from "../../lib/periodRanges.ts";
 
 const deadlinesRoutes = new Hono();
+
+function parseMonthRangePayload(
+  startMonth: unknown,
+  endMonth: unknown,
+  fallback: PeriodRange,
+): PeriodRange | string {
+  if (startMonth === undefined && endMonth === undefined) {
+    return fallback;
+  }
+
+  const start = safeParseInt(
+    startMonth as string | number | null | undefined,
+    0,
+    1,
+    12,
+  );
+  const end = safeParseInt(
+    endMonth as string | number | null | undefined,
+    0,
+    1,
+    12,
+  );
+  if (!isValidMonthRange(start, end)) {
+    return "Invalid reporting period month range";
+  }
+
+  return { start, end };
+}
 
 deadlinesRoutes.use("/deadlines", adminOnly);
 deadlinesRoutes.use("/deadlines/*", adminOnly);
@@ -28,13 +60,22 @@ deadlinesRoutes.get("/deadlines", async (c) => {
   );
   const deadlines = await prisma.deadline.findMany({ where: { year } });
   const result = getQuarterNumbers().map((quarter) => {
-    const custom = deadlines.find((deadline) => deadline.quarter === quarter);
+    const custom = deadlines.find((deadline) => deadline.quarter === quarter) as
+      | any
+      | undefined;
+    const range = resolveMonthRange(
+      custom?.period_start_month,
+      custom?.period_end_month,
+      getDefaultQuarterRange(quarter),
+    );
     return {
       quarter,
       year,
       date: custom ? custom.date : buildDefaultDeadline(year, quarter),
       open_date: custom?.open_date ?? null,
       grace_period_days: custom?.grace_period_days ?? 0,
+      period_start_month: range.start,
+      period_end_month: range.end,
       isCustom: !!custom,
       id: custom?.id ?? null,
     };
@@ -44,8 +85,15 @@ deadlinesRoutes.get("/deadlines", async (c) => {
 
 deadlinesRoutes.post("/deadlines", async (c) => {
   const admin = (await getUserFromToken(c))!;
-  const { year, quarter, date, open_date, grace_period_days } = await c.req
-    .json();
+  const {
+    year,
+    quarter,
+    date,
+    open_date,
+    grace_period_days,
+    period_start_month,
+    period_end_month,
+  } = await c.req.json();
 
   const parsedYear = safeParseInt(year, 0, 2020, 2100);
   if (parsedYear < 2020 || parsedYear > 2100) {
@@ -76,15 +124,26 @@ deadlinesRoutes.post("/deadlines", async (c) => {
     return c.json({ error: "Grace period must be between 0 and 30 days" }, 400);
   }
 
+  const periodRange = parseMonthRangePayload(
+    period_start_month,
+    period_end_month,
+    getDefaultQuarterRange(quarter),
+  );
+  if (typeof periodRange === "string") {
+    return c.json({ error: periodRange }, 400);
+  }
+
   const existing = await prisma.deadline.findUnique({
     where: { year_quarter: { year: parsedYear, quarter } },
   });
-  const deadline = await prisma.deadline.upsert({
+  const deadline = await (prisma.deadline as any).upsert({
     where: { year_quarter: { year: parsedYear, quarter } },
     update: {
       date: deadlineDate,
       open_date: openDate,
       grace_period_days: graceDays,
+      period_start_month: periodRange.start,
+      period_end_month: periodRange.end,
     },
     create: {
       year: parsedYear,
@@ -92,6 +151,8 @@ deadlinesRoutes.post("/deadlines", async (c) => {
       date: deadlineDate,
       open_date: openDate,
       grace_period_days: graceDays,
+      period_start_month: periodRange.start,
+      period_end_month: periodRange.end,
     },
   });
 
@@ -100,6 +161,10 @@ deadlinesRoutes.post("/deadlines", async (c) => {
     quarter,
     newDate: date,
     previousDate: existing?.date ?? null,
+    periodStartMonth: periodRange.start,
+    periodEndMonth: periodRange.end,
+    previousPeriodStartMonth: (existing as any)?.period_start_month ?? null,
+    previousPeriodEndMonth: (existing as any)?.period_end_month ?? null,
   }, { ctx: c });
   return c.json(deadline);
 });
@@ -117,6 +182,11 @@ deadlinesRoutes.get("/deadlines/trimesters", async (c) => {
   const result = getTrimesterNumbers().map((trimester) => {
     const custom = deadlines.find((deadline) =>
       deadline.trimester === trimester
+    ) as any | undefined;
+    const range = resolveMonthRange(
+      custom?.period_start_month,
+      custom?.period_end_month,
+      getDefaultTrimesterRange(trimester),
     );
     return {
       trimester,
@@ -124,6 +194,8 @@ deadlinesRoutes.get("/deadlines/trimesters", async (c) => {
       date: custom?.date ?? null,
       open_date: custom?.open_date ?? null,
       grace_period_days: custom?.grace_period_days ?? 0,
+      period_start_month: range.start,
+      period_end_month: range.end,
       isCustom: !!custom,
       id: custom?.id ?? null,
     };
@@ -133,8 +205,15 @@ deadlinesRoutes.get("/deadlines/trimesters", async (c) => {
 
 deadlinesRoutes.post("/deadlines/trimesters", async (c) => {
   const admin = (await getUserFromToken(c))!;
-  const { year, trimester, date, open_date, grace_period_days } = await c.req
-    .json();
+  const {
+    year,
+    trimester,
+    date,
+    open_date,
+    grace_period_days,
+    period_start_month,
+    period_end_month,
+  } = await c.req.json();
 
   const parsedYear = safeParseInt(year, 0, 2020, 2100);
   if (parsedYear < 2020 || parsedYear > 2100) {
@@ -169,15 +248,26 @@ deadlinesRoutes.post("/deadlines/trimesters", async (c) => {
     return c.json({ error: "Grace period must be between 0 and 30 days" }, 400);
   }
 
+  const periodRange = parseMonthRangePayload(
+    period_start_month,
+    period_end_month,
+    getDefaultTrimesterRange(trimester),
+  );
+  if (typeof periodRange === "string") {
+    return c.json({ error: periodRange }, 400);
+  }
+
   const existing = await prisma.trimesterDeadline.findUnique({
     where: { year_trimester: { year: parsedYear, trimester } },
   });
-  const deadline = await prisma.trimesterDeadline.upsert({
+  const deadline = await (prisma.trimesterDeadline as any).upsert({
     where: { year_trimester: { year: parsedYear, trimester } },
     update: {
       date: deadlineDate,
       open_date: openDate,
       grace_period_days: graceDays,
+      period_start_month: periodRange.start,
+      period_end_month: periodRange.end,
     },
     create: {
       year: parsedYear,
@@ -185,6 +275,8 @@ deadlinesRoutes.post("/deadlines/trimesters", async (c) => {
       date: deadlineDate,
       open_date: openDate,
       grace_period_days: graceDays,
+      period_start_month: periodRange.start,
+      period_end_month: periodRange.end,
     },
   });
 
@@ -200,6 +292,10 @@ deadlinesRoutes.post("/deadlines/trimesters", async (c) => {
       previousDate: existing?.date ?? null,
       newOpenDate: open_date,
       previousOpenDate: existing?.open_date ?? null,
+      periodStartMonth: periodRange.start,
+      periodEndMonth: periodRange.end,
+      previousPeriodStartMonth: (existing as any)?.period_start_month ?? null,
+      previousPeriodEndMonth: (existing as any)?.period_end_month ?? null,
     },
     { ctx: c },
   );

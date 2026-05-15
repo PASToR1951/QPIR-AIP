@@ -21,12 +21,20 @@ import {
 } from "../../lib/advisoryLock.ts";
 import { ConflictError, HttpError } from "../../lib/errors.ts";
 import { isPrismaUniqueConflictWithoutTarget } from "../../lib/prismaErrors.ts";
-import { normalizeQuarterLabel, parseQuarterLabel } from "../../lib/quarters.ts";
+import {
+  normalizeQuarterLabel,
+  parseQuarterLabel,
+} from "../../lib/quarters.ts";
 import {
   getDefaultReportingYear,
   normalizeTrimesterLabel,
   parseTrimesterLabel,
 } from "../../lib/trimesters.ts";
+import {
+  getDefaultQuarterRange,
+  periodStartDate,
+  resolveMonthRange,
+} from "../../lib/periodRanges.ts";
 import {
   fetchAIPForUser,
   fetchPIRForUser,
@@ -86,16 +94,15 @@ async function validateQuarterSubmissionWindow(
   const graceEnd = new Date(deadline.getTime() + graceDays * 86400000);
   graceEnd.setHours(23, 59, 59, 999);
 
-  const quarterStarts: Record<number, Date> = {
-    1: new Date(year, 0, 1),
-    2: new Date(year, 3, 1),
-    3: new Date(year, 6, 1),
-    4: new Date(year, 9, 1),
-  };
+  const range = resolveMonthRange(
+    (deadlineRecord as any)?.period_start_month,
+    (deadlineRecord as any)?.period_end_month,
+    getDefaultQuarterRange(quarterNum),
+  );
 
   const openDate = deadlineRecord?.open_date
     ? new Date(deadlineRecord.open_date)
-    : quarterStarts[quarterNum];
+    : periodStartDate(year, range);
   const now = new Date();
 
   if (now < openDate) {
@@ -668,11 +675,10 @@ pirRoutes.put(
             );
           }
           if (isSchoolResubmission) {
-            const submissionWindowError =
-              await validateSubmissionWindowForRole(
-                tokenUser.role,
-                lockedPir.quarter,
-              );
+            const submissionWindowError = await validateSubmissionWindowForRole(
+              tokenUser.role,
+              lockedPir.quarter,
+            );
             if (submissionWindowError) {
               const status = submissionWindowError.startsWith("Invalid")
                 ? 400
