@@ -376,6 +376,8 @@ model Deadline {
   date               DateTime  // Admin-set deadline (overrides calendar default)
   open_date          DateTime? // When submissions open (null = start of quarter)
   grace_period_days  Int       @default(0) // Days after deadline still allowed
+  period_start_month Int?      // Reporting-period coverage start month, 1=Jan ... 12=Dec
+  period_end_month   Int?      // Reporting-period coverage end month, 1=Jan ... 12=Dec
   created_at         DateTime  @default(now())
   updated_at         DateTime  @updatedAt
 
@@ -390,6 +392,8 @@ model TrimesterDeadline {
   open_date         DateTime // Required — admin-configured submission open date
   date              DateTime // Submission deadline
   grace_period_days Int      @default(0)
+  period_start_month Int?    // Reporting-period coverage start month, 1=Jan ... 12=Dec
+  period_end_month   Int?    // Reporting-period coverage end month, 1=Jan ... 12=Dec
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
