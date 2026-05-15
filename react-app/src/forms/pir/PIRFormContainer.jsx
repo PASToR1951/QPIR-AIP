@@ -59,9 +59,11 @@ export default function PIRFormContainer() {
     const [periodInfo, setPeriodInfo] = useState({
         label: fallbackPeriodLabel,
         type: getPeriodTypeForRole(user?.role),
+        range: null,
     });
     const quarterString = periodInfo.label || fallbackPeriodLabel;
     const periodType = periodInfo.type || getPeriodTypeForRole(user?.role);
+    const periodRange = periodInfo.range;
     const currentQuarterNum = useMemo(() => getPeriodNumber(quarterString), [quarterString]);
 
     useEffect(() => {
@@ -72,6 +74,12 @@ export default function PIRFormContainer() {
                 setPeriodInfo({
                     label: response.data.currentPeriodLabel || fallbackPeriodLabel,
                     type: response.data.period_type || getPeriodTypeForRole(user?.role),
+                    range: response.data.currentPeriodRange
+                        ? {
+                            start: response.data.currentPeriodRange.start_month,
+                            end: response.data.currentPeriodRange.end_month,
+                        }
+                        : null,
                 });
             })
             .catch(() => {
@@ -79,6 +87,7 @@ export default function PIRFormContainer() {
                 setPeriodInfo({
                     label: fallbackPeriodLabel,
                     type: getPeriodTypeForRole(user?.role),
+                    range: null,
                 });
             });
         return () => {
@@ -187,6 +196,7 @@ export default function PIRFormContainer() {
         quarterString,
         currentQuarterNum,
         periodType,
+        periodRange,
         isDivisionPersonnel,
         user,
         onActivitiesLoaded: handleActivitiesLoaded,

@@ -163,6 +163,8 @@ const EXACT_MAP = {
     'The open date must be set before the submission deadline.',
   'Grace period must be between 0 and 30 days':
     'The grace period must be between 0 and 30 days.',
+  'Invalid reporting period month range':
+    'Choose a valid reporting period month range where the start month is before or equal to the end month.',
   'Cluster number is required':
     'A cluster number is required.',
 

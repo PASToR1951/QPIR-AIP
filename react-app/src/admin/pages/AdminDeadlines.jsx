@@ -7,6 +7,7 @@ import {
   CheckCircle, Timer,
 } from '@phosphor-icons/react';
 import { Spinner } from '../components/Spinner.jsx';
+import MonthRangePicker from '../../forms/shared/components/MonthRangePicker.jsx';
 
 function Tip({ text }) {
   return (
@@ -24,18 +25,41 @@ const QUARTERS_PER_YEAR = 4;
 const MONTHS_PER_QUARTER = 12 / QUARTERS_PER_YEAR;
 const MONTH_LABEL = new Intl.DateTimeFormat('en-PH', { month: 'short' });
 
-function quarterBounds(year, i) {
-  const startMonth = i * MONTHS_PER_QUARTER;
-  const endMonth = startMonth + MONTHS_PER_QUARTER - 1;
+function monthLabel(month) {
+  return MONTH_LABEL.format(new Date(2026, month - 1, 1));
+}
+
+function defaultQuarterRange(i) {
+  const start = i * MONTHS_PER_QUARTER + 1;
+  return { start, end: start + MONTHS_PER_QUARTER - 1 };
+}
+
+function defaultTrimesterRange(i) {
+  return [
+    { start: 6, end: 9 },
+    { start: 9, end: 12 },
+    { start: 1, end: 4 },
+  ][i] ?? { start: 6, end: 9 };
+}
+
+function normalizeRange(startMonth, endMonth, fallback) {
+  const start = parseInt(startMonth, 10);
+  const end = parseInt(endMonth, 10);
+  if (start >= 1 && start <= 12 && end >= 1 && end <= 12 && start <= end) {
+    return { start, end };
+  }
+  return fallback;
+}
+
+function quarterBounds(year, i, range = defaultQuarterRange(i)) {
   return {
-    start: new Date(year, startMonth, 1),
-    end: new Date(year, endMonth + 1, 0),
+    start: new Date(year, range.start - 1, 1),
+    end: new Date(year, range.end, 0),
   };
 }
 
-function quarterLabel(year, i) {
-  const { start, end } = quarterBounds(year, i);
-  return `Q${i + 1} · ${MONTH_LABEL.format(start)} – ${MONTH_LABEL.format(end)}`;
+function quarterLabel(year, i, range = defaultQuarterRange(i)) {
+  return `Q${i + 1} · ${monthLabel(range.start)} – ${monthLabel(range.end)} · FY ${year}`;
 }
 
 function schoolYearLabel(year) {
@@ -47,17 +71,12 @@ function currentSchoolYearStart() {
   return today.getMonth() + 1 >= 6 ? today.getFullYear() : today.getFullYear() - 1;
 }
 
-function trimesterLabel(year, i) {
-  const labels = [
-    `T1 · Jun – Sep · ${schoolYearLabel(year)}`,
-    `T2 · Sep – Dec · ${schoolYearLabel(year)}`,
-    `T3 · Jan – Apr · ${schoolYearLabel(year)}`,
-  ];
-  return labels[i] ?? `T${i + 1} · ${schoolYearLabel(year)}`;
+function trimesterLabel(year, i, range = defaultTrimesterRange(i)) {
+  return `T${i + 1} · ${monthLabel(range.start)} – ${monthLabel(range.end)} · ${schoolYearLabel(year)}`;
 }
 
-function quarterProgress(year, i) {
-  const bounds = quarterBounds(year, i);
+function quarterProgress(year, i, range = defaultQuarterRange(i)) {
+  const bounds = quarterBounds(year, i, range);
   const start = bounds.start.getTime();
   const end   = bounds.end.getTime();
   const now   = Date.now();
@@ -107,7 +126,7 @@ function localDateStr(dateObj) {
 }
 
 /** Compute current window status for a quarter */
-function windowStatus(localDate, localOpenDate, localGraceDays, i, year) {
+function windowStatus(localDate, localOpenDate, localGraceDays, i, year, range) {
   const deadlineStr = localDate;
   if (!deadlineStr) return 'locked';
 
@@ -119,7 +138,7 @@ function windowStatus(localDate, localOpenDate, localGraceDays, i, year) {
     const [oy, om, od] = localOpenDate.split('-').map(Number);
     openDate = new Date(oy, om - 1, od);
   } else {
-    openDate = quarterBounds(year, i).start;
+    openDate = quarterBounds(year, i, range).start;
   }
 
   const graceDays = parseInt(localGraceDays) || 0;
@@ -197,12 +216,16 @@ export default function AdminDeadlines() {
         date:       d.date?.slice(0, 10) ?? '',
         openDate:   d.open_date ? localDateStr(d.open_date) : '',
         graceDays:  d.grace_period_days ?? 0,
+        periodStartMonth: d.period_start_month,
+        periodEndMonth: d.period_end_month,
       }])));
       setTrimesterDeadlines(tr.data);
       setTrimesterLocalDates(Object.fromEntries(tr.data.map(d => [d.trimester, {
         date:       d.date ? localDateStr(d.date) : '',
         openDate:   d.open_date ? localDateStr(d.open_date) : '',
         graceDays:  d.grace_period_days ?? 0,
+        periodStartMonth: d.period_start_month,
+        periodEndMonth: d.period_end_month,
       }])));
       setHistory(hr.data);
     }).catch(e => { console.error(e); setFetchError('Failed to load deadlines. Please refresh and try again.'); })
@@ -222,6 +245,8 @@ export default function AdminDeadlines() {
         date:              ld.date,
         open_date:         ld.openDate || null,
         grace_period_days: parseInt(ld.graceDays) || 0,
+        period_start_month: parseInt(ld.periodStartMonth, 10),
+        period_end_month: parseInt(ld.periodEndMonth, 10),
       });
       fetchDeadlines();
     } catch (e) {
@@ -256,6 +281,8 @@ export default function AdminDeadlines() {
         date:              ld.date,
         open_date:         ld.openDate,
         grace_period_days: parseInt(ld.graceDays) || 0,
+        period_start_month: parseInt(ld.periodStartMonth, 10),
+        period_end_month: parseInt(ld.periodEndMonth, 10),
       });
       fetchDeadlines();
     } catch (e) {
@@ -283,8 +310,13 @@ export default function AdminDeadlines() {
     const origDate     = orig.date?.slice(0, 10) ?? '';
     const origOpen     = orig.open_date ? localDateStr(orig.open_date) : '';
     const origGrace    = orig.grace_period_days ?? 0;
+    const origRange = normalizeRange(orig.period_start_month, orig.period_end_month, defaultQuarterRange(q - 1));
     const ld = localDates[q];
-    return ld.date !== origDate || ld.openDate !== origOpen || parseInt(ld.graceDays) !== origGrace;
+    return ld.date !== origDate ||
+      ld.openDate !== origOpen ||
+      parseInt(ld.graceDays) !== origGrace ||
+      parseInt(ld.periodStartMonth, 10) !== origRange.start ||
+      parseInt(ld.periodEndMonth, 10) !== origRange.end;
   };
 
   const trimesterChanged = (t) => {
@@ -294,8 +326,13 @@ export default function AdminDeadlines() {
     const origDate  = orig.date ? localDateStr(orig.date) : '';
     const origOpen  = orig.open_date ? localDateStr(orig.open_date) : '';
     const origGrace = orig.grace_period_days ?? 0;
+    const origRange = normalizeRange(orig.period_start_month, orig.period_end_month, defaultTrimesterRange(t - 1));
     const ld = trimesterLocalDates[t];
-    return ld.date !== origDate || ld.openDate !== origOpen || parseInt(ld.graceDays) !== origGrace;
+    return ld.date !== origDate ||
+      ld.openDate !== origOpen ||
+      parseInt(ld.graceDays) !== origGrace ||
+      parseInt(ld.periodStartMonth, 10) !== origRange.start ||
+      parseInt(ld.periodEndMonth, 10) !== origRange.end;
   };
 
   const impactPreview = (q) => {
@@ -316,7 +353,8 @@ export default function AdminDeadlines() {
   const overdueCount = deadlines.filter((d, i) => {
     if (daysLeft(d.date) >= 0) return false;
     const ld = localDates[d.quarter] ?? { date: '', openDate: '', graceDays: 0 };
-    const status = windowStatus(ld.date, ld.openDate, ld.graceDays, i, year);
+    const range = normalizeRange(ld.periodStartMonth, ld.periodEndMonth, defaultQuarterRange(i));
+    const status = windowStatus(ld.date, ld.openDate, ld.graceDays, i, year, range);
     return status !== 'closed';
   }).length;
   const customCount  = deadlines.filter(d => d.isCustom).length;
@@ -419,7 +457,7 @@ export default function AdminDeadlines() {
                   </div>
                   <div>
                     <p className="text-3xl font-black text-slate-900 dark:text-white leading-none tabular-nums">{customCount}</p>
-                    <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-1">Custom Set <Tip text="Quarters where the default deadline has been manually overridden." /></p>
+                    <p className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-1">Custom Set <Tip text="Quarters with custom submission windows or reporting month coverage." /></p>
                   </div>
                 </div>
               </div>
@@ -428,7 +466,7 @@ export default function AdminDeadlines() {
             <div className="flex items-center justify-between gap-3 px-1">
               <div>
                 <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">Division Quarters</h2>
-                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Fiscal year {year} submission windows for Division Personnel.</p>
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">Fiscal year {year} reporting coverage and submission windows for Division Personnel.</p>
               </div>
             </div>
 
@@ -442,9 +480,10 @@ export default function AdminDeadlines() {
               {deadlines.map((d, i) => {
                 const days    = daysLeft(d.date);
                 const impact  = impactPreview(d.quarter);
-                const progress = quarterProgress(year, i);
                 const ld      = localDates[d.quarter] ?? { date: '', openDate: '', graceDays: 0 };
-                const winStatus = windowStatus(ld.date, ld.openDate, ld.graceDays, i, year);
+                const range = normalizeRange(ld.periodStartMonth, ld.periodEndMonth, defaultQuarterRange(i));
+                const progress = quarterProgress(year, i, range);
+                const winStatus = windowStatus(ld.date, ld.openDate, ld.graceDays, i, year, range);
                 const isClosed = winStatus === 'closed';
                 const badge   = WINDOW_BADGE[winStatus];
                 const BadgeIcon = badge.icon;
@@ -463,7 +502,7 @@ export default function AdminDeadlines() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">
-                            {quarterLabel(year, i)}
+                            {quarterLabel(year, i, range)}
                           </p>
                           {d.isCustom && (
                             <span className="inline-block mt-1 text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg">
@@ -517,6 +556,19 @@ export default function AdminDeadlines() {
 
                       {/* ── Date Inputs ── */}
                       <div className={`space-y-3 ${isClosed ? 'opacity-40 pointer-events-none select-none' : ''}`}>
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                            <CalendarSlash size={12} className="inline mr-1" />Period Coverage
+                            <Tip text="Months whose AIP activities are included in this PIR period." />
+                          </label>
+                          <MonthRangePicker
+                            startMonth={ld.periodStartMonth}
+                            endMonth={ld.periodEndMonth}
+                            onStartChange={value => setLocalDates(prev => ({ ...prev, [d.quarter]: { ...prev[d.quarter], periodStartMonth: value } }))}
+                            onEndChange={value => setLocalDates(prev => ({ ...prev, [d.quarter]: { ...prev[d.quarter], periodEndMonth: value } }))}
+                          />
+                        </div>
+
                         {/* Deadline date */}
                         <div>
                           <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
@@ -601,7 +653,7 @@ export default function AdminDeadlines() {
             <div className="flex items-center justify-between gap-3 px-1 pt-2">
               <div>
                 <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">School Trimesters</h2>
-                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">{schoolYearLabel(schoolYear)} windows. Open date and deadline are required before schools can submit.</p>
+                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">{schoolYearLabel(schoolYear)} coverage and windows. Open date and deadline are required before schools can submit.</p>
               </div>
             </div>
 
@@ -613,13 +665,14 @@ export default function AdminDeadlines() {
             >
               {trimesterDeadlines.map((d, i) => {
                 const ld = trimesterLocalDates[d.trimester] ?? { date: '', openDate: '', graceDays: 0 };
+                const range = normalizeRange(ld.periodStartMonth, ld.periodEndMonth, defaultTrimesterRange(i));
                 const isConfigured = Boolean(d.id);
                 const days = ld.date ? daysLeft(ld.date) : null;
                 const winStatus = configuredWindowStatus(ld.date, ld.openDate, ld.graceDays);
                 const badge = WINDOW_BADGE[winStatus];
                 const BadgeIcon = badge.icon;
                 const isClosed = winStatus === 'closed';
-                const canSave = Boolean(ld.date && ld.openDate) && trimesterChanged(d.trimester) && saving !== `T${d.trimester}`;
+                const canSave = Boolean(ld.date && ld.openDate && range.start && range.end) && trimesterChanged(d.trimester) && saving !== `T${d.trimester}`;
 
                 return (
                   <Motion.div
@@ -632,7 +685,7 @@ export default function AdminDeadlines() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">
-                            {trimesterLabel(schoolYear, i)}
+                            {trimesterLabel(schoolYear, i, range)}
                           </p>
                           <span className={`inline-block mt-1 text-[10px] font-black px-2 py-0.5 rounded-lg ${
                             isConfigured
@@ -663,6 +716,19 @@ export default function AdminDeadlines() {
                       </div>
 
                       <div className="space-y-3">
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
+                            <CalendarSlash size={12} className="inline mr-1" />Period Coverage
+                            <Tip text="Months whose AIP activities are included in this PIR trimester." />
+                          </label>
+                          <MonthRangePicker
+                            startMonth={ld.periodStartMonth}
+                            endMonth={ld.periodEndMonth}
+                            onStartChange={value => setTrimesterLocalDates(prev => ({ ...prev, [d.trimester]: { ...prev[d.trimester], periodStartMonth: value } }))}
+                            onEndChange={value => setTrimesterLocalDates(prev => ({ ...prev, [d.trimester]: { ...prev[d.trimester], periodEndMonth: value } }))}
+                          />
+                        </div>
+
                         <div>
                           <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
                             <LockSimple size={12} className="inline mr-1" />Submissions Open

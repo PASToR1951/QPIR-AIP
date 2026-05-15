@@ -45,6 +45,7 @@ const AdminSessions = lazy(() => import('./admin/pages/AdminSessions.jsx'));
 const AdminLogs = lazy(() => import('./admin/pages/AdminLogs.jsx'));
 const AdminPIRReview = lazy(() => import('./admin/pages/AdminPIRReview.jsx'));
 const AdminConsolidationTemplate = lazy(() => import('./admin/pages/AdminConsolidationTemplate.jsx'));
+const AdminFAQ = lazy(() => import('./admin/pages/AdminFAQ.jsx'));
 const UserLogs = lazy(() => import('./UserLogs.jsx'));
 
 const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID'];
@@ -307,6 +308,7 @@ export default function AnimatedContent() {
                 <Route path="logs" element={<AdminOnlyGuard><AdminLogs /></AdminOnlyGuard>} />
                 <Route path="settings" element={<AdminOnlyGuard><AdminSettings /></AdminOnlyGuard>} />
                 <Route path="backups" element={<AdminOnlyGuard><AdminBackups /></AdminOnlyGuard>} />
+                <Route path="faq" element={<AdminOnlyGuard><AdminFAQ /></AdminOnlyGuard>} />
                 <Route path="pirs/:id" element={<AdminPIRReview />} />
               </Route>
             </Routes>

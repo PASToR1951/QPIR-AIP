@@ -13,6 +13,7 @@ const PAGE_LABELS = {
   '/admin/consolidation-template': 'Consolidation',
   '/admin/sessions': 'Device Management',
   '/admin/settings': 'Settings',
+  '/admin/faq': 'FAQ Management',
 };
 
 function relativeTime(date) {

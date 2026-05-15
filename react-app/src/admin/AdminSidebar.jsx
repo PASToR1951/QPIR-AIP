@@ -7,7 +7,7 @@ import {
   FileText, Users, Buildings, BookOpenIcon, BookOpenUserIcon,
   CalendarSlash, ChartLine, Gear, SignOut, Checks,
   CaretDown, ChartBar, Wallet, TrendUp, ListChecks, FunnelSimple, Coins,
-  Table,
+  Table, Question,
 } from '@phosphor-icons/react';
 import { useOnboarding } from '../hooks/useOnboarding.jsx';
 import { isChecklistLandingPage } from '../lib/onboardingUtils.js';
@@ -43,6 +43,7 @@ const NAV_GROUPS = [
     label: 'System',
     items: [
       { to: '/admin/settings', label: 'Settings', icon: Gear, adminOnly: true, preload: () => import('./pages/AdminSettings.jsx') },
+      { to: '/admin/faq', label: 'FAQ', icon: Question, adminOnly: true, preload: () => import('./pages/AdminFAQ.jsx') },
     ],
   },
 ];

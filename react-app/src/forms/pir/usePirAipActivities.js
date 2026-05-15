@@ -9,6 +9,7 @@ export default function usePirAipActivities({
     quarterString,
     currentQuarterNum,
     periodType = 'quarter',
+    periodRange = null,
     isDivisionPersonnel,
     user,
     onActivitiesLoaded,
@@ -65,6 +66,7 @@ export default function usePirAipActivities({
                                     activity.period_end_month,
                                     currentQuarterNum,
                                     periodType,
+                                    periodRange,
                                 )
                                 : true
                         ));
@@ -121,6 +123,9 @@ export default function usePirAipActivities({
         onActivitiesLoaded,
         onIndicatorsLoaded,
         onOwnerLoaded,
+        periodRange,
+        periodRange?.end,
+        periodRange?.start,
         periodType,
         program,
         programId,
