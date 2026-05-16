@@ -25,6 +25,7 @@ model Cluster {
 
   // Relations
   schools           School[]
+  users             User[]
 
   @@map("clusters")
 }
@@ -121,6 +122,8 @@ model User {
   // Relation to School (For School Role Users)
   school_id  Int?
   school     School?  @relation(fields: [school_id], references: [id])
+  cluster_id Int?
+  cluster    Cluster? @relation(fields: [cluster_id], references: [id], onDelete: SetNull)
 
   // Relation to Programs (For Division Personnel Users)
   programs  Program[] @relation("UserPrograms")
@@ -153,6 +156,7 @@ model User {
   // Notifications
   notifications         Notification[]
   announcement_mentions AnnouncementMentionUser[]
+  announcement_receipts AnnouncementReceipt[]
   magic_link_tokens     MagicLinkToken[]
   email_blast_logs      EmailBlastLog[]
 
@@ -450,19 +454,28 @@ model EmailBlastLog {
 
 model Announcement {
   id          Int       @id @default(autoincrement())
+  title       String    @default("Announcement")
   message     String
   type        String    @default("info") // "info" | "warning" | "critical"
   is_active   Boolean   @default(true)
   dismissible Boolean   @default(true)
+  starts_at   DateTime?                  // null = visible immediately when active
   expires_at  DateTime?                  // null = never expires; set for auto-expiring announcements
+  archived_at DateTime?                  // set when hidden from admin authoring history without deleting notification history
+  action_label String?
+  action_url   String?
   created_by  Int
   created_at  DateTime  @default(now())
   updated_at  DateTime  @updatedAt
 
-  // Mention targeting — empty = visible to everyone
+  // Audience targeting — all empty = visible to everyone
   mentioned_schools AnnouncementMentionSchool[]
   mentioned_users   AnnouncementMentionUser[]
+  target_roles      AnnouncementTargetRole[]
+  receipts          AnnouncementReceipt[]
 
+  @@index([is_active, starts_at, expires_at])
+  @@index([archived_at])
   @@map("announcements")
 }
 
@@ -486,6 +499,33 @@ model AnnouncementMentionUser {
 
   @@id([announcement_id, user_id])
   @@map("announcement_mention_users")
+}
+
+// Role targeting for notification-powered announcements
+model AnnouncementTargetRole {
+  announcement_id Int
+  role            String
+  announcement    Announcement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+
+  @@id([announcement_id, role])
+  @@map("announcement_target_roles")
+}
+
+// Per-user announcement receipt: delivery dedupe + persistent banner dismissal
+model AnnouncementReceipt {
+  announcement_id Int
+  user_id         Int
+  dismissed_at    DateTime?
+  notified_at     DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  announcement    Announcement @relation(fields: [announcement_id], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([announcement_id, user_id])
+  @@index([user_id, dismissed_at])
+  @@map("announcement_receipts")
 }
 
 model DivisionConfig {
