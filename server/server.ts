@@ -9,10 +9,11 @@ import dataRoutes from "./routes/data.ts";
 import adminRoutes from "./routes/admin.ts";
 import backupRoutes from "./routes/backup.ts";
 import faqsRoutes from "./routes/faqs.ts";
+import announcementsRoutes from "./routes/announcements.ts";
 import { prisma as _prisma } from "./db/client.ts";
-import { getUserFromToken } from "./lib/auth.ts";
 import { ALLOWED_ORIGINS } from "./lib/config.ts";
 import { logger } from "./lib/logger.ts";
+import { startAnnouncementDeliveryScheduler } from "./lib/announcements.ts";
 import { startDeadlineReminderScheduler } from "./lib/deadlineReminders.ts";
 import { startMagicLinkCleanupScheduler } from "./lib/magicLink.ts";
 import { makeRateLimiter } from "./lib/rateLimiter.ts";
@@ -182,51 +183,19 @@ app.get("/api/config", async (c) => {
   });
 });
 
-app.get("/api/announcement", async (c) => {
-  const now = new Date();
-  const a = await _prisma.announcement.findFirst({
-    where: {
-      is_active: true,
-      OR: [{ expires_at: null }, { expires_at: { gt: now } }],
-    },
-    include: {
-      mentioned_schools: { select: { school_id: true } },
-      mentioned_users: { select: { user_id: true } },
-    },
-    orderBy: { updated_at: "desc" },
-  });
-
-  if (!a) return c.json(null);
-
-  const hasSchoolMentions = a.mentioned_schools.length > 0;
-  const hasUserMentions = a.mentioned_users.length > 0;
-
-  // No mentions → broadcast to everyone
-  if (!hasSchoolMentions && !hasUserMentions) return c.json(a);
-
-  // Targeted announcement — check if requesting user qualifies
-  const caller = await getUserFromToken(c);
-  if (!caller) return c.json({ error: "Unauthorized" }, 401);
-
-  const schoolMatch = hasSchoolMentions && caller.school_id != null &&
-    a.mentioned_schools.some((ms) => ms.school_id === caller.school_id);
-  const userMatch = hasUserMentions &&
-    a.mentioned_users.some((mu) => mu.user_id === caller.id);
-
-  return c.json(schoolMatch || userMatch ? a : null);
-});
-
 // Mount modular routes
 // OAuth must be mounted BEFORE /api/auth to prevent path shadowing
 app.route("/api/auth/oauth", oauthRoutes);
 app.route("/api/auth", authRoutes);
 app.route("/api", faqsRoutes);
+app.route("/api", announcementsRoutes);
 app.route("/api", dataRoutes);
 app.route("/api/admin", adminRoutes);
 app.route("/api/admin/backup", backupRoutes);
 
 const PORT = parseInt(Deno.env.get("PORT") || "3001");
 logger.info(`AIP-PIR backend running on http://localhost:${PORT}`);
+startAnnouncementDeliveryScheduler();
 startDeadlineReminderScheduler();
 startMagicLinkCleanupScheduler();
 
