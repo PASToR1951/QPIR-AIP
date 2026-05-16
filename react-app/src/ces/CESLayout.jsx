@@ -4,6 +4,7 @@ import CESDashboard from './CESDashboard.jsx';
 import CESPIRReview from './CESPIRReview.jsx';
 import CESAIPReview from './CESAIPReview.jsx';
 import Footer from '../components/ui/Footer.jsx';
+import { AnnouncementBanner } from '../components/ui/AnnouncementBanner.jsx';
 import { useAppLogo } from '../context/BrandingContext.jsx';
 import { auth } from '../lib/auth.js';
 
@@ -85,6 +86,7 @@ export default function CESLayout() {
           </nav>
         </div>
       </header>
+      <AnnouncementBanner />
 
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-8">
         <Routes>

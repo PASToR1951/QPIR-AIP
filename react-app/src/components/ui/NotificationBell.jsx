@@ -62,8 +62,9 @@ function resolveNotificationRoute(n, role) {
     if (entity_type === 'pir') return '/pir';
   }
 
-  // Group D — announcements: no navigation
-  if (type === 'announcement') return null;
+  if (type === 'announcement') {
+    return entity_id ? `/announcements/${entity_id}` : '/';
+  }
 
   // Group C — all other status updates: go to dashboard
   return '/';

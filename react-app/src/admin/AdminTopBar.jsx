@@ -46,7 +46,7 @@ const NOTIF_ICON = {
 };
 
 function resolveAdminRoute(n) {
-  if (n.type === 'announcement') return null;
+  if (n.type === 'announcement') return n.entity_id ? `/announcements/${n.entity_id}` : '/admin';
   if (n.entity_type === 'pir' && n.entity_id)
     return `/admin/submissions?type=pir&review=${n.entity_id}`;
   if (n.entity_type === 'aip' && n.entity_id)

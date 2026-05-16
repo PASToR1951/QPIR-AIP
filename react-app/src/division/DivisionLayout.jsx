@@ -1,6 +1,7 @@
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { ClipboardText, FileText, ChartBar, House, SignOut } from '@phosphor-icons/react';
 import { useAppLogo } from '../context/BrandingContext.jsx';
+import { AnnouncementBanner } from '../components/ui/AnnouncementBanner.jsx';
 import { auth } from '../lib/auth.js';
 import FocalPersonQueue from './FocalPersonQueue.jsx';
 import FocalPersonReview from './FocalPersonReview.jsx';
@@ -59,6 +60,7 @@ export default function DivisionLayout() {
           </nav>
         </div>
       </header>
+      <AnnouncementBanner />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         <Routes>
           <Route index element={<FocalPersonQueue />} />

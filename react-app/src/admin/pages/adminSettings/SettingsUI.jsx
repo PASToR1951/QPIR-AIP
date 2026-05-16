@@ -39,9 +39,14 @@ export function BannerPreview({ announcement }) {
   return (
     <div className={`w-full rounded-xl overflow-hidden shadow-sm ${cfg.wrap}`}>
       <div className="px-4 py-2.5 flex items-start gap-2.5">
-        <p className="min-w-0 flex-1 text-sm font-semibold text-white leading-snug whitespace-pre-wrap break-words">
-          {renderWithMentions(announcement.message)}
-        </p>
+        <div className="min-w-0 flex-1 text-white">
+          {announcement.title && (
+            <p className="text-xs font-black leading-snug truncate">{announcement.title}</p>
+          )}
+          <p className="text-sm font-semibold leading-snug whitespace-pre-wrap break-words">
+            {renderWithMentions(announcement.message)}
+          </p>
+        </div>
       </div>
     </div>
   );

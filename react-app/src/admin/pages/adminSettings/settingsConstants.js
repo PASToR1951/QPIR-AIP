@@ -1,12 +1,32 @@
-export const MAX_CHARS = 280;
+export const MAX_CHARS = 500;
 
 export const EMPTY_ANNOUNCEMENT = {
+  id: null,
+  title: 'Announcement',
   message: '',
   type: 'info',
   is_active: true,
   dismissible: true,
+  starts_at: '',
   expires_at: '',
+  action_label: '',
+  action_url: '',
+  audience: {
+    roles: [],
+    school_ids: [],
+    user_ids: [],
+  },
 };
+
+export const ANNOUNCEMENT_ROLE_OPTIONS = [
+  { value: 'School', label: 'School' },
+  { value: 'Division Personnel', label: 'Division Personnel' },
+  { value: 'CES-SGOD', label: 'CES-SGOD' },
+  { value: 'CES-ASDS', label: 'CES-ASDS' },
+  { value: 'CES-CID', label: 'CES-CID' },
+  { value: 'Admin', label: 'Admin' },
+  { value: 'Observer', label: 'Observer' },
+];
 
 export const EMPTY_EMAIL_CONFIG = {
   smtp_host: 'smtp.gmail.com',
@@ -122,22 +142,47 @@ export function toDateTimeInput(value) {
 
 export function normalizeAnnouncement(source) {
   return {
+    id:          source?.id ?? null,
+    title:       source?.title || 'Announcement',
     message:     source?.message ?? '',
     type:        source?.type ?? 'info',
     is_active:   source?.is_active ?? true,
     dismissible: source?.dismissible !== false,
+    starts_at:   source?.starts_at ?? '',
     expires_at:  source?.expires_at ?? '',
+    action_label: source?.action_label ?? '',
+    action_url:   source?.action_url ?? '',
+    audience: {
+      roles: Array.isArray(source?.audience?.roles) ? source.audience.roles : [],
+      school_ids: Array.isArray(source?.audience?.school_ids) ? source.audience.school_ids : [],
+      user_ids: Array.isArray(source?.audience?.user_ids) ? source.audience.user_ids : [],
+    },
   };
 }
 
 export function announcementFromApi(source) {
-  return { ...normalizeAnnouncement(source), expires_at: toDateTimeInput(source?.expires_at) };
+  return {
+    ...(source ?? {}),
+    ...normalizeAnnouncement(source),
+    starts_at: toDateTimeInput(source?.starts_at),
+    expires_at: toDateTimeInput(source?.expires_at),
+  };
 }
 
 export function announcementsEqual(left, right) {
   const a = normalizeAnnouncement(left);
   const b = normalizeAnnouncement(right);
-  return a.message === b.message && a.type === b.type && a.is_active === b.is_active && a.dismissible === b.dismissible && a.expires_at === b.expires_at;
+  return a.id === b.id &&
+    a.title === b.title &&
+    a.message === b.message &&
+    a.type === b.type &&
+    a.is_active === b.is_active &&
+    a.dismissible === b.dismissible &&
+    a.starts_at === b.starts_at &&
+    a.expires_at === b.expires_at &&
+    a.action_label === b.action_label &&
+    a.action_url === b.action_url &&
+    JSON.stringify(a.audience) === JSON.stringify(b.audience);
 }
 
 export function hasAnnouncementMessage(source) { return Boolean(source?.message?.trim()); }

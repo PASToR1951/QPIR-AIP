@@ -1,40 +1,60 @@
-import { useState, useRef, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import api from '../../../lib/api.js';
 import {
-  MAX_CHARS, EMPTY_ANNOUNCEMENT,
-  rawToEditorHTML, editorToRaw,
-  normalizeAnnouncement, announcementFromApi, announcementsEqual,
-  hasAnnouncementMessage, isAnnouncementExpired, formatAnnouncementExpiry,
-  STATUS_TONE_CLASSES,
+  EMPTY_ANNOUNCEMENT,
+  MAX_CHARS,
+  normalizeAnnouncement,
+  announcementFromApi,
+  hasAnnouncementMessage,
 } from './settingsConstants.js';
 
+function announcementPayload(announcement) {
+  const normalized = normalizeAnnouncement(announcement);
+  return {
+    title: normalized.title,
+    message: normalized.message,
+    type: normalized.type,
+    is_active: normalized.is_active,
+    dismissible: normalized.dismissible,
+    starts_at: normalized.starts_at || null,
+    expires_at: normalized.expires_at || null,
+    action_label: normalized.action_label,
+    action_url: normalized.action_url,
+    audience: normalized.audience,
+  };
+}
+
+function sortAnnouncements(items) {
+  const statusRank = { active: 0, scheduled: 1, draft: 2, expired: 3 };
+  return [...items].sort((a, b) => {
+    const rank = (statusRank[a.status] ?? 4) - (statusRank[b.status] ?? 4);
+    if (rank !== 0) return rank;
+    return new Date(b.updated_at ?? 0).getTime() - new Date(a.updated_at ?? 0).getTime();
+  });
+}
+
 export function useAnnouncementEditor({ showToast }) {
-  const [announcement, setAnnouncement]       = useState(EMPTY_ANNOUNCEMENT);
-  const [savedAnnouncement, setSavedAnnouncement] = useState(EMPTY_ANNOUNCEMENT);
-  const [saving, setSaving]   = useState(false);
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcement, setAnnouncement] = useState(EMPTY_ANNOUNCEMENT);
+  const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [formError, setFormError] = useState('');
-  const [autoSaving, setAutoSaving] = useState(false);
-  const [autoSaved,  setAutoSaved]  = useState(false);
-
-  // Mention state
-  const [schools, setSchools]             = useState([]);
+  const [schools, setSchools] = useState([]);
   const [mentionableUsers, setMentionableUsers] = useState([]);
-  const [mentionOpen, setMentionOpen]     = useState(false);
-  const [mentionSuggestions, setMentionSuggestions] = useState([]);
-  const [mentionPos, setMentionPos]       = useState({ top: 0, left: 0, width: 0 });
-  const textareaRef    = useRef(null);
-  const isInternalEdit = useRef(false);
 
-  useEffect(() => {
-    if (isInternalEdit.current) { isInternalEdit.current = false; return; }
-    if (textareaRef.current) {
-      const currentRaw = editorToRaw(textareaRef.current);
-      if (currentRaw !== announcement.message) {
-        textareaRef.current.innerHTML = rawToEditorHTML(announcement.message);
-      }
-    }
-  }, [announcement.message]);
+  const loadAnnouncements = async () => {
+    const { data } = await api.get('/api/admin/announcements');
+    const loaded = Array.isArray(data) ? data.map(announcementFromApi) : [];
+    setAnnouncements(sortAnnouncements(loaded));
+    if (!editingId) setAnnouncement(EMPTY_ANNOUNCEMENT);
+    return loaded;
+  };
+
+  const hydrateAnnouncements = (items) => {
+    const loaded = Array.isArray(items) ? items.map(announcementFromApi) : [];
+    setAnnouncements(sortAnnouncements(loaded));
+  };
 
   const loadMentionCandidates = () => {
     api.get('/api/admin/schools')
@@ -44,136 +64,105 @@ export function useAnnouncementEditor({ showToast }) {
       .then(res => {
         const rawUsers = Array.isArray(res.data) ? res.data : [];
         setMentionableUsers(
-          rawUsers.filter(u => u.is_active && u.role === 'Division Personnel')
-            .map(u => ({ label: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.name || u.email, sub: 'Division Personnel', kind: 'person' }))
+          rawUsers
+            .filter(u => u.is_active && u.role === 'Division Personnel')
+            .map(u => ({
+              id: u.id,
+              label: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.name || u.email,
+              sub: u.email,
+            }))
             .filter(u => u.label)
         );
       })
-      .catch(err => console.warn('[mention] users load failed:', err?.response?.status));
+      .catch(err => console.warn('[announcement] users load failed:', err?.response?.status));
   };
 
-  const handleEditorInput = () => {
-    const editor = textareaRef.current;
-    if (!editor) return;
-    const raw = editorToRaw(editor);
-    if (raw.length <= MAX_CHARS) { isInternalEdit.current = true; setAnnouncement(a => ({ ...a, message: raw })); }
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) { setMentionOpen(false); return; }
-    const range = sel.getRangeAt(0);
-    const node  = range.startContainer;
-    if (node.nodeType !== Node.TEXT_NODE) { setMentionOpen(false); return; }
-    const textBefore = node.textContent.slice(0, range.startOffset);
-    const lastAt     = textBefore.lastIndexOf('@');
-    if (lastAt !== -1) {
-      const afterAt = textBefore.slice(lastAt + 1);
-      if (!afterAt.includes('@') && !afterAt.includes('[')) {
-        const query = afterAt.toLowerCase();
-        const allItems = [...schools.map(s => ({ label: s.name, sub: s.abbreviation || s.cluster?.name, kind: 'school' })), ...mentionableUsers].filter(i => i.label.toLowerCase().includes(query));
-        const suggestions = allItems.slice(0, 8);
-        setMentionSuggestions(suggestions);
-        if (suggestions.length > 0) {
-          const r = editor.getBoundingClientRect();
-          setMentionPos({ top: r.bottom + 6, left: r.left, width: r.width });
-          setMentionOpen(true);
-        } else { setMentionOpen(false); }
-        return;
-      }
-    }
-    setMentionOpen(false);
+  const startCreate = () => {
+    setEditingId(null);
+    setAnnouncement(EMPTY_ANNOUNCEMENT);
+    setFormError('');
   };
 
-  const insertMention = (label) => {
-    const editor = textareaRef.current;
-    if (!editor) return;
-    const sel = window.getSelection();
-    if (!sel?.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    const node  = range.startContainer;
-    if (node.nodeType === Node.TEXT_NODE) {
-      const textBefore = node.textContent.slice(0, range.startOffset);
-      const lastAt     = textBefore.lastIndexOf('@');
-      if (lastAt !== -1) {
-        const del = document.createRange();
-        del.setStart(node, lastAt); del.setEnd(node, range.startOffset); del.deleteContents();
-        const pill = document.createElement('span');
-        pill.className = 'mention-pill'; pill.dataset.mention = label;
-        pill.setAttribute('contenteditable', 'false'); pill.textContent = `@${label}`;
-        const ins = document.createRange();
-        ins.setStart(node, lastAt); ins.collapse(true); ins.insertNode(pill);
-        const space = document.createTextNode('\u00A0');
-        pill.after(space);
-        const after = document.createRange();
-        after.setStartAfter(space); after.collapse(true);
-        sel.removeAllRanges(); sel.addRange(after);
-      }
-    }
-    const raw = editorToRaw(editor);
-    if (raw.length <= MAX_CHARS) { isInternalEdit.current = true; setAnnouncement(a => ({ ...a, message: raw })); }
-    setMentionOpen(false);
-    editor.focus();
+  const startEdit = (item) => {
+    const draft = announcementFromApi(item);
+    setEditingId(draft.id);
+    setAnnouncement(draft);
+    setFormError('');
   };
 
   const handleSave = async () => {
-    const payload = normalizeAnnouncement(announcement);
-    setSaving(true); setFormError('');
+    const payload = announcementPayload(announcement);
+    setSaving(true);
+    setFormError('');
     try {
-      const { data } = await api.post('/api/admin/announcements', payload);
-      const persisted = data ? announcementFromApi(data) : payload;
-      setSavedAnnouncement(persisted);
-      setAnnouncement(curr => announcementsEqual(curr, payload) ? persisted : curr);
-    } catch (e) { setFormError(e.friendlyMessage ?? 'Operation failed'); }
-    finally { setSaving(false); }
+      const request = editingId
+        ? api.patch(`/api/admin/announcements/${editingId}`, payload)
+        : api.post('/api/admin/announcements', payload);
+      const { data } = await request;
+      const saved = announcementFromApi(data);
+      setAnnouncements(prev => sortAnnouncements([
+        saved,
+        ...prev.filter(item => item.id !== saved.id),
+      ]));
+      setEditingId(saved.id);
+      setAnnouncement(saved);
+      showToast?.(editingId ? 'Announcement updated.' : 'Announcement published.');
+    } catch (e) {
+      setFormError(e.friendlyMessage ?? e.response?.data?.error ?? 'Announcement could not be saved.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleToggleActive = async () => {
-    const updated = normalizeAnnouncement({ ...announcement, is_active: !announcement.is_active });
-    setAnnouncement(updated); setAutoSaving(true);
+  const handleDelete = async (id = editingId) => {
+    if (!id) return;
+    setDeleting(true);
+    setFormError('');
     try {
-      const { data } = await api.post('/api/admin/announcements', updated);
-      const persisted = data ? announcementFromApi(data) : updated;
-      setSavedAnnouncement(persisted);
-      setAnnouncement(curr => announcementsEqual(curr, updated) ? persisted : curr);
-      setAutoSaved(true); setTimeout(() => setAutoSaved(false), 2000);
-    } catch { setAnnouncement(prev => announcementsEqual(prev, updated) ? { ...updated, is_active: !updated.is_active } : prev); }
-    finally { setAutoSaving(false); }
+      await api.delete(`/api/admin/announcements/${id}`);
+      setAnnouncements(prev => prev.filter(item => item.id !== id));
+      if (editingId === id) startCreate();
+      showToast?.('Announcement archived.');
+    } catch (e) {
+      setFormError(e.friendlyMessage ?? e.response?.data?.error ?? 'Announcement could not be archived.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
-  const handleDelete = async () => {
-    setDeleting(true); setFormError('');
-    try {
-      await api.delete('/api/admin/announcements');
-      const empty = normalizeAnnouncement(EMPTY_ANNOUNCEMENT);
-      setAnnouncement(empty); setSavedAnnouncement(empty);
-      if (textareaRef.current) textareaRef.current.innerHTML = '';
-    } catch (e) { setFormError(e.friendlyMessage ?? 'Delete failed'); }
-    finally { setDeleting(false); }
-  };
-
-  // Derived state
-  const charsLeft = MAX_CHARS - announcement.message.length;
+  const charsLeft = MAX_CHARS - (announcement.message?.length ?? 0);
   const hasDraftMessage = hasAnnouncementMessage(announcement);
-  const hasSavedMessage = hasAnnouncementMessage(savedAnnouncement);
-  const hasUnpublishedChanges = !announcementsEqual(announcement, savedAnnouncement);
-  const savedExpired    = isAnnouncementExpired(savedAnnouncement);
-  const savedExpiryText = formatAnnouncementExpiry(savedAnnouncement.expires_at);
-  const savedStateLabel = !hasSavedMessage ? 'No announcement' : !savedAnnouncement.is_active ? 'Saved inactive' : savedExpired ? 'Expired' : 'Published';
-  const savedStateDetail = !hasSavedMessage ? 'No announcement is currently visible to users.' : !savedAnnouncement.is_active ? 'Saved, but hidden from users.' : savedExpired ? (savedExpiryText ? `Expired on ${savedExpiryText}.` : 'Expired and no longer visible to users.') : (savedAnnouncement.expires_at && savedExpiryText ? `Visible to users until ${savedExpiryText}.` : 'Visible to all users with no expiration.');
-  const statusTone = hasUnpublishedChanges ? 'amber' : !hasSavedMessage ? 'slate' : savedAnnouncement.is_active && !savedExpired ? 'emerald' : savedExpired ? 'rose' : 'slate';
-  const announcementStatus = {
-    label: hasUnpublishedChanges ? (hasDraftMessage ? 'Unpublished changes' : 'Message cleared in editor') : savedStateLabel,
-    detail: hasUnpublishedChanges ? (hasDraftMessage ? `Publish changes to update users. Current saved state: ${savedStateLabel}.` : hasSavedMessage ? 'Use Clear to remove the saved announcement, or add a message to publish changes.' : 'Write a message before publishing.') : savedStateDetail,
-    ...STATUS_TONE_CLASSES[statusTone],
-  };
-  const canPublish = hasDraftMessage && hasUnpublishedChanges && !saving;
+  const canPublish = hasDraftMessage && charsLeft >= 0 && !saving;
+
+  const schoolOptions = useMemo(() => schools.map(s => ({
+    value: s.id,
+    label: s.abbreviation ? `${s.name} (${s.abbreviation})` : s.name,
+  })), [schools]);
+
+  const personnelOptions = useMemo(() => mentionableUsers.map(u => ({
+    value: u.id,
+    label: u.label,
+  })), [mentionableUsers]);
 
   return {
-    announcement, setAnnouncement,
-    savedAnnouncement, setSavedAnnouncement,
-    saving, deleting, formError, autoSaving, autoSaved,
-    textareaRef, mentionOpen, setMentionOpen, mentionSuggestions, mentionPos,
-    charsLeft, hasDraftMessage, hasSavedMessage, hasUnpublishedChanges,
-    announcementStatus, canPublish, savedStateLabel,
-    loadMentionCandidates, handleEditorInput, insertMention,
-    handleSave, handleToggleActive, handleDelete,
+    announcements,
+    setAnnouncements: hydrateAnnouncements,
+    announcement,
+    setAnnouncement,
+    editingId,
+    saving,
+    deleting,
+    formError,
+    charsLeft,
+    hasDraftMessage,
+    canPublish,
+    schoolOptions,
+    personnelOptions,
+    loadAnnouncements,
+    loadMentionCandidates,
+    startCreate,
+    startEdit,
+    handleSave,
+    handleDelete,
   };
 }

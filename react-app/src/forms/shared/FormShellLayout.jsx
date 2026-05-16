@@ -1,6 +1,7 @@
 import React from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { PageLoader } from '../../components/ui/PageLoader';
+import { AnnouncementBanner } from '../../components/ui/AnnouncementBanner';
 import { useFormShellContext } from './formShellContext.jsx';
 
 export default function FormShellLayout({
@@ -21,19 +22,20 @@ export default function FormShellLayout({
 
     return (
         <div className={rootClassName}>
+            <AnnouncementBanner />
             <AnimatePresence mode="wait">
                 {appMode === 'splash' ? (
-                    <motion.div key="splash" {...motionProps}>
+                    <Motion.div key="splash" {...motionProps}>
                         {splash}
-                    </motion.div>
+                    </Motion.div>
                 ) : appMode === 'readonly' ? (
-                    <motion.div key="readonly" {...motionProps}>
+                    <Motion.div key="readonly" {...motionProps}>
                         {readonly}
-                    </motion.div>
+                    </Motion.div>
                 ) : (
-                    <motion.div key="form" {...motionProps}>
+                    <Motion.div key="form" {...motionProps}>
                         {editor}
-                    </motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
             {afterAnimate}

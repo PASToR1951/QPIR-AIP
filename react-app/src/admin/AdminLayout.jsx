@@ -6,6 +6,7 @@ import api, { API } from '../lib/api.js';
 import { mergeNotifications } from '../lib/notifications.js';
 import { auth } from '../lib/auth.js';
 import { SSE_INITIAL_RETRY_MS, SSE_MAX_RETRY_MS } from '../constants.js';
+import { AnnouncementBanner } from '../components/ui/AnnouncementBanner.jsx';
 
 
 export const AdminLayout = () => {
@@ -154,6 +155,7 @@ export const AdminLayout = () => {
           markOne={markOne}
           markAll={markAll}
         />
+        <AnnouncementBanner />
         <main data-tour="admin-workspace" className="flex-1 overflow-y-auto p-4 md:p-6 relative">
           <Outlet />
         </main>

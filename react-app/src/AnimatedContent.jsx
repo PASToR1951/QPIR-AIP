@@ -22,6 +22,7 @@ const Changelog = lazy(() => import('./components/Changelog'));
 const SystemDocs = lazy(() => import('./components/SystemDocs'));
 const GettingStarted = lazy(() => import('./components/GettingStarted.jsx'));
 const FAQ = lazy(() => import('./components/FAQ'));
+const AnnouncementDetail = lazy(() => import('./components/AnnouncementDetail.jsx'));
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
 const OAuthCallback = lazy(() => import('./OAuthCallback'));
 const MagicLinkCallback = lazy(() => import('./MagicLinkCallback.jsx'));
@@ -95,6 +96,7 @@ function isProtectedPath(pathname) {
     pathname === '/aip' ||
     pathname === '/pir' ||
     pathname === '/user-logs' ||
+    pathname.startsWith('/announcements') ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/ces') ||
     pathname.startsWith('/division')
@@ -336,6 +338,7 @@ export default function AnimatedContent() {
             <Route path="/auth/magic-link" element={<MagicLinkCallback />} />
             <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
             <Route path="/user-logs" element={<AuthenticatedRoute><PageTransition><UserLogs /></PageTransition></AuthenticatedRoute>} />
+            <Route path="/announcements/:id" element={<AuthenticatedRoute><PageTransition><AnnouncementDetail /></PageTransition></AuthenticatedRoute>} />
             <Route path="/docs" element={<PageTransition><SystemDocs /></PageTransition>} />
             <Route path="/getting-started" element={<PageTransition><GettingStarted /></PageTransition>} />
             <Route path="/faq" element={<PageTransition><FAQ /></PageTransition>} />

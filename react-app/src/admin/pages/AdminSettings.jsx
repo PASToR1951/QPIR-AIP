@@ -8,7 +8,6 @@ import {
 import { Spinner } from '../components/Spinner.jsx';
 import { CURRENT_VERSION } from '../../version.js';
 import { useAppLogo, useReloadBranding } from '../../context/BrandingContext.jsx';
-import { announcementFromApi } from './adminSettings/settingsConstants.js';
 import { SettingsCard, StatTile } from './adminSettings/SettingsUI.jsx';
 import { BrandingPanel } from './adminSettings/BrandingPanel.jsx';
 import { EmailConfigPanel, MagicLinkPanel } from './adminSettings/EmailConfigPanel.jsx';
@@ -90,9 +89,8 @@ export default function AdminSettings() {
       api.get('/api/admin/settings/system-info'),
       api.get('/api/admin/settings/division-config'),
     ]).then(([ar, sr]) => {
-      const loaded = announcementFromApi(ar.data);
-      announcementEditor.setAnnouncement(loaded);
-      announcementEditor.setSavedAnnouncement(loaded);
+      const loaded = Array.isArray(ar.data) ? ar.data : [];
+      announcementEditor.setAnnouncements(loaded);
       setSysInfo(sr.data);
     }).catch(e => { console.error(e); setFetchError('Failed to load settings. Please refresh and try again.'); })
       .finally(() => setLoading(false));
