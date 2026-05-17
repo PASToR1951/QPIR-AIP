@@ -452,6 +452,22 @@ model EmailBlastLog {
   @@map("email_blast_logs")
 }
 
+model EmailTemplate {
+  id           Int      @id @default(autoincrement())
+  key          String   @unique
+  label        String
+  subject      String
+  title        String
+  intro        String
+  body_html    String
+  accent_color String   @default("#1d4ed8")
+  updated_at   DateTime @updatedAt
+  updated_by   Int?
+
+  @@index([key])
+  @@map("email_templates")
+}
+
 model Announcement {
   id          Int       @id @default(autoincrement())
   title       String    @default("Announcement")

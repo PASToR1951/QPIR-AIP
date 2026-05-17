@@ -1,6 +1,13 @@
 import { prisma } from "../db/client.ts";
 import { ALLOWED_ORIGIN } from "./config.ts";
-import { deadlineReminderEmail, portalOpenEmail, welcomeEmail } from "./emailTemplates.ts";
+import {
+  buildDeadlineReminderExtras,
+  type EmailTemplateRow,
+  fallbackDeadlineReminder,
+  fallbackPortalOpen,
+  fallbackWelcome,
+  renderTemplateByKey,
+} from "./emailTemplateStore.ts";
 import { logger } from "./logger.ts";
 import { sendMail, type MailSendResult } from "./mailer.ts";
 import { generateMagicLink } from "./magicLink.ts";
@@ -160,19 +167,31 @@ export async function listEmailRecipients() {
   };
 }
 
-export async function sendWelcomeEmail(userId: number) {
+export async function sendWelcomeEmail(
+  userId: number,
+  preloadedTemplate?: EmailTemplateRow | null,
+) {
   return sendTemplatedEmail(userId, async (user) => {
     const magicLinkUrl = await generateMagicLink(user.id, "welcome");
-    return {
-      subject: "Your AIP-PIR account is ready",
-      html: welcomeEmail(
-        buildDisplayName(user),
-        user.role,
-        buildAffiliation(user),
-        getLoginUrl(),
-        magicLinkUrl,
-      ),
+    const displayName = buildDisplayName(user);
+    const affiliation = buildAffiliation(user);
+    const loginUrl = getLoginUrl();
+    const vars = {
+      userName: displayName,
+      role: user.role,
+      affiliation,
+      loginUrl,
+      magicLinkUrl,
     };
+    const rendered = await renderTemplateByKey("welcome", vars, preloadedTemplate);
+    if (rendered) return rendered;
+    return fallbackWelcome({
+      userName: displayName,
+      role: user.role,
+      affiliation,
+      loginUrl,
+      magicLinkUrl,
+    });
   });
 }
 
@@ -182,22 +201,30 @@ export async function sendPortalOpenNotification(
     type: "aip" | "pir";
     label: string;
   },
+  preloadedTemplate?: EmailTemplateRow | null,
 ) {
   return sendTemplatedEmail(userId, async (user) => {
     const magicLinkUrl = await generateMagicLink(user.id, "login", {
       redirectPath: getPortalRedirect(options.type),
     });
-    const readableType = options.type === "aip" ? "AIP" : "PIR";
-    return {
-      subject: `${readableType} portal is open: ${options.label}`,
-      html: portalOpenEmail(
-        buildDisplayName(user),
-        options.type,
-        options.label,
-        getLoginUrl(),
-        magicLinkUrl,
-      ),
+    const displayName = buildDisplayName(user);
+    const loginUrl = getLoginUrl();
+    const templateKey = options.type === "aip" ? "portal_open_aip" : "portal_open_pir";
+    const vars = {
+      userName: displayName,
+      periodLabel: options.label,
+      loginUrl,
+      magicLinkUrl,
     };
+    const rendered = await renderTemplateByKey(templateKey, vars, preloadedTemplate);
+    if (rendered) return rendered;
+    return fallbackPortalOpen({
+      userName: displayName,
+      periodType: options.type,
+      periodLabel: options.label,
+      loginUrl,
+      magicLinkUrl,
+    });
   });
 }
 
@@ -208,28 +235,41 @@ export async function sendDeadlineReminderNotification(
     deadline: Date;
     daysLeft: number;
   },
+  preloadedTemplate?: EmailTemplateRow | null,
 ) {
   return sendTemplatedEmail(userId, async (user) => {
     const magicLinkUrl = await generateMagicLink(user.id, "reminder", {
       redirectPath: "/pir",
     });
-    const subject = options.daysLeft === 0
-      ? `${options.quarterLabel} deadline is today`
-      : options.daysLeft === 1
-      ? `${options.quarterLabel} deadline is tomorrow`
-      : `${options.quarterLabel} deadline in ${options.daysLeft} days`;
-
-    return {
-      subject,
-      html: deadlineReminderEmail(
-        buildDisplayName(user),
-        options.quarterLabel,
-        options.deadline,
-        options.daysLeft,
-        getLoginUrl(),
-        magicLinkUrl,
-      ),
+    const displayName = buildDisplayName(user);
+    const loginUrl = getLoginUrl();
+    const extras = buildDeadlineReminderExtras(options.daysLeft);
+    const vars = {
+      userName: displayName,
+      quarterLabel: options.quarterLabel,
+      deadline: options.deadline,
+      deadlineIso: options.deadline.toISOString(),
+      daysLeft: options.daysLeft,
+      deadlinePhrase: extras.deadlinePhrase,
+      deadlineSentence: extras.deadlineSentence,
+      urgencyColor: extras.urgencyColor,
+      loginUrl,
+      magicLinkUrl,
     };
+    const rendered = await renderTemplateByKey(
+      "deadline_reminder",
+      vars,
+      preloadedTemplate,
+    );
+    if (rendered) return rendered;
+    return fallbackDeadlineReminder({
+      userName: displayName,
+      quarterLabel: options.quarterLabel,
+      deadline: options.deadline,
+      daysLeft: options.daysLeft,
+      loginUrl,
+      magicLinkUrl,
+    });
   });
 }
 

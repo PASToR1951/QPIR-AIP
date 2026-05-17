@@ -7,6 +7,7 @@ import {
   sendPortalOpenNotification,
   sendWelcomeEmail,
 } from "../../lib/accountEmails.ts";
+import { loadTemplate } from "../../lib/emailTemplateStore.ts";
 import { sanitizeObject } from "../../lib/sanitize.ts";
 import { getUserFromToken } from "../../lib/auth.ts";
 import { adminOnly } from "./shared/guards.ts";
@@ -50,6 +51,10 @@ emailRoutes.post("/email/send-welcome-batch", async (c) => {
     return c.json({ error: "user_ids must contain at least one valid user ID." }, 400);
   }
 
+  // Snapshot the template once so mid-batch admin edits cannot produce
+  // half-and-half batches.
+  const welcomeTemplate = await loadTemplate("welcome");
+
   return streamSSE(c, async (stream) => {
     let sent = 0;
     let failed = 0;
@@ -61,7 +66,7 @@ emailRoutes.post("/email/send-welcome-batch", async (c) => {
     });
 
     for (const [index, userId] of userIds.entries()) {
-      const result = await sendWelcomeEmail(userId);
+      const result = await sendWelcomeEmail(userId, welcomeTemplate);
 
       if (result.status === "sent") sent++;
       else if (result.status === "failed") failed++;
@@ -133,6 +138,12 @@ emailRoutes.post("/email-blast", async (c) => {
   });
   const alreadySent = new Set(existingLogs.map((entry) => entry.user_id));
 
+  // Snapshot the template once so mid-batch admin edits cannot produce
+  // half-and-half batches.
+  const portalTemplate = await loadTemplate(
+    type === "aip" ? "portal_open_aip" : "portal_open_pir",
+  );
+
   return streamSSE(c, async (stream) => {
     let sent = 0;
     let failed = 0;
@@ -158,7 +169,7 @@ emailRoutes.post("/email-blast", async (c) => {
         const result = await sendPortalOpenNotification(recipient.id, {
           type,
           label,
-        });
+        }, portalTemplate);
 
         if (result.status === "sent") {
           sent++;

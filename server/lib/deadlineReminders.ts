@@ -1,5 +1,6 @@
 import { prisma } from "../db/client.ts";
 import { sendDeadlineReminderNotification } from "./accountEmails.ts";
+import { loadTemplate } from "./emailTemplateStore.ts";
 import { logger } from "./logger.ts";
 import { pushNotifications } from "./notifStream.ts";
 import { getTrimesterLabel } from "./trimesters.ts";
@@ -255,13 +256,17 @@ export async function runDeadlineReminderSweep(now = new Date()) {
     count: created.length,
   });
 
+  // Snapshot the reminder template once per sweep so mid-sweep admin edits
+  // cannot produce a mixed batch.
+  const reminderTemplate = await loadTemplate("deadline_reminder");
+
   for (const [index, reminder] of emailRemindersToSend.entries()) {
     try {
       await sendDeadlineReminderNotification(reminder.user_id, {
         quarterLabel: reminder.quarterLabel,
         deadline: reminder.deadline,
         daysLeft: reminder.daysLeft,
-      });
+      }, reminderTemplate);
     } catch (error) {
       logger.error("Deadline reminder email failed", {
         user_id: reminder.user_id,

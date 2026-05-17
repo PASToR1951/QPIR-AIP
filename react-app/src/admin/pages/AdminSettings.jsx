@@ -2,7 +2,7 @@ import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import api from '../../lib/api.js';
 import {
   CheckCircle, Database, Gear, Users, Buildings, BookOpen,
-  Palette, EnvelopeSimple, Key, PaperPlaneTilt, Megaphone,
+  Palette, EnvelopeSimple, EnvelopeOpen, Key, PaperPlaneTilt, Megaphone,
   ClockCounterClockwise, Desktop,
 } from '@phosphor-icons/react';
 import { Spinner } from '../components/Spinner.jsx';
@@ -12,9 +12,11 @@ import { SettingsCard, StatTile } from './adminSettings/SettingsUI.jsx';
 import { BrandingPanel } from './adminSettings/BrandingPanel.jsx';
 import { EmailConfigPanel, MagicLinkPanel } from './adminSettings/EmailConfigPanel.jsx';
 import { RecipientsPanel, EmailBlastPanel } from './adminSettings/EmailBlastPanel.jsx';
+import { EmailTemplatesPanel } from './adminSettings/EmailTemplatesPanel.jsx';
 import { AnnouncementPanel } from './adminSettings/AnnouncementPanel.jsx';
 import { useAnnouncementEditor } from './adminSettings/useAnnouncementEditor.js';
 import { useEmailSettings } from './adminSettings/useEmailSettings.js';
+import { useEmailTemplates } from './adminSettings/useEmailTemplates.js';
 
 const AdminSessions = lazy(() => import('./AdminSessions.jsx'));
 const AdminLogs     = lazy(() => import('./AdminLogs.jsx'));
@@ -24,6 +26,7 @@ const SECTIONS = [
   { key: 'branding',      label: 'App Branding',        desc: 'Logo & appearance',       Icon: Palette              },
   { key: 'email-config',  label: 'Email Configuration', desc: 'SMTP delivery setup',     Icon: EnvelopeSimple       },
   { key: 'magic-links',   label: 'Magic Links',         desc: 'Link expiry times',       Icon: Key                  },
+  { key: 'email-templates', label: 'Email Templates',   desc: 'Edit notification emails', Icon: EnvelopeOpen        },
   { key: 'recipients',    label: 'Recipients Directory',desc: 'Active email recipients', Icon: Users                },
   { key: 'email-blast',   label: 'Portal Notification', desc: 'Broadcast to users',      Icon: PaperPlaneTilt       },
   { key: 'announcements', label: 'Announcement',        desc: 'System-wide banners',     Icon: Megaphone            },
@@ -81,6 +84,7 @@ export default function AdminSettings() {
 
   const announcementEditor = useAnnouncementEditor({ showToast });
   const emailSettings = useEmailSettings({ showToast });
+  const emailTemplates = useEmailTemplates({ showToast });
 
   useEffect(() => {
     setLoading(true);
@@ -157,6 +161,9 @@ export default function AdminSettings() {
                 emailLoading={emailSettings.emailLoading} emailSaving={emailSettings.emailSaving}
                 ttlInputs={emailSettings.ttlInputs} setTtlInputs={emailSettings.setTtlInputs}
                 onSave={emailSettings.handleSaveEmailConfig} />
+            )}
+            {activeSection === 'email-templates' && (
+              <EmailTemplatesPanel {...emailTemplates} />
             )}
             {activeSection === 'recipients' && (
               <RecipientsPanel

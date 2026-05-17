@@ -1,18 +1,63 @@
-import React from 'react';
-import { XCircle, DownloadSimple, LockKeyOpen, LockKey } from '@phosphor-icons/react';
+import React, { useEffect, useState } from 'react';
+import { XCircle, FileText, LockKeyOpen, LockKey } from '@phosphor-icons/react';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { Spinner } from '../../components/Spinner.jsx';
 import { getProjectTerminology } from '../../../lib/projectTerminology.js';
+import { DocumentPreviewModal } from '../../../components/ui/DocumentPreviewModal.jsx';
+import { AIPDocument } from '../../../components/docs/AIPDocument.jsx';
+import { generateAIPPdf } from '../../../lib/formPdfExport.js';
+
+const toAipDocumentData = (viewData) => {
+  if (!viewData) return null;
+  return {
+    year: viewData.year,
+    outcome: viewData.outcome,
+    targetDescription: viewData.target_description,
+    depedProgram: viewData.program?.title,
+    usesSchoolTerminology: Boolean(viewData.school),
+    sipTitle: viewData.sip_title,
+    projectCoord: viewData.project_coordinator,
+    objectives: Array.isArray(viewData.objectives) ? viewData.objectives : [],
+    indicators: Array.isArray(viewData.indicators) ? viewData.indicators : [],
+    activities: (viewData.activities ?? []).map((a) => ({
+      id: a.id,
+      phase: a.phase,
+      name: a.activity_name,
+      period: a.implementation_period,
+      persons: a.persons_involved,
+      outputs: a.outputs,
+      budgetAmount: a.budget_amount,
+      budgetSource: a.budget_source,
+    })),
+    preparedByName: viewData.prepared_by_name,
+    preparedByTitle: viewData.prepared_by_title,
+    approvedByName: viewData.approved_by_name,
+    approvedByTitle: viewData.approved_by_title,
+  };
+};
 
 export function SubmissionDetailModal({
   viewItem, viewData, viewLoading,
-  isObserver, onClose, onExportPDF,
+  isObserver, onClose,
   editActionLoading, onEditAction,
   canDownloadSubmission,
 }) {
+  const [documentOpen, setDocumentOpen] = useState(false);
+
+  useEffect(() => {
+    if (!viewItem) setDocumentOpen(false);
+  }, [viewItem]);
+
   if (!viewItem) return null;
 
+  const aipDocumentData = viewItem.type === 'AIP' ? toAipDocumentData(viewData) : null;
+  const canViewDocument =
+    viewItem.type === 'AIP' &&
+    !!aipDocumentData &&
+    canDownloadSubmission({ status: viewData?.status ?? viewItem.status });
+
   return (
+    <>
     <div className="fixed inset-0 z-[9999] bg-slate-50 dark:bg-dark-base">
       <div className="h-[100dvh] w-screen bg-white dark:bg-dark-surface flex flex-col">
         {/* Header */}
@@ -110,12 +155,12 @@ export function SubmissionDetailModal({
                 </button>
               </>
             )}
-            {canDownloadSubmission({ status: viewData?.status ?? viewItem.status }) && (
+            {canViewDocument && (
               <button
-                onClick={() => onExportPDF(viewItem)}
+                onClick={() => setDocumentOpen(true)}
                 className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl transition-colors sm:flex-none shadow-sm shadow-indigo-100/50 dark:shadow-none active:scale-95"
               >
-                <DownloadSimple size={17} /> PDF
+                <FileText size={17} /> View Document
               </button>
             )}
             <button
@@ -128,5 +173,18 @@ export function SubmissionDetailModal({
         </div>
       </div>
     </div>
+    {aipDocumentData && (
+      <DocumentPreviewModal
+        isOpen={documentOpen}
+        onClose={() => setDocumentOpen(false)}
+        title="Annual Implementation Plan"
+        subtitle={`${aipDocumentData.depedProgram ?? ''} — FY ${aipDocumentData.year ?? ''}`}
+        landscape
+        onDownloadPdf={() => generateAIPPdf(aipDocumentData)}
+      >
+        <AIPDocument {...aipDocumentData} />
+      </DocumentPreviewModal>
+    )}
+    </>
   );
 }

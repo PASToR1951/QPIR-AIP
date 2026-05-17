@@ -296,7 +296,7 @@ export default function AdminSubmissions() {
 
       <SubmissionDetailModal
         viewItem={modal.viewItem} viewData={modal.viewData} viewLoading={modal.viewLoading}
-        isObserver={isObserver} onClose={modal.closeView} onExportPDF={modal.handleExportPDF}
+        isObserver={isObserver} onClose={modal.closeView}
         editActionLoading={modal.editActionLoading} onEditAction={modal.handleEditAction}
         canDownloadSubmission={actions.canDownloadSubmission}
       />
