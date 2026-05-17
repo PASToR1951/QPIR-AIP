@@ -3,10 +3,12 @@ import { apiUrl } from './apiBase.js';
 
 const SESSION_EVENT = 'auth:session-updated';
 const LOGOUT_BLOCK_KEY = 'auth:explicitLogout';
+const SESSION_HINT_KEY = 'auth:sessionHint';
 const EXPLICIT_LOGOUT_ERROR = 'EXPLICITLY_LOGGED_OUT';
 const SESSION_STORAGE_KEYS = ['token', 'user', 'tokenExpiry', 'idleExpiry', 'idleTimeoutSeconds'];
 const SENSITIVE_LOCAL_PREFIXES = ['aip_draft_', 'pir_draft_', 'onboarding:'];
 const SENSITIVE_SESSION_PREFIXES = ['onboarding:'];
+let refreshSessionPromise = null;
 
 function parseStoredUser() {
   try {
@@ -55,9 +57,36 @@ function clearLogoutBlock() {
   }
 }
 
+function setSessionHint(expiresAt) {
+  try {
+    localStorage.setItem(SESSION_HINT_KEY, String(expiresAt || Math.floor(Date.now() / 1000)));
+  } catch {
+    // Non-sensitive hint only; session cookies remain authoritative.
+  }
+}
+
+function clearSessionHint() {
+  try {
+    localStorage.removeItem(SESSION_HINT_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 function hasLogoutBlock() {
   try {
     return Boolean(localStorage.getItem(LOGOUT_BLOCK_KEY));
+  } catch {
+    return false;
+  }
+}
+
+function hasSessionHint() {
+  try {
+    const rawHint = localStorage.getItem(SESSION_HINT_KEY);
+    if (!rawHint) return false;
+    const hintExpiry = Number.parseInt(rawHint, 10);
+    return !Number.isFinite(hintExpiry) || hintExpiry * 1000 > Date.now();
   } catch {
     return false;
   }
@@ -87,26 +116,41 @@ export const auth = {
     clearLogoutBlock();
     sessionStorage.setItem('user', JSON.stringify(user));
     storeSessionMetadata({ expiresAt: exp });
+    setSessionHint(exp);
     dispatchSessionUpdate(user);
   },
   refreshSession: async () => {
-    const res = await fetch(apiUrl('/api/auth/me'), {
-      credentials: 'include'
-    });
-    if (!res.ok) throw new Error('SESSION_REFRESH_FAILED');
+    if (refreshSessionPromise) return refreshSessionPromise;
 
-    const { user, metadata } = splitSessionResponse(await res.json());
-    auth.setSession(user, metadata.expiresAt);
-    return user;
+    refreshSessionPromise = (async () => {
+      const res = await fetch(apiUrl('/api/auth/me'), {
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error('SESSION_REFRESH_FAILED');
+
+      const { user, metadata } = splitSessionResponse(await res.json());
+      auth.setSession(user, metadata.expiresAt);
+      return user;
+    })().finally(() => {
+      refreshSessionPromise = null;
+    });
+
+    return refreshSessionPromise;
   },
   restoreSession: async () => {
     if (hasLogoutBlock()) throw new Error(EXPLICIT_LOGOUT_ERROR);
     return auth.refreshSession();
   },
+  shouldRestoreSession: () => !hasLogoutBlock() && (
+    Boolean(auth.getUser()) ||
+    auth.getExpiry() > Date.now() / 1000 ||
+    hasSessionHint()
+  ),
   isExplicitLogoutError: (err) => err?.message === EXPLICIT_LOGOUT_ERROR,
   clearBrowserSession: ({ clearDrafts = false } = {}) => {
     safeRemoveStorageKeys(sessionStorage, SESSION_STORAGE_KEYS);
     safeRemoveByPrefix(sessionStorage, SENSITIVE_SESSION_PREFIXES);
+    clearSessionHint();
     if (clearDrafts) {
       safeRemoveByPrefix(localStorage, SENSITIVE_LOCAL_PREFIXES);
     }

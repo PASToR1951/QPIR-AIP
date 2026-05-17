@@ -434,8 +434,11 @@ oauthRoutes.get("/google/callback", async (c) => {
     return c.redirect(`${fe}/login?error=oauth_misconfigured`);
   }
 
+  let callbackPhase = "token_exchange";
   try {
     // Exchange authorization code for tokens
+    const tokenRedirectUri =
+      `${callbackRedirectBase}/api/auth/oauth/google/callback`;
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -443,7 +446,7 @@ oauthRoutes.get("/google/callback", async (c) => {
         client_id: clientId,
         client_secret: clientSecret,
         code,
-        redirect_uri: `${callbackRedirectBase}/api/auth/oauth/google/callback`,
+        redirect_uri: tokenRedirectUri,
         grant_type: "authorization_code",
         code_verifier: stateResult.codeVerifier,
       }).toString(),
@@ -451,15 +454,23 @@ oauthRoutes.get("/google/callback", async (c) => {
     const tokenData = await tokenRes.json() as Record<string, string>;
 
     if (!tokenData.id_token) {
-      logger.error("Google token exchange: no id_token in response", {
+      logger.error("Google token exchange failed", new Error(
+        tokenData.error || "no_id_token",
+      ), {
+        status: tokenRes.status,
         error: tokenData.error,
+        errorDescription: tokenData.error_description,
+        redirectUri: tokenRedirectUri,
       });
       return c.redirect(`${fe}/login?error=token_exchange_failed`);
     }
 
+    callbackPhase = "token_validation";
     const idPayload = await verifyGoogleIdToken(tokenData.id_token, clientId);
     if (!idPayload) {
-      logger.warn("Google OAuth callback rejected invalid id_token");
+      logger.warn("Google OAuth callback rejected invalid id_token", {
+        hasIdToken: Boolean(tokenData.id_token),
+      });
       return c.redirect(`${fe}/login?error=token_validation_failed`);
     }
 
@@ -468,11 +479,13 @@ oauthRoutes.get("/google/callback", async (c) => {
       return c.redirect(`${fe}/login?error=domain_not_allowed`);
     }
 
+    callbackPhase = "finish_login";
     const oauthSubject = idPayload.sub; // sub = immutable Google user ID
     const result = await finishOAuthLogin("google", oauthSubject, email);
 
     if (!result.ok) return c.redirect(`${fe}/login?error=${result.error}`);
 
+    callbackPhase = "create_session";
     await createSessionCookie(c, result.user);
     writeUserLog({
       userId: result.user.id,
@@ -482,7 +495,7 @@ oauthRoutes.get("/google/callback", async (c) => {
     });
     return c.redirect(`${fe}/oauth/callback`);
   } catch (err) {
-    logger.error("Google OAuth callback error", err);
+    logger.error("Google OAuth callback error", err, { phase: callbackPhase });
     return c.redirect(`${fe}/login?error=oauth_error`);
   }
 });

@@ -23,9 +23,11 @@ import {
   X,
   List as Menu,
 } from '@phosphor-icons/react';
+import { MeshGradient } from '@paper-design/shaders-react';
 import { CURRENT_VERSION } from '../version';
 import docsContent from '../../../docs/SYSTEM_DOCUMENTATION_THESIS.md?raw';
 import Footer from './ui/Footer';
+import InteractiveShaderCard from './ui/InteractiveShaderCard.jsx';
 
 // Pre-parse the headings from the Markdown file to display in the Table of Contents
 const slugger = new GithubSlugger();
@@ -54,6 +56,7 @@ export default function SystemDocs() {
   const [imageZoom, setImageZoom] = useState(1);
   const articleRef = useRef(null);
   const containerRef = useRef(null);
+  const tocScrollRef = useRef(null);
 
   const clampZoom = useCallback((value) => Math.min(Math.max(value, 0.75), 4), []);
 
@@ -109,6 +112,26 @@ export default function SystemDocs() {
     elements.forEach(elem => observer.observe(elem));
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!activeId) return;
+    const container = tocScrollRef.current;
+    if (!container) return;
+    const target = container.querySelector(`[data-toc-id="${CSS.escape(activeId)}"]`);
+    if (!target) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const buffer = 48;
+    const above = targetRect.top - containerRect.top;
+    const below = targetRect.bottom - containerRect.bottom;
+
+    if (above < buffer) {
+      container.scrollBy({ top: above - buffer, behavior: 'smooth' });
+    } else if (below > -buffer) {
+      container.scrollBy({ top: below + buffer, behavior: 'smooth' });
+    }
+  }, [activeId]);
 
   useEffect(() => {
     const article = articleRef.current;
@@ -186,6 +209,7 @@ export default function SystemDocs() {
               )}
               <li>
                 <button
+                  data-toc-id={heading.id}
                   onClick={() => scrollToHeading(heading.id)}
                   className={`
                     relative group flex items-start w-full text-left rounded-xl transition-colors z-10
@@ -288,9 +312,20 @@ export default function SystemDocs() {
       <div className="flex-1">
         {/* Engaging Hero Section */}
         <div className="relative bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border overflow-hidden">
-          {/* Decorative background elements */}
-          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-bl from-indigo-50/80 to-transparent dark:from-indigo-900/10 pointer-events-none" />
-          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-purple-100/50 dark:bg-purple-900/10 rounded-full blur-3xl pointer-events-none" />
+          {/* Shader background */}
+          <div className="absolute inset-0 pointer-events-none">
+            <MeshGradient
+              className="absolute inset-0 w-full h-full opacity-60 dark:opacity-40"
+              colors={['#ffffff', '#e0e7ff', '#c7d2fe', '#a5b4fc', '#8b5cf6']}
+              distortion={1}
+              swirl={0.45}
+              speed={0.35}
+              offsetX={0}
+              offsetY={0}
+            />
+          </div>
+          {/* Soft fade so text stays readable */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/10 to-white/60 dark:from-dark-surface/40 dark:via-dark-surface/10 dark:to-dark-surface/70 pointer-events-none" />
           
           <div className="max-w-7xl mx-auto px-6 py-16 md:py-20 relative z-10">
             <div className="flex flex-col md:flex-row gap-8 items-start justify-between">
@@ -316,14 +351,8 @@ export default function SystemDocs() {
                 </div>
               </div>
               
-              {/* Abstract decorative card */}
-              <div className="hero-card-animate hidden lg:flex flex-shrink-0 w-72 h-72 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl rotate-3 opacity-10 dark:opacity-20 blur-sm"></div>
-                <div className="absolute inset-0 bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-3xl -rotate-3 shadow-xl flex items-center justify-center overflow-hidden">
-                  <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(#4f46e5 2px, transparent 2px)', backgroundSize: '24px 24px' }}></div>
-                  <BookOpen size={100} weight="duotone" className="text-indigo-500/80 dark:text-indigo-400/80" />
-                </div>
-              </div>
+              {/* Interactive shader card */}
+              <InteractiveShaderCard icon={BookOpen} />
             </div>
           </div>
         </div>
@@ -332,7 +361,7 @@ export default function SystemDocs() {
           {/* ToC Sidebar */}
           <aside className="hidden lg:flex flex-col w-64 shrink-0 sticky top-[90px] self-start max-h-[calc(100vh-120px)]">
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-6 px-4">Table of Contents</h3>
-            <div className="overflow-y-auto pr-2 pb-4 scrollbar-hide">
+            <div ref={tocScrollRef} className="overflow-y-auto pr-2 pb-4 scrollbar-hide scroll-smooth">
               {renderTocList()}
             </div>
           </aside>

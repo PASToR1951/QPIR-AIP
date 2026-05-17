@@ -9,9 +9,9 @@
 | Organization | Department of Education, Schools Division of Guihulngan City |
 | System Version | Beta 3, `v1.2.0-beta` |
 | Document Status | Technical documentation draft |
-| Date | [Insert date] |
-| Researchers / Developers | [Insert names] |
-| Adviser / Evaluator | [Insert name] |
+| Date | October 17, 2025 |
+| Researchers / Developers | Kurt Dustine L. Yrad |
+| Co-Researcher | Queendelyn C. Badilles |
 
 ---
 

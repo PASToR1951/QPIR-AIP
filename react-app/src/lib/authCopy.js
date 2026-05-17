@@ -7,9 +7,10 @@ export const OAUTH_ERROR_MESSAGES = {
   account_inactive: 'Your account is inactive. Please contact your administrator.',
   invalid_state: 'Your sign-in session was not valid. Please try again.',
   state_expired: 'Your sign-in session expired. Please try again.',
-  token_exchange_failed: 'We could not complete Google sign-in. Please try again.',
+  token_exchange_failed: 'Google accepted the sign-in, but the portal could not exchange the OAuth code. Please ask an administrator to check the OAuth client settings.',
+  token_validation_failed: 'Google sign-in returned an account token the portal could not validate. Please use your DepEd Google account and try again.',
   oauth_misconfigured: 'Google sign-in is not ready yet. Please use Email & Password for now.',
-  oauth_error: 'We could not complete Google sign-in. Please try again.',
+  oauth_error: 'Google sign-in reached the portal, but the server hit an OAuth callback error. Please try again or ask an administrator to check the backend logs.',
 };
 
 export const LOGIN_COPY = {

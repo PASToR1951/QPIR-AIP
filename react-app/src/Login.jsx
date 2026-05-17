@@ -96,6 +96,10 @@ export default function Login() {
       return () => { cancelled = true; };
     }
 
+    if (!auth.shouldRestoreSession()) {
+      return () => { cancelled = true; };
+    }
+
     auth.restoreSession()
       .then(redirectAuthenticatedUser)
       .catch((err) => {
@@ -297,7 +301,7 @@ export default function Login() {
       {/* Main Content */}
       <div className="relative z-30 container mx-auto px-6 flex flex-col items-center justify-center flex-1 w-full py-8">
         <div
-          className={`relative bg-[#fafafa]/90 dark:bg-dark-surface/90 border border-slate-200 dark:border-dark-border rounded-[2rem] p-6 md:p-8 shadow-2xl text-center max-w-md w-full mx-auto ring-1 ring-slate-900/5 dark:ring-dark-border/30 backdrop-blur-md login-card-entrance${isShaking ? ' login-shake' : ''}`}
+          className={`relative bg-[#fafafa]/90 dark:bg-dark-surface/90 border border-slate-200 dark:border-dark-border rounded-[2rem] p-6 md:p-8 shadow-2xl text-center max-w-lg w-full mx-auto ring-1 ring-slate-900/5 dark:ring-dark-border/30 backdrop-blur-md login-card-entrance${isShaking ? ' login-shake' : ''}`}
           onAnimationEnd={(e) => { if (e.animationName === 'login-shake') setIsShaking(false); }}
         >
           <button
@@ -517,10 +521,15 @@ export default function Login() {
             
             <a
               href="mailto:guihulngan.city@deped.gov.ph"
-              className="group inline-flex items-center gap-2 font-semibold text-slate-600 dark:text-slate-300 transition-all duration-300 hover:text-indigo-600 dark:hover:text-indigo-400 py-1.5 md:py-0 text-xs sm:text-[13px] bg-white/40 dark:bg-black/20 px-4 rounded-full ring-1 ring-slate-200/50 dark:ring-white/10 hover:bg-white dark:hover:bg-dark-surface hover:ring-indigo-200 dark:hover:ring-indigo-900/50 hover:shadow-md"
+              className="group inline-flex items-center gap-2 font-semibold text-slate-600 dark:text-slate-300 transition-colors duration-300 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs sm:text-[13px]"
             >
               <Mail size={16} className="text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" weight="duotone" />
-              Need help signing in? Contact SDO IT
+              <span>
+                Need help signing in?{' '}
+                <span className="underline decoration-dotted decoration-slate-300 dark:decoration-slate-600 underline-offset-4 group-hover:decoration-indigo-400 dark:group-hover:decoration-indigo-500">
+                  Contact SDO IT
+                </span>
+              </span>
             </a>
           </div>
         </div>

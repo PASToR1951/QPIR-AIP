@@ -14,6 +14,7 @@
   "dependencies": {
     "@chenglou/pretext": "^0.0.5",
     "@nivo/pie": "^0.99.0",
+    "@paper-design/shaders-react": "^0.0.76",
     "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/typography": "^0.5.19",
     "axios": "^1.13.6",
