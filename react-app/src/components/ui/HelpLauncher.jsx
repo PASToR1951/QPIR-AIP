@@ -23,7 +23,9 @@ const VIEWPORT_MARGIN = 20;
 const PANEL_GAP = 12;
 const DRAG_THRESHOLD = 6;
 const DEFAULT_FAB_SIZE = { width: 56, height: 56 };
-const LAUNCHER_SHORTCUT_LABEL = 'Ctrl + Alt + A';
+const IS_MAC_PLATFORM = typeof navigator !== 'undefined'
+  && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+const LAUNCHER_SHORTCUT_LABEL = IS_MAC_PLATFORM ? '⌃ + ⌥ + A' : 'Ctrl + Alt + A';
 
 const FONT_SIZES = [
   { value: 'sm',     label: 'A', size: 'text-[10px]' },
