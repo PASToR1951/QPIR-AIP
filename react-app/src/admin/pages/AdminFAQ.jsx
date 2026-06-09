@@ -15,6 +15,9 @@ import {
   Shield,
   Gear,
   ChatCircle,
+  MagnifyingGlass,
+  X as ClearIcon,
+  CaretRight,
 } from '@phosphor-icons/react';
 import api from '../../lib/api.js';
 import { Spinner } from '../components/Spinner.jsx';
@@ -65,6 +68,11 @@ export default function AdminFAQ() {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
+  const [search, setSearch] = useState('');
+  const [visibilityFilter, setVisibilityFilter] = useState('all');
+  const [expandedItems, setExpandedItems] = useState(() => new Set());
+  const [collapsedCategories, setCollapsedCategories] = useState(() => new Set());
+
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -81,6 +89,46 @@ export default function AdminFAQ() {
     }
     return Array.from(map.entries());
   }, [items]);
+
+  const filteredGrouped = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return grouped
+      .map(([category, list]) => {
+        const filtered = list.filter((item) => {
+          if (visibilityFilter === 'visible' && !item.is_active) return false;
+          if (visibilityFilter === 'hidden' && item.is_active) return false;
+          if (!q) return true;
+          return (
+            item.question.toLowerCase().includes(q) ||
+            item.answer.toLowerCase().includes(q) ||
+            item.category.toLowerCase().includes(q)
+          );
+        });
+        return [category, filtered];
+      })
+      .filter(([, list]) => list.length > 0);
+  }, [grouped, search, visibilityFilter]);
+
+  const toggleExpand = (id) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleCategoryCollapse = (category) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category); else next.add(category);
+      return next;
+    });
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setVisibilityFilter('all');
+  };
 
   const existingCategories = useMemo(
     () => Array.from(new Set(items.map((i) => i.category))).sort(),
@@ -271,12 +319,6 @@ export default function AdminFAQ() {
         </div>
       </div>
 
-      {!loading && !fetchError && (
-        <div className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-          {items.length} total · {totalActive} visible · {totalHidden} hidden · {grouped.length} categor{grouped.length === 1 ? 'y' : 'ies'}
-        </div>
-      )}
-
       {loading && (
         <div className="flex justify-center py-16"><Spinner /></div>
       )}
@@ -299,104 +341,224 @@ export default function AdminFAQ() {
         </div>
       )}
 
-      <div className="space-y-6">
-        {grouped.map(([category, list]) => {
-          const Icon = ICON_MAP[list[0]?.icon_key] || HelpCircle;
-          return (
-            <section key={category} className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-dark-surface">
-              <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-4 sm:px-5 py-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 flex items-center justify-center shrink-0">
-                    <Icon size={20} />
-                  </div>
-                  {renamingCategory === category ? (
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <input
-                        autoFocus
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        className="flex-1 min-w-0 px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-                      />
-                      <button
-                        onClick={saveRename}
-                        disabled={renameSaving || !renameValue.trim()}
-                        className="px-2 py-1 text-xs font-bold rounded bg-indigo-600 text-white disabled:opacity-50"
-                      >Save</button>
-                      <button
-                        onClick={() => setRenamingCategory(null)}
-                        className="px-2 py-1 text-xs font-bold rounded border border-slate-200 dark:border-slate-700"
-                      >Cancel</button>
-                    </div>
-                  ) : (
-                    <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 truncate">{category} <span className="text-xs font-medium text-slate-400">({list.length})</span></h2>
-                  )}
-                </div>
-                {renamingCategory !== category && (
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      onClick={() => { setRenamingCategory(category); setRenameValue(category); }}
-                      className="px-2 py-1 text-xs font-bold rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >Rename</button>
-                    <button
-                      onClick={() => openCreate(category)}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
-                    >
-                      <Plus size={14} /> Add here
-                    </button>
-                  </div>
-                )}
-              </header>
+      {!loading && !fetchError && grouped.length > 0 && (
+        <>
+          <div className="mb-4 flex flex-col sm:flex-row gap-2 sm:items-center">
+            <div className="relative flex-1">
+              <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search questions, answers, categories…"
+                className="w-full pl-9 pr-9 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm placeholder:text-slate-400"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  title="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+                >
+                  <ClearIcon size={14} />
+                </button>
+              )}
+            </div>
+            <div className="flex gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 shrink-0">
+              {[
+                { key: 'all',     label: 'All',     count: items.length },
+                { key: 'visible', label: 'Visible', count: totalActive },
+                { key: 'hidden',  label: 'Hidden',  count: totalHidden },
+              ].map((opt) => {
+                const active = visibilityFilter === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => setVisibilityFilter(opt.key)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors ${
+                      active
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {opt.label} <span className="opacity-60">({opt.count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {list.map((item, idx) => (
-                  <li key={item.id} className={`px-4 sm:px-5 py-3 flex items-start gap-3 ${item.is_active ? '' : 'opacity-60'}`}>
-                    <div className="flex flex-col gap-1 pt-1">
+          {filteredGrouped.length === 0 ? (
+            <div className="text-center py-12 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+              <p className="text-slate-500 dark:text-slate-400 mb-3">No questions match your filters.</p>
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-bold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                <ClearIcon size={14} /> Clear filters
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredGrouped.map(([category, list]) => {
+                const Icon = ICON_MAP[list[0]?.icon_key] || HelpCircle;
+                const isCollapsed = collapsedCategories.has(category);
+                const totalInCategory = grouped.find(([c]) => c === category)?.[1].length ?? list.length;
+                const showingFiltered = list.length !== totalInCategory;
+                return (
+                  <section key={category} className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-dark-surface overflow-hidden">
+                    <header className="flex items-center gap-2 px-3 sm:px-4 py-2.5 border-b border-slate-100 dark:border-slate-800">
                       <button
-                        onClick={() => move(item, 'up')}
-                        disabled={idx === 0}
-                        title="Move up"
-                        className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-500"
-                      ><ArrowUp size={14} /></button>
-                      <button
-                        onClick={() => move(item, 'down')}
-                        disabled={idx === list.length - 1}
-                        title="Move down"
-                        className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-500"
-                      ><ArrowDown size={14} /></button>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-slate-900 dark:text-slate-100 break-words">{item.question}</p>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 leading-relaxed break-words">{item.answer}</p>
-                      {!item.is_active && (
-                        <span className="inline-block mt-1 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">Hidden</span>
-                      )}
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button
-                        onClick={() => toggleActive(item)}
-                        title={item.is_active ? 'Hide from public list' : 'Show in public list'}
-                        className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                        onClick={() => toggleCategoryCollapse(category)}
+                        title={isCollapsed ? 'Expand category' : 'Collapse category'}
+                        className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 shrink-0"
                       >
-                        {item.is_active ? <Eye size={16} /> : <EyeSlash size={16} />}
+                        <CaretRight size={14} weight="bold" className={`transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
                       </button>
-                      <button
-                        onClick={() => openEdit(item)}
-                        title="Edit"
-                        className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
-                      ><PencilSimple size={16} /></button>
-                      <button
-                        onClick={() => setDeleteTarget(item)}
-                        title="Delete"
-                        className="p-2 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-500"
-                      ><Trash size={16} /></button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          );
-        })}
-      </div>
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 flex items-center justify-center shrink-0">
+                        <Icon size={18} />
+                      </div>
+                      {renamingCategory === category ? (
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <input
+                            autoFocus
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && renameValue.trim()) saveRename();
+                              if (e.key === 'Escape') setRenamingCategory(null);
+                            }}
+                            className="flex-1 min-w-0 px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                          />
+                          <button
+                            onClick={saveRename}
+                            disabled={renameSaving || !renameValue.trim()}
+                            className="px-2 py-1 text-xs font-bold rounded bg-indigo-600 text-white disabled:opacity-50"
+                          >Save</button>
+                          <button
+                            onClick={() => setRenamingCategory(null)}
+                            className="px-2 py-1 text-xs font-bold rounded border border-slate-200 dark:border-slate-700"
+                          >Cancel</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => toggleCategoryCollapse(category)}
+                          className="flex-1 min-w-0 text-left flex items-center gap-2"
+                        >
+                          <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 truncate">
+                            {category}
+                          </h2>
+                          <span className="text-xs font-medium text-slate-400 shrink-0">
+                            {showingFiltered ? `${list.length} of ${totalInCategory}` : list.length}
+                          </span>
+                        </button>
+                      )}
+                      {renamingCategory !== category && (
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => { setRenamingCategory(category); setRenameValue(category); }}
+                            className="px-2 py-1 text-xs font-bold rounded text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          >Rename</button>
+                          <button
+                            onClick={() => openCreate(category)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
+                          >
+                            <Plus size={12} /> Add here
+                          </button>
+                        </div>
+                      )}
+                    </header>
+
+                    {!isCollapsed && (
+                      <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {list.map((item) => {
+                          const isHidden = !item.is_active;
+                          const isExpanded = expandedItems.has(item.id);
+                          const fullList = grouped.find(([c]) => c === category)?.[1] ?? list;
+                          const fullIdx = fullList.findIndex((s) => s.id === item.id);
+                          const isFirst = fullIdx === 0;
+                          const isLast = fullIdx === fullList.length - 1;
+                          return (
+                            <li
+                              key={item.id}
+                              className={`flex items-start gap-2 px-3 sm:px-4 py-2.5 transition-colors ${
+                                isHidden ? 'bg-slate-50/70 dark:bg-slate-900/40' : ''
+                              }`}
+                            >
+                              <div className="flex flex-col pt-0.5 shrink-0">
+                                <button
+                                  onClick={() => move(item, 'up')}
+                                  disabled={isFirst}
+                                  title="Move up"
+                                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-400"
+                                ><ArrowUp size={12} weight="bold" /></button>
+                                <button
+                                  onClick={() => move(item, 'down')}
+                                  disabled={isLast}
+                                  title="Move down"
+                                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-400"
+                                ><ArrowDown size={12} weight="bold" /></button>
+                              </div>
+
+                              <button
+                                onClick={() => toggleExpand(item.id)}
+                                className="flex-1 min-w-0 text-left flex items-start gap-2 py-0.5"
+                              >
+                                <CaretRight
+                                  size={12}
+                                  weight="bold"
+                                  className={`mt-1.5 shrink-0 text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className={`font-bold text-sm break-words ${isHidden ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                                      {item.question}
+                                    </p>
+                                    {isHidden && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">
+                                        <EyeSlash size={10} weight="bold" /> Hidden
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p
+                                    className={`text-sm text-slate-500 dark:text-slate-400 mt-0.5 break-words leading-relaxed ${
+                                      isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-1'
+                                    }`}
+                                  >
+                                    {item.answer}
+                                  </p>
+                                </div>
+                              </button>
+
+                              <div className="flex gap-0.5 shrink-0">
+                                <button
+                                  onClick={() => toggleActive(item)}
+                                  title={item.is_active ? 'Hide from public list' : 'Show in public list'}
+                                  className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                                >
+                                  {item.is_active ? <Eye size={16} /> : <EyeSlash size={16} />}
+                                </button>
+                                <button
+                                  onClick={() => openEdit(item)}
+                                  title="Edit"
+                                  className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500"
+                                ><PencilSimple size={16} /></button>
+                                <button
+                                  onClick={() => setDeleteTarget(item)}
+                                  title="Delete"
+                                  className="p-2 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-500"
+                                ><Trash size={16} /></button>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
 
       <FormModal
         open={editorOpen}
@@ -501,8 +663,44 @@ export default function AdminFAQ() {
       />
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 px-4 py-3 rounded-lg shadow-lg text-sm font-bold z-50 flex items-center gap-2 ${toast.type === 'error' ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'}`}>
-          <CheckCircle size={18} /> {toast.msg}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] pointer-events-none">
+          <div
+            role="status"
+            aria-live="polite"
+            className={`nc-slide-up pointer-events-auto flex items-center gap-3 pl-3 pr-2 py-2.5 rounded-2xl shadow-xl backdrop-blur-sm border ${
+              toast.type === 'error'
+                ? 'bg-white/95 dark:bg-slate-900/90 border-rose-200 dark:border-rose-900/70'
+                : 'bg-white/95 dark:bg-slate-900/90 border-emerald-200 dark:border-emerald-900/70'
+            }`}
+          >
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                toast.type === 'error'
+                  ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
+                  : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+              }`}
+            >
+              {toast.type === 'error'
+                ? <AlertCircle size={18} weight="fill" />
+                : <CheckCircle size={18} weight="fill" />}
+            </div>
+            <span
+              className={`text-sm font-bold pr-1 ${
+                toast.type === 'error'
+                  ? 'text-rose-700 dark:text-rose-300'
+                  : 'text-emerald-700 dark:text-emerald-300'
+              }`}
+            >
+              {toast.msg}
+            </span>
+            <button
+              onClick={() => setToast(null)}
+              title="Dismiss"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors"
+            >
+              <ClearIcon size={14} weight="bold" />
+            </button>
+          </div>
         </div>
       )}
     </div>

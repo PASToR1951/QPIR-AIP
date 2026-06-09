@@ -102,6 +102,41 @@ faqsAdminRoutes.post("/faqs", async (c) => {
   return c.json(item);
 });
 
+// PATCH /api/admin/faqs/category — rename a category across all items.
+// Body: { from: string, to: string }
+// Registered before /faqs/:id so Hono doesn't match "category" as an id.
+faqsAdminRoutes.patch("/faqs/category", async (c) => {
+  const admin = (await getUserFromToken(c))!;
+  const body = sanitizeObject(await c.req.json()) as Record<string, unknown>;
+  const from = typeof body.from === "string" ? body.from.trim() : "";
+  const to = typeof body.to === "string" ? body.to.trim() : "";
+
+  if (!from) return c.json({ error: "from is required" }, 400);
+  if (!to) return c.json({ error: "to is required" }, 400);
+  if (to.length > MAX_CATEGORY_LENGTH) {
+    return c.json(
+      { error: `Category cannot exceed ${MAX_CATEGORY_LENGTH} characters` },
+      400,
+    );
+  }
+  if (from === to) {
+    return c.json({ success: true, updated: 0 });
+  }
+
+  const result = await (prisma as any).faqItem.updateMany({
+    where: { category: from },
+    data: { category: to },
+  });
+
+  await writeAuditLog(admin.id, "renamed_faq_category", "FaqItem", 0, {
+    from,
+    to,
+    updated: result.count,
+  }, { ctx: c });
+
+  return c.json({ success: true, updated: result.count });
+});
+
 // PATCH /api/admin/faqs/:id — edit a single FAQ item
 faqsAdminRoutes.patch("/faqs/:id", async (c) => {
   const admin = (await getUserFromToken(c))!;
@@ -241,40 +276,6 @@ faqsAdminRoutes.post("/faqs/reorder", async (c) => {
   }, { ctx: c });
 
   return c.json({ success: true, count: updates.length });
-});
-
-// PATCH /api/admin/faqs/category — rename a category across all items.
-// Body: { from: string, to: string }
-faqsAdminRoutes.patch("/faqs/category", async (c) => {
-  const admin = (await getUserFromToken(c))!;
-  const body = sanitizeObject(await c.req.json()) as Record<string, unknown>;
-  const from = typeof body.from === "string" ? body.from.trim() : "";
-  const to = typeof body.to === "string" ? body.to.trim() : "";
-
-  if (!from) return c.json({ error: "from is required" }, 400);
-  if (!to) return c.json({ error: "to is required" }, 400);
-  if (to.length > MAX_CATEGORY_LENGTH) {
-    return c.json(
-      { error: `Category cannot exceed ${MAX_CATEGORY_LENGTH} characters` },
-      400,
-    );
-  }
-  if (from === to) {
-    return c.json({ success: true, updated: 0 });
-  }
-
-  const result = await (prisma as any).faqItem.updateMany({
-    where: { category: from },
-    data: { category: to },
-  });
-
-  await writeAuditLog(admin.id, "renamed_faq_category", "FaqItem", 0, {
-    from,
-    to,
-    updated: result.count,
-  }, { ctx: c });
-
-  return c.json({ success: true, updated: result.count });
 });
 
 // POST /api/admin/faqs/restore-defaults — append any missing default

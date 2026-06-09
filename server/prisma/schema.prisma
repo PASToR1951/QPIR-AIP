@@ -601,3 +601,20 @@ model UserActivityLog {
   @@index([entity_type, entity_id, created_at(sort: Desc)])
   @@map("user_activity_logs")
 }
+
+model FaqItem {
+  id         Int      @id @default(autoincrement())
+  category   String
+  question   String
+  answer     String
+  icon_key   String   @default("HelpCircle")
+  sort_order Int      @default(0)
+  is_active  Boolean  @default(true)
+  created_by Int?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+
+  @@index([category, sort_order])
+  @@index([is_active, category, sort_order])
+  @@map("faq_items")
+}

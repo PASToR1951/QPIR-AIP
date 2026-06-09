@@ -22,31 +22,65 @@ const AdminSessions = lazy(() => import('./AdminSessions.jsx'));
 const AdminLogs     = lazy(() => import('./AdminLogs.jsx'));
 const AdminBackups  = lazy(() => import('./AdminBackups.jsx'));
 
-const SECTIONS = [
-  { key: 'branding',      label: 'App Branding',        desc: 'Logo & appearance',       Icon: Palette              },
-  { key: 'email-config',  label: 'Email Configuration', desc: 'SMTP delivery setup',     Icon: EnvelopeSimple       },
-  { key: 'magic-links',   label: 'Magic Links',         desc: 'Link expiry times',       Icon: Key                  },
-  { key: 'email-templates', label: 'Email Templates',   desc: 'Edit notification emails', Icon: EnvelopeOpen        },
-  { key: 'recipients',    label: 'Recipients Directory',desc: 'Active email recipients', Icon: Users                },
-  { key: 'email-blast',   label: 'Portal Notification', desc: 'Broadcast to users',      Icon: PaperPlaneTilt       },
-  { key: 'announcements', label: 'Announcement',        desc: 'System-wide banners',     Icon: Megaphone            },
-  { key: 'system',        label: 'System Info',         desc: 'Deployment snapshot',     Icon: Database             },
+const ACCENT = {
+  pink:    { bg: 'bg-pink-50 dark:bg-pink-950/30',       text: 'text-pink-700 dark:text-pink-400'       },
+  blue:    { bg: 'bg-blue-50 dark:bg-blue-950/30',       text: 'text-blue-700 dark:text-blue-400'       },
+  rose:    { bg: 'bg-rose-50 dark:bg-rose-950/30',       text: 'text-rose-700 dark:text-rose-400'       },
+  emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400' },
+  amber:   { bg: 'bg-amber-50 dark:bg-amber-950/30',     text: 'text-amber-700 dark:text-amber-400'     },
+  violet:  { bg: 'bg-violet-50 dark:bg-violet-950/30',   text: 'text-violet-700 dark:text-violet-400'   },
+  indigo:  { bg: 'bg-indigo-50 dark:bg-indigo-950/30',   text: 'text-indigo-700 dark:text-indigo-400'   },
+  slate:   { bg: 'bg-slate-100 dark:bg-slate-800/60',    text: 'text-slate-700 dark:text-slate-300'     },
+};
+
+const SECTION_GROUPS = [
+  {
+    label: 'Appearance',
+    items: [
+      { key: 'branding',        label: 'App Branding',         desc: 'Logo & appearance',        Icon: Palette,               accent: ACCENT.pink    },
+    ],
+  },
+  {
+    label: 'Email & Delivery',
+    items: [
+      { key: 'email-config',    label: 'Email Configuration',  desc: 'SMTP delivery setup',      Icon: EnvelopeSimple,        accent: ACCENT.blue    },
+      { key: 'email-templates', label: 'Email Templates',      desc: 'Edit notification emails', Icon: EnvelopeOpen,          accent: ACCENT.rose    },
+      { key: 'recipients',      label: 'Recipients Directory', desc: 'Active email recipients',  Icon: Users,                 accent: ACCENT.emerald },
+      { key: 'magic-links',     label: 'Magic Links',          desc: 'Link expiry times',        Icon: Key,                   accent: ACCENT.amber   },
+    ],
+  },
+  {
+    label: 'Broadcasts',
+    items: [
+      { key: 'email-blast',     label: 'Portal Notification',  desc: 'Broadcast to users',       Icon: PaperPlaneTilt,        accent: ACCENT.violet  },
+      { key: 'announcements',   label: 'Announcement',         desc: 'System-wide banners',      Icon: Megaphone,             accent: ACCENT.indigo  },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { key: 'system',          label: 'System Info',          desc: 'Deployment snapshot',      Icon: Database,              accent: ACCENT.slate   },
+    ],
+  },
+  {
+    label: 'Advanced',
+    items: [
+      { key: 'sessions',        label: 'Device Management',    desc: 'System signed-in devices', Icon: Desktop,               accent: ACCENT.slate                  },
+      { key: 'logs',            label: 'Audit Logs',           desc: 'Admin activity trail',     Icon: ClockCounterClockwise, accent: ACCENT.slate, badge: 'Beta'   },
+      { key: 'backups',         label: 'Backups',              desc: 'Database snapshots',       Icon: Database,              accent: ACCENT.slate, badge: 'Beta'   },
+    ],
+  },
 ];
 
-const SUB_SECTIONS = [
-  { key: 'sessions', label: 'Device Management', desc: 'System signed-in devices', Icon: Desktop,              },
-  { key: 'logs',     label: 'Audit Logs',        desc: 'Admin activity trail',     Icon: ClockCounterClockwise, badge: 'Beta' },
-  { key: 'backups',  label: 'Backups',           desc: 'Database snapshots',       Icon: Database,              badge: 'Beta' },
-];
-
-function NavBtn({ sectionKey, label, desc, Icon, badge, activeSection, onSelect }) {
+function NavBtn({ sectionKey, label, desc, Icon, badge, accent, activeSection, onSelect }) {
   const isActive = activeSection === sectionKey;
+  const activeClasses = accent ? `${accent.bg} ${accent.text}` : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400';
   return (
     <button
       onClick={() => onSelect(sectionKey)}
       className={`w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-colors ${
         isActive
-          ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400'
+          ? activeClasses
           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
       }`}
     >
@@ -129,18 +163,23 @@ export default function AdminSettings() {
         <div className="flex gap-6 w-full">
 
           {/* Left sidebar nav */}
-          <div className="w-48 shrink-0 sticky top-0 self-start">
+          <div className="w-48 shrink-0 sticky top-0 self-start max-h-[calc(100vh-8rem)] overflow-y-auto pr-1 pb-4">
             <div className="flex items-center gap-2 mb-4">
               <Gear size={15} weight="fill" className="text-slate-400 dark:text-slate-500" />
               <h1 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-tight">Settings</h1>
             </div>
-            <nav className="space-y-0.5">
-              {SECTIONS.map(({ key, label, desc, Icon }) => (
-                <NavBtn key={key} sectionKey={key} label={label} desc={desc} Icon={Icon} activeSection={activeSection} onSelect={setActiveSection} />
-              ))}
-              <div className="my-2 border-t border-slate-200 dark:border-dark-border" />
-              {SUB_SECTIONS.map(({ key, label, desc, Icon, badge }) => (
-                <NavBtn key={key} sectionKey={key} label={label} desc={desc} Icon={Icon} badge={badge} activeSection={activeSection} onSelect={setActiveSection} />
+            <nav>
+              {SECTION_GROUPS.map((group, groupIdx) => (
+                <div key={group.label} className={groupIdx === 0 ? '' : 'mt-3'}>
+                  <div className="px-3 mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    {group.label}
+                  </div>
+                  <div className="space-y-0.5">
+                    {group.items.map(({ key, label, desc, Icon, badge, accent }) => (
+                      <NavBtn key={key} sectionKey={key} label={label} desc={desc} Icon={Icon} badge={badge} accent={accent} activeSection={activeSection} onSelect={setActiveSection} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </nav>
           </div>
