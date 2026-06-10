@@ -20,7 +20,7 @@ $scriptPath = Join-Path $ProjectDir "scripts\health-monitor.ps1"
 
 # ── Validate ──────────────────────────────────────────────────────────────────
 if (-not (Test-Path $scriptPath)) {
-    Write-Host "❌ health-monitor.ps1 not found at: $scriptPath"
+    Write-Host "[ERROR] health-monitor.ps1 not found at: $scriptPath"
     exit 1
 }
 
@@ -39,7 +39,7 @@ if (-not $SmtpPassword) {
 Write-Host "===> Storing SMTP credentials as system environment variables..."
 [System.Environment]::SetEnvironmentVariable("MONITOR_SMTP_FROM", $SmtpFrom, "Machine")
 [System.Environment]::SetEnvironmentVariable("MONITOR_SMTP_PASSWORD", $SmtpPassword, "Machine")
-Write-Host "   ✅ Credentials stored securely."
+Write-Host "   [OK] Credentials stored securely."
 
 # ── Remove existing task if it exists ─────────────────────────────────────────
 if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
@@ -88,7 +88,7 @@ Register-ScheduledTask `
 
 Write-Host ""
 Write-Host "═══════════════════════════════════════════════════════════════"
-Write-Host "  ✅ Health Monitor installed successfully!"
+Write-Host "  [OK] Health Monitor installed successfully!"
 Write-Host ""
 Write-Host "  Task Name:    $taskName"
 Write-Host "  Schedule:     Every 6 hours + on system startup"

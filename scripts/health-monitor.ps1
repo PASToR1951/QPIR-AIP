@@ -36,10 +36,10 @@ $hostname  = $env:COMPUTERNAME
 function Get-Badge {
     param([string]$Level)
     switch ($Level.ToLower()) {
-        "healthy"  { return '<span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">✅ HEALTHY</span>' }
-        "warning"  { return '<span style="background:#f59e0b;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">⚠️ WARNING</span>' }
-        "critical" { return '<span style="background:#ef4444;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">🚨 CRITICAL</span>' }
-        "offline"  { return '<span style="background:#6b7280;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">📡 OFFLINE</span>' }
+        "healthy"  { return '<span style="background:#10b981;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">[OK] HEALTHY</span>' }
+        "warning"  { return '<span style="background:#f59e0b;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">[WARN] WARNING</span>' }
+        "critical" { return '<span style="background:#ef4444;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">[CRITICAL] CRITICAL</span>' }
+        "offline"  { return '<span style="background:#6b7280;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">[OFFLINE] OFFLINE</span>' }
         default    { return '<span style="background:#3b82f6;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">ℹ️ INFO</span>' }
     }
 }
@@ -158,7 +158,7 @@ try {
 "@
     } else {
         $backupOverall = "warning"
-        $backupDetails = '<p style="color:#f59e0b;padding:8px;">⚠️ Backup status file not found. The backup service may not be running.</p>'
+        $backupDetails = '<p style="color:#f59e0b;padding:8px;">[WARN] Backup status file not found. The backup service may not be running.</p>'
     }
 
     # Check backup directory sizes
@@ -272,10 +272,10 @@ foreach ($s in @($containerOverall, $backupOverall, $resourceOverall)) {
 
 $overallBadge = Get-Badge $overallSeverity
 $subjectPrefix = switch ($overallSeverity) {
-    "critical" { "🚨 CRITICAL" }
-    "warning"  { "⚠️ WARNING" }
-    "offline"  { "📡 OFFLINE" }
-    default    { "✅ HEALTHY" }
+    "critical" { "[CRITICAL] CRITICAL" }
+    "warning"  { "[WARN] WARNING" }
+    "offline"  { "[OFFLINE] OFFLINE" }
+    default    { "[OK] HEALTHY" }
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -285,7 +285,7 @@ $offlineAlert = ""
 if ($isOffline) {
     $offlineAlert = @"
     <div style="background:#1f2937;border:2px solid #ef4444;border-radius:12px;padding:20px;margin-bottom:24px;text-align:center;">
-        <span style="font-size:36px;">📡</span>
+        <span style="font-size:36px;">[OFFLINE]</span>
         <h2 style="color:#ef4444;margin:8px 0 4px;">SERVER IS OFFLINE</h2>
         <p style="color:#d1d5db;margin:0;">$internetDetails</p>
         <p style="color:#9ca3af;margin:8px 0 0;font-size:12px;">This alert was cached and will be sent when connectivity is restored.</p>
@@ -314,13 +314,13 @@ $htmlBody = @"
 
         <!-- Internet Connectivity -->
         <div style="background:#0f172a;border-radius:12px;padding:16px;margin-bottom:16px;">
-            <h3 style="color:#f8fafc;margin:0 0 8px;">🌐 Internet Connectivity &nbsp; $internetBadge</h3>
+            <h3 style="color:#f8fafc;margin:0 0 8px;">[WEB] Internet Connectivity &nbsp; $internetBadge</h3>
             <p style="color:#cbd5e1;margin:0;font-size:13px;">$internetDetails</p>
         </div>
 
         <!-- Container Health -->
         <div style="background:#0f172a;border-radius:12px;padding:16px;margin-bottom:16px;">
-            <h3 style="color:#f8fafc;margin:0 0 12px;">🐳 Docker Containers &nbsp; $containerBadge</h3>
+            <h3 style="color:#f8fafc;margin:0 0 12px;">[DOCKER] Docker Containers &nbsp; $containerBadge</h3>
             <table style="width:100%;border-collapse:collapse;">
                 <thead>
                     <tr style="background:#1e293b;">
@@ -338,7 +338,7 @@ $htmlBody = @"
 
         <!-- Docker Resource Usage -->
         <div style="background:#0f172a;border-radius:12px;padding:16px;margin-bottom:16px;">
-            <h3 style="color:#f8fafc;margin:0 0 12px;">📊 Container Resource Usage</h3>
+            <h3 style="color:#f8fafc;margin:0 0 12px;">[STATS] Container Resource Usage</h3>
             <table style="width:100%;border-collapse:collapse;">
                 <thead>
                     <tr style="background:#1e293b;">
@@ -357,7 +357,7 @@ $htmlBody = @"
 
         <!-- Backup Status -->
         <div style="background:#0f172a;border-radius:12px;padding:16px;margin-bottom:16px;">
-            <h3 style="color:#f8fafc;margin:0 0 8px;">💾 Backup Status &nbsp; $backupBadge</h3>
+            <h3 style="color:#f8fafc;margin:0 0 8px;">[DISK] Backup Status &nbsp; $backupBadge</h3>
             <div style="color:#cbd5e1;font-size:13px;">
                 $backupDetails
             </div>
@@ -365,7 +365,7 @@ $htmlBody = @"
 
         <!-- System Resources -->
         <div style="background:#0f172a;border-radius:12px;padding:16px;margin-bottom:16px;">
-            <h3 style="color:#f8fafc;margin:0 0 8px;">🖥️ System Resources &nbsp; $resourceBadge</h3>
+            <h3 style="color:#f8fafc;margin:0 0 8px;">[SYSTEM] System Resources &nbsp; $resourceBadge</h3>
             <div style="color:#cbd5e1;font-size:13px;">
                 $resourceDetails
             </div>
@@ -391,7 +391,7 @@ function Send-Report {
     param([string]$Subject, [string]$Body)
 
     if (-not $SmtpFrom -or -not $SmtpPassword) {
-        Write-Host "⚠️ SMTP credentials not configured. Set MONITOR_SMTP_FROM and MONITOR_SMTP_PASSWORD environment variables."
+        Write-Host "[WARN] SMTP credentials not configured. Set MONITOR_SMTP_FROM and MONITOR_SMTP_PASSWORD environment variables."
         Write-Host "   Saving report to local HTML file instead..."
         $reportFile = Join-Path $ProjectDir "backups\health-report-$(Get-Date -Format 'yyyy-MM-dd-HHmm').html"
         $Body | Out-File -FilePath $reportFile -Encoding UTF8
@@ -416,17 +416,17 @@ function Send-Report {
         }
 
         Send-MailMessage @mailParams
-        Write-Host "✅ Health report sent to: $($Recipients -join ', ')"
+        Write-Host "[OK] Health report sent to: $($Recipients -join ', ')"
         return $true
     } catch {
-        Write-Host "❌ Failed to send email: $($_.Exception.Message)"
+        Write-Host "[ERROR] Failed to send email: $($_.Exception.Message)"
         return $false
     }
 }
 
 if ($isOffline) {
     # Cache the alert for later delivery
-    Write-Host "📡 System is offline. Caching alert for later delivery..."
+    Write-Host "[OFFLINE] System is offline. Caching alert for later delivery..."
     $cachedAlert = @{
         timestamp = $timestamp
         subject   = $subject
@@ -446,15 +446,15 @@ if ($isOffline) {
         try {
             $cached = Get-Content $ALERT_CACHE_FILE -Raw | ConvertFrom-Json
             if ($cached -and $cached.Count -gt 0) {
-                Write-Host "📬 Found $($cached.Count) cached offline alert(s). Sending..."
+                Write-Host "[MAIL] Found $($cached.Count) cached offline alert(s). Sending..."
                 foreach ($alert in $cached) {
-                    Send-Report -Subject "[📡 RECOVERED] $($alert.subject)" -Body $alert.body | Out-Null
+                    Send-Report -Subject "[[OFFLINE] RECOVERED] $($alert.subject)" -Body $alert.body | Out-Null
                 }
                 Remove-Item $ALERT_CACHE_FILE -Force
                 Write-Host "   All cached alerts delivered and cleared."
             }
         } catch {
-            Write-Host "⚠️ Error processing cached alerts: $($_.Exception.Message)"
+            Write-Host "[WARN] Error processing cached alerts: $($_.Exception.Message)"
         }
     }
 

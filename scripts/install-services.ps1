@@ -34,7 +34,7 @@ Write-Host "──────────────────────�
 $svcCmd = Join-Path $RunnerDir "svc.cmd"
 
 if (-not (Test-Path $svcCmd)) {
-    Write-Host "  ⚠️  GitHub Actions Runner not found at: $RunnerDir" -ForegroundColor Yellow
+    Write-Host "  [WARN]  GitHub Actions Runner not found at: $RunnerDir" -ForegroundColor Yellow
     Write-Host "     Skipping runner service installation." -ForegroundColor Yellow
     Write-Host "     Please install the runner first using the GitHub instructions," -ForegroundColor Yellow
     Write-Host "     then re-run this script." -ForegroundColor Yellow
@@ -42,14 +42,14 @@ if (-not (Test-Path $svcCmd)) {
     # Check if the service is already installed
     $runnerService = Get-Service -Name "actions.runner.*" -ErrorAction SilentlyContinue
     if ($runnerService) {
-        Write-Host "  ✅ Runner service is already installed: $($runnerService.Name)" -ForegroundColor Green
+        Write-Host "  [OK] Runner service is already installed: $($runnerService.Name)" -ForegroundColor Green
         if ($runnerService.Status -ne "Running") {
             Write-Host "  ===> Starting runner service..." -ForegroundColor White
             Push-Location $RunnerDir
             & .\svc.cmd start
             Pop-Location
         }
-        Write-Host "  ✅ Runner service is running." -ForegroundColor Green
+        Write-Host "  [OK] Runner service is running." -ForegroundColor Green
     } else {
         Write-Host "  ===> Installing GitHub Actions Runner as a Windows Service..." -ForegroundColor White
         Push-Location $RunnerDir
@@ -57,7 +57,7 @@ if (-not (Test-Path $svcCmd)) {
         Write-Host "  ===> Starting runner service..." -ForegroundColor White
         & .\svc.cmd start
         Pop-Location
-        Write-Host "  ✅ Runner service installed and started." -ForegroundColor Green
+        Write-Host "  [OK] Runner service installed and started." -ForegroundColor Green
     }
 }
 
@@ -74,7 +74,7 @@ $monitorScript = Join-Path $ProjectDir "scripts\health-monitor.ps1"
 $taskName = "QPIR-AIP Health Monitor"
 
 if (-not (Test-Path $monitorScript)) {
-    Write-Host "  ❌ health-monitor.ps1 not found at: $monitorScript" -ForegroundColor Red
+    Write-Host "  [ERROR] health-monitor.ps1 not found at: $monitorScript" -ForegroundColor Red
     Write-Host "     Please make sure you have pulled the latest code." -ForegroundColor Red
 } else {
     # Prompt for SMTP credentials
@@ -136,7 +136,7 @@ if (-not (Test-Path $monitorScript)) {
         -Description "QPIR-AIP: Monitors Docker containers, backups, system health, and internet connectivity. Sends email reports every 6 hours." `
         -Force | Out-Null
 
-    Write-Host "  ✅ Health Monitor installed and hidden." -ForegroundColor Green
+    Write-Host "  [OK] Health Monitor installed and hidden." -ForegroundColor Green
 
     # Run it immediately so the user gets their first report right away
     Write-Host "  ===> Sending your first health report now..." -ForegroundColor White
@@ -145,13 +145,13 @@ if (-not (Test-Path $monitorScript)) {
 
 Write-Host ""
 Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Green
-Write-Host "  ✅ ALL BACKGROUND SERVICES INSTALLED!" -ForegroundColor Green
+Write-Host "  [OK] ALL BACKGROUND SERVICES INSTALLED!" -ForegroundColor Green
 Write-Host "" -ForegroundColor Green
-Write-Host "  🔄 Auto-Deploy:     GitHub Actions Runner (Windows Service)" -ForegroundColor White
-Write-Host "     → Listens for pushes and auto-deploys your code." -ForegroundColor DarkGray
+Write-Host "  [AUTO] Auto-Deploy:     GitHub Actions Runner (Windows Service)" -ForegroundColor White
+Write-Host "     -> Listens for pushes and auto-deploys your code." -ForegroundColor DarkGray
 Write-Host "" -ForegroundColor Green
-Write-Host "  📊 Health Monitor:  Scheduled Task (every 6h + on startup)" -ForegroundColor White
-Write-Host "     → Sends reports to:" -ForegroundColor DarkGray
+Write-Host "  [STATS] Health Monitor:  Scheduled Task (every 6h + on startup)" -ForegroundColor White
+Write-Host "     -> Sends reports to:" -ForegroundColor DarkGray
 Write-Host "       krezcalvski@gmail.com" -ForegroundColor DarkGray
 Write-Host "       dustine.yrad@deped.gov.ph" -ForegroundColor DarkGray
 Write-Host "" -ForegroundColor Green
