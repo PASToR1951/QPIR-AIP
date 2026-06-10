@@ -33,6 +33,7 @@ COPY routes/ ./routes/
 COPY db/ ./db/
 COPY lib/ ./lib/
 COPY types/ ./types/
+COPY scripts/ ./scripts/
 RUN mkdir -p ./backups/hourly ./backups/daily ./backups/triggers ./public/school-logos ./public/cluster-logos ./public/app-logo
 
 # ── Pre-cache Deno dependencies ───────────────────────────────────────────────

@@ -1,0 +1,17 @@
+name: Auto-Deploy to Windows Server
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Pull Latest Code and Rebuild Docker
+        run: |
+          cd C:\Users\Administrator\Desktop\SYSTEMS\QPIR-AIP
+          git pull
+          .\run.ps1 docker
