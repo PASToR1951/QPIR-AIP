@@ -13,5 +13,6 @@ jobs:
       - name: Pull Latest Code and Rebuild Docker
         run: |
           cd C:\Users\Administrator\Desktop\SYSTEMS\QPIR-AIP
-          git pull
-          .\run.ps1 docker
+          git fetch --all
+          git reset --hard origin/main
+          powershell.exe -ExecutionPolicy Bypass -File .\run.ps1 docker
