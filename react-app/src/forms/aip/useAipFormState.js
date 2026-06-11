@@ -187,6 +187,16 @@ function aipReducer(state, action) {
                 indicators: removeArrayItemAtIndex(state.indicators, action.payload.index, [{ description: '', target: '' }]),
             };
 
+        case 'DUPLICATE_INDICATOR': {
+            const sourceIndicator = state.indicators[action.payload.index];
+            const nextIndicators = [...state.indicators];
+            nextIndicators.splice(action.payload.index + 1, 0, { ...sourceIndicator });
+            return {
+                ...state,
+                indicators: nextIndicators,
+            };
+        }
+
         case 'SET_ACTIVITY':
             return {
                 ...state,
