@@ -209,6 +209,7 @@ export function getActionPrompt(data, aipStatus) {
     const currentPeriod = data.currentPeriodLabel || `${periodPrefix(data.period_type)}${currentQuarter}`;
     const currentPeriodShort = `${periodPrefix(data.period_type)}${currentQuarter}`;
     const noun = periodNoun(data.period_type);
+    const reportingYear = getPeriodYear(data.currentPeriodLabel, data.period_type === 'trimester' ? 'School' : 'Division Personnel');
     const daysLeft = calculateDaysLeft(data.deadline);
 
     if (aipCompletion.completed === 0) {
