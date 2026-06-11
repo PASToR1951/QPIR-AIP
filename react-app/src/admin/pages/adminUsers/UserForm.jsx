@@ -5,8 +5,8 @@ import {
   getAvailableSchoolRoleSchools,
 } from './schoolAssignmentOptions.js';
 
-const inputCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
-const selectCls = "w-full px-3 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
+const inputCls = "w-full px-3 py-2 h-[38px] text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
+const selectCls = "w-full px-3 h-[38px] text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 
 export const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Admin', 'Observer'];
 const SALUTATIONS = ['Mr.', 'Ms.', 'Mrs.', 'Dr.'];
@@ -42,7 +42,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
   return (
     <div className="space-y-4">
       {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Observer'].includes(form.role)) && (
-        <div className="grid grid-cols-[100px_1fr] gap-3">
+        <div className="grid grid-cols-[120px_1fr] gap-3">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Title</label>
             <select value={form.salutation} onChange={e => setForm(f => ({ ...f, salutation: e.target.value }))} className={selectCls}>
@@ -62,7 +62,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
           {form.role === 'School' && (
             <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest -mb-1">School Head</p>
           )}
-          <div className="grid grid-cols-[100px_1fr_80px] gap-3">
+          <div className="grid grid-cols-[120px_1fr_80px] gap-3">
             <div>
               <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Title</label>
               <select value={form.salutation} onChange={e => setForm(f => ({ ...f, salutation: e.target.value }))} className={selectCls}>
@@ -102,7 +102,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
             className="flex-1 min-w-0 px-3 py-2 text-sm bg-transparent text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none"
             placeholder="username"
           />
-          <span className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-dark-surface border-l border-slate-200 dark:border-dark-border whitespace-nowrap select-none">
+          <span className="px-3 h-[38px] flex items-center text-sm text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-dark-surface border-l border-slate-200 dark:border-dark-border whitespace-nowrap select-none">
             @deped.gov.ph
           </span>
         </div>
