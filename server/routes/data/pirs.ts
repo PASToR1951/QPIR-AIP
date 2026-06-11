@@ -506,7 +506,7 @@ pirRoutes.post(
         reviewerIds = cesUsers.map((user: { id: number }) => user.id);
       }
 
-      const notifyIds = isSchoolSubmission ? [...new Set(reviewerIds)] : [
+      const notifyIds = [
         ...new Set([
           ...reviewerIds,
           ...pirAdmins.map((user: { id: number }) => user.id),

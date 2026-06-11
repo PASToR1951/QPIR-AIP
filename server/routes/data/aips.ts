@@ -448,15 +448,20 @@ aipRoutes.post(
         );
       }
 
-      const reviewerIds = isSchoolSubmission
-        ? focalPersonIds
-        : (await prisma.user.findMany({
-          where: { role: "Admin" },
-          select: { id: true },
-        })).map((admin) => admin.id);
-      if (reviewerIds.length > 0) {
+      const aipAdmins = await prisma.user.findMany({
+        where: { role: "Admin" },
+        select: { id: true },
+      });
+      
+      const notifyIds = [
+        ...new Set([
+          ...(isSchoolSubmission ? focalPersonIds : []),
+          ...aipAdmins.map((admin) => admin.id),
+        ]),
+      ];
+      if (notifyIds.length > 0) {
         const reviewerNotifs = await prisma.notification.createManyAndReturn({
-          data: reviewerIds.map((userId) => ({
+          data: notifyIds.map((userId) => ({
             user_id: userId,
             title: isSchoolSubmission
               ? "AIP Pending Recommendation"
