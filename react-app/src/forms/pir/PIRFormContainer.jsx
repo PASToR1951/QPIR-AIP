@@ -523,7 +523,7 @@ export default function PIRFormContainer() {
                             onHome={handleHome}
                             onEditPIR={handleEditPIR}
                             onDeletePIR={handleDeletePIR}
-                            onShowFinalConfirm={setShowFinalConfirm}
+                            onShowFinalConfirm={handleConfirmSubmit}
                             toggleAppMode={handleToggleAppMode}
                             handleActivityChange={handleActivityChange}
                             handleAddUnplannedActivity={handleAddUnplannedActivity}
