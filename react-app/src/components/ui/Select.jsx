@@ -35,7 +35,7 @@ export const Select = React.forwardRef(({ label, options, className, theme = "de
     const currentTheme = THEME_CLASSES[theme] || THEME_CLASSES.default;
 
     return (
-        <div className={cn("flex flex-col gap-1.5 w-full relative group text-left transition-opacity", disabled && "opacity-50")}>
+        <div className={cn("flex flex-col gap-1.5 w-full relative group text-left transition-opacity", disabled && "opacity-50 pointer-events-none")}>
             {label && (
                 <div className="flex items-center gap-1.5 print:hidden">
                     <label className={cn(

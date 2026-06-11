@@ -84,6 +84,10 @@ export default React.memo(function AIPFormEditor({
         dispatch({ type: 'ADD_ACTIVITY', payload: { activity: createEmptyAipActivity({ phase }) } });
     }, [dispatch]);
 
+    const handleDuplicateActivity = useCallback((id) => {
+        dispatch({ type: 'DUPLICATE_ACTIVITY', payload: { id } });
+    }, [dispatch]);
+
     const handleSetExpandedActivityId = useCallback((activityId) => {
         dispatch({ type: 'SET_EXPANDED_ACTIVITY_ID', payload: activityId });
     }, [dispatch]);
@@ -263,6 +267,7 @@ export default React.memo(function AIPFormEditor({
                                         setExpandedActivityId={handleSetExpandedActivityId}
                                         handleActivityChange={handleActivityChange}
                                         handleRemoveActivity={onRequestRemoveActivity}
+                                        handleDuplicateActivity={handleDuplicateActivity}
                                         handleAddActivityPhase={handleAddActivityPhase}
                                         personsTerms={suggestions.personsTerms}
                                     />

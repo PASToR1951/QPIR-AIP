@@ -197,6 +197,22 @@ function aipReducer(state, action) {
             };
         }
 
+        case 'DUPLICATE_ACTIVITY': {
+            const sourceActivity = state.activities.find((a) => a.id === action.payload.id);
+            if (!sourceActivity) return state;
+            const newActivity = { 
+                ...sourceActivity, 
+                id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+            };
+            const sourceIndex = state.activities.findIndex((a) => a.id === action.payload.id);
+            const nextActivities = [...state.activities];
+            nextActivities.splice(sourceIndex + 1, 0, newActivity);
+            return {
+                ...state,
+                activities: nextActivities,
+            };
+        }
+
         case 'SET_ACTIVITY':
             return {
                 ...state,

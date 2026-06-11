@@ -22,6 +22,7 @@ export default function PhaseActivityEditor({
     expandedActivityId,
     onExpandedChange,
     onRemove,
+    onDuplicate,
     canRemove = defaultCanRemove,
     renderCollapsedTitle,
     renderExpandedFields,
@@ -60,6 +61,7 @@ export default function PhaseActivityEditor({
             collapse: () => onExpandedChange?.(null),
             toggleExpanded: () => onExpandedChange?.(isExpanded ? null : activity.id),
             remove: () => onRemove?.(activity.id),
+            duplicate: () => onDuplicate?.(activity.id),
         };
     };
 
@@ -131,6 +133,22 @@ export default function PhaseActivityEditor({
                         </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
+                        {onDuplicate && (() => {
+                            const isEmpty = !context.activity.name && !context.activity.outputs && !context.activity.budgetAmount && !context.activity.budgetSource;
+                            return (
+                            <button
+                                type="button"
+                                disabled={isEmpty}
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    context.duplicate();
+                                }}
+                                className={context.isExpanded
+                                    ? `flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors ${isEmpty ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400 hover:bg-blue-50 hover:text-blue-500 dark:text-slate-500 dark:hover:bg-blue-950/30'}`
+                                    : `flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border transition-colors ${isEmpty ? 'border-slate-100 text-slate-300 dark:border-dark-border dark:text-slate-600' : 'border-slate-200 text-slate-400 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-500 dark:border-dark-border dark:text-slate-500 dark:hover:bg-blue-950/30'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        )})()}
                         {context.canRemove && (
                             <button
                                 type="button"
@@ -141,10 +159,7 @@ export default function PhaseActivityEditor({
                                 className={context.isExpanded
                                     ? 'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/30'
                                     : 'flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 text-slate-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:border-dark-border dark:text-slate-500 dark:hover:bg-red-950/30'}>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M18 6 6 18"></path>
-                                    <path d="m6 6 12 12"></path>
-                                </svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                             </button>
                         )}
                         <button

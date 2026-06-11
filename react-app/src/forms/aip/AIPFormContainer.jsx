@@ -59,7 +59,6 @@ export default function AIPFormContainer() {
     });
 
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    const [showFinalConfirm, setShowFinalConfirm] = useState(false);
     const [toast, setToast] = useState(null);
     const [deletedPopup, setDeletedPopup] = useState(null);
     const [isRequestingEdit, setIsRequestingEdit] = useState(false);
@@ -151,7 +150,7 @@ export default function AIPFormContainer() {
             isPreviewOpen={isPreviewOpen}
             onPreviewOpen={setIsPreviewOpen}
             onSaveForLater={draft.saveNow}
-            onShowFinalConfirm={setShowFinalConfirm}
+            onShowFinalConfirm={mutations.handleConfirmSubmit}
             onBack={handleBack}
             onHome={handleHome}
             onEditAIP={mutations.handleEditAIP}
@@ -213,15 +212,7 @@ export default function AIPFormContainer() {
                                 cancelText={shell.modal.cancelText} hideCancelButton={shell.modal.hideCancelButton}
                                 extraAction={shell.modal.extraAction}
                             />
-                            <ConfirmationModal
-                                isOpen={showFinalConfirm} onClose={() => setShowFinalConfirm(false)}
-                                onConfirm={() => { setShowFinalConfirm(false); mutations.handleConfirmSubmit(); }}
-                                type="warning"
-                                title={submission.isEditing ? 'Save AIP changes?' : 'Submit this AIP?'}
-                                message={submission.isEditing ? 'Your updated AIP will stay in the review process after you save these changes.' : 'Your AIP will be sent for review after submission. You can still edit it while it is pending.'}
-                                confirmText={submission.isEditing ? 'Save changes' : 'Submit AIP'}
-                                cancelText="Keep editing"
-                            />
+
                             <DeletedProgramsPopup
                                 toast={toast} deletedPopup={deletedPopup}
                                 onToastClick={() => setDeletedPopup(toast.programs)}

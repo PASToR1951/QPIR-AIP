@@ -108,6 +108,7 @@ export default React.memo(function AIPActionPlanSection({
     setExpandedActivityId,
     handleActivityChange,
     handleRemoveActivity,
+    handleDuplicateActivity,
     handleAddActivityPhase,
     personsTerms = [],
 }) {
@@ -169,6 +170,7 @@ export default React.memo(function AIPActionPlanSection({
                 expandedActivityId={expandedActivityId}
                 onExpandedChange={setExpandedActivityId}
                 onRemove={handleRemoveActivity}
+                onDuplicate={handleDuplicateActivity}
                 canRemove={(activity, group) => group.activities.length > 1}
                 renderCollapsedTitle={(activity, context) => (
                     context.isExpanded ? (
@@ -201,6 +203,20 @@ export default React.memo(function AIPActionPlanSection({
                                 </p>
                                 <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Activity details</p>
                             </div>
+                            <div className="flex gap-2">
+                            {handleDuplicateActivity && (() => {
+                                const isEmpty = !activity.name && !activity.outputs && !activity.budgetAmount && !activity.budgetSource;
+                                return (
+                                <button
+                                    type="button"
+                                    onClick={() => handleDuplicateActivity(activity.id)}
+                                    disabled={isEmpty}
+                                    className={`flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border transition-colors ${isEmpty ? 'border-slate-100 bg-slate-50 text-slate-300 dark:border-dark-border dark:bg-dark-surface dark:text-slate-600' : 'border-slate-200 text-slate-400 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-500 dark:border-dark-border dark:text-slate-500 dark:hover:bg-blue-950/30'}`}
+                                    title="Duplicate Activity"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                </button>
+                            )})()}
                             {context.canRemove && (
                                 <button
                                     type="button"
@@ -208,12 +224,10 @@ export default React.memo(function AIPActionPlanSection({
                                     className={CARD_DELETE_BUTTON_CLASSNAME}
                                     title="Delete Activity"
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M18 6 6 18"></path>
-                                        <path d="m6 6 12 12"></path>
-                                    </svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                                 </button>
                             )}
+                            </div>
                         </div>
                     ),
                     fields: mobileFields,
@@ -337,23 +351,37 @@ export default React.memo(function AIPActionPlanSection({
                         {
                             key: 'actions',
                             header: '',
-                            headerClassName: 'w-10 border-none',
-                            cellClassName: 'w-10 border-none bg-white p-1 align-middle dark:bg-dark-surface',
-                            renderCell: (activity, context) => (
-                                context.canRemove ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => context.remove()}
-                                        className="mx-auto flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 opacity-40 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 dark:border-dark-border dark:bg-dark-surface dark:text-slate-500 dark:hover:bg-red-950/30"
-                                        title="Delete Row"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M18 6 6 18"></path>
-                                            <path d="m6 6 12 12"></path>
-                                        </svg>
-                                    </button>
-                                ) : null
-                            ),
+                            headerClassName: 'w-[100px] border-none',
+                            cellClassName: 'w-[100px] border-none bg-white p-1 align-middle dark:bg-dark-surface',
+                            renderCell: (activity, context) => {
+                                const isEmpty = !activity.name && !activity.outputs && !activity.budgetAmount && !activity.budgetSource;
+                                return (
+                                <div className="flex gap-1 justify-center">
+                                    {handleDuplicateActivity && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDuplicateActivity(activity.id)}
+                                            disabled={isEmpty}
+                                            className={`mx-auto flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border bg-white shadow-sm transition-colors ${isEmpty ? 'border-slate-100 text-slate-300 dark:border-dark-border dark:bg-dark-surface dark:text-slate-600' : 'border-slate-200 text-slate-400 opacity-40 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-500 group-hover:opacity-100 dark:border-dark-border dark:bg-dark-surface dark:text-slate-500 dark:hover:bg-blue-950/30'}`}
+                                            title="Duplicate Row"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                        </button>
+                                    )}
+                                    {context.canRemove ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => context.remove()}
+                                            className="mx-auto flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 opacity-40 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 dark:border-dark-border dark:bg-dark-surface dark:text-slate-500 dark:hover:bg-red-950/30"
+                                            title="Delete Row"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                                        </button>
+                                    ) : (
+                                        <div className="min-w-[44px]"></div>
+                                    )}
+                                </div>
+                            )},
                         },
                     ],
                     renderGroupHeader: (group, context) => (
