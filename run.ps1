@@ -62,6 +62,8 @@ elseif ($Mode -eq "docker") {
         docker compose exec backend deno task prisma:deploy
         docker compose exec backend deno task prisma:generate
         docker compose exec backend deno task seed
+        docker compose exec backend deno run -A server/scripts/migrate_trimesters_to_quarters.ts
+        docker compose exec backend deno run -A server/scripts/migrate_focal_persons.ts
     } catch {
         Write-Host "==> Notice: A seed command had an issue, or containers aren't ready yet."
     }
