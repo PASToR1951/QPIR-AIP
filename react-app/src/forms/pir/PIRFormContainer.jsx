@@ -359,6 +359,7 @@ export default function PIRFormContainer() {
                         message: error.friendlyMessage ?? 'Please try again. If the problem continues, contact SDO IT.',
                         confirmText: 'Close',
                         onConfirm: shell.closeModal,
+                        hideCancelButton: true,
                     });
                 }
             },
@@ -465,6 +466,7 @@ export default function PIRFormContainer() {
                 message: error.friendlyMessage ?? 'Please try again. Make sure the related AIP has already been submitted.',
                 confirmText: 'Close',
                 onConfirm: shell.closeModal,
+                hideCancelButton: true,
             });
         }
     }, [dispatch, draft, handleStart, isDivisionPersonnel, navigate, profile.program, quarterString, shell, state, submission.isEditing, submission.pirId]);

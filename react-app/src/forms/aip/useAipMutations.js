@@ -53,7 +53,7 @@ export function useAipMutations({
                 confirmText: 'Okay', onConfirm: shell.closeModal, hideCancelButton: true,
             });
         } catch (error) {
-            shell.openModal({ type: 'warning', title: 'Request Failed', message: error.friendlyMessage ?? 'Failed to send edit request. Please try again.', confirmText: 'Close', onConfirm: shell.closeModal });
+            shell.openModal({ type: 'warning', title: 'Request Failed', message: error.friendlyMessage ?? 'Failed to send edit request. Please try again.', confirmText: 'Close', onConfirm: shell.closeModal, hideCancelButton: true });
         }
     }, [shell, submission.aipId, submission.editRequestCount, dispatch]);
 
@@ -64,7 +64,7 @@ export function useAipMutations({
             dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'editRequested',   value: false } });
             dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'editRequestedAt', value: null } });
         } catch (error) {
-            shell.openModal({ type: 'warning', title: 'Cancel Failed', message: error.friendlyMessage ?? 'Failed to cancel edit request. Please try again.', confirmText: 'Close', onConfirm: shell.closeModal });
+            shell.openModal({ type: 'warning', title: 'Cancel Failed', message: error.friendlyMessage ?? 'Failed to cancel edit request. Please try again.', confirmText: 'Close', onConfirm: shell.closeModal, hideCancelButton: true });
         }
     }, [shell, submission.aipId, dispatch]);
 
@@ -91,7 +91,7 @@ export function useAipMutations({
                     shell.setAppMode('splash');
                     setSearchParams({}, { replace: true });
                 } catch (error) {
-                    shell.openModal({ type: 'warning', title: "We couldn't delete this AIP", message: error.friendlyMessage ?? 'Please try again. If the problem continues, contact SDO IT.', confirmText: 'Close', onConfirm: shell.closeModal });
+                    shell.openModal({ type: 'warning', title: "We couldn't delete this AIP", message: error.friendlyMessage ?? 'Please try again. If the problem continues, contact SDO IT.', confirmText: 'Close', onConfirm: shell.closeModal, hideCancelButton: true });
                 }
             },
         });
@@ -145,7 +145,7 @@ export function useAipMutations({
                 extraAction: { text: 'Back to Dashboard', onClick: () => { shell.closeModal(); navigate('/'); } },
             });
         } catch (error) {
-            shell.openModal({ type: 'warning', title: submission.isEditing ? "We couldn't update this AIP" : "We couldn't submit this AIP", message: error.friendlyMessage ?? 'Please try again. If the problem continues, contact SDO IT.', confirmText: 'Close', onConfirm: shell.closeModal });
+            shell.openModal({ type: 'warning', title: submission.isEditing ? "We couldn't update this AIP" : "We couldn't submit this AIP", message: error.friendlyMessage ?? 'Please try again. If the problem continues, contact SDO IT.', confirmText: 'Close', onConfirm: shell.closeModal, hideCancelButton: true });
         }
     }, [buildProgramParams, dispatch, draft, navigate, profile.depedProgram, profile.outcome, profile.sipTitle, profile.year, projectTerminology.projectTitleValidationMessage, setSearchParams, shell, state, submission.aipId, submission.isEditing]);
 
