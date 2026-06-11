@@ -1,0 +1,6 @@
+# Force LF line endings for shell scripts and Docker files.
+# Prevents Windows Git (core.autocrlf) from breaking entrypoints.
+*.sh        text eol=lf
+Dockerfile* text eol=lf
+*.conf      text eol=lf
+Caddyfile   text eol=lf
