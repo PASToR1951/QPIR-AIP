@@ -170,7 +170,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "What happens if I miss a PIR deadline?",
-        a: "Deadlines and trimester windows are configured by the administrator. Submission outside the configured window may be blocked or marked late depending on configuration. Contact your administrator if you missed a deadline."
+        a: "Quarterly deadlines and submission windows are configured by the administrator. Submission outside the configured window may be blocked or marked late depending on configuration. Contact your administrator if you missed a deadline."
       },
       {
         q: "Why does my PIR enter For Admin Review instead of For CES Review?",
@@ -301,8 +301,8 @@ const FAQ_FALLBACK = [
         a: "The portal uses an uploaded school logo first, then the uploaded cluster logo, then the bundled default cluster logo when no upload exists."
       },
       {
-        q: "What is a trimester deadline?",
-        a: "Trimester deadlines define submission windows for specific reporting periods. The administrator configures the open and close dates and optional grace periods that the system enforces."
+        q: "What is a quarterly deadline?",
+        a: "Quarterly deadlines define submission windows for specific reporting periods. The administrator configures the open and close dates and optional grace periods that the system enforces."
       },
       {
         q: "Why is a program tagged with a functional division?",

@@ -25,11 +25,7 @@ import {
   normalizeQuarterLabel,
   parseQuarterLabel,
 } from "../../lib/quarters.ts";
-import {
-  getDefaultReportingYear,
-  normalizeTrimesterLabel,
-  parseTrimesterLabel,
-} from "../../lib/trimesters.ts";
+// Trimester imports removed
 import {
   getDefaultQuarterRange,
   periodStartDate,
@@ -114,46 +110,10 @@ async function validateQuarterSubmissionWindow(
   return null;
 }
 
-async function validateTrimesterSubmissionWindow(
-  year: number,
-  trimester: number,
-): Promise<string | null> {
-  const deadlineRecord = await prisma.trimesterDeadline.findUnique({
-    where: { year_trimester: { year, trimester } },
-  });
-
-  if (!deadlineRecord) {
-    return "Submission window not configured for this trimester — contact your administrator.";
-  }
-
-  const deadline = new Date(deadlineRecord.date);
-  deadline.setHours(23, 59, 59, 999);
-  const graceEnd = new Date(
-    deadline.getTime() + deadlineRecord.grace_period_days * 86400000,
-  );
-  graceEnd.setHours(23, 59, 59, 999);
-  const openDate = new Date(deadlineRecord.open_date);
-  const now = new Date();
-
-  if (now < openDate) {
-    return "Submission window has not opened yet for this trimester.";
-  }
-  if (now > graceEnd) {
-    return "The submission window for this trimester is closed.";
-  }
-  return null;
-}
-
 async function validateSubmissionWindowForRole(
   role: string,
   periodLabel: string,
 ): Promise<string | null> {
-  if (role === "School") {
-    const parsed = parseTrimesterLabel(periodLabel);
-    if (!parsed) return "Invalid trimester label.";
-    return validateTrimesterSubmissionWindow(parsed.year, parsed.trimester);
-  }
-
   const parsed = parseQuarterLabel(periodLabel);
   if (!parsed) return null;
   return validateQuarterSubmissionWindow(parsed.year, parsed.quarter);
@@ -194,9 +154,7 @@ pirRoutes.get(
     async (c) => {
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title") || "";
-      const quarter = tokenUser.role === "School"
-        ? normalizeTrimesterLabel(sanitizeString(c.req.query("quarter") || ""))
-        : normalizeQuarterLabel(sanitizeString(c.req.query("quarter") || ""));
+      const quarter = normalizeQuarterLabel(sanitizeString(c.req.query("quarter") || ""));
 
       if (!programTitle || !quarter) {
         return c.json(
@@ -209,11 +167,11 @@ pirRoutes.get(
       const year = yearMatch
         ? safeParseInt(
           yearMatch[1],
-          getDefaultReportingYear(tokenUser.role),
+          new Date().getFullYear(),
           2020,
           2100,
         )
-        : getDefaultReportingYear(tokenUser.role);
+        : new Date().getFullYear();
 
       const program = await fetchProgramByTitle(programTitle);
       if (!program) {
@@ -345,9 +303,7 @@ pirRoutes.post(
       if (clusterErr) return c.json({ error: clusterErr }, 403);
 
       const cleanProgramTitle = sanitizeString(program_title);
-      const cleanQuarter = tokenUser.role === "School"
-        ? normalizeTrimesterLabel(sanitizeString(quarter))
-        : normalizeQuarterLabel(sanitizeString(quarter));
+      const cleanQuarter = normalizeQuarterLabel(sanitizeString(quarter));
 
       const program = await fetchProgramByTitle(cleanProgramTitle);
       if (!program) return c.json({ error: "Resource not found" }, 404);
@@ -356,11 +312,11 @@ pirRoutes.post(
       const year = yearMatch
         ? safeParseInt(
           yearMatch[1],
-          getDefaultReportingYear(tokenUser.role),
+          new Date().getFullYear(),
           2020,
           2100,
         )
-        : getDefaultReportingYear(tokenUser.role);
+        : new Date().getFullYear();
 
       const submissionWindowError = await validateSubmissionWindowForRole(
         tokenUser.role,

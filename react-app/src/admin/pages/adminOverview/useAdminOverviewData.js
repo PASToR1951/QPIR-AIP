@@ -44,19 +44,6 @@ export function useAdminOverviewData() {
     }))
   ), [data?.pirQuarterly]);
 
-  const trimesterData = useMemo(() => (
-    (data?.pirByTrimester ?? []).map((trimester) => ({
-      name: trimester.trimester ?? trimester.quarter,
-      Submitted: trimester.submitted,
-      Approved: trimester.approved,
-      'Under Review': trimester.underReview,
-      Returned: trimester.returned,
-      SGOD: trimester.SGOD ?? 0,
-      CID: trimester.CID ?? 0,
-      OSDS: trimester.OSDS ?? 0,
-    }))
-  ), [data?.pirByTrimester]);
-
   const pieData = useMemo(() => (
     [...(data?.clusterCompliance ?? [])]
       .sort((a, b) => a.cluster_number - b.cluster_number)
@@ -98,7 +85,6 @@ export function useAdminOverviewData() {
     setClusterSort,
     sortedClusters,
     stats,
-    trimesterData,
     user,
   };
 }

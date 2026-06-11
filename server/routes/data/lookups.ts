@@ -5,7 +5,6 @@ import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { sanitizeString } from "../../lib/sanitize.ts";
 import {
   getDefaultReportingYear,
-  normalizeTrimesterLabel,
 } from "../../lib/trimesters.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
@@ -234,9 +233,7 @@ lookupsRoutes.get(
         2100,
       );
       const quarter = c.req.query("quarter")
-        ? tokenUser.role === "School"
-          ? normalizeTrimesterLabel(sanitizeString(c.req.query("quarter")))
-          : normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
+        ? normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
         : null;
       const filedStatuses = [
         "Submitted",

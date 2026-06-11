@@ -16,7 +16,6 @@ import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import {
   getDefaultReportingYear,
-  normalizeTrimesterLabel,
 } from "../../lib/trimesters.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
@@ -397,9 +396,7 @@ draftsRoutes.post(
       }
 
       const sanitizedTitle = sanitizeString(program_title);
-      const sanitizedQuarter = tokenUser.role === "School"
-        ? normalizeTrimesterLabel(sanitizeString(quarter))
-        : normalizeQuarterLabel(sanitizeString(quarter));
+      const sanitizedQuarter = normalizeQuarterLabel(sanitizeString(quarter));
       if (!sanitizedTitle || !sanitizedQuarter) {
         return c.json(
           { error: "program_title and quarter are required" },
@@ -523,9 +520,7 @@ draftsRoutes.get(
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title");
       const quarter = c.req.query("quarter")
-        ? tokenUser.role === "School"
-          ? normalizeTrimesterLabel(sanitizeString(c.req.query("quarter")))
-          : normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
+        ? normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
         : undefined;
 
       if (!programTitle) {
@@ -637,9 +632,7 @@ draftsRoutes.delete(
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title");
       const quarter = c.req.query("quarter")
-        ? tokenUser.role === "School"
-          ? normalizeTrimesterLabel(sanitizeString(c.req.query("quarter")))
-          : normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
+        ? normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
         : undefined;
 
       if (!programTitle || !quarter) {

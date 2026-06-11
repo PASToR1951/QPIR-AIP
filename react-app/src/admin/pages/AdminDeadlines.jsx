@@ -71,10 +71,6 @@ function currentSchoolYearStart() {
   return today.getMonth() + 1 >= 6 ? today.getFullYear() : today.getFullYear() - 1;
 }
 
-function trimesterLabel(year, i, range = defaultTrimesterRange(i)) {
-  return `T${i + 1} · ${monthLabel(range.start)} – ${monthLabel(range.end)} · ${schoolYearLabel(year)}`;
-}
-
 function quarterProgress(year, i, range = defaultQuarterRange(i)) {
   const bounds = quarterBounds(year, i, range);
   const start = bounds.start.getTime();
@@ -194,13 +190,11 @@ export default function AdminDeadlines() {
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [schoolYear, setSchoolYear] = useState(() => currentSchoolYearStart());
   const [deadlines, setDeadlines] = useState([]);
-  const [trimesterDeadlines, setTrimesterDeadlines] = useState([]);
   const [history,   setHistory]   = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [fetchError, setFetchError] = useState(null);
   const [saving,    setSaving]    = useState(null);
   const [localDates, setLocalDates] = useState({});
-  const [trimesterLocalDates, setTrimesterLocalDates] = useState({});
   const [formError, setFormError] = useState('');
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -208,20 +202,11 @@ export default function AdminDeadlines() {
     setLoading(true);
     Promise.all([
       api.get(`/api/admin/deadlines?year=${year}`),
-      api.get(`/api/admin/deadlines/trimesters?year=${schoolYear}`),
       api.get('/api/admin/deadlines/history'),
-    ]).then(([dr, tr, hr]) => {
+    ]).then(([dr, hr]) => {
       setDeadlines(dr.data);
       setLocalDates(Object.fromEntries(dr.data.map(d => [d.quarter, {
         date:       d.date?.slice(0, 10) ?? '',
-        openDate:   d.open_date ? localDateStr(d.open_date) : '',
-        graceDays:  d.grace_period_days ?? 0,
-        periodStartMonth: d.period_start_month,
-        periodEndMonth: d.period_end_month,
-      }])));
-      setTrimesterDeadlines(tr.data);
-      setTrimesterLocalDates(Object.fromEntries(tr.data.map(d => [d.trimester, {
-        date:       d.date ? localDateStr(d.date) : '',
         openDate:   d.open_date ? localDateStr(d.open_date) : '',
         graceDays:  d.grace_period_days ?? 0,
         periodStartMonth: d.period_start_month,
@@ -266,42 +251,7 @@ export default function AdminDeadlines() {
     } finally { setSaving(null); }
   };
 
-  const handleSaveTrimester = async (trimester) => {
-    setSaving(`T${trimester}`);
-    try {
-      setFormError('');
-      const ld = trimesterLocalDates[trimester];
-      if (!ld?.openDate || !ld?.date) {
-        setFormError('School trimester windows require both open date and deadline date.');
-        return;
-      }
-      await api.post('/api/admin/deadlines/trimesters', {
-        year: schoolYear,
-        trimester,
-        date:              ld.date,
-        open_date:         ld.openDate,
-        grace_period_days: parseInt(ld.graceDays) || 0,
-        period_start_month: parseInt(ld.periodStartMonth, 10),
-        period_end_month: parseInt(ld.periodEndMonth, 10),
-      });
-      fetchDeadlines();
-    } catch (e) {
-      setFormError(e.friendlyMessage ?? 'Operation failed');
-    } finally { setSaving(null); }
-  };
-
-  const handleResetTrimester = async (deadline) => {
-    if (!deadline.id) return;
-    if (!window.confirm('Remove this trimester window? Schools cannot submit until it is reconfigured.')) return;
-    setSaving(`T${deadline.trimester}`);
-    try {
-      setFormError('');
-      await api.delete(`/api/admin/deadlines/trimesters/${deadline.id}`);
-      fetchDeadlines();
-    } catch (e) {
-      setFormError(e.friendlyMessage ?? 'Operation failed');
-    } finally { setSaving(null); }
-  };
+  // Removed trimester handlers
 
   const anyChanged = (q) => {
     if (!localDates[q]) return false;
@@ -319,21 +269,7 @@ export default function AdminDeadlines() {
       parseInt(ld.periodEndMonth, 10) !== origRange.end;
   };
 
-  const trimesterChanged = (t) => {
-    if (!trimesterLocalDates[t]) return false;
-    const orig = trimesterDeadlines.find(d => d.trimester === t);
-    if (!orig) return false;
-    const origDate  = orig.date ? localDateStr(orig.date) : '';
-    const origOpen  = orig.open_date ? localDateStr(orig.open_date) : '';
-    const origGrace = orig.grace_period_days ?? 0;
-    const origRange = normalizeRange(orig.period_start_month, orig.period_end_month, defaultTrimesterRange(t - 1));
-    const ld = trimesterLocalDates[t];
-    return ld.date !== origDate ||
-      ld.openDate !== origOpen ||
-      parseInt(ld.graceDays) !== origGrace ||
-      parseInt(ld.periodStartMonth, 10) !== origRange.start ||
-      parseInt(ld.periodEndMonth, 10) !== origRange.end;
-  };
+  // Removed trimesterChanged
 
   const impactPreview = (q) => {
     const orig = deadlines.find(d => d.quarter === q)?.date;
@@ -650,146 +586,7 @@ export default function AdminDeadlines() {
               })}
             </Motion.div>
 
-            <div className="flex items-center justify-between gap-3 px-1 pt-2">
-              <div>
-                <h2 className="text-sm font-black text-slate-800 dark:text-slate-100">School Trimesters</h2>
-                <p className="text-xs font-semibold text-slate-400 dark:text-slate-500">{schoolYearLabel(schoolYear)} coverage and windows. Open date and deadline are required before schools can submit.</p>
-              </div>
-            </div>
-
-            <Motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="grid grid-cols-1 md:grid-cols-3 gap-4"
-            >
-              {trimesterDeadlines.map((d, i) => {
-                const ld = trimesterLocalDates[d.trimester] ?? { date: '', openDate: '', graceDays: 0 };
-                const range = normalizeRange(ld.periodStartMonth, ld.periodEndMonth, defaultTrimesterRange(i));
-                const isConfigured = Boolean(d.id);
-                const days = ld.date ? daysLeft(ld.date) : null;
-                const winStatus = configuredWindowStatus(ld.date, ld.openDate, ld.graceDays);
-                const badge = WINDOW_BADGE[winStatus];
-                const BadgeIcon = badge.icon;
-                const isClosed = winStatus === 'closed';
-                const canSave = Boolean(ld.date && ld.openDate && range.start && range.end) && trimesterChanged(d.trimester) && saving !== `T${d.trimester}`;
-
-                return (
-                  <Motion.div
-                    key={d.trimester}
-                    variants={cardVariants}
-                    className={`relative rounded-3xl border backdrop-blur-2xl shadow-xl transition-shadow duration-200 hover:shadow-2xl ${urgencyStyle(days ?? 99, isClosed)}`}
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-b ${urgencyGradient(days ?? 99, isClosed)} rounded-3xl pointer-events-none`} />
-                    <div className="relative p-6 space-y-5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate">
-                            {trimesterLabel(schoolYear, i, range)}
-                          </p>
-                          <span className={`inline-block mt-1 text-[10px] font-black px-2 py-0.5 rounded-lg ${
-                            isConfigured
-                              ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/40'
-                              : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800'
-                          }`}>
-                            {isConfigured ? 'Configured' : 'Not configured'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-lg border ${badge.classes}`}>
-                            <BadgeIcon size={9} weight="bold" />
-                            {badge.label}
-                          </span>
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-lg border bg-slate-100 dark:bg-dark-base text-slate-400 dark:text-slate-500 border-slate-200 dark:border-dark-border">
-                            T{i + 1}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className={`text-4xl font-black leading-none tracking-tight pb-1 ${urgencyCountdownColor(days ?? 99, isClosed)}`}>
-                          {!ld.date ? 'Set window' : isClosed ? 'Closed' : (days < 0 ? `${Math.abs(days)}d overdue` : (days === 0 ? 'Due Today' : `${days}d left`))}
-                        </p>
-                        <p className="text-[12px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-1">
-                          {ld.date ? (() => { const [y,m,day] = ld.date.split('-').map(Number); return new Date(y, m-1, day).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric' }); })() : 'Schools are blocked until configured'}
-                        </p>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                            <CalendarSlash size={12} className="inline mr-1" />Period Coverage
-                            <Tip text="Months whose AIP activities are included in this PIR trimester." />
-                          </label>
-                          <MonthRangePicker
-                            startMonth={ld.periodStartMonth}
-                            endMonth={ld.periodEndMonth}
-                            onStartChange={value => setTrimesterLocalDates(prev => ({ ...prev, [d.trimester]: { ...prev[d.trimester], periodStartMonth: value } }))}
-                            onEndChange={value => setTrimesterLocalDates(prev => ({ ...prev, [d.trimester]: { ...prev[d.trimester], periodEndMonth: value } }))}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                            <LockSimple size={12} className="inline mr-1" />Submissions Open
-                          </label>
-                          <input
-                            type="date"
-                            value={ld.openDate}
-                            onChange={e => setTrimesterLocalDates(prev => ({ ...prev, [d.trimester]: { ...prev[d.trimester], openDate: e.target.value } }))}
-                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all shadow-inner"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                            <CalendarBlank size={12} className="inline mr-1" />Deadline Date
-                          </label>
-                          <input
-                            type="date"
-                            value={ld.date}
-                            onChange={e => setTrimesterLocalDates(prev => ({ ...prev, [d.trimester]: { ...prev[d.trimester], date: e.target.value } }))}
-                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all shadow-inner"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
-                            <Timer size={12} className="inline mr-1" />Grace Period (Days)
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="30"
-                            value={ld.graceDays}
-                            onChange={e => setTrimesterLocalDates(prev => ({ ...prev, [d.trimester]: { ...prev[d.trimester], graceDays: e.target.value } }))}
-                            className="w-full px-4 py-2.5 text-sm font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border border-white/60 dark:border-white/10 rounded-2xl text-slate-700 dark:text-slate-200 focus:outline-none focus:border-emerald-400 dark:focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 transition-all shadow-inner"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 pt-2">
-                        <button
-                          onClick={() => handleSaveTrimester(d.trimester)}
-                          disabled={!canSave}
-                          className="relative flex items-center gap-2 px-6 py-2.5 text-xs font-black rounded-2xl transition-all text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-lg hover:shadow-emerald-500/30 disabled:from-slate-200 disabled:to-slate-200 dark:disabled:from-slate-800 dark:disabled:to-slate-800 disabled:text-slate-400 dark:disabled:text-slate-500 disabled:shadow-none disabled:cursor-not-allowed group"
-                        >
-                          <FloppyDisk size={16} weight="bold" />
-                          {saving === `T${d.trimester}` ? 'Saving…' : isConfigured ? 'Save' : 'Set window'}
-                        </button>
-                        {isConfigured && (
-                          <button
-                            onClick={() => handleResetTrimester(d)}
-                            disabled={saving === `T${d.trimester}`}
-                            className="flex items-center gap-1.5 px-4 py-2.5 text-xs font-black rounded-2xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            <ArrowCounterClockwise size={16} weight="bold" /> Reset
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </Motion.div>
-                );
-              })}
-            </Motion.div>
+            {/* Removed Trimester mapping component */}
 
             {/* Collapsible History */}
             {history.length > 0 && (

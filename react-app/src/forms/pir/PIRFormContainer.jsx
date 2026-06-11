@@ -123,7 +123,6 @@ export default function PIRFormContainer() {
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [isAIPPreviewOpen, setIsAIPPreviewOpen] = useState(false);
     const [aipDocumentData, setAipDocumentData] = useState(null);
-    const [showFinalConfirm, setShowFinalConfirm] = useState(false);
     const reviewAreaRef = useRef(null);
 
     useEffect(() => {
@@ -556,7 +555,7 @@ export default function PIRFormContainer() {
                             onHome={handleHome}
                             onEditPIR={handleEditPIR}
                             onDeletePIR={handleDeletePIR}
-                            onShowFinalConfirm={setShowFinalConfirm}
+                            onShowFinalConfirm={handleConfirmSubmit}
                             toggleAppMode={handleToggleAppMode}
                             handleActivityChange={handleActivityChange}
                             handleAddUnplannedActivity={handleAddUnplannedActivity}
@@ -570,17 +569,14 @@ export default function PIRFormContainer() {
                     )}
                     afterAnimate={(
                         <ConfirmationModal
-                            isOpen={shell.modal.isOpen || showFinalConfirm}
-                            onClose={showFinalConfirm ? () => setShowFinalConfirm(false) : (shell.modal.onClose ?? shell.closeModal)}
-                            onConfirm={showFinalConfirm ? () => {
-                                setShowFinalConfirm(false);
-                                handleConfirmSubmit();
-                            } : shell.modal.onConfirm}
-                            type={showFinalConfirm ? 'warning' : shell.modal.type}
-                            title={showFinalConfirm ? (submission.isEditing ? 'Save PIR changes?' : 'Submit this PIR?') : shell.modal.title}
-                            message={showFinalConfirm ? (submission.isEditing ? 'Your updated PIR will stay in the review process after you save these changes.' : 'Your PIR will be sent for review after submission.') : shell.modal.message}
-                            confirmText={showFinalConfirm ? (submission.isEditing ? 'Save changes' : 'Submit PIR') : shell.modal.confirmText}
-                            cancelText={showFinalConfirm ? 'Keep editing' : shell.modal.cancelText}
+                            isOpen={shell.modal.isOpen}
+                            onClose={shell.modal.onClose ?? shell.closeModal}
+                            onConfirm={shell.modal.onConfirm}
+                            type={shell.modal.type}
+                            title={shell.modal.title}
+                            message={shell.modal.message}
+                            confirmText={shell.modal.confirmText}
+                            cancelText={shell.modal.cancelText}
                             hideCancelButton={shell.modal.hideCancelButton}
                             extraAction={shell.modal.extraAction}
                         />

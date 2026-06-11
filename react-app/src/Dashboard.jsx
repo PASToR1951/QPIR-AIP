@@ -113,18 +113,16 @@ export default function Dashboard() {
     : 'group-hover:text-white transition-colors duration-300';
 
   const actionPrompt = dashboardData ? getActionPrompt(dashboardData, aipStatus) : '';
-  const dashboardPeriodType = dashboardData?.period_type === 'trimester' ? 'trimester' : 'quarter';
+  const dashboardPeriodType = 'quarter';
   const dashboardPeriodPrefix = periodPrefix(dashboardPeriodType);
   const dashboardPeriodNoun = periodNoun(dashboardPeriodType);
   const dashboardPeriodShort = dashboardData
     ? `${dashboardPeriodPrefix}${dashboardData.currentQuarter}`
     : '';
   const reportingYear = dashboardData
-    ? getPeriodYear(dashboardData.currentPeriodLabel, dashboardPeriodType === 'trimester' ? 'School' : 'Division Personnel')
+    ? getPeriodYear(dashboardData.currentPeriodLabel, 'Division Personnel')
     : new Date().getFullYear();
-  const pirReportTitle = dashboardPeriodType === 'trimester'
-    ? 'PIR - Trimester Report'
-    : 'PIR - Quarterly Report';
+  const pirReportTitle = 'PIR - Quarterly Report';
 
   const handleLogout = async () => {
     try {

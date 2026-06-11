@@ -123,14 +123,12 @@ function DivisionRow({ item, onClick }) {
   );
 }
 
-export function AdminOverviewCharts({ pieData, quarterData, trimesterData = [], sectionData = [], divisionAipCompliance = [], navigate }) {
+export function AdminOverviewCharts({ pieData, quarterData, sectionData = [], divisionAipCompliance = [], navigate }) {
   const [viewMode, setViewMode] = useState('status');
-  const [periodView, setPeriodView] = useState('quarters');
   const [aipView, setAipView] = useState('cluster');
 
   const legendKeys = viewMode === 'status' ? PIR_QUARTERLY_KEYS : DIVISION_KEYS;
   const legendColors = viewMode === 'status' ? BAR_COLORS : DIVISION_COLORS;
-  const periodData = periodView === 'trimesters' ? trimesterData : quarterData;
 
   const handleClusterClick = (item) => {
     const params = new URLSearchParams({
@@ -159,13 +157,8 @@ export function AdminOverviewCharts({ pieData, quarterData, trimesterData = [], 
               <ChartBar size={17} weight="bold" />
             </div>
             <h3 className="flex-1 text-sm font-black text-slate-900 dark:text-slate-100">
-              PIR {periodView === 'trimesters' ? 'Trimester' : 'Quarterly'} Progress
+              PIR Quarterly Progress
             </h3>
-            <TabToggle
-              value={periodView}
-              onChange={setPeriodView}
-              options={[{ value: 'quarters', label: 'Quarters' }, { value: 'trimesters', label: 'Trimesters' }]}
-            />
             <TabToggle
               value={viewMode}
               onChange={setViewMode}
@@ -173,7 +166,7 @@ export function AdminOverviewCharts({ pieData, quarterData, trimesterData = [], 
             />
           </div>
           <div>
-            <QuarterlyStatusChart data={periodData} viewMode={viewMode} />
+            <QuarterlyStatusChart data={quarterData} viewMode={viewMode} />
           </div>
           <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1.5">
             {legendKeys.map((key) => (
