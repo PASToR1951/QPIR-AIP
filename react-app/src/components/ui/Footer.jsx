@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppLogo } from '../../context/BrandingContext.jsx';
 import { EnvelopeIcon as Mail, FacebookLogoIcon as Facebook, MapPinIcon as MapPin, PhoneIcon as Phone } from '@phosphor-icons/react';
@@ -5,8 +6,23 @@ import { CURRENT_VERSION } from '../../version';
 
 const Footer = () => {
   const appLogo = useAppLogo();
+  const footerRef = useRef(null);
+
+  useEffect(() => {
+    const el = footerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      const event = new CustomEvent('footer-visibility-change', { detail: entry.isIntersecting });
+      window.dispatchEvent(event);
+    }, { root: null, threshold: 0 });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <footer className="mt-auto relative overflow-hidden">
+    <footer ref={footerRef} className="mt-auto relative overflow-hidden">
       {/* Facade Background */}
       <div
         className="absolute inset-0 bg-cover bg-no-repeat"

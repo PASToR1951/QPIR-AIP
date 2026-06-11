@@ -525,6 +525,7 @@ export default function HelpLauncher() {
   const [isOpen, setIsOpen]       = useState(false);
   const [activeTab, setActiveTab] = useState('help');
   const [tourOpen, setTourOpen]   = useState(false);
+  const [isFooterVisible, setIsFooterVisible] = useState(false);
   const popoverRef = useRef(null);
 
   const drag = useDraggableLauncher(settings.launcherPosition, update);
@@ -586,6 +587,12 @@ export default function HelpLauncher() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const handleFooterVisibility = (e) => setIsFooterVisible(e.detail);
+    window.addEventListener('footer-visibility-change', handleFooterVisibility);
+    return () => window.removeEventListener('footer-visibility-change', handleFooterVisibility);
   }, []);
 
   const handleRestoreLauncher = () => {
@@ -703,19 +710,22 @@ export default function HelpLauncher() {
         </AnimatePresence>
 
         {/* FAB */}
-        {settings.launcherVisible && (
-          <Motion.button
-            ref={drag.fabRef}
-            type="button"
-            onClick={() => drag.interceptClick(() => setIsOpen((p) => !p))}
-            onPointerDown={drag.onPointerDown}
-            onPointerMove={drag.onPointerMove}
-            onPointerUp={drag.onPointerUp}
-            onPointerCancel={drag.onPointerCancel}
-            whileHover={isOpen ? undefined : { scale: 1.08 }}
-            whileTap={{ scale: 0.92 }}
-            animate={{ scale: isOpen ? 0.95 : 1 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+        <AnimatePresence>
+          {settings.launcherVisible && !isFooterVisible && (
+            <Motion.button
+              ref={drag.fabRef}
+              initial={{ opacity: 0, scale: 0.8 }}
+              exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.15 } }}
+              type="button"
+              onClick={() => drag.interceptClick(() => setIsOpen((p) => !p))}
+              onPointerDown={drag.onPointerDown}
+              onPointerMove={drag.onPointerMove}
+              onPointerUp={drag.onPointerUp}
+              onPointerCancel={drag.onPointerCancel}
+              whileHover={isOpen ? undefined : { scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+              animate={{ opacity: 1, scale: isOpen ? 0.95 : 1 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 20 }}
             className="flex h-11 w-11 cursor-grab items-center justify-center rounded-full transition-[box-shadow] sheen-button text-white active:cursor-grabbing sm:h-14 sm:w-14"
             aria-label="Open help and accessibility options"
             aria-expanded={isOpen}
@@ -731,6 +741,7 @@ export default function HelpLauncher() {
             </Motion.div>
           </Motion.button>
         )}
+        </AnimatePresence>
       </div>
 
       {helpConfig && (
