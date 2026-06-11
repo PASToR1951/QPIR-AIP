@@ -242,7 +242,7 @@ scripts/deploy-linux.sh --enable-ssl --domain aip-pir.example.edu \
   --configure-firewall --admin-cidr 203.0.113.10/32
 ```
 
-When using the `ssl` profile manually, set `FRONTEND_PORT=127.0.0.1:8080` so Caddy can own host ports 80 and 443.
+When using the `ssl` profile manually, set `FRONTEND_PORT=127.0.0.1:3006` so Caddy can own host ports 80 and 443.
 
 ---
 

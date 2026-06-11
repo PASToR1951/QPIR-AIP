@@ -56,7 +56,7 @@ if ($EnableSsl) {
     $ApiUrl = "https://$Domain"
   }
   if (-not $PSBoundParameters.ContainsKey("FrontendPort")) {
-    $FrontendPort = 8080
+    $FrontendPort = 3006
   }
 }
 

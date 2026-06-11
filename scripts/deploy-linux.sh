@@ -38,7 +38,7 @@ Options:
   --frontend-url URL       Browser URL for the React app.
   --api-url URL            Browser URL for the backend API.
   --frontend-port PORT     Host port binding for the frontend service.
-                           Use 127.0.0.1:8080 when --enable-ssl is used.
+                           Use 127.0.0.1:3006 when --enable-ssl is used.
   --domain DOMAIN          Domain used by the Caddy SSL profile.
   --env-file PATH          Env file to create/use. Default: .env
   --enable-ssl             Start the Caddy profile and use https://DOMAIN defaults.
@@ -169,7 +169,7 @@ done
 if [ "${ENABLE_SSL}" = true ]; then
   [ "${FRONTEND_URL_SET}" = true ] || FRONTEND_URL="https://${DOMAIN}"
   [ "${API_URL_SET}" = true ] || API_URL="https://${DOMAIN}"
-  [ "${FRONTEND_PORT_SET}" = true ] || FRONTEND_PORT="127.0.0.1:8080"
+  [ "${FRONTEND_PORT_SET}" = true ] || FRONTEND_PORT="127.0.0.1:3006"
 fi
 
 normalize_origin() {
