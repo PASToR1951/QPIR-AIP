@@ -24,6 +24,9 @@ notificationsRoutes.get("/notifications/stream", async (c) => {
     c.header("Access-Control-Allow-Credentials", "true");
   }
 
+  // Prevent Nginx from buffering the SSE stream
+  c.header("X-Accel-Buffering", "no");
+
   return streamSSE(c, async (stream) => {
     const unsubscribe = subscribe(tokenUser.id, (notif) => {
       stream.writeSSE({

@@ -24,9 +24,9 @@ Your role determines what you can see and do in the portal. After signing in, th
 |------|-------------|
 | **School** | Submit and manage your school's AIP and PIR documents |
 | **Division Personnel** | View reports and data for your assigned schools |
-| **CES-SGOD** | Review and endorse PIR submissions before CES-ASDS |
-| **CES-ASDS** | Second-level review and routing of PIR submissions |
-| **CES-CID** | Review and technical evaluation of PIR submissions |
+| **CES-SGOD** | Review and evaluate PIR submissions for SGOD-assigned programs |
+| **CES-ASDS** | Review and evaluate PIR submissions for OSDS-assigned programs |
+| **CES-CID** | Review and evaluate PIR submissions for CID-assigned programs |
 | **Admin** | Full system management: users, schools, clusters, settings |
 
 ---
