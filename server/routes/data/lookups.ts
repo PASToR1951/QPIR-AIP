@@ -180,7 +180,9 @@ lookupsRoutes.get(
       );
 
       const db = prisma.aIP as any;
+      const includeDrafts = c.req.query("include_drafts") === "true";
       const submittedStatuses = [
+        ...(includeDrafts ? ["Draft"] : []),
         "Submitted",
         "Verified",
         "Under Review",

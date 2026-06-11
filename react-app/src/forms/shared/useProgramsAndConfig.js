@@ -95,7 +95,7 @@ export default function useProgramsAndConfig({
 
                 const results = await Promise.allSettled([
                     api.get('/api/programs'),
-                    api.get('/api/programs/with-aips'),
+                    api.get('/api/programs/with-aips', { params: { include_drafts: 'true' } }),
                     schoolOrUserId ? api.get(`/api/schools/${schoolOrUserId}/coordinators`) : Promise.resolve(null),
                     schoolOrUserId ? api.get(`/api/schools/${schoolOrUserId}/persons-terms`) : Promise.resolve(null),
                     api.get('/api/config', clusterId ? { params: { cluster_id: clusterId } } : undefined),
