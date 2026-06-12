@@ -4,6 +4,7 @@ export const OAUTH_ERROR_MESSAGES = {
   oauth_denied: 'Google sign-in was cancelled. Please try again.',
   domain_not_allowed: 'Please use your DepEd email account to sign in.',
   account_pending: 'Your account is waiting for admin approval. Please contact your administrator.',
+  needs_onboarding: 'Please complete your profile to start using the system.',
   account_inactive: 'Your account is inactive. Please contact your administrator.',
   invalid_state: 'Your sign-in session was not valid. Please try again.',
   state_expired: 'Your sign-in session expired. Please try again.',

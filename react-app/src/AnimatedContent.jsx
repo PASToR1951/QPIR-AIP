@@ -26,6 +26,7 @@ const AnnouncementDetail = lazy(() => import('./components/AnnouncementDetail.js
 const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
 const OAuthCallback = lazy(() => import('./OAuthCallback'));
 const MagicLinkCallback = lazy(() => import('./MagicLinkCallback.jsx'));
+const OnboardingWizard = lazy(() => import('./OnboardingWizard.jsx'));
 
 // CES pages
 const CESLayout = lazy(() => import('./ces/CESLayout.jsx'));
@@ -100,7 +101,8 @@ function isProtectedPath(pathname) {
     pathname.startsWith('/announcements') ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/ces') ||
-    pathname.startsWith('/division')
+    pathname.startsWith('/division') ||
+    pathname === '/onboarding'
   );
 }
 
@@ -114,6 +116,7 @@ const ProtectedRoute = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (user?.needs_onboarding || user?.role === 'Pending') return <Navigate to="/onboarding" replace />;
     if (auth.isAdminPanelRole(user?.role)) return <Navigate to="/admin" replace />;
     if (CES_ROLES.includes(user?.role)) return <Navigate to="/ces" replace />;
   } catch {
@@ -126,6 +129,7 @@ const DivisionPersonnelRouteGuard = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (user?.needs_onboarding || user?.role === 'Pending') return <Navigate to="/onboarding" replace />;
     if (user?.role !== 'Division Personnel') return <Navigate to="/" replace />;
   } catch { return <Navigate to="/login" replace />; }
   return children;
@@ -157,6 +161,7 @@ const CESRouteGuard = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const u = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (u?.needs_onboarding || u?.role === 'Pending') return <Navigate to="/onboarding" replace />;
     if (!CES_ROLES.includes(u?.role) && u?.role !== 'Admin') return <Navigate to="/" replace />;
   } catch { return <Navigate to="/login" replace />; }
   return children;
@@ -164,6 +169,10 @@ const CESRouteGuard = ({ children }) => {
 
 const AuthenticatedRoute = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
+  try {
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (user?.needs_onboarding || user?.role === 'Pending') return <Navigate to="/onboarding" replace />;
+  } catch { return <Navigate to="/login" replace />; }
   return children;
 };
 
@@ -173,6 +182,7 @@ const SubmitterRoute = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
   try {
     const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (user?.needs_onboarding || user?.role === 'Pending') return <Navigate to="/onboarding" replace />;
     if (!SUBMITTER_ROLES.includes(user?.role)) return <Navigate to="/403" replace />;
   } catch { return <Navigate to="/login" replace />; }
   return children;
@@ -337,6 +347,7 @@ export default function AnimatedContent() {
             <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
             <Route path="/auth/magic-link" element={<MagicLinkCallback />} />
+            <Route path="/onboarding" element={<PageTransition><OnboardingWizard /></PageTransition>} />
             <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
             <Route path="/user-logs" element={<AuthenticatedRoute><PageTransition><UserLogs /></PageTransition></AuthenticatedRoute>} />
             <Route path="/announcements/:id" element={<AuthenticatedRoute><PageTransition><AnnouncementDetail /></PageTransition></AuthenticatedRoute>} />

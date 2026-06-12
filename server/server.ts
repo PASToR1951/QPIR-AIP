@@ -5,6 +5,7 @@ import { secureHeaders } from "hono/secure-headers";
 import { bodyLimit } from "hono/body-limit";
 import authRoutes from "./routes/auth.ts";
 import oauthRoutes from "./routes/oauth.ts";
+import onboardingRoutes from "./routes/onboarding.ts";
 import dataRoutes from "./routes/data.ts";
 import adminRoutes from "./routes/admin.ts";
 import backupRoutes from "./routes/backup.ts";
@@ -186,6 +187,7 @@ app.get("/api/config", async (c) => {
 // Mount modular routes
 // OAuth must be mounted BEFORE /api/auth to prevent path shadowing
 app.route("/api/auth/oauth", oauthRoutes);
+app.route("/api/auth/onboarding", onboardingRoutes);
 app.route("/api/auth", authRoutes);
 app.route("/api", faqsRoutes);
 app.route("/api", announcementsRoutes);

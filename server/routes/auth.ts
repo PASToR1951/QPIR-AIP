@@ -351,7 +351,10 @@ authRoutes.get("/me", async (c) => {
       where: { id: tokenUser.id },
       include: { school: { include: { cluster: true } } },
     });
-    if (!user || !user.is_active) return c.json({ error: "Unauthorized" }, 401);
+    // For normal users, must be active. For pending users, let them through to /me to see needs_onboarding
+    if (!user || (!user.is_active && user.role !== "Pending")) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
 
     // Extract the actual token expiry from the cookie so the frontend
     // can sync its sessionStorage.tokenExpiry with the real JWT exp.
@@ -379,6 +382,7 @@ authRoutes.get("/me", async (c) => {
       cluster_logo: user.school?.cluster?.logo ?? null,
       school_logo: user.school?.logo ?? null,
       must_change_password: user.must_change_password,
+      needs_onboarding: user.role === "Pending",
       ...buildOnboardingPayload(user as Record<string, unknown>),
       expiresAt,
     });

@@ -130,6 +130,9 @@ type GoogleIdPayload = {
   email?: string;
   email_verified?: boolean | string;
   hd?: string;
+  given_name?: string;
+  family_name?: string;
+  picture?: string;
 };
 
 type GoogleJwk = JsonWebKey & {
@@ -213,6 +216,7 @@ async function finishOAuthLogin(
   provider: OAuthProvider,
   oauthSubject: string,
   email: string,
+  profileHints?: { givenName?: string; familyName?: string },
 ): Promise<
   | {
     ok: true;
@@ -223,7 +227,7 @@ async function finishOAuthLogin(
       school: { cluster_id: number | null } | null;
     };
   }
-  | { ok: false; error: "account_pending" | "account_inactive" }
+  | { ok: false; error: "account_pending" | "account_inactive" | "needs_onboarding" }
 > {
   const normalizedEmail = email.toLowerCase().trim();
 
@@ -257,9 +261,11 @@ async function finishOAuthLogin(
           is_active: false,
           oauth_provider: provider,
           oauth_subject: oauthSubject,
+          first_name: profileHints?.givenName ?? null,
+          last_name: profileHints?.familyName ?? null,
         },
       });
-      return { ok: false, error: "account_pending" };
+      return { ok: false, error: "needs_onboarding" };
     }
   }
 
@@ -481,9 +487,36 @@ oauthRoutes.get("/google/callback", async (c) => {
 
     callbackPhase = "finish_login";
     const oauthSubject = idPayload.sub; // sub = immutable Google user ID
-    const result = await finishOAuthLogin("google", oauthSubject, email);
+    const result = await finishOAuthLogin("google", oauthSubject, email, {
+      givenName: idPayload.given_name,
+      familyName: idPayload.family_name,
+    });
 
-    if (!result.ok) return c.redirect(`${fe}/login?error=${result.error}`);
+    if (!result.ok) {
+      if (result.error === "needs_onboarding") {
+        // Issue a session cookie for the Pending user so they can access /api/auth/onboarding
+        // User record was just created by finishOAuthLogin
+        const pendingUser = await prisma.user.findFirst({
+          where: { oauth_provider: "google", oauth_subject: oauthSubject },
+        });
+        if (pendingUser) {
+          await createSessionCookie(c, {
+            id: pendingUser.id,
+            role: "Pending",
+            school_id: null,
+            school: null,
+          });
+          writeUserLog({
+            userId: pendingUser.id,
+            action: "login",
+            details: { method: "oauth", provider: "google", note: "Started onboarding" },
+            ipAddress: getClientIp(c),
+          });
+        }
+        return c.redirect(`${fe}/oauth/callback?onboarding=true`);
+      }
+      return c.redirect(`${fe}/login?error=${result.error}`);
+    }
 
     callbackPhase = "create_session";
     await createSessionCookie(c, result.user);

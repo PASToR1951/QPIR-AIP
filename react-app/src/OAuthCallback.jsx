@@ -3,9 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { auth } from './lib/auth';
 import { getOAuthErrorMessage, LOGIN_COPY } from './lib/authCopy.js';
 
-function roleToDashboard(role) {
-  if (auth.isAdminPanelRole(role)) return '/admin';
-  if (['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(role)) return '/ces';
+function roleToDashboard(user) {
+  if (user.needs_onboarding || user.role === 'Pending') return '/onboarding';
+  if (auth.isAdminPanelRole(user.role)) return '/admin';
+  if (['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user.role)) return '/ces';
   return '/';
 }
 
@@ -23,10 +24,16 @@ export default function OAuthCallback() {
       return;
     }
 
+    const onboarding = searchParams.get('onboarding');
+    if (onboarding === 'true') {
+      navigate('/onboarding', { replace: true });
+      return;
+    }
+
     // Cookie is already set by the server, so confirm it before entering the app.
     auth.refreshSession()
       .then((user) => {
-        navigate(roleToDashboard(user.role), { replace: true });
+        navigate(roleToDashboard(user), { replace: true });
       })
       .catch(() => {
         setStatusMessage('Sign-in could not be completed. Redirecting…');
