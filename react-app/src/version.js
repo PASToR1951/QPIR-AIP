@@ -1,6 +1,59 @@
-export const CURRENT_VERSION = '1.2.0-beta';
+export const CURRENT_VERSION = '1.3.0-beta';
 
 export const CHANGELOG = [
+  {
+    version: '1.3.0-beta',
+    date: '2026-06-12',
+    title: 'AIP-PIR Beta 4',
+    description:
+      'Beta 4 drops the cluster coordinator role for a streamlined flow, overhauls deployment, and introduces announcements, custom periods, email templates, and the onboarding wizard.',
+    changes: [
+      {
+        type: 'feature',
+        text: 'Notification-powered Announcements system for system-wide broadcasts.',
+      },
+      {
+        type: 'feature',
+        text: 'Admin Email Templates management interface with integrated renderer and store logic for account emails and deadline reminders.',
+      },
+      {
+        type: 'feature',
+        text: 'Admin FAQ management interface.',
+      },
+      {
+        type: 'feature',
+        text: 'Custom reporting periods implementation replacing hardcoded dates, complete with admin management interfaces.',
+      },
+      {
+        type: 'feature',
+        text: 'Onboarding Wizard added for new pending users to complete their profile before accessing the portal.',
+      },
+      {
+        type: 'feature',
+        text: 'Division Personnel are now granted scoped access to consolidation notes and templates.',
+      },
+      {
+        type: 'improvement',
+        text: 'Cluster Coordinator role retired in favor of a streamlined cluster-less flow.',
+      },
+      {
+        type: 'improvement',
+        text: 'Enhanced deployment scripts with Caddy SSL proxying, Windows/Linux deployment wizards, and firewall lockdown automation.',
+      },
+      {
+        type: 'improvement',
+        text: 'Refined UI aesthetics across Privacy Policy, Changelog, System Docs, and Footers using GSAP animations and an updated dark mode palette.',
+      },
+      {
+        type: 'improvement',
+        text: 'Added InteractiveShaderCard component to Footers and HelpLauncher.',
+      },
+      {
+        type: 'fix',
+        text: 'Improved routing guards and cleaned up legacy automation scripts.',
+      },
+    ],
+  },
   {
     version: '1.2.0-beta',
     date: '2026-04-30',
