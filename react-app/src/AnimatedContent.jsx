@@ -76,6 +76,7 @@ function preloadForRole(role) {
     import('./division/DivisionLayout.jsx');
     import('./AIPForm');
     import('./PIRForm');
+    import('./admin/pages/AdminConsolidationTemplate.jsx');
   } else {
     import('./AIPForm');
     import('./PIRForm');

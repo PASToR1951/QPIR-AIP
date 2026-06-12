@@ -5,6 +5,7 @@ import { AnnouncementBanner } from '../components/ui/AnnouncementBanner.jsx';
 import { auth } from '../lib/auth.js';
 import FocalPersonQueue from './FocalPersonQueue.jsx';
 import FocalPersonReview from './FocalPersonReview.jsx';
+import AdminConsolidationTemplate from '../admin/pages/AdminConsolidationTemplate.jsx';
 
 export default function DivisionLayout() {
   const appLogo = useAppLogo();
@@ -45,6 +46,10 @@ export default function DivisionLayout() {
               <ClipboardText size={15} />
               Queue
             </button>
+            <button onClick={() => navigate('/division/consolidation')} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-dark-border/40 dark:hover:text-slate-200">
+              <ChartBar size={15} />
+              Consolidation
+            </button>
             <button onClick={() => navigate('/aip')} className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-dark-border/40 dark:hover:text-slate-200">
               <FileText size={15} />
               My AIP
@@ -66,6 +71,7 @@ export default function DivisionLayout() {
           <Route index element={<FocalPersonQueue />} />
           <Route path="pirs/:id/review" element={<FocalPersonReview type="pir" />} />
           <Route path="aips/:id/review" element={<FocalPersonReview type="aip" />} />
+          <Route path="consolidation" element={<AdminConsolidationTemplate />} />
         </Routes>
       </main>
     </div>

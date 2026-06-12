@@ -7,9 +7,11 @@ import { writeAuditLog } from "./shared/audit.ts";
 import {
   adminOnly,
   adminOrObserverOnly,
+  adminObserverOrDivisionPersonnelOnly,
   OBSERVER_ROLE,
   requireAdmin,
   requireAdminOrObserver,
+  requireAdminObserverOrDivisionPersonnel,
 } from "./shared/guards.ts";
 import {
   CLUSTER_LOGO_DIR,
@@ -25,8 +27,8 @@ const SCHOOL_LEVELS = new Set(["Elementary", "Secondary"]);
 export const observerRoutes = new Hono();
 export const adminRoutes = new Hono();
 
-observerRoutes.use("/clusters", adminOrObserverOnly);
-observerRoutes.use("/schools", adminOrObserverOnly);
+observerRoutes.use("/clusters", adminObserverOrDivisionPersonnelOnly);
+observerRoutes.use("/schools", adminObserverOrDivisionPersonnelOnly);
 
 adminRoutes.use("/clusters/:id", adminOnly);
 adminRoutes.use("/clusters/:id/logo", adminOnly);
@@ -35,7 +37,7 @@ adminRoutes.use("/schools/:id/restrictions", adminOnly);
 adminRoutes.use("/schools/:id/logo", adminOnly);
 
 observerRoutes.get("/clusters", async (c) => {
-  const actor = await requireAdminOrObserver(c);
+  const actor = await requireAdminObserverOrDivisionPersonnel(c);
   if (!actor) return c.json({ error: "Unauthorized" }, 401);
 
   if (actor.role === OBSERVER_ROLE) {
@@ -204,7 +206,7 @@ adminRoutes.delete("/clusters/:id/logo", async (c) => {
 });
 
 observerRoutes.get("/schools", async (c) => {
-  const actor = await requireAdminOrObserver(c);
+  const actor = await requireAdminObserverOrDivisionPersonnel(c);
   if (!actor) return c.json({ error: "Unauthorized" }, 401);
   const clusterId = c.req.query("cluster")
     ? safeParseInt(c.req.query("cluster"), 0)

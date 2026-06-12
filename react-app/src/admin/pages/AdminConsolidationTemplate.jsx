@@ -52,6 +52,7 @@ function isProgramEligibleForSchool(program, school) {
 // Returns the set of fields a given role may write
 function getEditableFields(role) {
   if (role === 'Admin') return new Set(['gaps']);
+  if (role === 'Division Personnel') return new Set(['gaps', 'recommendations', 'management_response']);
   if (role === 'Observer') return new Set(['management_response']);
   return new Set();
 }
@@ -203,24 +204,29 @@ const AdminConsolidationTemplate = () => {
   );
 
   const scopedPrograms = useMemo(() => {
+    let basePrograms = programs;
+    if (currentUser?.role === 'Division Personnel') {
+      basePrograms = basePrograms.filter(program => program.focal_persons?.some(fp => fp.id === currentUser.id));
+    }
+
     if (viewMode === 'division') {
-      return programs.filter(
+      return basePrograms.filter(
         (program) => program.school_level_requirement === 'Division' && program.division === activeDivision,
       );
     }
 
     if (selectedSchool) {
-      return programs.filter((program) => isProgramEligibleForSchool(program, selectedSchool));
+      return basePrograms.filter((program) => isProgramEligibleForSchool(program, selectedSchool));
     }
 
     if (selectedClusterId) {
-      return programs.filter((program) =>
+      return basePrograms.filter((program) =>
         schoolOptions.some((school) => isProgramEligibleForSchool(program, school))
       );
     }
 
-    return programs.filter((program) => program.school_level_requirement !== 'Division');
-  }, [programs, viewMode, activeDivision, selectedSchool, selectedClusterId, schoolOptions]);
+    return basePrograms.filter((program) => program.school_level_requirement !== 'Division');
+  }, [programs, viewMode, activeDivision, selectedSchool, selectedClusterId, schoolOptions, currentUser]);
 
   const rows = useMemo(() => {
     const rateMap = {};

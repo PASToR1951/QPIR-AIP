@@ -22,6 +22,16 @@ export async function requireAdminOrObserver(
   return user;
 }
 
+export async function requireAdminObserverOrDivisionPersonnel(
+  c: Context | string | undefined,
+): Promise<TokenPayload | null> {
+  const user = await getUserFromToken(c);
+  if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE && user.role !== "Division Personnel")) {
+    return null;
+  }
+  return user;
+}
+
 export async function requireCES(
   c: Context | string | undefined,
 ): Promise<TokenPayload | null> {
@@ -43,6 +53,14 @@ export const adminOnly: MiddlewareHandler = async (c, next) => {
 export const adminOrObserverOnly: MiddlewareHandler = async (c, next) => {
   const user = await getUserFromToken(c);
   if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  await next();
+};
+
+export const adminObserverOrDivisionPersonnelOnly: MiddlewareHandler = async (c, next) => {
+  const user = await getUserFromToken(c);
+  if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE && user.role !== "Division Personnel")) {
     return c.json({ error: "Forbidden" }, 403);
   }
   await next();

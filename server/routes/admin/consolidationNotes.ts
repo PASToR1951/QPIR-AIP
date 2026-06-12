@@ -11,12 +11,13 @@ const consolidationNotesRoutes = new Hono();
 const QUARTER_PREFIXES: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
 
 // Roles that may read consolidation data
-const READ_ROLES = new Set(["Admin", "Observer"]);
+const READ_ROLES = new Set(["Admin", "Observer", "Division Personnel"]);
 
 // Field → roles that may write that field
 const FIELD_WRITE_ROLES: Record<string, Set<string>> = {
-  gaps: new Set(["Admin"]),
-  management_response: new Set(["Observer"]),
+  gaps: new Set(["Admin", "Division Personnel"]),
+  recommendations: new Set(["Division Personnel"]),
+  management_response: new Set(["Observer", "Division Personnel"]),
 };
 
 function parseYearQuarter(c: { req: { query: (k: string) => string | undefined } }) {
@@ -200,8 +201,18 @@ consolidationNotesRoutes.put("/consolidation-notes", async (c) => {
     return c.json({ error: "Forbidden: your role cannot edit this field" }, 403);
   }
 
-  const program = await prisma.program.findUnique({ where: { id: program_id } });
+  const program = await prisma.program.findUnique({
+    where: { id: program_id },
+    include: { focal_persons: true },
+  });
   if (!program) return c.json({ error: "Program not found" }, 404);
+
+  if (user.role === "Division Personnel") {
+    const isFocal = program.focal_persons.some((fp: any) => fp.user_id === user.id);
+    if (!isFocal) {
+      return c.json({ error: "Forbidden: you are not a focal person for this program" }, 403);
+    }
+  }
 
   let note;
   try {
