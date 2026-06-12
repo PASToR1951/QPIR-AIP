@@ -6,7 +6,7 @@ export const CHANGELOG = [
     date: '2026-06-12',
     title: 'AIP-PIR Beta 4',
     description:
-      'Beta 4 drops the cluster coordinator role for a streamlined flow, overhauls deployment, and introduces announcements, custom periods, email templates, and the onboarding wizard.',
+      'Beta 4 retires the Cluster Coordinator workflow, expands admin-managed communications and reporting periods, hardens auth and deployment paths, and adds the pending-user onboarding wizard.',
     changes: [
       {
         type: 'feature',
@@ -38,11 +38,19 @@ export const CHANGELOG = [
       },
       {
         type: 'improvement',
-        text: 'Enhanced deployment scripts with Caddy SSL proxying, Windows/Linux deployment wizards, and firewall lockdown automation.',
+        text: 'Onboarding tour chapters, HelpLauncher behavior, and target validation were refreshed, with onboarding wizard and HelpLauncher visibility constrained to desktop devices where required.',
+      },
+      {
+        type: 'improvement',
+        text: 'Enhanced deployment and backup scripts with Caddy SSL proxying, Windows/Linux deployment wizards, firewall lockdown automation, environment validation, and configurable seed admin credentials.',
       },
       {
         type: 'improvement',
         text: 'Refined UI aesthetics across Privacy Policy, Changelog, System Docs, and Footers using GSAP animations and an updated dark mode palette.',
+      },
+      {
+        type: 'security',
+        text: 'Auth and routing paths now use shared API base and origin handling, safer OAuth/session trust checks, refreshed auth copy, and cleaned user activity log imports.',
       },
       {
         type: 'improvement',
@@ -50,7 +58,7 @@ export const CHANGELOG = [
       },
       {
         type: 'fix',
-        text: 'Improved routing guards and cleaned up legacy automation scripts.',
+        text: 'Improved route guards, updated frontend port configuration, and removed legacy commit-batch automation scripts.',
       },
     ],
   },

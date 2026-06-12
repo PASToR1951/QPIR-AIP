@@ -1,95 +1,153 @@
 # Getting Started with AIP-PIR
 
-Welcome to the **AIP-PIR Portal** — the digital system for managing Annual Implementation Plans (AIP) and Physical Implementation Reports (PIR) across schools, divisions, and cluster coordinators.
+Welcome to the **AIP-PIR Portal** - the system for preparing Annual Implementation Plans (AIP), filing Program Implementation Reviews (PIR), reviewing submissions, and producing division reports.
+
+The current portal uses a cluster-less review workflow. Clusters still group schools for records, logos, and reports, but the old Cluster Coordinator review step has been retired.
 
 ---
 
-## 1. Sign In
+## 1. Sign In and Finish Setup
 
-All accounts are created by an administrator — **self-registration is not available**.
+1. Open the portal URL in a modern browser.
+2. Sign in with your DepEd Google account when available, or use the email and password or magic link provided by an administrator.
+3. If the portal asks you to change a temporary password, complete that step before continuing.
+4. If you are redirected to **Complete Your Profile**, use a desktop or laptop to finish the onboarding wizard.
 
-1. Open the portal URL in your browser.
-2. Enter your **username** and **password**, then click **Sign In**.
-3. If your division uses Google Workspace, you may also use **Sign in with Google** (where enabled).
+Pending users can complete the onboarding wizard by choosing either **School-Based Personnel** or **Division-Based Personnel**, confirming their name and position, and selecting the appropriate school or division programs. Admins can still manage roles, account status, assignments, and corrections from the Users page.
 
-> If you have not received your credentials, contact your Division Admin.
-
----
-
-## 2. Find Your Role
-
-Your role determines what you can see and do in the portal. After signing in, the dashboard will reflect your specific role.
-
-| Role | What you do |
-|------|-------------|
-| **School** | Submit and manage your school's AIP and PIR documents |
-| **Division Personnel** | View reports and data for your assigned schools |
-| **CES-SGOD** | Review and evaluate PIR submissions for SGOD-assigned programs |
-| **CES-ASDS** | Review and evaluate PIR submissions for OSDS-assigned programs |
-| **CES-CID** | Review and evaluate PIR submissions for CID-assigned programs |
-| **Admin** | Full system management: users, schools, clusters, settings |
+> If sign-in says your account is inactive, pending approval, or outside the allowed DepEd domain, contact your Division Admin.
 
 ---
 
-## 3. AIP Workflow (School Role)
+## 2. Know Your Role
 
-1. Go to **AIP** in the sidebar.
-2. Click **New AIP** and select the program and school year.
-3. Fill in activities, targets, and budget details.
-4. Submit for review.
+Your role controls which workspace, records, and actions you can access.
 
-> Only one AIP is allowed per school, program, and school year. A PIR cannot be filed without an approved AIP.
-
----
-
-## 4. PIR Workflow (School Role)
-
-PIRs are filed **per quarter** against an approved AIP.
-
-1. Go to **PIR** in the sidebar.
-2. Select the approved AIP you want to report on.
-3. Choose the quarter (Q1–Q4).
-4. Activities are **auto-populated** from your AIP — fill in the accomplishments for each.
-5. Submit for review.
-
-> Only one PIR is allowed per AIP per quarter.
+| Role | Main workspace | What you do |
+| --- | --- | --- |
+| **School** | Dashboard, AIP, PIR | Prepare school AIPs, file quarterly PIRs, monitor returned items, and download documents. |
+| **Division Personnel** | Dashboard, AIP, PIR, Focal Queue | Prepare division-level AIPs/PIRs and recommend or return assigned school submissions as a focal person. |
+| **CES-SGOD** | CES Queue, AIP, PIR | Review SGOD submissions, act on focal-recommended AIPs/PIRs, and submit CES-owned documents. |
+| **CES-ASDS** | CES Queue, AIP, PIR | Review OSDS submissions, act on focal-recommended AIPs/PIRs, and submit CES-owned documents. |
+| **CES-CID** | CES Queue, AIP, PIR | Review CID and unassigned-division submissions, act on focal-recommended AIPs/PIRs, and submit CES-owned documents. |
+| **Admin** | Admin Portal | Manage users, schools, clusters, programs, deadlines, submissions, reports, backups, settings, announcements, FAQs, and email templates. |
+| **Observer** | Admin Portal, read-only views | Monitor overview data, inspect submissions, and contribute allowed management responses without changing workflow records. |
+| **Pending** | Onboarding | Complete profile setup or wait for admin action before role-specific tools open. |
 
 ---
 
-## 5. PIR Review Chain
+## 3. Use the Dashboard First
 
-Once a school submits a PIR, it moves through the following chain:
+After sign-in, start from your dashboard.
 
+- Check the cards for your current AIP, PIR, and submission history.
+- Review status badges before opening a document.
+- Use notifications to jump directly to returned, recommended, approved, or announcement-linked records.
+- Watch for announcement banners from the admin team.
+- On desktop layouts, use the guided onboarding checklist and Help button to tour your role-specific workspace.
+
+---
+
+## 4. Create or Update an AIP
+
+AIPs define the planned activities, targets, implementation months, responsible persons, outputs, and budget details for a program.
+
+1. Open **AIP**.
+2. Select the program you need to plan.
+3. Complete the profile, goals and targets, action plan, and signature sections.
+4. Use autosave while drafting, then review the final step before submitting.
+5. Submit the AIP when the document is ready for review.
+
+Only one active AIP is allowed for the same owner, program, and reporting year. PIR filing depends on the approved or accepted AIP record for that program.
+
+---
+
+## 5. File a PIR for the Current Quarter
+
+PIRs report accomplishments against activities from an AIP. The portal uses quarterly PIR periods with admin-managed submission windows and configurable month coverage.
+
+1. Open **PIR**.
+2. Select the program connected to your AIP.
+3. Confirm the current quarter label shown by the form.
+4. Review the AIP-derived activities included in that period.
+5. Enter accomplishments, budget use, monitoring factors, gaps, and action items.
+6. Review the final document and submit.
+
+The system prevents duplicate PIRs for the same AIP and quarter. If the submission window is closed, ask an administrator to review the deadline settings.
+
+---
+
+## 6. Understand the Review Chain
+
+School-owned AIPs and PIRs move through this current path:
+
+```text
+School submits -> Focal recommendation -> CES review -> Approved or Returned
 ```
-School Submits → Focal Recommendation → CES Review (SGOD / ASDS / CID) → Approved or Returned
-```
 
-Each reviewer can **approve**, **return for revision**, or **comment** on the submission. You will receive notifications at each stage.
+Division Personnel assigned as focal persons can recommend a school submission to CES or return it with remarks. CES reviewers act according to the program's functional division:
 
----
+| Program division | CES reviewer |
+| --- | --- |
+| SGOD | CES-SGOD |
+| OSDS | CES-ASDS |
+| CID | CES-CID |
+| Unassigned | CES-CID |
 
-## 6. Notifications
-
-The bell icon in the top navigation shows pending notifications. Click any notification to jump directly to the relevant document.
-
----
-
-## 7. Common Questions
-
-**I can't find my school in the dropdown.**
-Your school must be registered by an Admin. Contact your division administrator.
-
-**My PIR won't submit — it says "No approved AIP found."**
-An AIP for the same school, program, and year must be approved before a PIR can be filed.
-
-**I submitted but nothing happened.**
-Check the **status badge** on your submission. If it shows "Pending Review," it is waiting on the next reviewer in the chain.
-
-**How do I change my password?**
-Go to your **Profile** (click your name in the top right) and select **Change Password**.
+Returned documents go back to the author for correction. Open the same AIP or PIR, read the remarks, revise the record, and resubmit it to the appropriate queue.
 
 ---
 
-## 8. Getting Help
+## 7. Admin Setup Checklist
 
-If you encounter issues not covered here, contact your **Division Admin** or the system administrator.
+Admins keep the workflow moving by maintaining the records and settings that users depend on.
+
+- **Users:** create accounts, reset passwords, assign roles, review onboarding progress, and manage active or pending status.
+- **Schools and clusters:** maintain school records, cluster grouping, and logos used in reports and document headers.
+- **Programs:** assign functional divisions and focal persons so school submissions can route correctly.
+- **Deadlines:** set quarterly PIR coverage months, opening dates, due dates, and grace periods.
+- **Submissions and PIR Review:** monitor workflow status, inspect records, and resolve exceptions.
+- **Reports and Consolidation:** generate compliance, workload, budget, accomplishment, factor, AIP funnel, cluster summary, and consolidation outputs.
+- **Settings:** manage branding, signatories, announcements, email configuration, email templates, and FAQs.
+- **Backups and Logs:** review backup tools and audit activity for accountability.
+
+---
+
+## 8. Notifications, Announcements, and Help
+
+- The notification bell shows workflow updates and deep links to AIPs, PIRs, sessions, and announcements.
+- Announcement banners may be system-wide or targeted by role, school, or user.
+- The FAQ page answers common workflow questions.
+- The Getting Started page is a quick reference for all users.
+- The role-aware onboarding tour and practice mode help users learn the system without changing real records.
+
+---
+
+## 9. Common Issues
+
+**I cannot find my school.**  
+Ask an administrator to confirm that your account is assigned to the correct school and that the school exists in the Admin Schools page.
+
+**My program is missing.**  
+Ask an administrator to confirm the program exists, has the correct school-level requirement, and is assigned to you if your role requires program assignment.
+
+**My AIP will not submit.**  
+Check required fields, signatures, budget entries, and whether the selected program has focal persons assigned when school routing needs recommendation.
+
+**My PIR says no approved AIP was found.**  
+Submit or open the approved AIP for the same program and reporting year before filing a PIR.
+
+**My PIR submission window is closed.**  
+Ask an administrator to check the quarter's open date, due date, grace period, and month coverage in Deadlines.
+
+**I received a returned document.**  
+Open the same AIP or PIR, read the reviewer remarks, make the correction, and resubmit. The portal sends it back to the correct review queue.
+
+**The onboarding wizard says desktop required.**  
+Complete profile setup on a desktop or laptop. The wizard uses detailed forms that are intentionally blocked on small screens.
+
+---
+
+## 10. Getting More Help
+
+Start with the in-app FAQ and the Help button on supported desktop pages. For account access, role assignment, school records, deadlines, or routing problems, contact your **Division Admin**.

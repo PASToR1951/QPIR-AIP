@@ -7,6 +7,7 @@ import rehypeSlug from 'rehype-slug';
 import { ArrowLeft, BookOpen } from '@phosphor-icons/react';
 import Footer from './ui/Footer.jsx';
 import guideContent from '../../../docs/wiki/user-guides/Getting-Started.md?raw';
+import { CURRENT_VERSION } from '../version.js';
 
 export default function GettingStarted() {
   return (
@@ -25,14 +26,14 @@ export default function GettingStarted() {
                 Getting Started
               </h1>
               <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
-                First steps for every AIP-PIR portal role
+                Current quick guide for every AIP-PIR portal role
               </p>
             </div>
           </div>
 
           <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-black text-indigo-700">
             <BookOpen size={14} />
-            Guide
+            v{CURRENT_VERSION}
           </span>
         </div>
       </div>
@@ -47,7 +48,7 @@ export default function GettingStarted() {
               Getting Started Guide
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-              Use this page as the main quick guide for signing in, understanding your role, and finding the next step inside the portal.
+              Use this page as the current quick guide for signing in, completing onboarding, understanding your role, and finding the next step inside the portal.
             </p>
           </div>
 
