@@ -204,24 +204,8 @@ export function parseAdminLogFiltersFromBody(
   );
 }
 
-function buildUnionSql() {
+function buildUnionFromSql() {
   return Prisma.sql`
-    SELECT
-      logs.id,
-      logs.source,
-      logs.action,
-      logs.entity_type,
-      logs.entity_id,
-      logs.details,
-      logs.ip_address,
-      logs.created_at,
-      logs.actor_id,
-      logs.actor_role,
-      logs.actor_name,
-      logs.actor_email,
-      logs.actor_first_name,
-      logs.actor_middle_initial,
-      logs.actor_last_name
     FROM (
       SELECT
         al.id,
@@ -363,7 +347,7 @@ function buildWhereSql(filters: AdminLogFilters) {
 
 function buildBaseSql(filters: AdminLogFilters) {
   const whereSql = buildWhereSql(filters);
-  return Prisma.sql`${buildUnionSql()} ${whereSql}`;
+  return Prisma.sql`${buildUnionFromSql()} ${whereSql}`;
 }
 
 export function buildLogsListQuery(filters: AdminLogFilters) {
@@ -433,7 +417,7 @@ export function buildActorRoleFacetQuery(filters: AdminLogFilters) {
 export function buildLogDetailQuery(source: "admin" | "user", id: number) {
   return Prisma.sql`
     SELECT logs.*
-    ${buildUnionSql()}
+    ${buildUnionFromSql()}
     WHERE logs.source = ${source}
       AND logs.id = ${id}
     ORDER BY logs.created_at DESC, logs.source DESC, logs.id DESC

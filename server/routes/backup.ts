@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { getUserFromToken, TokenPayload } from "../lib/auth.ts";
+import { getUserFromToken, type TokenPayload } from "../lib/auth.ts";
 import { logger } from "../lib/logger.ts";
 import { writeAuditLog } from "./admin/shared/audit.ts";
 
@@ -7,10 +7,46 @@ import type { Context } from "hono";
 
 const backupRoutes = new Hono();
 
-const STATUS_FILE = "/app/backups/status.json";
-const HOURLY_DIR = "/app/backups/hourly";
-const DAILY_DIR  = "/app/backups/daily";
-const TRIGGER_DIR = Deno.env.get("BACKUP_TRIGGER_DIR") || "/app/backups/triggers";
+const FALLBACK_BACKUP_BASE_DIR = "/app/backups";
+const BACKUP_BASE_DIR_CANDIDATES = [
+  FALLBACK_BACKUP_BASE_DIR,
+  "../backups",
+  "./backups",
+];
+
+function joinPath(base: string, child: string) {
+  return `${base.replace(/\/+$/, "")}/${child.replace(/^\/+/, "")}`;
+}
+
+async function isDirectory(path: string) {
+  try {
+    return (await Deno.stat(path)).isDirectory;
+  } catch {
+    return false;
+  }
+}
+
+async function getBackupBaseDir() {
+  const configured = Deno.env.get("BACKUP_BASE_DIR")?.trim();
+  if (configured) return configured;
+
+  for (const candidate of BACKUP_BASE_DIR_CANDIDATES) {
+    if (await isDirectory(candidate)) return candidate;
+  }
+
+  return FALLBACK_BACKUP_BASE_DIR;
+}
+
+async function getBackupPaths() {
+  const baseDir = await getBackupBaseDir();
+  return {
+    statusFile: joinPath(baseDir, "status.json"),
+    hourlyDir: joinPath(baseDir, "hourly"),
+    dailyDir: joinPath(baseDir, "daily"),
+    triggerDir: Deno.env.get("BACKUP_TRIGGER_DIR")?.trim() ||
+      joinPath(baseDir, "triggers"),
+  };
+}
 
 async function requireAdmin(c: Context): Promise<TokenPayload | null> {
   const user = await getUserFromToken(c);
@@ -42,6 +78,7 @@ async function listBackupFiles(dir: string): Promise<Array<{ name: string; size:
 backupRoutes.get("/status", async (c) => {
   const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Forbidden" }, 403);
+  const paths = await getBackupPaths();
 
   let statusData: Record<string, unknown> = {
     status: "unknown",
@@ -56,7 +93,7 @@ backupRoutes.get("/status", async (c) => {
 
   // Read status.json written by backup_healthcheck.sh
   try {
-    const raw = await Deno.readTextFile(STATUS_FILE);
+    const raw = await Deno.readTextFile(paths.statusFile);
     statusData = JSON.parse(raw);
   } catch {
     // status.json missing — backup service may not have run yet
@@ -66,8 +103,8 @@ backupRoutes.get("/status", async (c) => {
 
   // Also list backup files for the history panel
   const [hourlyFiles, dailyFiles] = await Promise.all([
-    listBackupFiles(HOURLY_DIR),
-    listBackupFiles(DAILY_DIR),
+    listBackupFiles(paths.hourlyDir),
+    listBackupFiles(paths.dailyDir),
   ]);
 
   return c.json({
@@ -82,13 +119,14 @@ backupRoutes.get("/status", async (c) => {
 backupRoutes.post("/trigger", async (c) => {
   const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Forbidden" }, 403);
+  const paths = await getBackupPaths();
 
   logger.info("Manual backup triggered", { admin_id: admin.id });
 
   try {
-    await Deno.mkdir(TRIGGER_DIR, { recursive: true });
+    await Deno.mkdir(paths.triggerDir, { recursive: true });
     const triggerId = `${Date.now()}-${crypto.randomUUID()}`;
-    const triggerPath = `${TRIGGER_DIR}/hourly-${triggerId}.json`;
+    const triggerPath = joinPath(paths.triggerDir, `hourly-${triggerId}.json`);
     await Deno.writeTextFile(triggerPath, JSON.stringify({
       type: "hourly",
       triggered_by: admin.id,

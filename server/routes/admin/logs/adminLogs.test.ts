@@ -1,5 +1,13 @@
 import { getActionMeta } from "./actionCatalog.ts";
-import { parseAdminLogFilters, AdminLogQueryError } from "./query.ts";
+import {
+  AdminLogQueryError,
+  buildActionFacetQuery,
+  buildLogDetailQuery,
+  buildLogsCountQuery,
+  buildLogsExportQuery,
+  buildLogsListQuery,
+  parseAdminLogFilters,
+} from "./query.ts";
 import { redactDetails } from "./redact.ts";
 import { buildAdminLogRow } from "./shared.ts";
 
@@ -13,6 +21,11 @@ function assertEquals(actual: unknown, expected: unknown, message: string) {
   if (actualJson !== expectedJson) {
     throw new Error(`${message}\nexpected: ${expectedJson}\nactual:   ${actualJson}`);
   }
+}
+
+function sqlText(query: unknown): string {
+  const strings = (query as { strings?: string[] }).strings ?? [];
+  return strings.join("?").replace(/\s+/g, " ").trim();
 }
 
 Deno.test("parseAdminLogFilters normalizes lists and date-only boundaries", () => {
@@ -44,6 +57,30 @@ Deno.test("parseAdminLogFilters normalizes lists and date-only boundaries", () =
   assertEquals(filters.q, "password mismatch", "search text should be trimmed");
   assertEquals(filters.from?.toISOString(), "2026-04-10T00:00:00.000Z", "from date should start at midnight UTC");
   assertEquals(filters.to?.toISOString(), "2026-04-12T23:59:59.999Z", "to date should end at the day boundary");
+});
+
+Deno.test("admin log query builders compose a single outer select", () => {
+  const filters = parseAdminLogFilters({
+    source: "admin",
+    severity: "critical",
+    q: "login",
+    limit: "10",
+  });
+  const queries = [
+    buildLogsListQuery(filters),
+    buildLogsCountQuery(filters),
+    buildLogsExportQuery(filters, 10),
+    buildActionFacetQuery(filters),
+    buildLogDetailQuery("admin", 1),
+  ].map(sqlText);
+
+  for (const query of queries) {
+    assert(query.includes(" FROM ("), "query should select from the unioned log source");
+    assert(query.includes("UNION ALL"), "query should include both admin and user log sources");
+    assert(!query.includes("SELECT logs.* SELECT"), "list/detail query should not prepend a select to another select");
+    assert(!query.includes("AS total SELECT"), "count query should not prepend a count to another select");
+    assert(!query.includes("AS count SELECT"), "facet query should not prepend an aggregate to another select");
+  }
 });
 
 Deno.test("parseAdminLogFilters rejects invalid severities", () => {

@@ -122,7 +122,7 @@ export default function AdminBackups() {
     setTriggerMsg(null);
     try {
       await api.post('/api/admin/backup/trigger', {});
-      setTriggerMsg({ type: 'ok', text: 'Backup started in background. Refresh status in ~30 seconds.' });
+      setTriggerMsg({ type: 'ok', text: 'Backup queued for the backup service. Refresh status in ~30 seconds.' });
       setTimeout(fetchStatus, 10000);
     } catch (e) {
       const msg = e.friendlyMessage ?? 'Failed to trigger backup.';
