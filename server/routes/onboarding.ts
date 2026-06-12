@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { prisma } from "../db/client.ts";
 import { getClientIp } from "../lib/clientIp.ts";
-import { writeUserLog } from "../lib/auditTrail.ts";
+import { writeUserLog } from "../lib/userActivityLog.ts";
 import { pushNotifications } from "../lib/notifStream.ts";
 import { asyncHandler } from "./data/shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./data/shared/guards.ts";
