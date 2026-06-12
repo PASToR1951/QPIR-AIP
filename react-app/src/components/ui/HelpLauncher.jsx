@@ -618,7 +618,7 @@ export default function HelpLauncher() {
     <>
       <div
         ref={popoverRef}
-        className="fixed z-[95] print:hidden"
+        className="fixed z-[95] hidden md:block print:hidden"
         style={{
           left: drag.position.left,
           top:  drag.position.top,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  XCircle, CaretLeft, Buildings, IdentificationBadge, CaretRight, UserPlus, WarningCircle, CheckCircle, EnvelopeSimple
+  XCircle, CaretLeft, Buildings, IdentificationBadge, CaretRight, UserPlus, WarningCircle, CheckCircle, EnvelopeSimple, Desktop
 } from '@phosphor-icons/react';
 import { auth } from './lib/auth';
 import api from './lib/api';
@@ -131,8 +131,19 @@ export default function OnboardingWizard() {
       {/* Background Overlay */}
       <div className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm z-0" />
 
+      {/* Mobile Block Message */}
+      <div className="relative z-10 w-full max-w-sm bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/20 dark:border-white/5 text-center flex flex-col items-center md:hidden">
+        <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-500 rounded-2xl flex items-center justify-center mb-4 border border-rose-200 dark:border-rose-800/50">
+          <Desktop size={32} weight="duotone" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Desktop Required</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+          The onboarding wizard contains detailed forms that are best completed on a larger screen. Please log in using a desktop or laptop computer to finish setting up your account.
+        </p>
+      </div>
+
       {/* Main Container */}
-      <div className="relative z-10 w-full max-w-2xl bg-white/90 dark:bg-dark-surface/95 backdrop-blur-md rounded-3xl shadow-2xl overflow-hidden border border-white/20 dark:border-white/5">
+      <div className="relative z-10 w-full max-w-2xl bg-white/90 dark:bg-dark-surface/95 backdrop-blur-md rounded-3xl shadow-2xl overflow-hidden border border-white/20 dark:border-white/5 hidden md:block">
         
         {/* Header */}
         <div className="px-8 pt-8 pb-6 border-b border-slate-200/50 dark:border-dark-border/50 text-center">
