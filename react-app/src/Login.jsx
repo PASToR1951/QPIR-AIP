@@ -239,8 +239,8 @@ export default function Login() {
 
   // Shared privacy notice below both login views
   const privacyNotice = (
-    <div className="space-y-1 text-center px-2">
-      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+    <div className="space-y-1 text-center">
+      <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed whitespace-nowrap tracking-tight sm:tracking-normal">
         By signing in, you agree to the portal&apos;s{' '}
         <Link to="/privacy" className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
           Privacy Notice
