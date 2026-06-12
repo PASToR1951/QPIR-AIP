@@ -1,6 +1,8 @@
 # ── Personal dev scripts & automation ────────────────────────────────────────
 commit-batch.sh
 start.sh
+commit-stage.sh
+commit-stages.sh
 
 # ── Internal documentation (not for public/repo consumers) ───────────────────
 /docs/*
