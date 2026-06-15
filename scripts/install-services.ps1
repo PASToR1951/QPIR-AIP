@@ -4,7 +4,8 @@
 .DESCRIPTION
     Run this ONCE on the Windows Server as Administrator. It will:
       1. Install the GitHub Actions Runner as a Windows Service (auto-deploy)
-      2. Install the Health Monitor as a hidden Scheduled Task (email reports)
+      2. Install Docker Compose autostart as a hidden Scheduled Task
+      3. Install the Health Monitor as a hidden Scheduled Task (email reports)
     Both run silently in the background and survive reboots.
 .NOTES
     Run from: C:\Users\Administrator\Desktop\SYSTEMS
@@ -12,7 +13,9 @@
 
 param(
     [string]$ProjectDir = "C:\Users\Administrator\Desktop\SYSTEMS\QPIR-AIP",
-    [string]$RunnerDir  = "C:\Users\Administrator\Desktop\SYSTEMS\actions-runner"
+    [string]$RunnerDir  = "C:\Users\Administrator\Desktop\SYSTEMS\autostart",
+    [switch]$EnableSsl,
+    [switch]$EnableBackup
 )
 
 $ErrorActionPreference = "Continue"
@@ -64,10 +67,37 @@ if (-not (Test-Path $svcCmd)) {
 Write-Host ""
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SERVICE 2: Health Monitor (Email Reports)
+# SERVICE 2: Docker Compose Autostart
 # ══════════════════════════════════════════════════════════════════════════════
 Write-Host "──────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
-Write-Host "  [2/2] Health Monitor (Email Reports)" -ForegroundColor Yellow
+Write-Host "  [2/3] Docker Compose Autostart" -ForegroundColor Yellow
+Write-Host "──────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+
+$dockerAutostartScript = Join-Path $ProjectDir "scripts\install-docker-autostart.ps1"
+if (-not (Test-Path $dockerAutostartScript)) {
+    Write-Host "  [ERROR] install-docker-autostart.ps1 not found at: $dockerAutostartScript" -ForegroundColor Red
+    Write-Host "     Please make sure you have pulled the latest code." -ForegroundColor Red
+} else {
+    $dockerArgs = @(
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-File", $dockerAutostartScript,
+        "-ProjectDir", $ProjectDir
+    )
+    if ($EnableSsl) { $dockerArgs += "-EnableSsl" }
+    if ($EnableBackup) { $dockerArgs += "-EnableBackup" }
+
+    Write-Host "  ===> Installing Docker boot autostart task..." -ForegroundColor White
+    & powershell.exe @dockerArgs
+}
+
+Write-Host ""
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SERVICE 3: Health Monitor (Email Reports)
+# ══════════════════════════════════════════════════════════════════════════════
+Write-Host "──────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+Write-Host "  [3/3] Health Monitor (Email Reports)" -ForegroundColor Yellow
 Write-Host "──────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
 
 $monitorScript = Join-Path $ProjectDir "scripts\health-monitor.ps1"
@@ -149,6 +179,9 @@ Write-Host "  [OK] ALL BACKGROUND SERVICES INSTALLED!" -ForegroundColor Green
 Write-Host "" -ForegroundColor Green
 Write-Host "  [AUTO] Auto-Deploy:     GitHub Actions Runner (Windows Service)" -ForegroundColor White
 Write-Host "     -> Listens for pushes and auto-deploys your code." -ForegroundColor DarkGray
+Write-Host "" -ForegroundColor Green
+Write-Host "  [BOOT] Docker Autostart: Scheduled Task (on startup)" -ForegroundColor White
+Write-Host "     -> Starts Docker Compose after power loss/reboot." -ForegroundColor DarkGray
 Write-Host "" -ForegroundColor Green
 Write-Host "  [STATS] Health Monitor:  Scheduled Task (every 6h + on startup)" -ForegroundColor White
 Write-Host "     -> Sends reports to:" -ForegroundColor DarkGray

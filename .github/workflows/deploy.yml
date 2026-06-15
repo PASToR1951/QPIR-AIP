@@ -11,8 +11,10 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Pull Latest Code and Rebuild Docker
+        shell: powershell
         run: |
           cd C:\Users\Administrator\Desktop\SYSTEMS\QPIR-AIP
-          git fetch --all
-          git reset --hard origin/main
+          $branch = "${{ github.ref_name }}"
+          git fetch origin $branch
+          git reset --hard "origin/$branch"
           powershell.exe -ExecutionPolicy Bypass -File .\run.ps1 docker
