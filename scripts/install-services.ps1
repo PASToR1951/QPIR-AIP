@@ -20,101 +20,17 @@ param(
 
 $ErrorActionPreference = "Continue"
 
-function Install-RunnerScheduledTask {
-    param(
-        [string]$RunnerDir,
-        [string]$TaskName = "QPIR-AIP Actions Runner Autostart"
-    )
-
-    $runCmd = Join-Path $RunnerDir "run.cmd"
-    if (-not (Test-Path $runCmd)) {
-        Write-Host "  [WARN]  run.cmd not found at: $runCmd" -ForegroundColor Yellow
-        return $false
-    }
-
-    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-        Write-Host "  ===> Replacing existing runner scheduled task..." -ForegroundColor White
-        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-    }
-
-    $action = New-ScheduledTaskAction `
-        -Execute "cmd.exe" `
-        -Argument "/c `"$runCmd`"" `
-        -WorkingDirectory $RunnerDir
-
-    $startupTrigger = New-ScheduledTaskTrigger -AtStartup
-    $startupTrigger.Delay = "PT1M"
-
-    $settings = New-ScheduledTaskSettingsSet `
-        -AllowStartIfOnBatteries `
-        -DontStopIfGoingOnBatteries `
-        -StartWhenAvailable `
-        -RunOnlyIfNetworkAvailable:$false `
-        -RestartCount 5 `
-        -RestartInterval (New-TimeSpan -Minutes 3) `
-        -ExecutionTimeLimit (New-TimeSpan -Days 30) `
-        -Hidden
-
-    Register-ScheduledTask `
-        -TaskName $TaskName `
-        -Action $action `
-        -Trigger $startupTrigger `
-        -Settings $settings `
-        -User "SYSTEM" `
-        -RunLevel Highest `
-        -Description "Starts the QPIR-AIP GitHub Actions runner from run.cmd after Windows startup." `
-        -Force | Out-Null
-
-    Start-ScheduledTask -TaskName $TaskName
-    Write-Host "  [OK] Runner scheduled task installed and started: $TaskName" -ForegroundColor Green
-    return $true
-}
-
 function Install-ActionsRunnerAutostart {
     param([string]$RunnerDir)
 
-    $svcCmd = Join-Path $RunnerDir "svc.cmd"
-    $runCmd = Join-Path $RunnerDir "run.cmd"
-
-    if (-not (Test-Path $RunnerDir)) {
-        Write-Host "  [WARN]  GitHub Actions Runner folder not found at: $RunnerDir" -ForegroundColor Yellow
-        Write-Host "     Skipping runner autostart installation." -ForegroundColor Yellow
+    $runnerAutostartScript = Join-Path $ProjectDir "scripts\install-runner-autostart.ps1"
+    if (-not (Test-Path $runnerAutostartScript)) {
+        Write-Host "  [ERROR] install-runner-autostart.ps1 not found at: $runnerAutostartScript" -ForegroundColor Red
+        Write-Host "     Please make sure you have pulled the latest code." -ForegroundColor Red
         return
     }
 
-    if (Test-Path $svcCmd) {
-        $runnerService = Get-Service -Name "actions.runner.*" -ErrorAction SilentlyContinue
-        if ($runnerService) {
-            Write-Host "  [OK] Runner service is already installed: $($runnerService.Name)" -ForegroundColor Green
-            if ($runnerService.Status -ne "Running") {
-                Write-Host "  ===> Starting runner service..." -ForegroundColor White
-                Push-Location $RunnerDir
-                & .\svc.cmd start
-                Pop-Location
-            }
-            Write-Host "  [OK] Runner service is running." -ForegroundColor Green
-            return
-        }
-
-        Write-Host "  ===> Installing GitHub Actions Runner as a Windows Service..." -ForegroundColor White
-        Push-Location $RunnerDir
-        & .\svc.cmd install
-        Write-Host "  ===> Starting runner service..." -ForegroundColor White
-        & .\svc.cmd start
-        Pop-Location
-        Write-Host "  [OK] Runner service installed and started." -ForegroundColor Green
-        return
-    }
-
-    if (Test-Path $runCmd) {
-        Write-Host "  [WARN]  svc.cmd not found, but run.cmd exists." -ForegroundColor Yellow
-        Write-Host "     Installing a scheduled-task fallback for this newly fetched runner." -ForegroundColor Yellow
-        Install-RunnerScheduledTask -RunnerDir $RunnerDir | Out-Null
-        return
-    }
-
-    Write-Host "  [WARN]  No svc.cmd or run.cmd found in: $RunnerDir" -ForegroundColor Yellow
-    Write-Host "     Please configure the GitHub Actions runner first, then re-run this script." -ForegroundColor Yellow
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $runnerAutostartScript -RunnerDir $RunnerDir
 }
 
 Write-Host ""
