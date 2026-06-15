@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone, LockKeyOpen, LockKey, CalendarBlank } from '@phosphor-icons/react';
+import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone, LockKeyOpen, LockKey, CalendarBlank, UserPlus } from '@phosphor-icons/react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import api, { API } from '../../lib/api.js';
 import { mergeNotifications } from '../../lib/notifications.js';
@@ -21,6 +21,7 @@ const TYPE_ICON = {
   aip_edit_approved:       <LockKeyOpen size={16} className="text-emerald-400 shrink-0" />,
   aip_edit_denied:         <LockKey size={16} className="text-red-400 shrink-0" />,
   deadline_reminder:       <CalendarBlank size={16} className="text-sky-400 shrink-0" />,
+  user_self_registered:    <UserPlus size={16} className="text-indigo-400 shrink-0" />,
 };
 
 function timeAgo(dateStr) {
@@ -42,6 +43,7 @@ function resolveNotificationRoute(n, role) {
       return `/admin/submissions?type=pir&review=${entity_id}`;
     if (entity_type === 'aip' && entity_id)
       return `/admin/submissions?type=aip&review=${entity_id}`;
+    if (entity_type === 'user' && entity_id) return '/admin/users';
     return '/admin/submissions';
   }
   if (['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(role)) {

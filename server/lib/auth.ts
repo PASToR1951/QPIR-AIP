@@ -19,6 +19,10 @@ export interface TokenPayload {
   sessionId?: number;
 }
 
+interface GetUserFromTokenOptions {
+  allowInactivePending?: boolean;
+}
+
 const VALID_ROLES = [
   "School",
   "Division Personnel",
@@ -59,6 +63,7 @@ function extractToken(
 
 export async function getUserFromToken(
   cOrHeader: Context | string | undefined,
+  options: GetUserFromTokenOptions = {},
 ): Promise<TokenPayload | null> {
   const token = extractToken(cOrHeader);
   if (!token) return null;
@@ -96,7 +101,11 @@ export async function getUserFromToken(
 
     const failure = getSessionValidationFailure(session, payload, now);
     if (failure || !session) {
-      return null;
+      const allowInactivePending = failure === "inactive_user" &&
+        options.allowInactivePending === true &&
+        payload.role === "Pending" &&
+        session?.user.role === "Pending";
+      if (!allowInactivePending) return null;
     }
 
     const shouldTouch = now.getTime() - session.last_seen_at.getTime() >=

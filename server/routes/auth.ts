@@ -76,9 +76,9 @@ function buildSessionUserPayload(user: Record<string, unknown>) {
     school_name: (user.school as { name?: string } | null)?.name,
     cluster_id: (user.school as { cluster_id?: number | null } | null)
       ?.cluster_id ?? null,
-    cluster_number: ((user.school as
-        | { cluster?: { cluster_number?: number | null } }
-        | null)?.cluster?.cluster_number ?? null),
+    cluster_number: (user.school as
+      | { cluster?: { cluster_number?: number | null } }
+      | null)?.cluster?.cluster_number ?? null,
     cluster_logo: (user.school as { cluster?: { logo?: string | null } } | null)
       ?.cluster?.logo ?? null,
     school_logo: (user.school as { logo?: string | null } | null)?.logo ?? null,
@@ -343,7 +343,7 @@ authRoutes.post("/logout", async (c) => {
 // The JWT lives in the HttpOnly cookie; this endpoint lets the frontend read user metadata without
 // ever touching the raw token.
 authRoutes.get("/me", async (c) => {
-  const tokenUser = await getUserFromToken(c);
+  const tokenUser = await getUserFromToken(c, { allowInactivePending: true });
   if (!tokenUser) return c.json({ error: "Unauthorized" }, 401);
 
   try {

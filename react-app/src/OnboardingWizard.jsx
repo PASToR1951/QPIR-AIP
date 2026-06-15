@@ -126,7 +126,7 @@ export default function OnboardingWizard() {
 
   return (
     <div className="min-h-screen bg-cover bg-center bg-no-repeat relative flex flex-col items-center justify-center p-4"
-         style={{ backgroundImage: 'url("/images/sdo-facade.jpg")' }}>
+         style={{ backgroundImage: 'url("/SDO_Facade.webp")' }}>
       
       {/* Background Overlay */}
       <div className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm z-0" />
@@ -148,7 +148,7 @@ export default function OnboardingWizard() {
         {/* Header */}
         <div className="px-8 pt-8 pb-6 border-b border-slate-200/50 dark:border-dark-border/50 text-center">
           <div className="mx-auto w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl shadow-sm flex items-center justify-center mb-4 border border-slate-100 dark:border-slate-700">
-             <img src="/logo192.png" alt="AIP-PIR Logo" className="w-10 h-10 object-contain drop-shadow-sm" />
+             <img src="/AIP-PIR-logo.webp" alt="AIP-PIR Logo" className="w-10 h-10 object-contain drop-shadow-sm" />
           </div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Complete Your Profile</h1>
           <p className="mt-1 text-slate-500 dark:text-slate-400 text-sm">Set up your account to start using the AIP-PIR Portal.</p>

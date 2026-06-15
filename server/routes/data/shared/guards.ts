@@ -5,9 +5,10 @@ import type { DataRouteEnv } from "./types.ts";
 
 export function requireAuth(
   message = "Authentication required",
+  options: { allowInactivePending?: boolean } = {},
 ): MiddlewareHandler<{ Variables: DataRouteEnv }> {
   return async (c, next) => {
-    const user = await getUserFromToken(c);
+    const user = await getUserFromToken(c, options);
     if (!user) return c.json({ error: message }, 401);
     c.set("user", user);
     await next();
