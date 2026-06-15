@@ -125,11 +125,14 @@ export default function OnboardingWizard() {
   }));
 
   return (
-    <div className="min-h-screen bg-cover bg-center bg-no-repeat relative flex flex-col items-center justify-center p-4"
-         style={{ backgroundImage: 'url("/SDO_Facade.webp")' }}>
+    <div className="min-h-screen relative flex flex-col items-center justify-center p-4 overflow-hidden">
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat z-0"
+        style={{ backgroundImage: 'url("/SDO_Facade.webp")' }}
+      />
       
       {/* Background Overlay */}
-      <div className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm z-0" />
+      <div className="absolute inset-0 bg-slate-900/25 dark:bg-slate-950/45 z-0" />
 
       {/* Mobile Block Message */}
       <div className="relative z-10 w-full max-w-sm bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/20 dark:border-white/5 text-center flex flex-col items-center md:hidden">
