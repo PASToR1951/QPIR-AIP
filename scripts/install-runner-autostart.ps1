@@ -88,15 +88,33 @@ function Install-RunnerScheduledTask {
         throw "run.cmd not found at: $runCmd"
     }
 
-    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
-        Write-Host "==> Replacing existing runner scheduled task..."
-        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
-    }
-
     $action = New-ScheduledTaskAction `
         -Execute "cmd.exe" `
         -Argument "/c `"$runCmd`"" `
         -WorkingDirectory $RunnerDir
+
+    $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if ($existingTask) {
+        $existingAction = $existingTask.Actions | Select-Object -First 1
+        $sameAction = $existingAction.Execute -eq $action.Execute -and
+            $existingAction.Arguments -eq $action.Arguments -and
+            $existingAction.WorkingDirectory -eq $action.WorkingDirectory
+
+        if ($sameAction) {
+            Enable-ScheduledTask -TaskName $TaskName | Out-Null
+            $listener = Get-Process -Name "Runner.Listener" -ErrorAction SilentlyContinue
+            if (-not $listener -and $existingTask.State -ne "Running") {
+                Start-ScheduledTask -TaskName $TaskName
+                Write-Host "[OK] Existing runner scheduled task started: $TaskName" -ForegroundColor Green
+            } else {
+                Write-Host "[OK] Existing runner scheduled task is already installed: $TaskName" -ForegroundColor Green
+            }
+            return
+        }
+
+        Write-Host "==> Replacing existing runner scheduled task..."
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+    }
 
     $startupTrigger = New-ScheduledTaskTrigger -AtStartup
     $startupTrigger.Delay = "PT1M"

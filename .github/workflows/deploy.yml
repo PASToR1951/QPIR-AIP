@@ -17,8 +17,4 @@ jobs:
           $branch = "${{ github.ref_name }}"
           git fetch origin $branch
           git reset --hard "origin/$branch"
-          powershell.exe -ExecutionPolicy Bypass -File .\scripts\install-runner-autostart.ps1 -RunnerDir "C:\Users\Administrator\Desktop\SYSTEMS\autostart"
-          if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Runner autostart installation failed with exit code $LASTEXITCODE. Continuing deploy."
-          }
           powershell.exe -ExecutionPolicy Bypass -File .\run.ps1 docker
