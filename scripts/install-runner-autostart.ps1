@@ -27,6 +27,56 @@ function Require-Admin {
     }
 }
 
+function Test-RunnerRoot {
+    param([string]$Path)
+
+    if (-not $Path -or -not (Test-Path $Path)) { return $false }
+    return (Test-Path (Join-Path $Path "svc.cmd")) -or
+        (Test-Path (Join-Path $Path "run.cmd"))
+}
+
+function Resolve-RunnerRoot {
+    param([string]$RequestedRunnerDir)
+
+    $projectDir = Split-Path -Parent $PSScriptRoot
+    $systemsDir = Split-Path -Parent $projectDir
+    $candidates = @(
+        $RequestedRunnerDir,
+        (Join-Path $RequestedRunnerDir "actions-runner"),
+        (Join-Path $RequestedRunnerDir "runner"),
+        (Join-Path $RequestedRunnerDir "github-runner"),
+        (Join-Path $projectDir "actions-runner"),
+        (Join-Path $projectDir "autostart"),
+        (Join-Path $systemsDir "actions-runner"),
+        (Join-Path $systemsDir "autostart")
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $candidates) {
+        if (Test-RunnerRoot -Path $candidate) {
+            return [pscustomobject]@{
+                Path = $candidate
+                Checked = $candidates
+            }
+        }
+    }
+
+    if (Test-Path $RequestedRunnerDir) {
+        $nestedRunCmd = Get-ChildItem -Path $RequestedRunnerDir -Filter "run.cmd" -File -Recurse -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($nestedRunCmd) {
+            return [pscustomobject]@{
+                Path = $nestedRunCmd.Directory.FullName
+                Checked = $candidates
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Path = $null
+        Checked = $candidates
+    }
+}
+
 function Install-RunnerScheduledTask {
     param(
         [string]$RunnerDir,
@@ -77,9 +127,22 @@ function Install-RunnerScheduledTask {
 
 Require-Admin
 
-if (-not (Test-Path $RunnerDir)) {
-    throw "Runner folder not found: $RunnerDir"
+$resolvedRunner = Resolve-RunnerRoot -RequestedRunnerDir $RunnerDir
+if (-not $resolvedRunner.Path) {
+    Write-Host "[ERROR] Could not find a GitHub Actions runner folder." -ForegroundColor Red
+    Write-Host "Checked these paths:"
+    foreach ($candidate in $resolvedRunner.Checked) {
+        Write-Host "  - $candidate"
+    }
+    Write-Host ""
+    Write-Host "The runner folder must contain svc.cmd or run.cmd."
+    Write-Host "If your runner is elsewhere, pass it explicitly:"
+    Write-Host '  powershell.exe -ExecutionPolicy Bypass -File .\scripts\install-runner-autostart.ps1 -RunnerDir "C:\path\to\runner"'
+    exit 1
 }
+
+$RunnerDir = $resolvedRunner.Path
+Write-Host "==> Using runner folder: $RunnerDir"
 
 $svcCmd = Join-Path $RunnerDir "svc.cmd"
 $runCmd = Join-Path $RunnerDir "run.cmd"
