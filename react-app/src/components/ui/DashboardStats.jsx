@@ -1,13 +1,7 @@
 import React from 'react';
 import { FileText, ChartBar as BarChart3, Clock } from '@phosphor-icons/react';
-import { getPeriodYear, periodNoun, periodPrefix } from '../../lib/periods.js';
-
-function calculateDaysLeft(isoDate) {
-    if (!isoDate) return null;
-    const deadline = new Date(isoDate);
-    const now = new Date();
-    return Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-}
+import { periodNoun, periodPrefix } from '../../lib/periods.js';
+import { calculateDaysLeft } from './dashboardPrompt.js';
 
 function formatDeadlineShort(isoDate) {
     if (!isoDate) return 'Not set';
@@ -56,7 +50,7 @@ function SegmentedBar({ completed, total }) {
 function DotPips({ submitted, total }) {
     if (total === 0) return null;
     return (
-        <div className="flex gap-1.5 mt-3 justify-center">
+        <div className="flex gap-1.5 mt-3 justify-start">
             {Array.from({ length: total }).map((_, i) => {
                 const t = total > 1 ? i / (total - 1) : 0;
                 return (
@@ -76,13 +70,16 @@ function DotPips({ submitted, total }) {
 
 function LoadingSkeleton() {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
             {[1, 2, 3].map(i => (
-                <div key={i} className="bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-2xl p-6 shadow-sm animate-pulse">
-                    <div className="flex flex-col items-center gap-3">
-                        <div className="w-8 h-8 bg-slate-200 dark:bg-dark-border/60 rounded-full" />
-                        <div className="w-20 h-6 bg-slate-200 dark:bg-dark-border/60 rounded" />
-                        <div className="w-32 h-3 bg-slate-100 dark:bg-dark-border rounded" />
+                <div key={i} className="animate-pulse rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-dark-border dark:bg-dark-surface">
+                    <div className="flex items-start gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-slate-200 dark:bg-dark-border/60" />
+                        <div className="min-w-0 flex-1">
+                            <div className="h-3 w-24 rounded bg-slate-200 dark:bg-dark-border/60" />
+                            <div className="mt-4 h-6 w-16 rounded bg-slate-200 dark:bg-dark-border/60" />
+                            <div className="mt-3 h-3 w-36 rounded bg-slate-100 dark:bg-dark-border" />
+                        </div>
                     </div>
                 </div>
             ))}
@@ -93,11 +90,10 @@ function LoadingSkeleton() {
 export default function DashboardStats({ data, loading }) {
     if (loading || !data) return <LoadingSkeleton />;
 
-    const { aipCompletion, pirSubmitted, currentQuarter, deadline, totalPlannedBudget } = data;
+    const { aipCompletion, pirSubmitted, currentQuarter, deadline } = data;
     const currentPeriod = data.currentPeriodLabel || `${periodPrefix(data.period_type)}${currentQuarter}`;
     const currentPeriodShort = `${periodPrefix(data.period_type)}${currentQuarter}`;
     const noun = periodNoun(data.period_type);
-    const reportingYear = getPeriodYear(data.currentPeriodLabel, data.period_type === 'trimester' ? 'School' : 'Division Personnel');
     const daysLeft = calculateDaysLeft(deadline);
     const urgency = deadline ? getUrgencyTier(daysLeft) : { level: 'locked', color: 'slate', bgTint: 'bg-white dark:bg-dark-surface border-slate-200 dark:border-dark-border' };
 
@@ -108,11 +104,11 @@ export default function DashboardStats({ data, loading }) {
     const noPirNeeded = pirSubmitted.total === 0;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
             {/* AIP Progress */}
-            <div className={`bg-white dark:bg-dark-surface border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allAipDone ? 'border-emerald-200 dark:border-emerald-700' : 'border-slate-200 dark:border-dark-border'}`}>
+            <div className={`rounded-lg border bg-white p-5 shadow-sm transition-all hover:shadow-md dark:bg-dark-surface ${allAipDone ? 'border-emerald-200 dark:border-emerald-700' : 'border-slate-200 dark:border-dark-border'}`}>
                 <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allAipDone ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400' : 'bg-pink-100 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400'}`}>
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${allAipDone ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400' : 'bg-pink-100 text-pink-600 dark:bg-pink-950/50 dark:text-pink-400'}`}>
                         <FileText size={20} />
                     </div>
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">AIP Progress</span>
@@ -132,9 +128,9 @@ export default function DashboardStats({ data, loading }) {
             </div>
 
             {/* PIR This Quarter */}
-            <div className={`bg-white dark:bg-dark-surface border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${allPirDone ? 'border-emerald-200 dark:border-emerald-700' : noPirNeeded ? 'border-slate-200 dark:border-dark-border' : 'border-amber-100 dark:border-amber-800/50'}`}>
+            <div className={`rounded-lg border bg-white p-5 shadow-sm transition-all hover:shadow-md dark:bg-dark-surface ${allPirDone ? 'border-emerald-200 dark:border-emerald-700' : noPirNeeded ? 'border-slate-200 dark:border-dark-border' : 'border-amber-100 dark:border-amber-800/50'}`}>
                 <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${allPirDone ? 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400' : noPirNeeded ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500' : 'bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400'}`}>
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${allPirDone ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400' : noPirNeeded ? 'bg-slate-100 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500' : 'bg-amber-100 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400'}`}>
                         <BarChart3 size={20} />
                     </div>
                     <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{currentPeriodShort} Reviews</span>
@@ -157,12 +153,12 @@ export default function DashboardStats({ data, loading }) {
             </div>
 
             {/* Deadline */}
-            <div className={`border rounded-2xl p-6 shadow-sm transition-all hover:shadow-md ${urgency.bgTint}`}>
+            <div className={`rounded-lg border p-5 shadow-sm transition-all hover:shadow-md ${urgency.bgTint}`}>
                 <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                        urgency.level === 'calm' ? 'bg-slate-100 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400' :
-                        urgency.level === 'attention' ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400' :
-                        'bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400'
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                        urgency.level === 'calm' ? 'bg-slate-100 text-slate-500 dark:bg-slate-800/50 dark:text-slate-400' :
+                        urgency.level === 'attention' ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400' :
+                        'bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400'
                     }`}>
                         <Clock size={20} />
                     </div>
@@ -200,33 +196,4 @@ export default function DashboardStats({ data, loading }) {
             </div>
         </div>
     );
-}
-
-// Helper for welcome section action prompt
-export function getActionPrompt(data, aipStatus) {
-    if (!data) return '';
-    const { aipCompletion, pirSubmitted, currentQuarter } = data;
-    const currentPeriod = data.currentPeriodLabel || `${periodPrefix(data.period_type)}${currentQuarter}`;
-    const currentPeriodShort = `${periodPrefix(data.period_type)}${currentQuarter}`;
-    const noun = periodNoun(data.period_type);
-    const reportingYear = getPeriodYear(data.currentPeriodLabel, data.period_type === 'trimester' ? 'School' : 'Division Personnel');
-    const daysLeft = calculateDaysLeft(data.deadline);
-
-    if (aipCompletion.completed === 0) {
-        return `Start by submitting your AIP - Annual Plan for FY ${reportingYear}.`;
-    }
-    if (pirSubmitted.total > 0 && pirSubmitted.submitted < pirSubmitted.total) {
-        return data.deadline
-            ? `Your ${currentPeriodShort} PIR report is due in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.`
-            : `${currentPeriod} PIR window is not configured yet.`;
-    }
-    if (pirSubmitted.total === 0 && aipCompletion.completed > 0) {
-        const periodCount = data.period_type === 'trimester' ? 3 : 4;
-        return `No activities are scheduled for ${currentPeriodShort}. ${currentQuarter < periodCount ? `Your next report opens in ${periodPrefix(data.period_type)}${currentQuarter + 1}.` : `All ${noun}s are complete.`}`;
-    }
-    if (pirSubmitted.submitted >= pirSubmitted.total && aipCompletion.completed >= aipCompletion.total) {
-        const periodCount = data.period_type === 'trimester' ? 3 : 4;
-        return `You are on track for ${currentPeriodShort}. ${currentQuarter < periodCount ? `Your next report opens in ${periodPrefix(data.period_type)}${currentQuarter + 1}.` : 'Great work this year.'}`;
-    }
-    return `You are managing the planning and reporting cycle for FY ${reportingYear}.`;
 }
