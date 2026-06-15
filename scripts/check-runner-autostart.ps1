@@ -59,6 +59,14 @@ Write-Step "Runner processes"
 $processes = Get-Process -Name "Runner.Listener", "Runner.Worker", "RunnerService" -ErrorAction SilentlyContinue
 if ($processes) {
     $processes | Format-Table -AutoSize Id, ProcessName, StartTime
+
+    Write-Host ""
+    Write-Host "Process ownership:"
+    $processIds = $processes | ForEach-Object { $_.Id }
+    Get-CimInstance Win32_Process |
+        Where-Object { $processIds -contains $_.ProcessId } |
+        Select-Object ProcessId, ParentProcessId, CommandLine |
+        Format-List
 } else {
     Write-Host "[WARN] No runner processes found." -ForegroundColor Yellow
     Write-Host "If the workflow is queued, start the task:"
