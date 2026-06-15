@@ -19,6 +19,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+if ($env:GITHUB_ACTIONS -eq "true") {
+    throw "Do not run this installer from inside a GitHub Actions job. Run it manually in an elevated PowerShell window on the Windows server."
+}
+
 function Require-Admin {
     $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($identity)

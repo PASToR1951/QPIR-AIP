@@ -33,6 +33,14 @@ server/scripts/.audit_tokens.json
 .env.*.local
 env
 
+# ── OAuth / API credential downloads ─────────────────────────────────────────
+client_secret*.json
+*.apps.googleusercontent.com.json
+credentials*.json
+google-oauth*.json
+oauth-client*.json
+!*.example.json
+
 # ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules/
 
