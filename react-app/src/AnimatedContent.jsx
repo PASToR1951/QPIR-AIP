@@ -111,68 +111,61 @@ function hasValidStoredSession() {
   return Boolean(user?.role) && !auth.isExpired();
 }
 
+function getCurrentUser() {
+  const user = auth.getUser();
+  return user?.role ? user : null;
+}
+
 // Route guards
 const ProtectedRoute = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
-  try {
-    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
-    if (user?.needs_onboarding || user?.role === 'Pending') return <Navigate to="/onboarding" replace />;
-    if (auth.isAdminPanelRole(user?.role)) return <Navigate to="/admin" replace />;
-    if (CES_ROLES.includes(user?.role)) return <Navigate to="/ces" replace />;
-  } catch {
-    return <Navigate to="/login" replace />;
-  }
+  const user = getCurrentUser();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.needs_onboarding || user.role === 'Pending') return <Navigate to="/onboarding" replace />;
+  if (auth.isAdminPanelRole(user.role)) return <Navigate to="/admin" replace />;
+  if (CES_ROLES.includes(user.role)) return <Navigate to="/ces" replace />;
   return children;
 };
 
 const DivisionPersonnelRouteGuard = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
-  try {
-    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
-    if (user?.needs_onboarding || user?.role === 'Pending') return <Navigate to="/onboarding" replace />;
-    if (user?.role !== 'Division Personnel') return <Navigate to="/" replace />;
-  } catch { return <Navigate to="/login" replace />; }
+  const user = getCurrentUser();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.needs_onboarding || user.role === 'Pending') return <Navigate to="/onboarding" replace />;
+  if (user.role !== 'Division Personnel') return <Navigate to="/" replace />;
   return children;
 };
 
 const AdminRouteGuard = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
-  try {
-    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
-    if (!auth.isAdminPanelRole(user?.role)) return <Navigate to="/403" replace />;
-  } catch {
-    return <Navigate to="/login" replace />;
-  }
+  const user = getCurrentUser();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!auth.isAdminPanelRole(user.role)) return <Navigate to="/403" replace />;
   return children;
 };
 
 const AdminOnlyGuard = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
-  try {
-    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
-    if (user?.role !== 'Admin') return <Navigate to="/403" replace />;
-  } catch {
-    return <Navigate to="/login" replace />;
-  }
+  const user = getCurrentUser();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'Admin') return <Navigate to="/403" replace />;
   return children;
 };
 
 const CESRouteGuard = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
-  try {
-    const u = JSON.parse(sessionStorage.getItem('user') || 'null');
-    if (u?.needs_onboarding || u?.role === 'Pending') return <Navigate to="/onboarding" replace />;
-    if (!CES_ROLES.includes(u?.role) && u?.role !== 'Admin') return <Navigate to="/" replace />;
-  } catch { return <Navigate to="/login" replace />; }
+  const user = getCurrentUser();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.needs_onboarding || user.role === 'Pending') return <Navigate to="/onboarding" replace />;
+  if (!CES_ROLES.includes(user.role) && user.role !== 'Admin') return <Navigate to="/" replace />;
   return children;
 };
 
 const AuthenticatedRoute = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
-  try {
-    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
-    if (user?.needs_onboarding || user?.role === 'Pending') return <Navigate to="/onboarding" replace />;
-  } catch { return <Navigate to="/login" replace />; }
+  const user = getCurrentUser();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.needs_onboarding || user.role === 'Pending') return <Navigate to="/onboarding" replace />;
   return children;
 };
 
@@ -180,11 +173,10 @@ const SUBMITTER_ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS',
 
 const SubmitterRoute = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
-  try {
-    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
-    if (user?.needs_onboarding || user?.role === 'Pending') return <Navigate to="/onboarding" replace />;
-    if (!SUBMITTER_ROLES.includes(user?.role)) return <Navigate to="/403" replace />;
-  } catch { return <Navigate to="/login" replace />; }
+  const user = getCurrentUser();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.needs_onboarding || user.role === 'Pending') return <Navigate to="/onboarding" replace />;
+  if (!SUBMITTER_ROLES.includes(user.role)) return <Navigate to="/403" replace />;
   return children;
 };
 
