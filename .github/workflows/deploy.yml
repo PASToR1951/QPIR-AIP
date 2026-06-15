@@ -9,12 +9,30 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
-    steps:
-      - name: Pull Latest Code and Rebuild Docker
+    defaults:
+      run:
         shell: powershell
+        working-directory: 'C:\Users\Administrator\Desktop\SYSTEMS\QPIR-AIP'
+    steps:
+      - name: Verify runner and Docker prerequisites
         run: |
-          cd C:\Users\Administrator\Desktop\SYSTEMS\QPIR-AIP
+          $ErrorActionPreference = "Stop"
+          Write-Host "Runner: $env:RUNNER_NAME"
+          Write-Host "Machine: $env:COMPUTERNAME"
+          Write-Host "User: $env:USERNAME"
+          Write-Host "Workspace: $(Get-Location)"
+          git --version
+          docker --version
+          docker compose version
+
+      - name: Pull latest code
+        run: |
+          $ErrorActionPreference = "Stop"
           $branch = "${{ github.ref_name }}"
           git fetch origin $branch
           git reset --hard "origin/$branch"
+
+      - name: Rebuild Docker stack
+        run: |
+          $ErrorActionPreference = "Stop"
           powershell.exe -ExecutionPolicy Bypass -File .\run.ps1 docker
