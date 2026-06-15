@@ -3,6 +3,8 @@ commit-batch.sh
 start.sh
 commit-stage.sh
 commit-stages.sh
+/actions-runner
+/actions-runner/*
 
 # ── Internal documentation (not for public/repo consumers) ───────────────────
 /docs/*
