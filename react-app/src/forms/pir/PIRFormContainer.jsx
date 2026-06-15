@@ -18,7 +18,7 @@ import usePirAipActivities from './usePirAipActivities.js';
 import { buildPirPayload } from './buildPirPayload.js';
 import submitPir from './submitPir.js';
 import PIRFormEditor from './PIRFormEditor.jsx';
-import { getCurrentPeriodLabel, getPeriodNumber, getPeriodTypeForRole } from '../../lib/periods.js';
+import { getCurrentPeriodLabel, getDefaultReportingYear, getPeriodNumber, getPeriodTypeForRole, getQuarterLabel } from '../../lib/periods.js';
 import { emitOnboardingSignal } from '../../lib/onboardingSignals.js';
 
 function hasFactorInput(factors) {
@@ -55,7 +55,32 @@ export default function PIRFormContainer() {
     }
 
     const isDivisionPersonnel = ['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role);
-    const fallbackPeriodLabel = useMemo(() => getCurrentPeriodLabel(user?.role), [user?.role]);
+    const defaultReportingYear = getDefaultReportingYear(user?.role);
+    const previousReportingYear = defaultReportingYear - 1;
+    const initialPeriodMode = searchParams.get('year') === String(previousReportingYear)
+        ? 'previous'
+        : 'current';
+    const initialQuarter = Number(searchParams.get('quarter'));
+    const [periodMode, setPeriodMode] = useState(initialPeriodMode);
+    const [previousQuarter, setPreviousQuarter] = useState(
+        Number.isInteger(initialQuarter) && initialQuarter >= 1 && initialQuarter <= 4
+            ? initialQuarter
+            : 1,
+    );
+    const selectedYear = periodMode === 'previous' ? previousReportingYear : defaultReportingYear;
+    const fallbackPeriodLabel = useMemo(() => (
+        periodMode === 'previous'
+            ? getQuarterLabel(previousQuarter, previousReportingYear)
+            : getCurrentPeriodLabel(user?.role)
+    ), [periodMode, previousQuarter, previousReportingYear, user?.role]);
+    const periodSearchParams = useMemo(() => ({
+        year: String(selectedYear),
+        ...(periodMode === 'previous' ? { quarter: String(previousQuarter) } : {}),
+    }), [periodMode, previousQuarter, selectedYear]);
+    const previousQuarterOptions = useMemo(() => [1, 2, 3, 4].map((quarter) => ({
+        value: quarter,
+        label: getQuarterLabel(quarter, previousReportingYear),
+    })), [previousReportingYear]);
     const [periodInfo, setPeriodInfo] = useState({
         label: fallbackPeriodLabel,
         type: getPeriodTypeForRole(user?.role),
@@ -68,9 +93,23 @@ export default function PIRFormContainer() {
 
     useEffect(() => {
         let isActive = true;
-        api.get('/api/dashboard')
+        api.get('/api/dashboard', { params: { year: selectedYear } })
             .then((response) => {
                 if (!isActive) return;
+                if (periodMode === 'previous') {
+                    const quarterInfo = response.data.quarters?.find((quarter) => quarter.name === `Q${previousQuarter}`);
+                    setPeriodInfo({
+                        label: getQuarterLabel(previousQuarter, previousReportingYear),
+                        type: response.data.period_type || getPeriodTypeForRole(user?.role),
+                        range: quarterInfo
+                            ? {
+                                start: quarterInfo.period_start_month,
+                                end: quarterInfo.period_end_month,
+                            }
+                            : null,
+                    });
+                    return;
+                }
                 setPeriodInfo({
                     label: response.data.currentPeriodLabel || fallbackPeriodLabel,
                     type: response.data.period_type || getPeriodTypeForRole(user?.role),
@@ -93,10 +132,11 @@ export default function PIRFormContainer() {
         return () => {
             isActive = false;
         };
-    }, [fallbackPeriodLabel, user?.role]);
+    }, [fallbackPeriodLabel, periodMode, previousQuarter, previousReportingYear, selectedYear, user?.role]);
 
     const data = useProgramsAndConfig({
         kind: 'pir',
+        year: String(selectedYear),
         quarter: quarterString,
         clusterId: user?.cluster_id,
     });
@@ -171,6 +211,7 @@ export default function PIRFormContainer() {
         state,
         quarterString,
         isDivisionPersonnel,
+        isBackfill: periodMode === 'previous',
         onHydrate: (draftData) => {
             dispatch({ type: 'HYDRATE_DRAFT', payload: { draft: draftData, isDivisionPersonnel } });
         },
@@ -327,13 +368,14 @@ export default function PIRFormContainer() {
                 emitOnboardingSignal('author.pir_program_selected', { program: selectedProgram, mode });
             }
         },
+        extraSearchParams: periodSearchParams,
     });
 
     const handleEditPIR = useCallback(() => {
         dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'isEditing', value: true } });
         shell.setAppMode('wizard');
-        setSearchParams({ program: profile.program, mode: 'wizard' }, { replace: true });
-    }, [dispatch, profile.program, setSearchParams, shell]);
+        setSearchParams({ ...periodSearchParams, program: profile.program, mode: 'wizard' }, { replace: true });
+    }, [dispatch, periodSearchParams, profile.program, setSearchParams, shell]);
 
     const handleDeletePIR = useCallback(() => {
         shell.openModal({
@@ -350,7 +392,7 @@ export default function PIRFormContainer() {
                     dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'pirStatus', value: null } });
                     dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'isEditing', value: false } });
                     shell.setAppMode('splash');
-                    setSearchParams({}, { replace: true });
+                    setSearchParams(periodSearchParams, { replace: true });
                 } catch (error) {
                     shell.openModal({
                         type: 'warning',
@@ -363,7 +405,7 @@ export default function PIRFormContainer() {
                 }
             },
         });
-    }, [dispatch, profile.program, setSearchParams, shell, submission.pirId]);
+    }, [dispatch, periodSearchParams, profile.program, setSearchParams, shell, submission.pirId]);
 
     const handleViewAIP = useCallback(async () => {
         if (!aipDocumentData) {
@@ -406,7 +448,7 @@ export default function PIRFormContainer() {
     }, []);
 
     const handleConfirmSubmit = useCallback(async () => {
-        const payload = buildPirPayload(state, { isDivisionPersonnel, quarterString });
+        const payload = buildPirPayload(state, { isDivisionPersonnel, quarterString, isBackfill: periodMode === 'previous' });
 
         try {
             await submitPir({
@@ -468,7 +510,25 @@ export default function PIRFormContainer() {
                 hideCancelButton: true,
             });
         }
-    }, [dispatch, draft, handleStart, isDivisionPersonnel, navigate, profile.program, quarterString, shell, state, submission.isEditing, submission.pirId]);
+    }, [dispatch, draft, handleStart, isDivisionPersonnel, navigate, periodMode, profile.program, quarterString, shell, state, submission.isEditing, submission.pirId]);
+
+    const handlePeriodModeChange = useCallback((nextMode) => {
+        setPeriodMode(nextMode);
+        shell.setSplashSelectedProgram(null);
+        setAipDocumentData(null);
+        const nextYear = nextMode === 'previous' ? previousReportingYear : defaultReportingYear;
+        setSearchParams({
+            year: String(nextYear),
+            ...(nextMode === 'previous' ? { quarter: String(previousQuarter) } : {}),
+        }, { replace: true });
+    }, [defaultReportingYear, previousQuarter, previousReportingYear, setSearchParams, shell]);
+
+    const handlePreviousQuarterChange = useCallback((nextQuarter) => {
+        setPreviousQuarter(nextQuarter);
+        shell.setSplashSelectedProgram(null);
+        setAipDocumentData(null);
+        setSearchParams({ year: String(previousReportingYear), quarter: String(nextQuarter) }, { replace: true });
+    }, [previousReportingYear, setSearchParams, shell]);
 
     return (
         <FormShellProvider value={shell}>
@@ -492,12 +552,20 @@ export default function PIRFormContainer() {
                                 completedPrograms={completedPrograms}
                                 theme="blue"
                                 selectedProgram={shell.splashSelectedProgram}
+                                formKind="pir"
+                                periodMode={periodMode}
+                                currentYear={defaultReportingYear}
+                                previousYear={previousReportingYear}
+                                selectedQuarter={previousQuarter}
+                                quarterOptions={previousQuarterOptions}
+                                onPeriodModeChange={handlePeriodModeChange}
+                                onQuarterChange={handlePreviousQuarterChange}
                                 onSelectProgram={(program) => {
                                     shell.setSplashSelectedProgram(program);
                                     if (program) {
-                                        setSearchParams({ program }, { replace: true });
+                                        setSearchParams({ ...periodSearchParams, program }, { replace: true });
                                     } else {
-                                        setSearchParams({}, { replace: true });
+                                        setSearchParams(periodSearchParams, { replace: true });
                                     }
                                 }}
                             />

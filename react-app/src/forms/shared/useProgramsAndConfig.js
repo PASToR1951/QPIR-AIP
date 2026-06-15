@@ -25,6 +25,7 @@ const EMPTY_STATE = {
 
 export default function useProgramsAndConfig({
     kind,
+    year,
     quarter,
     schoolOrUserId,
     clusterId,
@@ -38,10 +39,10 @@ export default function useProgramsAndConfig({
             try {
                 if (kind === 'pir') {
                     const results = await Promise.allSettled([
-                        api.get('/api/programs/with-aips'),
-                        api.get('/api/programs/with-pirs', { params: { quarter } }),
+                        api.get('/api/programs/with-aips', { params: year ? { year } : undefined }),
+                        api.get('/api/programs/with-pirs', { params: { ...(year ? { year } : {}), quarter } }),
                         api.get('/api/config', clusterId ? { params: { cluster_id: clusterId } } : undefined),
-                        api.get('/api/pirs/draft'),
+                        api.get('/api/pirs/draft', { params: { ...(year ? { year } : {}), ...(quarter ? { quarter } : {}) } }),
                     ]);
 
                     if (!isActive) {
@@ -85,6 +86,7 @@ export default function useProgramsAndConfig({
                             hasDraft: true,
                             lastSaved: draftRes.value.data.lastSaved,
                             draftProgram: draftRes.value.data.draftProgram,
+                            draftQuarter: draftRes.value.data.draftQuarter,
                             draftData: draftRes.value.data.draftData,
                         };
                     }
@@ -95,7 +97,7 @@ export default function useProgramsAndConfig({
 
                 const results = await Promise.allSettled([
                     api.get('/api/programs'),
-                    api.get('/api/programs/with-aips', { params: { include_drafts: 'true' } }),
+                    api.get('/api/programs/with-aips', { params: { include_drafts: 'true', ...(year ? { year } : {}) } }),
                     schoolOrUserId ? api.get(`/api/schools/${schoolOrUserId}/coordinators`) : Promise.resolve(null),
                     schoolOrUserId ? api.get(`/api/schools/${schoolOrUserId}/persons-terms`) : Promise.resolve(null),
                     api.get('/api/config', clusterId ? { params: { cluster_id: clusterId } } : undefined),
@@ -182,7 +184,7 @@ export default function useProgramsAndConfig({
         return () => {
             isActive = false;
         };
-    }, [kind, quarter, schoolOrUserId, clusterId]);
+    }, [kind, year, quarter, schoolOrUserId, clusterId]);
 
     return state;
 }

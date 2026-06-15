@@ -22,6 +22,7 @@ export default function useFormLifecycle({
     loadDiscardedLocalDraftFallback,
     onBeforeStart,
     onReadonlyError,
+    extraSearchParams,
 }) {
     const {
         appMode,
@@ -42,10 +43,15 @@ export default function useFormLifecycle({
         appModeRef.current = appMode;
     }, [appMode]);
 
+    const buildSearchParams = useCallback((params = {}) => ({
+        ...(extraSearchParams ?? {}),
+        ...params,
+    }), [extraSearchParams]);
+
     const moveToMode = useCallback((mode, selectedProgram) => {
         setAppMode(mode);
-        setSearchParams({ program: selectedProgram, mode }, { replace: true });
-    }, [setAppMode, setSearchParams]);
+        setSearchParams(buildSearchParams({ program: selectedProgram, mode }), { replace: true });
+    }, [buildSearchParams, setAppMode, setSearchParams]);
 
     const handleStart = useCallback(async (mode, selectedProgram) => {
         if (!selectedProgram || startPendingRef.current) {
@@ -140,7 +146,7 @@ export default function useFormLifecycle({
         if (isEditing) {
             exitEditMode?.();
             setAppMode('readonly');
-            setSearchParams({ program: currentProgram, mode: 'readonly' }, { replace: true });
+            setSearchParams(buildSearchParams({ program: currentProgram, mode: 'readonly' }), { replace: true });
             return;
         }
 
@@ -159,9 +165,10 @@ export default function useFormLifecycle({
         }
 
         setAppMode('splash');
-        setSearchParams({}, { replace: true });
+        setSearchParams(buildSearchParams(), { replace: true });
     }, [
         appMode,
+        buildSearchParams,
         currentProgram,
         draft,
         exitEditMode,

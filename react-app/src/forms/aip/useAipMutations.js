@@ -72,8 +72,8 @@ export function useAipMutations({
         dispatch({ type: 'SET_SUBMISSION_FIELD', payload: { field: 'isEditing', value: true } });
         shell.setCurrentStep(1);
         shell.setAppMode('wizard');
-        setSearchParams({ program: profile.depedProgram, mode: 'wizard' }, { replace: true });
-    }, [dispatch, profile.depedProgram, setSearchParams, shell]);
+        setSearchParams({ year: profile.year, program: profile.depedProgram, mode: 'wizard' }, { replace: true });
+    }, [dispatch, profile.depedProgram, profile.year, setSearchParams, shell]);
 
     const handleDeleteSubmission = useCallback(() => {
         shell.openModal({
@@ -89,13 +89,13 @@ export function useAipMutations({
                     setDraftPrograms((prev)      => prev.filter((p) => p !== profile.depedProgram));
                     showToast([profile.depedProgram]);
                     shell.setAppMode('splash');
-                    setSearchParams({}, { replace: true });
+                    setSearchParams({ year: profile.year }, { replace: true });
                 } catch (error) {
                     shell.openModal({ type: 'warning', title: "We couldn't delete this AIP", message: error.friendlyMessage ?? 'Please try again. If the problem continues, contact SDO IT.', confirmText: 'Close', onConfirm: shell.closeModal, hideCancelButton: true });
                 }
             },
         });
-    }, [profile.depedProgram, setCompletedPrograms, setDraftPrograms, setReturnedPrograms, setSearchParams, shell, showToast, submission.aipId]);
+    }, [profile.depedProgram, profile.year, setCompletedPrograms, setDraftPrograms, setReturnedPrograms, setSearchParams, shell, showToast, submission.aipId]);
 
     const handleRequestRemoveActivity = useCallback((activityId) => {
         const activity = state.activities.find((a) => a.id === activityId);
@@ -137,7 +137,7 @@ export function useAipMutations({
                 onConfirm: () => {
                     shell.closeModal();
                     shell.setAppMode('readonly');
-                    setSearchParams({ program: profile.depedProgram, mode: 'readonly' }, { replace: true });
+                    setSearchParams({ year: profile.year, program: profile.depedProgram, mode: 'readonly' }, { replace: true });
                     api.get('/api/aips', { params: buildProgramParams(profile.depedProgram, { year: parseInt(profile.year, 10) }) })
                         .then(r => { dispatch({ type: 'HYDRATE_SUBMITTED', payload: { aip: r.data } }); }).catch(() => {});
                 },

@@ -25,6 +25,7 @@ import {
   normalizeQuarterLabel,
   parseQuarterLabel,
 } from "../../lib/quarters.ts";
+import { validateBackfillPeriodForRole } from "../../lib/pirBackfill.ts";
 // Trimester imports removed
 import {
   getDefaultQuarterRange,
@@ -154,7 +155,9 @@ pirRoutes.get(
     async (c) => {
       const tokenUser = getAuthedUser(c);
       const programTitle = c.req.query("program_title") || "";
-      const quarter = normalizeQuarterLabel(sanitizeString(c.req.query("quarter") || ""));
+      const quarter = normalizeQuarterLabel(
+        sanitizeString(c.req.query("quarter") || ""),
+      );
 
       if (!programTitle || !quarter) {
         return c.json(
@@ -296,6 +299,7 @@ pirRoutes.post(
         action_items,
         activity_reviews,
         factors,
+        is_backfill,
       } = body;
 
       const tokenUser = getAuthedUser(c);
@@ -318,12 +322,17 @@ pirRoutes.post(
         )
         : new Date().getFullYear();
 
-      const submissionWindowError = await validateSubmissionWindowForRole(
-        tokenUser.role,
-        cleanQuarter,
-      );
+      const submissionWindowError = is_backfill === true
+        ? validateBackfillPeriodForRole(tokenUser.role, cleanQuarter)
+        : await validateSubmissionWindowForRole(
+          tokenUser.role,
+          cleanQuarter,
+        );
       if (submissionWindowError) {
-        const status = submissionWindowError.startsWith("Invalid") ? 400 : 403;
+        const status = submissionWindowError.startsWith("Invalid") ||
+            submissionWindowError.startsWith("Backfill")
+          ? 400
+          : 403;
         return c.json({ error: submissionWindowError }, status);
       }
 
@@ -535,7 +544,11 @@ pirRoutes.post(
         action: "pir_submit",
         entityType: "PIR",
         entityId: pir.id,
-        details: { programTitle: cleanProgramTitle, quarter: cleanQuarter },
+        details: {
+          programTitle: cleanProgramTitle,
+          quarter: cleanQuarter,
+          ...(is_backfill === true ? { backfill: true } : {}),
+        },
         ipAddress: getClientIp(c),
       });
       return c.json({ message: "PIR created successfully", pir });
@@ -569,7 +582,18 @@ pirRoutes.put(
         action_items,
         activity_reviews,
         factors,
+        is_backfill,
       } = body;
+
+      if (is_backfill === true) {
+        const backfillError = validateBackfillPeriodForRole(
+          tokenUser.role,
+          pir.quarter,
+        );
+        if (backfillError) {
+          return c.json({ error: backfillError }, 400);
+        }
+      }
 
       let putBudgetDiv: number;
       let putBudgetPsf: number;
@@ -631,12 +655,15 @@ pirRoutes.put(
             );
           }
           if (isSchoolResubmission) {
-            const submissionWindowError = await validateSubmissionWindowForRole(
-              tokenUser.role,
-              lockedPir.quarter,
-            );
+            const submissionWindowError = is_backfill === true
+              ? validateBackfillPeriodForRole(tokenUser.role, lockedPir.quarter)
+              : await validateSubmissionWindowForRole(
+                tokenUser.role,
+                lockedPir.quarter,
+              );
             if (submissionWindowError) {
-              const status = submissionWindowError.startsWith("Invalid")
+              const status = submissionWindowError.startsWith("Invalid") ||
+                  submissionWindowError.startsWith("Backfill")
                 ? 400
                 : 403;
               throw new HttpError(status, submissionWindowError, "FORBIDDEN");

@@ -65,6 +65,70 @@ function SelectorBackground({ themeClasses }) {
     );
 }
 
+function PeriodToggle({
+    themeClasses,
+    formKind,
+    periodMode,
+    currentYear,
+    previousYear,
+    selectedQuarter,
+    quarterOptions = [],
+    onPeriodModeChange,
+    onQuarterChange,
+}) {
+    if (!onPeriodModeChange || !currentYear || !previousYear) {
+        return null;
+    }
+
+    const isPrevious = periodMode === 'previous';
+
+    return (
+        <div className="mb-6 w-full max-w-2xl rounded-2xl border border-slate-200/80 bg-white/85 p-3 shadow-sm backdrop-blur-sm dark:border-dark-border dark:bg-dark-surface/85">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="inline-grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-dark-border">
+                    {[
+                        { key: 'current', label: `Current Year ${currentYear}` },
+                        { key: 'previous', label: `Previous Year ${previousYear}` },
+                    ].map((option) => (
+                        <button
+                            key={option.key}
+                            type="button"
+                            onClick={() => onPeriodModeChange(option.key)}
+                            className={[
+                                'rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wide transition-colors',
+                                periodMode === option.key
+                                    ? `${themeClasses.filterActive} shadow-sm`
+                                    : 'text-slate-500 hover:bg-white/70 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-dark-surface dark:hover:text-slate-200',
+                            ].join(' ')}
+                        >
+                            {option.label}
+                        </button>
+                    ))}
+                </div>
+
+                {formKind === 'pir' && isPrevious && quarterOptions.length > 0 && (
+                    <div className="relative shrink-0">
+                        <select
+                            value={selectedQuarter}
+                            onChange={(event) => onQuarterChange?.(Number(event.target.value))}
+                            className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2 pl-3 pr-8 text-xs font-bold text-slate-600 outline-none transition-colors hover:border-slate-300 dark:border-dark-border dark:bg-dark-surface dark:text-slate-300 sm:w-auto"
+                        >
+                            {quarterOptions.map((quarter) => (
+                                <option key={quarter.value} value={quarter.value}>
+                                    {quarter.label}
+                                </option>
+                            ))}
+                        </select>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 /**
  * ViewModeSelector — 2-stage splash screen
  *  Stage 1: Select a program from the available list
@@ -92,6 +156,14 @@ export const ViewModeSelector = ({
     isMobile = false,
     selectedProgram: propSelectedProgram = null,
     onSelectProgram = null,
+    formKind = theme === 'blue' ? 'pir' : 'aip',
+    periodMode = 'current',
+    currentYear = null,
+    previousYear = null,
+    selectedQuarter = 1,
+    quarterOptions = [],
+    onPeriodModeChange = null,
+    onQuarterChange = null,
 }) => {
     const programs          = rawPrograms;
     const draftPrograms     = rawDraftPrograms;
@@ -177,6 +249,26 @@ export const ViewModeSelector = ({
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    const handlePeriodModeChange = (nextMode) => {
+        if (nextMode === periodMode) return;
+        setSelected(null);
+        setSelectedPrograms([]);
+        setSelectionMode(false);
+        setStage('program');
+        onSelectProgram?.(null);
+        onPeriodModeChange?.(nextMode);
+    };
+
+    const handleQuarterChange = (nextQuarter) => {
+        if (nextQuarter === selectedQuarter) return;
+        setSelected(null);
+        setSelectedPrograms([]);
+        setSelectionMode(false);
+        setStage('program');
+        onSelectProgram?.(null);
+        onQuarterChange?.(nextQuarter);
+    };
+
     // ── STAGE 1: PROGRAM SELECTION ──────────────────────────────────────────
     if (stage === 'program') {
         return (
@@ -198,6 +290,18 @@ export const ViewModeSelector = ({
                                 : 'Choose the DepEd program this annual plan belongs to.'}
                         </p>
                     </div>
+
+                    <PeriodToggle
+                        themeClasses={c}
+                        formKind={formKind}
+                        periodMode={periodMode}
+                        currentYear={currentYear}
+                        previousYear={previousYear}
+                        selectedQuarter={selectedQuarter}
+                        quarterOptions={quarterOptions}
+                        onPeriodModeChange={handlePeriodModeChange}
+                        onQuarterChange={handleQuarterChange}
+                    />
 
                     {/* Search + Filter toolbar */}
                     {programs.length > 0 && (

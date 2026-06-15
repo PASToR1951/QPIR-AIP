@@ -42,15 +42,28 @@ export default function AIPFormContainer() {
     const isSchoolUser        = user?.role === 'School';
     const projectTerminology  = getProjectTerminology(isSchoolUser);
     const schoolOrUserId      = user?.school_id || user?.id;
-    const reportingYear       = String(getDefaultReportingYear(user?.role));
+    const defaultReportingYear = getDefaultReportingYear(user?.role);
+    const previousReportingYear = defaultReportingYear - 1;
+    const initialPeriodMode = searchParams.get('year') === String(previousReportingYear)
+        ? 'previous'
+        : 'current';
+    const [periodMode, setPeriodMode] = useState(initialPeriodMode);
+    const reportingYear = String(periodMode === 'previous' ? previousReportingYear : defaultReportingYear);
+    const periodSearchParams = useMemo(() => ({ year: reportingYear }), [reportingYear]);
 
-    const data = useProgramsAndConfig({ kind: 'aip', schoolOrUserId, clusterId: user?.cluster_id });
+    const data = useProgramsAndConfig({ kind: 'aip', year: reportingYear, schoolOrUserId, clusterId: user?.cluster_id });
     const [state, dispatch]  = useAipFormState({ year: reportingYear });
     const profile     = selectAipProfile(state);
     const submission  = selectAipSubmission(state);
     const rawPrograms = data.rawPrograms ?? [];
 
     const programState = useAipProgramState({ data, dispatch, profileYear: profile.year });
+
+    useEffect(() => {
+        if (profile.year !== reportingYear) {
+            dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'year', value: reportingYear } });
+        }
+    }, [dispatch, profile.year, reportingYear]);
 
     useAipSignatories({
         user, state, dispatch, isDivisionPersonnel, isSchoolUser,
@@ -140,7 +153,14 @@ export default function AIPFormContainer() {
         loadDiscardedLocalDraftFallback:   programInit.loadDiscardedLocalDraftFallback,
         onBeforeStart:                     programInit.onBeforeStart,
         onReadonlyError:                   programInit.onReadonlyError,
+        extraSearchParams:                 periodSearchParams,
     });
+
+    const handlePeriodModeChange = useCallback((nextMode) => {
+        setPeriodMode(nextMode);
+        shell.setSplashSelectedProgram(null);
+        setSearchParams({ year: nextMode === 'previous' ? String(previousReportingYear) : String(defaultReportingYear) }, { replace: true });
+    }, [defaultReportingYear, previousReportingYear, setSearchParams, shell]);
 
     const renderEditor = () => (
         <AIPFormEditor
@@ -194,9 +214,14 @@ export default function AIPFormContainer() {
                                 onBulkDelete={mutations.handleBulkDelete}
                                 theme="pink" isMobile={shell.isMobile}
                                 selectedProgram={shell.splashSelectedProgram}
+                                formKind="aip"
+                                periodMode={periodMode}
+                                currentYear={defaultReportingYear}
+                                previousYear={previousReportingYear}
+                                onPeriodModeChange={handlePeriodModeChange}
                                 onSelectProgram={(program) => {
                                     shell.setSplashSelectedProgram(program);
-                                    setSearchParams(program ? { program } : {}, { replace: true });
+                                    setSearchParams(program ? { ...periodSearchParams, program } : periodSearchParams, { replace: true });
                                 }}
                             />
                         </>

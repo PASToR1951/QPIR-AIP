@@ -37,10 +37,11 @@ function buildFactorsPayload(factors, activities) {
     );
 }
 
-export function buildPirPayload(state, { isDivisionPersonnel, quarterString }) {
+export function buildPirPayload(state, { isDivisionPersonnel, quarterString, isBackfill = false }) {
     return {
         program_title: state.profile.program,
         quarter: quarterString,
+        is_backfill: isBackfill,
         program_owner: state.profile.owner,
         budget_from_division: parseFloat(state.budget.fromDivision) || 0,
         budget_from_co_psf: parseFloat(state.budget.fromCoPSF) || 0,

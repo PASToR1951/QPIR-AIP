@@ -14,9 +14,7 @@ import { isPrismaUniqueConflictWithoutTarget } from "../../lib/prismaErrors.ts";
 import { normalizeQuarterLabel } from "../../lib/quarters.ts";
 import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
-import {
-  getDefaultReportingYear,
-} from "../../lib/trimesters.ts";
+import { getDefaultReportingYear } from "../../lib/trimesters.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
 import {
@@ -529,7 +527,11 @@ draftsRoutes.get(
           : { created_by_user_id: tokenUser.id, school_id: null };
 
         const anyDraft = await prisma.pIR.findFirst({
-          where: { status: "Draft", aip: aipWhere },
+          where: {
+            status: "Draft",
+            ...(quarter ? { quarter } : {}),
+            aip: aipWhere,
+          },
           include: { aip: { include: { program: true } } },
           orderBy: { created_at: "desc" },
         });
@@ -538,6 +540,7 @@ draftsRoutes.get(
         return c.json({
           hasDraft: true,
           draftProgram: anyDraft.aip.program.title,
+          draftQuarter: anyDraft.quarter,
           lastSaved: anyDraft.created_at,
         });
       }

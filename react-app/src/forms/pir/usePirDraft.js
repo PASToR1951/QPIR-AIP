@@ -8,6 +8,7 @@ export default function usePirDraft({
     state,
     quarterString,
     isDivisionPersonnel,
+    isBackfill = false,
     onHydrate,
 }) {
     const storageKey = state.profile.program
@@ -20,9 +21,9 @@ export default function usePirDraft({
 
     const saveDraft = useCallback(() => (
         savePirDraft({
-            body: buildPirPayload(state, { isDivisionPersonnel, quarterString }),
+            body: buildPirPayload(state, { isDivisionPersonnel, quarterString, isBackfill }),
         })
-    ), [isDivisionPersonnel, quarterString, state]);
+    ), [isBackfill, isDivisionPersonnel, quarterString, state]);
 
     return useDraftAutosave({
         enabled: ['wizard', 'full'].includes(appMode) && Boolean(state.profile.program),
@@ -32,4 +33,3 @@ export default function usePirDraft({
         onHydrate,
     });
 }
-
