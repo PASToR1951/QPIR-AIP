@@ -6,7 +6,7 @@
       1. Install the GitHub Actions Runner as a Windows Service (auto-deploy)
       2. Install Docker Compose autostart as a hidden Scheduled Task
       3. Install the Health Monitor as a hidden Scheduled Task (email reports)
-    Both run silently in the background and survive reboots.
+    These run silently in the background and survive reboots.
 .NOTES
     Run from: C:\Users\Administrator\Desktop\SYSTEMS
 #>
@@ -20,40 +20,82 @@ param(
 
 $ErrorActionPreference = "Continue"
 
-Write-Host ""
-Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "  QPIR-AIP Background Services Installer" -ForegroundColor Cyan
-Write-Host "  This will install both services to run silently forever." -ForegroundColor Cyan
-Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host ""
+function Install-RunnerScheduledTask {
+    param(
+        [string]$RunnerDir,
+        [string]$TaskName = "QPIR-AIP Actions Runner Autostart"
+    )
 
-# ══════════════════════════════════════════════════════════════════════════════
-# SERVICE 1: GitHub Actions Runner (Auto-Deploy)
-# ══════════════════════════════════════════════════════════════════════════════
-Write-Host "──────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
-Write-Host "  [1/2] GitHub Actions Runner (Auto-Deploy)" -ForegroundColor Yellow
-Write-Host "──────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+    $runCmd = Join-Path $RunnerDir "run.cmd"
+    if (-not (Test-Path $runCmd)) {
+        Write-Host "  [WARN]  run.cmd not found at: $runCmd" -ForegroundColor Yellow
+        return $false
+    }
 
-$svcCmd = Join-Path $RunnerDir "svc.cmd"
+    if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
+        Write-Host "  ===> Replacing existing runner scheduled task..." -ForegroundColor White
+        Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
+    }
 
-if (-not (Test-Path $svcCmd)) {
-    Write-Host "  [WARN]  GitHub Actions Runner not found at: $RunnerDir" -ForegroundColor Yellow
-    Write-Host "     Skipping runner service installation." -ForegroundColor Yellow
-    Write-Host "     Please install the runner first using the GitHub instructions," -ForegroundColor Yellow
-    Write-Host "     then re-run this script." -ForegroundColor Yellow
-} else {
-    # Check if the service is already installed
-    $runnerService = Get-Service -Name "actions.runner.*" -ErrorAction SilentlyContinue
-    if ($runnerService) {
-        Write-Host "  [OK] Runner service is already installed: $($runnerService.Name)" -ForegroundColor Green
-        if ($runnerService.Status -ne "Running") {
-            Write-Host "  ===> Starting runner service..." -ForegroundColor White
-            Push-Location $RunnerDir
-            & .\svc.cmd start
-            Pop-Location
+    $action = New-ScheduledTaskAction `
+        -Execute "cmd.exe" `
+        -Argument "/c `"$runCmd`"" `
+        -WorkingDirectory $RunnerDir
+
+    $startupTrigger = New-ScheduledTaskTrigger -AtStartup
+    $startupTrigger.Delay = "PT1M"
+
+    $settings = New-ScheduledTaskSettingsSet `
+        -AllowStartIfOnBatteries `
+        -DontStopIfGoingOnBatteries `
+        -StartWhenAvailable `
+        -RunOnlyIfNetworkAvailable:$false `
+        -RestartCount 5 `
+        -RestartInterval (New-TimeSpan -Minutes 3) `
+        -ExecutionTimeLimit (New-TimeSpan -Days 30) `
+        -Hidden
+
+    Register-ScheduledTask `
+        -TaskName $TaskName `
+        -Action $action `
+        -Trigger $startupTrigger `
+        -Settings $settings `
+        -User "SYSTEM" `
+        -RunLevel Highest `
+        -Description "Starts the QPIR-AIP GitHub Actions runner from run.cmd after Windows startup." `
+        -Force | Out-Null
+
+    Start-ScheduledTask -TaskName $TaskName
+    Write-Host "  [OK] Runner scheduled task installed and started: $TaskName" -ForegroundColor Green
+    return $true
+}
+
+function Install-ActionsRunnerAutostart {
+    param([string]$RunnerDir)
+
+    $svcCmd = Join-Path $RunnerDir "svc.cmd"
+    $runCmd = Join-Path $RunnerDir "run.cmd"
+
+    if (-not (Test-Path $RunnerDir)) {
+        Write-Host "  [WARN]  GitHub Actions Runner folder not found at: $RunnerDir" -ForegroundColor Yellow
+        Write-Host "     Skipping runner autostart installation." -ForegroundColor Yellow
+        return
+    }
+
+    if (Test-Path $svcCmd) {
+        $runnerService = Get-Service -Name "actions.runner.*" -ErrorAction SilentlyContinue
+        if ($runnerService) {
+            Write-Host "  [OK] Runner service is already installed: $($runnerService.Name)" -ForegroundColor Green
+            if ($runnerService.Status -ne "Running") {
+                Write-Host "  ===> Starting runner service..." -ForegroundColor White
+                Push-Location $RunnerDir
+                & .\svc.cmd start
+                Pop-Location
+            }
+            Write-Host "  [OK] Runner service is running." -ForegroundColor Green
+            return
         }
-        Write-Host "  [OK] Runner service is running." -ForegroundColor Green
-    } else {
+
         Write-Host "  ===> Installing GitHub Actions Runner as a Windows Service..." -ForegroundColor White
         Push-Location $RunnerDir
         & .\svc.cmd install
@@ -61,8 +103,35 @@ if (-not (Test-Path $svcCmd)) {
         & .\svc.cmd start
         Pop-Location
         Write-Host "  [OK] Runner service installed and started." -ForegroundColor Green
+        return
     }
+
+    if (Test-Path $runCmd) {
+        Write-Host "  [WARN]  svc.cmd not found, but run.cmd exists." -ForegroundColor Yellow
+        Write-Host "     Installing a scheduled-task fallback for this newly fetched runner." -ForegroundColor Yellow
+        Install-RunnerScheduledTask -RunnerDir $RunnerDir | Out-Null
+        return
+    }
+
+    Write-Host "  [WARN]  No svc.cmd or run.cmd found in: $RunnerDir" -ForegroundColor Yellow
+    Write-Host "     Please configure the GitHub Actions runner first, then re-run this script." -ForegroundColor Yellow
 }
+
+Write-Host ""
+Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "  QPIR-AIP Background Services Installer" -ForegroundColor Cyan
+Write-Host "  This will install background services to run silently forever." -ForegroundColor Cyan
+Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host ""
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SERVICE 1: GitHub Actions Runner (Auto-Deploy)
+# ══════════════════════════════════════════════════════════════════════════════
+Write-Host "──────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+Write-Host "  [1/3] GitHub Actions Runner (Auto-Deploy)" -ForegroundColor Yellow
+Write-Host "──────────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+
+Install-ActionsRunnerAutostart -RunnerDir $RunnerDir
 
 Write-Host ""
 
@@ -177,7 +246,7 @@ Write-Host ""
 Write-Host "═══════════════════════════════════════════════════════════════" -ForegroundColor Green
 Write-Host "  [OK] ALL BACKGROUND SERVICES INSTALLED!" -ForegroundColor Green
 Write-Host "" -ForegroundColor Green
-Write-Host "  [AUTO] Auto-Deploy:     GitHub Actions Runner (Windows Service)" -ForegroundColor White
+Write-Host "  [AUTO] Auto-Deploy:     GitHub Actions Runner (service or startup task)" -ForegroundColor White
 Write-Host "     -> Listens for pushes and auto-deploys your code." -ForegroundColor DarkGray
 Write-Host "" -ForegroundColor Green
 Write-Host "  [BOOT] Docker Autostart: Scheduled Task (on startup)" -ForegroundColor White
