@@ -3,6 +3,21 @@ param(
     [string]$Mode
 )
 
+$ErrorActionPreference = "Stop"
+
+function Invoke-NativeCommand {
+    param(
+        [string]$Description,
+        [scriptblock]$Command
+    )
+
+    Write-Host "==> $Description"
+    & $Command
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Description failed with exit code $LASTEXITCODE"
+    }
+}
+
 if ($Mode -notmatch '^(local|docker)$') {
     Write-Host "Usage: .\run.ps1 [local|docker]"
     Write-Host ""
@@ -50,22 +65,34 @@ elseif ($Mode -eq "docker") {
         Write-Host "==> Auto-generated random secrets in .env"
     }
     
-    docker compose up -d --build
+    Invoke-NativeCommand "Building and starting Docker Compose services" {
+        docker compose up -d --build
+    }
     
     Write-Host "==> Waiting for backend container..."
     Start-Sleep -Seconds 10
     
     Write-Host "==> Running database migrations and seed..."
-    # We attempt to run the migrations directly
-    # Errors will be shown in the console if they fail, but won't crash the script
     try {
-        docker compose exec backend deno task prisma:deploy
-        docker compose exec backend deno task prisma:generate
-        docker compose exec backend deno task seed
-        docker compose exec backend deno run -A server/scripts/migrate_trimesters_to_quarters.ts
-        docker compose exec backend deno run -A server/scripts/migrate_focal_persons.ts
+        Invoke-NativeCommand "Applying Prisma migrations" {
+            docker compose exec -T backend deno task prisma:deploy
+        }
+        Invoke-NativeCommand "Generating Prisma client" {
+            docker compose exec -T backend deno task prisma:generate
+        }
+        Invoke-NativeCommand "Seeding database" {
+            docker compose exec -T backend deno task seed
+        }
+        Invoke-NativeCommand "Migrating trimesters to quarters" {
+            docker compose exec -T backend deno run -A --env scripts/migrate_trimesters_to_quarters.ts
+        }
+        Invoke-NativeCommand "Migrating focal persons" {
+            docker compose exec -T backend deno run -A --env scripts/migrate_focal_persons.ts
+        }
     } catch {
-        Write-Host "==> Notice: A seed command had an issue, or containers aren't ready yet."
+        Write-Host "==> Deployment setup failed." -ForegroundColor Red
+        Write-Error $_.Exception.Message
+        exit 1
     }
     
     Write-Host ""

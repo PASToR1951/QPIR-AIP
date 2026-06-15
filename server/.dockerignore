@@ -14,9 +14,12 @@ generated/
 *.log
 *.pid
 
-# Most scripts are not needed at runtime. Backup scripts are copied explicitly
-# into the dedicated backup service image.
+# Most scripts are not needed at runtime. Keep only runtime database/bootstrap
+# scripts plus backup scripts used by the dedicated backup service image.
 scripts/*
+!scripts/seed.ts
+!scripts/migrate_trimesters_to_quarters.ts
+!scripts/migrate_focal_persons.ts
 !scripts/backup/
 !scripts/backup/**
 !scripts/db_init_backup_user.sh
