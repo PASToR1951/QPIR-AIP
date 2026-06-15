@@ -7,6 +7,7 @@ import Footer from '../components/ui/Footer.jsx';
 import { AnnouncementBanner } from '../components/ui/AnnouncementBanner.jsx';
 import { useAppLogo } from '../context/BrandingContext.jsx';
 import { auth } from '../lib/auth.js';
+import { getRoleVisualTheme } from '../lib/roleVisualTheme.js';
 
 export default function CESLayout() {
   const appLogo = useAppLogo();
@@ -18,6 +19,7 @@ export default function CESLayout() {
     'CES-ASDS': 'CES – ASDS',
     'CES-CID':  'CES – CID',
   }[user?.role] ?? 'CES Portal';
+  const roleTheme = getRoleVisualTheme(user);
 
   const handleLogout = async () => {
     try {
@@ -31,11 +33,12 @@ export default function CESLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col font-sans">
-      <header className="bg-white dark:bg-dark-surface border-b border-slate-200 dark:border-dark-border sticky top-0 z-40">
+      <header className={`bg-white dark:bg-dark-surface border-b sticky top-0 z-40 ${roleTheme.header}`}>
+        <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <img src={appLogo} alt="AIP-PIR Logo" className="h-8 w-auto drop-shadow-sm" />
+              <img src={appLogo} alt="AIP-PIR Logo" className={`h-8 w-auto drop-shadow-sm rounded-sm ring-2 ${roleTheme.ring}`} />
               <div className="w-px h-6 bg-slate-200 dark:bg-dark-border/60 mx-1 hidden sm:block" />
               <img src="/DepEd_Seal.webp" alt="DepEd Seal" loading="lazy" className="h-8 w-auto drop-shadow-sm hidden sm:block" />
               <img src="/Division_Logo.webp" alt="Division Logo" loading="lazy" className="h-8 w-auto drop-shadow-sm hidden sm:block" />
@@ -45,7 +48,7 @@ export default function CESLayout() {
               <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest select-none leading-none">
                 AIP-PIR
               </span>
-              <span className="text-[9px] font-black text-teal-600 tracking-[0.2em] uppercase mt-0.5 select-none">
+              <span className={`text-[9px] font-black tracking-[0.2em] uppercase mt-0.5 select-none ${roleTheme.subtleText}`}>
                 {roleLabel} Review Portal
               </span>
             </div>
@@ -54,7 +57,7 @@ export default function CESLayout() {
           <nav className="flex items-center gap-1">
             <button
               onClick={() => navigate('/ces')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border/40 transition-colors"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
             >
               <ClipboardText size={15} />
               Review Queue
@@ -62,7 +65,7 @@ export default function CESLayout() {
 
             <button
               onClick={() => navigate('/aip')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border/40 transition-colors"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
             >
               <FileText size={15} />
               My AIP
@@ -70,7 +73,7 @@ export default function CESLayout() {
 
             <button
               onClick={() => navigate('/pir')}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border/40 transition-colors"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
             >
               <ChartBar size={15} />
               My PIR

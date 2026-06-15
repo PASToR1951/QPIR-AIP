@@ -9,6 +9,7 @@ import { NotificationBell } from './NotificationBell.jsx';
 import { SchoolAvatar } from './SchoolAvatar.jsx';
 import MyDevicesModal from './MyDevicesModal.jsx';
 import api from '../../lib/api.js';
+import { getRoleVisualTheme } from '../../lib/roleVisualTheme.js';
 
 const MotionDiv = motion.div;
 
@@ -51,9 +52,11 @@ export const DashboardHeader = ({ user, onLogout }) => {
           ? (user?.first_name || user?.email?.split('@')[0] || 'User')
           : /* Admin */
             (user?.name || user?.email?.split('@')[0] || 'User');
+    const roleTheme = getRoleVisualTheme(user);
 
     return (
-        <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 shadow-sm backdrop-blur-md dark:border-dark-border dark:bg-dark-base/95 print:hidden">
+        <nav className={`sticky top-0 z-50 border-b bg-white/90 shadow-sm backdrop-blur-md dark:bg-dark-base/95 print:hidden ${roleTheme.header}`}>
+            <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
             <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-3 sm:px-5">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                     <img src={appLogo} alt="AIP-PIR Logo" className="h-8 w-auto shrink-0 drop-shadow-sm" />
@@ -62,7 +65,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                         <div className="truncate text-sm font-black leading-none tracking-tight text-slate-900 dark:text-slate-100">
                             AIP-PIR
                         </div>
-                        <div className="mt-1 hidden truncate text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 sm:block">
+                        <div className={`mt-1 hidden truncate text-[10px] font-black uppercase tracking-[0.18em] sm:block ${roleTheme.subtleText}`}>
                             DepEd Division of Guihulngan City
                         </div>
                     </div>
@@ -73,7 +76,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                     <Link
                         to="/division"
                         onMouseEnter={() => import('../../division/DivisionLayout.jsx')}
-                        className="relative inline-flex h-9 items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-xs font-black text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 dark:border-blue-800/60 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50 sm:px-3"
+                        className={`relative inline-flex h-9 items-center gap-2 rounded-lg border px-2.5 text-xs font-black transition-colors sm:px-3 ${roleTheme.softButton}`}
                     >
                         <ClipboardText size={17} />
                         <span className="hidden sm:inline">Review Queue</span>
@@ -91,7 +94,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                         data-tour="dashboard-profile-menu"
                         aria-label="Open profile menu"
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className={`flex h-9 min-w-0 max-w-[52vw] items-center gap-2 rounded-lg px-1.5 transition-colors active:scale-95 sm:max-w-none sm:px-2 ${isDropdownOpen ? 'bg-slate-100 dark:bg-dark-border/70' : 'hover:bg-slate-100 dark:hover:bg-dark-border/40'}`}
+                        className={`flex h-9 min-w-0 max-w-[52vw] items-center gap-2 rounded-lg px-1.5 transition-colors active:scale-95 sm:max-w-none sm:px-2 ${isDropdownOpen ? `${roleTheme.softButton} border` : `${roleTheme.hoverNav} border border-transparent`}`}
                     >
                         <div className="hidden min-w-0 flex-col items-end text-right sm:flex">
                             <span className="max-w-36 truncate text-xs font-black leading-tight text-slate-900 dark:text-slate-100 md:max-w-44">
@@ -109,13 +112,14 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                 name={displayName}
                                 size={32}
                                 rounded="rounded-full"
+                                className={`ring-2 ${roleTheme.ring}`}
                             />
                         ) : user?.role === 'Division Personnel' ? (
-                            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-white dark:border-dark-border">
+                            <div className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-white ring-2 dark:bg-dark-surface ${roleTheme.border} ${roleTheme.ring}`}>
                                 <img src="/Division_Logo.webp" alt="Division Logo" className="w-full h-full object-contain" />
                             </div>
                         ) : (
-                            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-pink-200 bg-pink-100 font-black uppercase text-pink-600">
+                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg border font-black uppercase ring-2 ${roleTheme.avatar} ${roleTheme.ring}`}>
                                 {displayName[0] || 'U'}
                             </div>
                         )}
@@ -155,7 +159,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                                         User Logs
                                     </Link>
                                     {user?.role === 'Division Personnel' && (
-                                        <Link to="/division" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../division/DivisionLayout.jsx')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-blue-950/30">
+                                        <Link to="/division" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../division/DivisionLayout.jsx')} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors dark:text-slate-300 ${roleTheme.hoverNav}`}>
                                             <ClipboardText size={18} />
                                             Review Queue
                                             {pendingCount > 0 && (

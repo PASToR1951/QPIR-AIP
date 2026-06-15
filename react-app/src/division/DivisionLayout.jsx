@@ -4,6 +4,7 @@ import { ClipboardText, FileText, ChartBar, House, SignOut } from '@phosphor-ico
 import { useAppLogo } from '../context/BrandingContext.jsx';
 import { AnnouncementBanner } from '../components/ui/AnnouncementBanner.jsx';
 import { auth } from '../lib/auth.js';
+import { getRoleVisualTheme } from '../lib/roleVisualTheme.js';
 import FocalPersonQueue from './FocalPersonQueue.jsx';
 import FocalPersonReview from './FocalPersonReview.jsx';
 import AdminConsolidationTemplate from '../admin/pages/AdminConsolidationTemplate.jsx';
@@ -11,6 +12,8 @@ import AdminConsolidationTemplate from '../admin/pages/AdminConsolidationTemplat
 export default function DivisionLayout() {
   const appLogo = useAppLogo();
   const navigate = useNavigate();
+  const user = (() => { try { return JSON.parse(sessionStorage.getItem('user') || 'null'); } catch { return null; } })();
+  const roleTheme = getRoleVisualTheme(user?.role === 'Division Personnel' ? user : 'Division Personnel');
   const navItems = [
     { to: '/', label: 'Dashboard', icon: House, end: true },
     { to: '/division', label: 'Queue', icon: ClipboardText, end: true },
@@ -31,16 +34,17 @@ export default function DivisionLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans dark:bg-dark-base">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-md dark:border-dark-border dark:bg-dark-base/95">
+      <header className={`sticky top-0 z-40 border-b bg-white/90 backdrop-blur-md dark:bg-dark-base/95 ${roleTheme.header}`}>
+        <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
-            <img src={appLogo} alt="AIP-PIR Logo" className="h-8 w-auto shrink-0 drop-shadow-sm" />
+            <img src={appLogo} alt="AIP-PIR Logo" className={`h-8 w-auto shrink-0 rounded-sm drop-shadow-sm ring-2 ${roleTheme.ring}`} />
             <div className="hidden h-6 w-px bg-slate-200 dark:bg-dark-border sm:block" />
             <div className="min-w-0">
               <p className="truncate text-sm font-black tracking-tight text-slate-900 dark:text-slate-100">
                 AIP-PIR
               </p>
-              <p className="hidden truncate text-[10px] font-black uppercase tracking-[0.18em] text-blue-600 dark:text-blue-400 sm:block">
+              <p className={`hidden truncate text-[10px] font-black uppercase tracking-[0.18em] sm:block ${roleTheme.subtleText}`}>
                 Focal Review Portal
               </p>
             </div>
@@ -55,8 +59,8 @@ export default function DivisionLayout() {
                 className={({ isActive }) =>
                   `flex h-9 shrink-0 items-center gap-2 rounded-lg px-2.5 text-xs font-black transition-colors sm:px-3 ${
                     isActive
-                      ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:ring-blue-800/60'
-                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-dark-border/40 dark:hover:text-slate-200'
+                      ? roleTheme.activeNav
+                      : `text-slate-500 dark:text-slate-400 ${roleTheme.hoverNav}`
                   }`
                 }
               >

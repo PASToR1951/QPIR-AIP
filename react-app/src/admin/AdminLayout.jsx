@@ -149,6 +149,7 @@ export const AdminLayout = () => {
       />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-[1]">
         <AdminTopBar
+          user={user}
           onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)}
           deadline={deadline}
           notifications={notifications}

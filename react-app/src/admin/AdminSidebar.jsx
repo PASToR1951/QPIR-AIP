@@ -11,6 +11,7 @@ import {
 } from '@phosphor-icons/react';
 import { useOnboarding } from '../hooks/useOnboarding.jsx';
 import { isChecklistLandingPage } from '../lib/onboardingUtils.js';
+import { getRoleVisualTheme } from '../lib/roleVisualTheme.js';
 
 const NAV_GROUPS = [
   {
@@ -49,7 +50,7 @@ const NAV_GROUPS = [
 ];
 
 
-const NavItem = ({ to, label, Icon, end, badge, onNavigate, preload }) => (
+const NavItem = ({ to, label, Icon, end, badge, onNavigate, preload, roleTheme }) => (
   <NavLink
     to={to}
     end={end}
@@ -59,7 +60,7 @@ const NavItem = ({ to, label, Icon, end, badge, onNavigate, preload }) => (
       `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group relative select-none
       ${isActive
         ? 'bg-white/55 dark:bg-white/[0.10] text-slate-900 dark:text-slate-50 font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-sm border border-white/60 dark:border-white/[0.08]'
-        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.07] dark:hover:bg-white/[0.10] hover:text-slate-800 dark:hover:text-slate-100 font-medium border border-transparent hover:border-slate-900/[0.06] dark:hover:border-white/[0.08]'
+        : `text-slate-600 dark:text-slate-300 font-medium border border-transparent hover:border-slate-900/[0.06] dark:hover:border-white/[0.08] ${roleTheme.hoverNav}`
       }`
     }
   >
@@ -69,7 +70,7 @@ const NavItem = ({ to, label, Icon, end, badge, onNavigate, preload }) => (
           size: 20,
           weight: isActive ? 'fill' : 'regular',
           className: `shrink-0 transition-all duration-200 ${isActive
-            ? 'text-[#E94560] drop-shadow-[0_0_6px_rgba(233,69,96,0.3)]'
+            ? `${roleTheme.text} drop-shadow-sm`
             : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'
           }`,
         })}
@@ -91,7 +92,7 @@ const SUBMISSION_TABS = [
   { type: 'pir', label: 'PIRs', Icon: ChartBar },
 ];
 
-function CollapsibleSubmissions({ onNavigate }) {
+function CollapsibleSubmissions({ onNavigate, roleTheme }) {
   const location = useLocation();
   const isOnSubmissions = location.pathname === '/admin/submissions';
   const [open, setOpen] = useState(isOnSubmissions);
@@ -107,13 +108,13 @@ function CollapsibleSubmissions({ onNavigate }) {
         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group select-none border
           ${isOnSubmissions
             ? 'bg-white/55 dark:bg-white/[0.10] text-slate-900 dark:text-slate-50 font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-sm border-white/60 dark:border-white/[0.08]'
-            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.07] dark:hover:bg-white/[0.10] hover:text-slate-800 dark:hover:text-slate-100 font-medium border-transparent hover:border-slate-900/[0.06] dark:hover:border-white/[0.08]'
+            : `text-slate-600 dark:text-slate-300 font-medium border-transparent hover:border-slate-900/[0.06] dark:hover:border-white/[0.08] ${roleTheme.hoverNav}`
           }`}
       >
         <FileText
           size={20}
           weight={isOnSubmissions ? 'fill' : 'regular'}
-          className={`shrink-0 transition-all duration-200 ${isOnSubmissions ? 'text-[#E94560] drop-shadow-[0_0_6px_rgba(233,69,96,0.3)]' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}
+          className={`shrink-0 transition-all duration-200 ${isOnSubmissions ? `${roleTheme.text} drop-shadow-sm` : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}
         />
         <span className="truncate flex-1 text-left">Submissions</span>
         <CaretDown
@@ -174,7 +175,7 @@ const REPORT_TABS = [
   { tab: 'funnel', label: 'AIP Status Funnel', Icon: FunnelSimple },
 ];
 
-function CollapsibleReports({ onNavigate }) {
+function CollapsibleReports({ onNavigate, roleTheme }) {
   const location = useLocation();
   const isOnReports = location.pathname === '/admin/reports';
   const [open, setOpen] = useState(isOnReports);
@@ -190,13 +191,13 @@ function CollapsibleReports({ onNavigate }) {
         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group select-none border
           ${isOnReports
             ? 'bg-white/55 dark:bg-white/[0.10] text-slate-900 dark:text-slate-50 font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.04),inset_0_1px_0_rgba(255,255,255,0.6)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-sm border-white/60 dark:border-white/[0.08]'
-            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.07] dark:hover:bg-white/[0.10] hover:text-slate-800 dark:hover:text-slate-100 font-medium border-transparent hover:border-slate-900/[0.06] dark:hover:border-white/[0.08]'
+            : `text-slate-600 dark:text-slate-300 font-medium border-transparent hover:border-slate-900/[0.06] dark:hover:border-white/[0.08] ${roleTheme.hoverNav}`
           }`}
       >
         <ChartLine
           size={20}
           weight={isOnReports ? 'fill' : 'regular'}
-          className={`shrink-0 transition-all duration-200 ${isOnReports ? 'text-[#E94560] drop-shadow-[0_0_6px_rgba(233,69,96,0.3)]' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}
+          className={`shrink-0 transition-all duration-200 ${isOnReports ? `${roleTheme.text} drop-shadow-sm` : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}
         />
         <span className="truncate flex-1 text-left">Reports</span>
         <CaretDown
@@ -246,7 +247,7 @@ function CollapsibleReports({ onNavigate }) {
   );
 }
 
-function AdminOnboardingTrigger({ onNavigate }) {
+function AdminOnboardingTrigger({ onNavigate, roleTheme }) {
   const location = useLocation();
   const { hasChecklist, isHydrated, tasks, completedCount, isComplete, toggleChecklist } = useOnboarding();
 
@@ -259,7 +260,7 @@ function AdminOnboardingTrigger({ onNavigate }) {
     <button
       type="button"
       onClick={() => { toggleChecklist(); onNavigate?.(); }}
-      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group select-none border text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.07] dark:hover:bg-white/[0.10] hover:text-slate-800 dark:hover:text-slate-100 font-medium border-transparent hover:border-slate-900/[0.06] dark:hover:border-white/[0.08]"
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group select-none border text-slate-600 dark:text-slate-300 font-medium border-transparent hover:border-slate-900/[0.06] dark:hover:border-white/[0.08] ${roleTheme.hoverNav}`}
     >
       <BookOpenUserIcon
         size={20}
@@ -293,7 +294,8 @@ function AdminOnboardingTrigger({ onNavigate }) {
 
 export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose }) => {
   const appLogo = useAppLogo();
-  const glassClasses = 'bg-white/40 dark:bg-dark-base/40 backdrop-blur-2xl backdrop-saturate-[1.8] border-r border-white/50 dark:border-white/[0.06]';
+  const roleTheme = getRoleVisualTheme(user);
+  const glassClasses = `bg-white/40 dark:bg-dark-base/40 backdrop-blur-2xl backdrop-saturate-[1.8] border-r ${roleTheme.header}`;
   const glassShadow = { boxShadow: '0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5), inset -1px 0 0 rgba(255,255,255,0.2)' };
   const isObserver = user?.role === 'Observer';
   const visibleGroups = NAV_GROUPS
@@ -317,10 +319,10 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
     <div className="flex flex-col h-full w-[240px]">
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-4 pt-5 pb-4">
-        <img src={appLogo} alt="AIP-PIR" className="h-8 w-auto shrink-0" />
+        <img src={appLogo} alt="AIP-PIR" className={`h-8 w-auto shrink-0 rounded-sm ring-2 ${roleTheme.ring}`} />
         <div className="flex flex-col">
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight tracking-[-0.01em]">AIP-PIR</span>
-          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-tight tracking-wide">{isObserver ? 'Observer' : 'Admin'}</span>
+          <span className={`text-[11px] font-medium leading-tight tracking-wide ${roleTheme.subtleText}`}>{isObserver ? 'Observer' : 'Admin'}</span>
         </div>
       </div>
 
@@ -333,16 +335,16 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
             </p>
             <div className="space-y-0.5">
               {group.items.map(({ to, label, icon: Icon, end, badge, preload }) => (
-                <NavItem key={to} to={to} label={label} Icon={Icon} end={end} badge={badge} onNavigate={onMobileClose} preload={preload} />
+                <NavItem key={to} to={to} label={label} Icon={Icon} end={end} badge={badge} onNavigate={onMobileClose} preload={preload} roleTheme={roleTheme} />
               ))}
               {group.label === 'Submissions & Data' && (
-                <CollapsibleSubmissions onNavigate={onMobileClose} />
+                <CollapsibleSubmissions onNavigate={onMobileClose} roleTheme={roleTheme} />
               )}
               {!isObserver && group.label === 'Analytics' && (
-                <CollapsibleReports onNavigate={onMobileClose} />
+                <CollapsibleReports onNavigate={onMobileClose} roleTheme={roleTheme} />
               )}
               {!isObserver && group.label === 'System' && (
-                <AdminOnboardingTrigger onNavigate={onMobileClose} />
+                <AdminOnboardingTrigger onNavigate={onMobileClose} roleTheme={roleTheme} />
               )}
             </div>
           </div>
@@ -353,8 +355,8 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
       <div className="px-2 py-3 mt-auto">
         <div className="mx-2 mb-3 h-px bg-gradient-to-r from-transparent via-white/50 dark:via-white/[0.06] to-transparent" />
 
-        <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-white/30 dark:bg-white/[0.03] border border-white/40 dark:border-white/[0.04] backdrop-blur-sm mb-1.5">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#E94560] to-[#c23152] flex items-center justify-center shrink-0 shadow-md shadow-[#E94560]/20 ring-2 ring-white/30 dark:ring-white/10">
+        <div className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl bg-white/30 dark:bg-white/[0.03] border backdrop-blur-sm mb-1.5 ${roleTheme.border}`}>
+          <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${roleTheme.gradient} flex items-center justify-center shrink-0 shadow-md ${roleTheme.shadow} ring-2 ring-white/30 dark:ring-white/10`}>
             <span className="text-[11px] font-semibold text-white leading-none">{initials}</span>
           </div>
           <div className="flex-1 min-w-0">
@@ -379,7 +381,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
       {/* Mobile overlay */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -393,7 +395,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
       {/* Mobile drawer */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.aside
+          <Motion.aside
             data-tour="admin-sidebar"
             initial={{ x: -260 }}
             animate={{ x: 0 }}
@@ -409,7 +411,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
               <X size={15} weight="bold" />
             </button>
             {sidebarContent}
-          </motion.aside>
+          </Motion.aside>
         )}
       </AnimatePresence>
 
@@ -419,7 +421,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
         className={`hidden lg:flex flex-col ${glassClasses} h-screen sticky top-0 shrink-0 overflow-hidden w-[240px]`}
         style={glassShadow}
       >
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/70 dark:via-white/[0.08] to-transparent pointer-events-none" />
+        <div className={`absolute top-0 left-0 right-0 h-0.5 pointer-events-none ${roleTheme.topAccent}`} />
         {sidebarContent}
       </aside>
     </>

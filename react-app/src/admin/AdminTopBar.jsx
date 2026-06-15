@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { List as Menu, Bell, Check, ArrowBendUpLeft, NotePencil, FileText, ClipboardText, CheckCircle, HourglassMedium, PencilSimple, LockKeyOpen, LockKey, Megaphone, CalendarBlank } from '@phosphor-icons/react';
+import { getRoleVisualTheme } from '../lib/roleVisualTheme.js';
 
 const PAGE_LABELS = {
   '/admin': 'Dashboard',
@@ -54,7 +55,7 @@ function resolveAdminRoute(n) {
   return '/admin/submissions';
 }
 
-export const AdminTopBar = ({ onMobileMenuToggle, notifications = [], markOne, markAll }) => {
+export const AdminTopBar = ({ user, onMobileMenuToggle, notifications = [], markOne, markAll }) => {
   const [open, setOpen] = useState(false);
   const dropRef = useRef(null);
   const { pathname } = useLocation();
@@ -62,6 +63,7 @@ export const AdminTopBar = ({ onMobileMenuToggle, notifications = [], markOne, m
 
   const pageLabel = PAGE_LABELS[pathname] || 'Admin';
   const unread = notifications.filter(n => !n.read).length;
+  const roleTheme = getRoleVisualTheme(user);
 
   const [now, setNow] = useState(new Date());
   useEffect(() => {
@@ -81,12 +83,13 @@ export const AdminTopBar = ({ onMobileMenuToggle, notifications = [], markOne, m
   }, [open]);
 
   return (
-    <header className="h-14 bg-white/80 dark:bg-dark-base/80 backdrop-blur-md flex items-center px-4 gap-4 sticky top-0 z-30">
+    <header className={`h-14 bg-white/80 dark:bg-dark-base/80 backdrop-blur-md flex items-center px-4 gap-4 sticky top-0 z-30 border-b ${roleTheme.header}`}>
+      <div className={`absolute inset-x-0 top-0 h-0.5 ${roleTheme.topAccent}`} />
       {/* Mobile menu toggle */}
       <button
         data-tour="admin-menu-toggle"
         onClick={onMobileMenuToggle}
-        className="lg:hidden text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+        className={`lg:hidden text-slate-500 dark:text-slate-400 ${roleTheme.hoverNav}`}
       >
         <Menu size={24} />
       </button>
@@ -105,7 +108,7 @@ export const AdminTopBar = ({ onMobileMenuToggle, notifications = [], markOne, m
         <button
           data-tour="admin-notifications"
           onClick={() => setOpen(o => !o)}
-          className="relative w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-dark-border/40 transition-colors"
+          className={`relative w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
         >
           <Bell size={20} weight={unread > 0 ? 'fill' : 'regular'} />
           {unread > 0 && (

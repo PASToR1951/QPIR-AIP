@@ -3,6 +3,7 @@ import { ArrowLeft, FloppyDisk as Save, House as Home, CheckCircle } from '@phos
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { ViewModeToggle } from './ViewModeToggle';
 import { SchoolAvatar } from './SchoolAvatar.jsx';
+import { getRoleVisualTheme } from '../../lib/roleVisualTheme.js';
 
 export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSaving, isSaved, lastSavedTime, lastAutoSavedTime, theme = "indigo", appMode, toggleAppMode }) => {
     const userStr = sessionStorage.getItem('user');
@@ -30,14 +31,16 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
     const formLabel = title?.includes('Annual') ? 'AIP' : title?.includes('Quarterly') ? 'PIR' : '';
     const displayTitle = programName || title;
     const schoolName = user?.school_name;
+    const roleTheme = getRoleVisualTheme(user);
 
     return (
-        <nav className="bg-white/80 dark:bg-dark-base/80 backdrop-blur-md border-b border-slate-200 dark:border-dark-border sticky top-0 z-50 shadow-sm print:hidden">
+        <nav className={`bg-white/80 dark:bg-dark-base/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm print:hidden ${roleTheme.header}`}>
+            <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
             <div className="container mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 sm:px-4 sm:py-3">
                 <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-4">
                     <button
                         onClick={onBack}
-                        className="p-2 hover:bg-slate-100 dark:hover:bg-dark-border rounded-xl transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 shrink-0"
+                        className={`p-2 rounded-xl transition-colors text-slate-500 dark:text-slate-400 shrink-0 ${roleTheme.hoverNav}`}
                         title="Go Back"
                     >
                         <ArrowLeft size={22} weight="bold" />
@@ -50,7 +53,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                             clusterLogo={user?.cluster_logo ?? null}
                             name={schoolName}
                             size={34}
-                            className="hidden sm:block shrink-0"
+                            className={`hidden sm:block shrink-0 ring-2 ${roleTheme.ring}`}
                         />
                     )}
 
@@ -64,7 +67,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                             <h2 className="min-w-0 truncate text-xs font-black leading-tight tracking-tight text-slate-900 dark:text-slate-100 sm:text-sm md:text-base">{displayTitle}</h2>
                         </div>
                         {schoolName && (
-                            <span className="mt-0.5 hidden truncate text-[11px] font-bold text-slate-500 dark:text-slate-400 sm:block md:text-xs">
+                            <span className={`mt-0.5 hidden truncate text-[11px] font-bold sm:block md:text-xs ${roleTheme.subtleText}`}>
                                 {schoolName}
                             </span>
                         )}
@@ -136,7 +139,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
                             <div className="w-px h-6 bg-slate-200 dark:bg-dark-border mx-1 hidden sm:block"></div>
                             <button
                                 onClick={onHome}
-                                className="p-2 bg-slate-50 dark:bg-dark-surface text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-dark-border hover:text-slate-600 dark:hover:text-slate-300 rounded-xl transition-colors hidden sm:flex"
+                                className={`p-2 bg-slate-50 dark:bg-dark-surface text-slate-400 dark:text-slate-500 rounded-xl transition-colors hidden sm:flex ${roleTheme.hoverNav}`}
                                 title="Home Dashboard"
                             >
                                 <Home size={20} />
