@@ -8,7 +8,7 @@ import {
 const inputCls = "w-full px-3 py-2 h-[38px] text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 const selectCls = "w-full px-3 h-[38px] text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 
-export const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Admin', 'Observer'];
+export const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent', 'Admin', 'Observer'];
 const SALUTATIONS = ['Mr.', 'Ms.', 'Mrs.', 'Dr.'];
 
 export const EMPTY_USER_FORM = {
@@ -41,7 +41,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
 
   return (
     <div className="space-y-4">
-      {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Observer'].includes(form.role)) && (
+      {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent', 'Observer'].includes(form.role)) && (
         <div className="grid grid-cols-[120px_1fr] gap-3">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Title</label>
@@ -146,7 +146,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
           />
         </div>
       )}
-      {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(form.role)) && (
+      {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent'].includes(form.role)) && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Assigned Programs</label>
           <MultiSelect

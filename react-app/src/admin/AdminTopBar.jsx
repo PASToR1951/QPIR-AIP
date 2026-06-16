@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { List as Menu, Bell, Check, ArrowBendUpLeft, NotePencil, FileText, ClipboardText, CheckCircle, HourglassMedium, PencilSimple, LockKeyOpen, LockKey, Megaphone, CalendarBlank } from '@phosphor-icons/react';
 import { getRoleVisualTheme } from '../lib/roleVisualTheme.js';
+import { ReportingPeriodPicker } from '../components/ui/ReportingPeriodPicker.jsx';
 
 const PAGE_LABELS = {
   '/admin': 'Dashboard',
@@ -95,10 +96,12 @@ export const AdminTopBar = ({ user, onMobileMenuToggle, notifications = [], mark
       </button>
 
       {/* Page label */}
-      <h1 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate">{pageLabel}</h1>
+      <h1 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate flex-1">{pageLabel}</h1>
+
+      <ReportingPeriodPicker />
 
       {/* Live date/time */}
-      <div className="ml-auto hidden sm:flex flex-col items-end leading-none shrink-0">
+      <div className="hidden sm:flex flex-col items-end leading-none shrink-0">
         <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 tabular-nums">{timeStr}</span>
         <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{dateStr}</span>
       </div>
