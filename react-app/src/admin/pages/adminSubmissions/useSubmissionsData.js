@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../../lib/api.js';
 
 export function useSubmissionsData({ tab, filters, page }) {
@@ -9,6 +9,7 @@ export function useSubmissionsData({ tab, filters, page }) {
   const [clusters, setClusters]                 = useState([]);
   const [schools, setSchools]                   = useState([]);
   const [programs, setPrograms]                 = useState([]);
+  const submissionsRequestRef                   = useRef(0);
 
   useEffect(() => {
     api.get('/api/admin/clusters')
@@ -30,6 +31,8 @@ export function useSubmissionsData({ tab, filters, page }) {
   }, [filters.cluster]);
 
   const fetchSubmissions = useCallback(() => {
+    const requestId = submissionsRequestRef.current + 1;
+    submissionsRequestRef.current = requestId;
     setLoading(true);
     const params = new URLSearchParams();
     if (tab !== 'all') params.set('type', tab);
@@ -42,15 +45,20 @@ export function useSubmissionsData({ tab, filters, page }) {
     params.set('page', page);
     api.get(`/api/admin/submissions?${params}`)
       .then(r => {
+        if (requestId !== submissionsRequestRef.current) return;
         setFetchError(null);
         setSubmissions(r.data.data);
         setTotals({ aipTotal: r.data.aipTotal, pirTotal: r.data.pirTotal, total: r.data.total });
       })
       .catch(e => {
+        if (requestId !== submissionsRequestRef.current) return;
         console.error(e);
         setFetchError(e.friendlyMessage ?? 'Failed to load submissions. Please refresh and try again.');
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (requestId !== submissionsRequestRef.current) return;
+        setLoading(false);
+      });
   }, [tab, filters, page]);
 
   useEffect(() => { fetchSubmissions(); }, [fetchSubmissions]);
