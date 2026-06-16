@@ -33,7 +33,7 @@ export default function CESLayout() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col font-sans">
-      <header className={`bg-white dark:bg-dark-surface border-b sticky top-0 z-40 ${roleTheme.header}`}>
+      <header className={`border-b sticky top-0 z-40 ${roleTheme.header}`}>
         <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">

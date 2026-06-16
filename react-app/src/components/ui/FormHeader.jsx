@@ -34,7 +34,7 @@ export const FormHeader = ({ title, programName, onSave, onBack, onHome, isSavin
     const roleTheme = getRoleVisualTheme(user);
 
     return (
-        <nav className={`bg-white/80 dark:bg-dark-base/80 backdrop-blur-md border-b sticky top-0 z-50 shadow-sm print:hidden ${roleTheme.header}`}>
+        <nav className={`backdrop-blur-md border-b sticky top-0 z-50 shadow-sm print:hidden ${roleTheme.header}`}>
             <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
             <div className="container mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 sm:px-4 sm:py-3">
                 <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-4">

@@ -55,7 +55,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
     const roleTheme = getRoleVisualTheme(user);
 
     return (
-        <nav className={`sticky top-0 z-50 border-b bg-white/90 shadow-sm backdrop-blur-md dark:bg-dark-base/95 print:hidden ${roleTheme.header}`}>
+        <nav className={`sticky top-0 z-50 border-b shadow-sm backdrop-blur-md print:hidden ${roleTheme.header}`}>
             <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
             <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-3 sm:px-5">
                 <div className="flex min-w-0 flex-1 items-center gap-3">

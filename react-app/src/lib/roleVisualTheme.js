@@ -11,7 +11,7 @@ const ROLE_THEME_NAMES = {
 
 export const ROLE_VISUAL_THEMES = {
   emerald: {
-    header: 'border-emerald-200/80 bg-emerald-50/35 dark:border-emerald-800/50 dark:bg-emerald-950/10',
+    header: 'border-emerald-200/80 bg-emerald-50/80 dark:border-emerald-800/50 dark:bg-emerald-950/30',
     topAccent: 'bg-emerald-500/70 dark:bg-emerald-400/60',
     text: 'text-emerald-700 dark:text-emerald-300',
     subtleText: 'text-emerald-600 dark:text-emerald-400',
@@ -25,7 +25,7 @@ export const ROLE_VISUAL_THEMES = {
     shadow: 'shadow-emerald-500/20',
   },
   blue: {
-    header: 'border-blue-200/80 bg-blue-50/35 dark:border-blue-800/50 dark:bg-blue-950/10',
+    header: 'border-blue-200/80 bg-blue-50/80 dark:border-blue-800/50 dark:bg-blue-950/30',
     topAccent: 'bg-blue-500/70 dark:bg-blue-400/60',
     text: 'text-blue-700 dark:text-blue-300',
     subtleText: 'text-blue-600 dark:text-blue-400',
@@ -39,7 +39,7 @@ export const ROLE_VISUAL_THEMES = {
     shadow: 'shadow-blue-500/20',
   },
   teal: {
-    header: 'border-teal-200/80 bg-teal-50/35 dark:border-teal-800/50 dark:bg-teal-950/10',
+    header: 'border-teal-200/80 bg-teal-50/80 dark:border-teal-800/50 dark:bg-teal-950/30',
     topAccent: 'bg-teal-500/70 dark:bg-teal-400/60',
     text: 'text-teal-700 dark:text-teal-300',
     subtleText: 'text-teal-600 dark:text-teal-400',
@@ -53,7 +53,7 @@ export const ROLE_VISUAL_THEMES = {
     shadow: 'shadow-teal-500/20',
   },
   indigo: {
-    header: 'border-indigo-200/80 bg-indigo-50/35 dark:border-indigo-800/50 dark:bg-indigo-950/10',
+    header: 'border-indigo-200/80 bg-indigo-50/80 dark:border-indigo-800/50 dark:bg-indigo-950/30',
     topAccent: 'bg-indigo-500/70 dark:bg-indigo-400/60',
     text: 'text-indigo-700 dark:text-indigo-300',
     subtleText: 'text-indigo-600 dark:text-indigo-400',
@@ -81,7 +81,7 @@ export const ROLE_VISUAL_THEMES = {
     shadow: 'shadow-slate-500/20',
   },
   amber: {
-    header: 'border-amber-200/80 bg-amber-50/35 dark:border-amber-800/50 dark:bg-amber-950/10',
+    header: 'border-amber-200/80 bg-amber-50/80 dark:border-amber-800/50 dark:bg-amber-950/30',
     topAccent: 'bg-amber-500/70 dark:bg-amber-400/60',
     text: 'text-amber-700 dark:text-amber-300',
     subtleText: 'text-amber-600 dark:text-amber-400',

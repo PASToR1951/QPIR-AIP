@@ -34,7 +34,7 @@ export default function DivisionLayout() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans dark:bg-dark-base">
-      <header className={`sticky top-0 z-40 border-b bg-white/90 backdrop-blur-md dark:bg-dark-base/95 ${roleTheme.header}`}>
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-md ${roleTheme.header}`}>
         <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">

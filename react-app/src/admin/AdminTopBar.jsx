@@ -83,7 +83,7 @@ export const AdminTopBar = ({ user, onMobileMenuToggle, notifications = [], mark
   }, [open]);
 
   return (
-    <header className={`h-14 bg-white/80 dark:bg-dark-base/80 backdrop-blur-md flex items-center px-4 gap-4 sticky top-0 z-30 border-b ${roleTheme.header}`}>
+    <header className={`h-14 backdrop-blur-md flex items-center px-4 gap-4 sticky top-0 z-30 border-b ${roleTheme.header}`}>
       <div className={`absolute inset-x-0 top-0 h-0.5 ${roleTheme.topAccent}`} />
       {/* Mobile menu toggle */}
       <button
