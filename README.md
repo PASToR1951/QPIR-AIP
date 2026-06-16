@@ -2,7 +2,7 @@
 
 Web-based system for managing **Annual Implementation Plans (AIP)** and **Program Implementation Reviews (PIR)** for the DepEd Division of Guihulngan City.
 
-> **Version:** 1.2.0-beta — Beta 3
+> **Version:** 1.3.1-beta — Beta 4 Refinements
 
 ---
 
@@ -20,16 +20,16 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 
 ---
 
-## What's New in AIP-PIR Beta 3
+## What's New in AIP-PIR Beta 4
 
-- School AIP/PIR submissions now enter a **For Recommendation** focal person queue before CES review.
-- Admins can assign active Division Personnel as program focal persons.
-- CES reviewers now have an AIP review queue for focal-recommended school AIPs.
-- School reporting windows now use admin-managed trimesters, while division-level quarter workflows remain available where implemented.
-- PIR monitoring factors are activity-scoped and grouped by the M&E Manual taxonomy.
-- AIPs and PIRs support soft-delete timestamps for retention and privacy workflows.
-- Secure session restore, logout, multi-device revocation, and admin session management are documented.
-- Documentation is aligned with the DepEd M&E Manual, including DepEd Order No. 29, s. 2022, MOVs, PIR phases, role mapping, official timelines, and YEPE concepts.
+- **Cluster Coordinator role retired** in favor of a streamlined cluster-less flow.
+- **Custom reporting periods** implemented, replacing hardcoded dates with admin-managed interfaces and a global period picker.
+- **Announcements system** added for notification-powered, system-wide broadcasts.
+- **Email Templates** management interface with integrated renderer for account emails and deadline reminders.
+- **Onboarding Wizard** added for new pending users to complete their profile before accessing the portal.
+- **AIP metrics fields** (KPIs, Baseline, Quarterly Target) introduced across frontend forms, server routes, and reports.
+- Division Personnel granted scoped access to consolidation notes and templates.
+- Centralized **role-based visual themes** across layout and header components for better contrast.
 
 ---
 
@@ -380,20 +380,18 @@ Routes are mounted in `server/server.ts`. Most routes require the HttpOnly JWT c
 
 ## Status
 
-Active beta — **Beta 3** (`v1.2.0-beta`, 2026-04-30).
+Active beta — **Beta 4 Refinements** (`v1.3.1-beta`, 2026-06-16).
 
 - Core workflows (AIP, PIR, dashboard) are complete and validated.
-- Admin panel is feature-complete — users, schools, clusters, programs, deadlines, submissions, reports, backups, settings, announcements, email config, email blasts, and logs.
-- School AIP/PIR submissions now enter a **For Recommendation** focal person queue before CES review.
-- School reporting periods now use trimesters with admin-managed trimester windows; division-level reporting continues to use quarter-based flows where still implemented.
-- CES reviewers now have an AIP review queue for focal-recommended school AIPs.
-- PIR monitoring factors are activity-scoped and render consistently in review, reports, and PDF output.
-- AIPs and PIRs support soft-delete timestamps for retention/privacy workflows.
-- Admin submissions, sessions, users, consolidation, PIR review, and dashboard insights received cleanup and overhaul work.
-- Documentation now anchors the workflow to the DepEd M&E Manual, including DepEd Order No. 29, s. 2022, MOVs, PIR phases, official timelines, role mapping, and YEPE planning gaps.
-- Admin and form codebases refactored into focused subdirectory modules.
-- OAuth SSO (Google only — Microsoft OAuth removed), HttpOnly cookie sessions, real-time notifications, announcements, audit logs, and privacy compliance are implemented.
-- School/cluster logo uploads, bundled cluster-logo fallbacks, CSV user import, and report/export workflows are complete.
+- Admin panel is feature-complete — users, schools, programs, deadlines, submissions, reports, backups, settings, announcements, email config, email blasts, and logs.
+- **Beta 4 updates**: The Cluster Coordinator workflow has been fully retired in favor of a streamlined cluster-less flow.
+- Custom reporting periods have replaced hardcoded dates, complete with a Global Reporting Period Picker.
+- An Onboarding Wizard was added to guide pending users through profile completion.
+- Notifications, Announcements, and Admin Email Templates are fully integrated.
+- New AIP metrics fields (KPIs, Baseline, Quarterly Target) have been rolled out to forms and reports.
+- School AIP/PIR submissions flow through a **For Recommendation** focal person queue before CES review.
+- School reporting periods support admin-managed trimesters and division-level quarters.
+- Documentation anchors the workflow to the DepEd M&E Manual, including DepEd Order No. 29, s. 2022, MOVs, PIR phases, official timelines, role mapping, and YEPE planning gaps.
 - See internal `ROADMAP.md` and `TODO.md` for full milestone tracking.
 
 ---
