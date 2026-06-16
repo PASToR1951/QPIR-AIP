@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone, LockKeyOpen, LockKey, CalendarBlank, UserPlus } from '@phosphor-icons/react';
+import { Bell, CheckCircle, ArrowBendUpLeft, NotePencil, XCircle, FilePlus, PencilSimple, HourglassMedium, Megaphone, LockKeyOpen, LockKey, CalendarBlank, UserPlus } from '@phosphor-icons/react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import api, { API } from '../../lib/api.js';
 import { mergeNotifications } from '../../lib/notifications.js';
@@ -210,10 +210,13 @@ export function NotificationBell() {
               <div className="flex items-center gap-2">
                 {unread > 0 && (
                   <button
+                    type="button"
                     onClick={markAll}
-                    className="flex items-center gap-1 text-[10px] font-black text-slate-400 hover:text-indigo-500 transition-colors"
+                    className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 text-[11px] font-bold text-slate-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 dark:border-dark-border dark:bg-dark-base dark:text-slate-300 dark:hover:border-indigo-800/60 dark:hover:bg-indigo-950/30 dark:hover:text-indigo-300"
+                    aria-label="Clear all unread notifications"
                   >
-                    <Check size={14} /> Mark all read
+                    <CheckCircle size={14} weight="fill" />
+                    Clear unread
                   </button>
                 )}
                 <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
