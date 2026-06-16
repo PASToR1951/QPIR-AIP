@@ -163,7 +163,13 @@ dashboardRoutes.get(
         2100,
       );
       const today = new Date();
-      const currentQuarter = Math.ceil((today.getMonth() + 1) / 3);
+      const actualQuarter = Math.ceil((today.getMonth() + 1) / 3);
+      const currentQuarter = safeParseInt(
+        c.req.query("quarter"),
+        actualQuarter,
+        1,
+        4,
+      );
 
       const customDeadlines = await prisma.deadline.findMany({
         where: { year },
