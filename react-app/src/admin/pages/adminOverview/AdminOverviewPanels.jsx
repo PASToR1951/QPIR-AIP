@@ -123,7 +123,13 @@ export function AdminOverviewPanels({
           </div>
           <div className="space-y-3">
             {sortedClusters.map((cluster) => (
-              <PirClusterPanel key={cluster.id} cluster={cluster} navigate={navigate} />
+              <PirClusterPanel
+                key={cluster.id}
+                cluster={cluster}
+                currentQuarter={currentQuarter}
+                currentYear={data?.stats?.year}
+                navigate={navigate}
+              />
             ))}
           </div>
         </div>

@@ -67,10 +67,12 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
       <button
         type="button"
         onClick={handleOpen}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 hover:border-indigo-400 transition-colors"
+        className="w-full min-h-11 flex items-center justify-between gap-2 px-3 py-2 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-left text-sm font-medium text-slate-900 dark:text-slate-100 hover:border-indigo-400 transition-colors"
       >
-        <span className={selected ? '' : 'text-slate-400 dark:text-slate-500'}>{selected?.label ?? placeholder}</span>
-        <div className="flex items-center gap-1 shrink-0">
+        <span className={`min-w-0 flex-1 whitespace-normal break-words leading-snug ${selected ? '' : 'text-slate-400 dark:text-slate-500'}`}>
+          {selected?.label ?? placeholder}
+        </span>
+        <div className="flex shrink-0 items-center gap-1 self-center">
           {clearable && selected && (
             <span onClick={(e) => { e.stopPropagation(); onChange(null); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
               <X size={16} />
@@ -113,7 +115,7 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
                 key={o.value}
                 type="button"
                 onClick={() => { onChange(o.value); setOpen(false); }}
-                className={`w-full text-left px-4 py-2 text-sm font-medium transition-colors ${o.value === value ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-indigo-600 dark:hover:text-indigo-400'}`}
+                className={`w-full px-4 py-2 text-left text-sm font-medium leading-snug whitespace-normal break-words transition-colors ${o.value === value ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold' : 'text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 hover:text-indigo-600 dark:hover:text-indigo-400'}`}
               >
                 {o.label}
               </button>

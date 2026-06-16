@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAppLogo } from '../context/BrandingContext.jsx';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
@@ -94,16 +94,27 @@ const SUBMISSION_TABS = [
 
 function CollapsibleSubmissions({ onNavigate, roleTheme }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const isOnSubmissions = location.pathname === '/admin/submissions';
   const [open, setOpen] = useState(isOnSubmissions);
   const activeType = (new URLSearchParams(location.search).get('type') || 'all').toLowerCase();
 
   useEffect(() => { if (isOnSubmissions) setOpen(true); }, [isOnSubmissions]);
 
+  const handleHeaderClick = () => {
+    if (!isOnSubmissions) {
+      setOpen(true);
+      navigate('/admin/submissions?type=all');
+      onNavigate?.();
+      return;
+    }
+    setOpen(o => !o);
+  };
+
   return (
     <div>
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={handleHeaderClick}
         onMouseEnter={() => import('./pages/AdminSubmissions.jsx')}
         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-200 group select-none border
           ${isOnSubmissions

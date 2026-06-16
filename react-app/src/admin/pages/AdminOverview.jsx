@@ -119,7 +119,6 @@ export default function AdminOverview() {
     setClusterSort,
     sortedClusters,
     stats,
-    trimesterData,
     user,
   } = useAdminOverviewData();
 
@@ -151,7 +150,6 @@ export default function AdminOverview() {
                 pieData={pieData}
                 quarterData={quarterData}
                 sectionData={sectionData}
-                trimesterData={trimesterData}
               />
             </Suspense>
           </DeferredOverviewSection>

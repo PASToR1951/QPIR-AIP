@@ -4,8 +4,30 @@ import { ArrowRight, CaretDown, CaretUp } from '@phosphor-icons/react';
 import { SchoolAvatar } from '../../../components/ui/SchoolAvatar.jsx';
 import { pirPctBadge, pirBarTrack, pirBarColor, pirTextColor, InfoTip } from './overviewHelpers.jsx';
 
-export function PirClusterPanel({ cluster: cl, navigate }) {
+const QUARTER_FILTER_VALUES = {
+  1: '1st',
+  2: '2nd',
+  3: '3rd',
+  4: '4th',
+};
+
+export function PirClusterPanel({ cluster: cl, currentQuarter, currentYear, navigate }) {
   const [open, setOpen] = useState(false);
+  const openClusterSubmissions = () => {
+    const params = new URLSearchParams({
+      type: 'pir',
+      cluster: String(cl.id),
+    });
+    if (currentYear) params.set('year', String(currentYear));
+    if (currentQuarter) {
+      params.set(
+        'quarter',
+        QUARTER_FILTER_VALUES[currentQuarter] ?? String(currentQuarter),
+      );
+    }
+    navigate(`/admin/submissions?${params}`);
+  };
+
   return (
     <div className="border border-slate-200 dark:border-dark-border rounded-xl overflow-hidden">
       {/* Cluster header — always visible */}
@@ -115,7 +137,7 @@ export function PirClusterPanel({ cluster: cl, navigate }) {
           {/* Footer link */}
           <div className="border-t border-slate-100 dark:border-dark-border/60 px-4 py-2.5">
             <button
-              onClick={() => navigate(`/admin/submissions?type=pir&cluster=${cl.id}`)}
+              onClick={openClusterSubmissions}
               className="flex items-center gap-1 text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 uppercase tracking-widest transition-colors"
             >
               View all submissions <ArrowRight size={12} weight="bold" />
