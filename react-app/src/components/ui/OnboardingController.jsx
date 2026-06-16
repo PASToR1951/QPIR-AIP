@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom';
 import { usePracticeMode } from '../../context/PracticeModeContext.jsx';
 import { useOnboarding } from '../../hooks/useOnboarding.jsx';
-import { auth } from '../../lib/auth.js';
 import {
-  shouldSuppressAutoWelcome,
   isChecklistRole,
   isChecklistLandingPage,
 } from '../../lib/onboardingUtils.js';
@@ -14,12 +12,6 @@ import WelcomeCard from './WelcomeCard.jsx';
 import OnboardingChecklist from './OnboardingChecklist.jsx';
 import OnboardingTour from './OnboardingTour.jsx';
 import OnboardingHint from './OnboardingHint.jsx';
-
-function getSessionPromptKey(userId, expiry) {
-  return userId && expiry
-    ? `onboarding:loginPrompt:${userId}:${expiry}`
-    : null;
-}
 
 function getRouteSignal(roleKey, pathname) {
   if (['school', 'division'].includes(roleKey)) {
@@ -121,14 +113,12 @@ export default function OnboardingController() {
     roleKey,
     isHydrated,
     hasChecklist,
-    isWelcomeEligible,
     onboarding,
     tasks,
     completedCount,
     isComplete,
     welcomeOpen,
     checklistOpen,
-    setWelcomeOpen,
     setChecklistOpen,
     toggleChecklist,
     dismissChecklist,
@@ -138,7 +128,6 @@ export default function OnboardingController() {
     acknowledgePending,
     recordSignal,
   } = useOnboarding();
-  const hasAutoOpenedRef = useRef('');
   const completionShownRef = useRef(false);
   const completionPendingRef = useRef(false);
   const completionReadyRef = useRef(false);
@@ -197,40 +186,12 @@ export default function OnboardingController() {
   }, [location.pathname, recordSignal, roleKey]);
 
   useEffect(() => {
-    if (!isHydrated || !user?.id || !isWelcomeEligible) return undefined;
-    if (shouldSuppressAutoWelcome(location.pathname)) return undefined;
-
-    const promptKey = getSessionPromptKey(user.id, auth.getExpiry());
-    if (!promptKey || sessionStorage.getItem(promptKey)) return undefined;
-    if (!onboarding.onboarding_show_on_login) return undefined;
-
-    const signature = `${promptKey}:${location.pathname}`;
-    if (hasAutoOpenedRef.current === signature) return undefined;
-
-    const timer = window.setTimeout(() => {
-      sessionStorage.setItem(promptKey, '1');
-      hasAutoOpenedRef.current = signature;
-      setChecklistOpen(false);
-      setWelcomeOpen(true);
-    }, 400);
-
-    return () => window.clearTimeout(timer);
-  }, [
-    isHydrated,
-    isWelcomeEligible,
-    location.pathname,
-    onboarding.onboarding_show_on_login,
-    setChecklistOpen,
-    setWelcomeOpen,
-    user?.id,
-  ]);
-
-  useEffect(() => {
     completionShownRef.current = false;
     completionPendingRef.current = false;
     completionReadyRef.current = false;
     completionPrevCompleteRef.current = false;
-    setCompletionOpen(false);
+    const resetTimer = window.setTimeout(() => setCompletionOpen(false), 0);
+    return () => window.clearTimeout(resetTimer);
   }, [user?.id]);
 
   useEffect(() => {

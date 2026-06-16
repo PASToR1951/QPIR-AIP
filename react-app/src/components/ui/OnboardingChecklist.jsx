@@ -13,6 +13,8 @@ import { useAccessibility } from '../../context/AccessibilityContext.jsx';
 import { THEMES, resolveRouteThemeName } from '../../lib/routeTheme.js';
 import { useViewportSize } from './onboardingTour/useViewportSize.js';
 
+const FORM_PATHS = new Set(['/aip', '/pir']);
+
 function SegmentedProgress({ completed, total, theme, compact = false }) {
   if (total === 0) return null;
 
@@ -142,6 +144,12 @@ export default function OnboardingChecklist({
   const handleTaskClick = (task) => {
     const isDone = completedIds.includes(task.id);
     if (!isDone && task.route && location.pathname !== task.route) {
+      if (FORM_PATHS.has(location.pathname)) {
+        const shouldLeave = window.confirm(
+          'This onboarding step opens another page. Save your current work before leaving so recent edits are not interrupted.',
+        );
+        if (!shouldLeave) return;
+      }
       navigate(task.route);
     }
     onTaskClick?.(task);

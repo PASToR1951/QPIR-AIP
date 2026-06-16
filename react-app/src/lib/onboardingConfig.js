@@ -5,7 +5,7 @@ export const ONBOARDING_VERSION = 3;
 export const DEFAULT_CHECKLIST_PROGRESS = {
   completed_task_ids: [],
   hint_ids_seen: [],
-  panel_hidden: false,
+  panel_hidden: true,
 };
 
 // ── Role key lookup ───────────────────────────────────────────────────────────
