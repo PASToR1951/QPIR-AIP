@@ -1,6 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, startTransition } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { ArrowClockwise, DownloadSimple, FunnelSimple, ShieldWarning, CheckCircle, X } from '@phosphor-icons/react';
 import { LogFilters } from './adminLogs/LogFilters.jsx';
 import { LogTable } from './adminLogs/LogTable.jsx';
@@ -65,6 +65,8 @@ export default function AdminLogs() {
   const deferredSearch = useDeferredValue(searchDraft);
 
   useEffect(() => {
+    // Keep the search input aligned with browser/back-button URL changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchDraft(filters.q);
   }, [filters.q]);
 
@@ -334,14 +336,14 @@ export default function AdminLogs() {
       <AnimatePresence>
         {mobileFiltersOpen && (
           <div className="fixed inset-0 z-[130] md:hidden print:hidden">
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
               onClick={() => setMobileFiltersOpen(false)}
             />
-            <motion.div
+            <Motion.div
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 18 }}
@@ -386,7 +388,7 @@ export default function AdminLogs() {
               >
                 Done
               </button>
-            </motion.div>
+            </Motion.div>
           </div>
         )}
       </AnimatePresence>

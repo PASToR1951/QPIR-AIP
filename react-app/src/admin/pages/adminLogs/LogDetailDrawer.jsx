@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { createElement, useEffect } from 'react';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { XCircle, ClockCounterClockwise, WarningCircle, Info, User, LinkSimple, GlobeHemisphereWest } from '@phosphor-icons/react';
 import { Spinner } from '../../components/Spinner.jsx';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
@@ -9,7 +9,7 @@ function DetailBlock({ icon: Icon, label, children }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-dark-border dark:bg-dark-base/70">
       <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-        <Icon size={14} />
+        {createElement(Icon, { size: 14 })}
         {label}
       </div>
       <div className="mt-2 text-sm text-slate-700 dark:text-slate-200">
@@ -41,7 +41,7 @@ export function LogDetailDrawer({
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[70]">
-          <motion.button
+          <Motion.button
             type="button"
             aria-label="Close details"
             initial={{ opacity: 0 }}
@@ -51,7 +51,7 @@ export function LogDetailDrawer({
             className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
           />
 
-          <motion.aside
+          <Motion.aside
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
@@ -176,7 +176,7 @@ export function LogDetailDrawer({
                 </div>
               )}
             </div>
-          </motion.aside>
+          </Motion.aside>
         </div>
       )}
     </AnimatePresence>

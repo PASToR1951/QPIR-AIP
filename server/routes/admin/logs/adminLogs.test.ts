@@ -1,4 +1,5 @@
 import { getActionMeta } from "./actionCatalog.ts";
+import { buildSessionFingerprint } from "./sessionFingerprint.ts";
 import {
   AdminLogQueryError,
   buildActionFacetQuery,
@@ -97,6 +98,22 @@ Deno.test("parseAdminLogFilters rejects invalid severities", () => {
     (thrown as Error).message,
     "Unknown severity filter: alarm",
     "error message should explain the invalid filter",
+  );
+});
+
+Deno.test("buildSessionFingerprint stays within PostgreSQL integer range", () => {
+  const fingerprint = buildSessionFingerprint("ffffffffabcdef");
+
+  assert(Number.isInteger(fingerprint), "fingerprint should be an integer");
+  assert(fingerprint > 0, "fingerprint should stay positive for valid hashes");
+  assert(
+    fingerprint <= 2_147_483_647,
+    "fingerprint should fit in a PostgreSQL signed integer",
+  );
+  assertEquals(
+    buildSessionFingerprint("00000000abcdef"),
+    1,
+    "zero fingerprints should be nudged to a storable positive value",
   );
 });
 

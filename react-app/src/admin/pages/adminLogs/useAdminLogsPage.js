@@ -153,6 +153,8 @@ export function useAdminLogsPage(filters, { limit = 50 } = {}) {
       return;
     }
     if (isVisible) {
+      // Refresh the timeline when an admin returns to the tab.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRefreshToken((value) => value + 1);
     }
   }, [isVisible]);
@@ -167,6 +169,8 @@ export function useAdminLogsPage(filters, { limit = 50 } = {}) {
 
   useEffect(() => {
     let ignore = false;
+    // This effect owns the request lifecycle for the current log filters.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
 
@@ -195,10 +199,12 @@ export function useAdminLogsPage(filters, { limit = 50 } = {}) {
     return () => {
       ignore = true;
     };
-  }, [limit, listKey]);
+  }, [filters, limit, listKey]);
 
   useEffect(() => {
     if (!detailRef) {
+      // Clear stale drawer data when the selected log is removed from the URL.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDetail(null);
       setDetailLoading(false);
       setDetailError(null);

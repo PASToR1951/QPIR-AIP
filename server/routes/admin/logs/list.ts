@@ -12,14 +12,11 @@ import {
   parseAdminLogFiltersFromQuery,
 } from "./query.ts";
 import { buildAdminLogRow, type RawAdminLogRow } from "./shared.ts";
+import { buildSessionFingerprint } from "./sessionFingerprint.ts";
 
 export const listRoutes = new Hono();
 
 listRoutes.use("/logs", adminOnly);
-
-function buildSessionFingerprint(sessionHash: string): number {
-  return parseInt(sessionHash.slice(0, 8), 16);
-}
 
 async function ensureViewedAdminLogsAudit(c: Context) {
   const actor = await getUserFromToken(c);
