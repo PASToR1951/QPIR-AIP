@@ -1,5 +1,7 @@
 /**
- * Returns which CES role should review a PIR based on the program's division.
+ * Returns which CES role value should review a PIR based on the program's division.
+ * The CES-* values are stored as role strings for routing/authorization; they
+ * represent functional review distinctions, not separate user-facing categories.
  * Used for Division Personnel PIRs and focal-recommended school AIPs/PIRs.
  *
  * - Division Personnel PIRs route by program.division:

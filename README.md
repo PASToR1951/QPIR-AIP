@@ -13,7 +13,7 @@ Schools submit an AIP at the start of each fiscal year, outlining their program 
 **User roles:**
 - **School** — tied 1-to-1 with a school; submits and manages their school's AIP and PIRs
 - **Division Personnel** — manages programs they are assigned to; maintains independent AIP/PIR records
-- **CES-SGOD / CES-ASDS / CES-CID** — reviews AIPs/PIRs within their functional division after focal recommendation
+- **CES Reviewer** — reviews AIPs/PIRs within the assigned SGOD, OSDS, or CID functional distinction after focal recommendation
 - **Admin** — full system access; manages users, schools, programs, deadlines, email, and submissions
 - **Observer** — read-only access to submitted AIPs and PIRs across the division
 - **Pending** — newly created accounts awaiting role assignment by an Admin

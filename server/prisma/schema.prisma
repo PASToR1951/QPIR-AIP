@@ -99,7 +99,7 @@ model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
   password  String?   // Hashed password — null for OAuth-only users
-  role            String    // "School" | "Division Personnel" | "Admin" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Pending" | "Observer" | "Superintendent"
+  role            String    // "School" | "Division Personnel" | "Admin" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Pending" | "Observer" | "Superintendent"; CES-* are functional review distinctions encoded as role values.
 
   // OAuth SSO fields — populated on first OAuth login
   oauth_provider  String?   // "google" | null

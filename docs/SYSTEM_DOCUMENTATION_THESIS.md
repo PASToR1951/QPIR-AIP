@@ -244,9 +244,7 @@ The proposed system centralizes the AIP/PIR cycle in one portal. Users authentic
 | --- | --- | --- |
 | School | Create, save, submit, and view school-owned AIPs and PIRs. | Bound to one school and applicable programs. |
 | Division Personnel | Create division-level records and act as focal reviewer when assigned. | Bound by program assignments and focal-person mappings. |
-| CES-SGOD | Review focal-recommended records for SGOD programs. | Functional division review queue. |
-| CES-CID | Review focal-recommended records for CID programs and fallback records without a declared division. | Functional division review queue. |
-| CES-ASDS | Review focal-recommended records for OSDS programs. | Functional division review queue. |
+| CES Reviewer | Review focal-recommended records according to the assigned SGOD, OSDS, or CID functional distinction. | Functional division review queue. |
 | Admin | Manage users, schools, clusters, programs, deadlines, reports, announcements, sessions, backups, and settings. | System administration; not the normal focal/CES review chain. |
 | Observer | View submitted records and dashboards without workflow actions. | Read-only monitoring. |
 | Pending | Await role assignment before receiving normal access. | Restricted staging account state. |
@@ -430,9 +428,9 @@ This section walks through the typical user journey for each role.
 2. As a focal reviewer for assigned programs, open the focal queue (`/api/admin/focal/aips`, `/api/admin/focal/pirs`) and either recommend the submission for CES review or return it with remarks.
 3. As a program owner, create and submit division-level AIPs and PIRs. Division-level PIRs skip focal recommendation and enter `For CES Review` directly.
 
-#### 4.7.3 CES Reviewer (CES-SGOD, CES-ASDS, CES-CID)
+#### 4.7.3 CES Reviewer
 
-1. Sign in and open the CES queue, which is filtered by functional division: SGOD for `CES-SGOD`, OSDS for `CES-ASDS`, and CID together with null-division programs for `CES-CID`.
+1. Sign in and open the CES queue, which is filtered by functional division distinction: SGOD maps to `CES-SGOD`, OSDS maps to `CES-ASDS`, and CID together with null-division programs maps to `CES-CID`.
 2. Open a focal-recommended AIP or PIR, review the contents, and either approve or return with remarks. For PIRs the reviewer may first transition the record to `Under Review` to indicate active review.
 3. CES reviewers may also create and submit their own PIRs. Those records enter `For Admin Review` and are surfaced through the admin consolidation view.
 

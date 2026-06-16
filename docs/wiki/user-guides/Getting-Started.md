@@ -27,9 +27,7 @@ Your role controls which workspace, records, and actions you can access.
 | --- | --- | --- |
 | **School** | Dashboard, AIP, PIR | Prepare school AIPs, file quarterly PIRs, monitor returned items, and download documents. |
 | **Division Personnel** | Dashboard, AIP, PIR, Focal Queue | Prepare division-level AIPs/PIRs and recommend or return assigned school submissions as a focal person. |
-| **CES-SGOD** | CES Queue, AIP, PIR | Review SGOD submissions, act on focal-recommended AIPs/PIRs, and submit CES-owned documents. |
-| **CES-ASDS** | CES Queue, AIP, PIR | Review OSDS submissions, act on focal-recommended AIPs/PIRs, and submit CES-owned documents. |
-| **CES-CID** | CES Queue, AIP, PIR | Review CID and unassigned-division submissions, act on focal-recommended AIPs/PIRs, and submit CES-owned documents. |
+| **CES Reviewer** | CES Queue, AIP, PIR | Review submissions for the assigned functional division distinction, act on focal-recommended AIPs/PIRs, and submit CES-owned documents. |
 | **Admin** | Admin Portal | Manage users, schools, clusters, programs, deadlines, submissions, reports, backups, settings, announcements, FAQs, and email templates. |
 | **Observer** | Admin Portal, read-only views | Monitor overview data, inspect submissions, and contribute allowed management responses without changing workflow records. |
 | **Pending** | Onboarding | Complete profile setup or wait for admin action before role-specific tools open. |
@@ -85,7 +83,7 @@ School-owned AIPs and PIRs move through this current path:
 School submits -> Focal recommendation -> CES review -> Approved or Returned
 ```
 
-Division Personnel assigned as focal persons can recommend a school submission to CES or return it with remarks. CES reviewers act according to the program's functional division:
+Division Personnel assigned as focal persons can recommend a school submission to CES or return it with remarks. CES is one reviewer role in the workflow; the SGOD, OSDS, and CID labels are functional routing distinctions:
 
 | Program division | CES reviewer |
 | --- | --- |
