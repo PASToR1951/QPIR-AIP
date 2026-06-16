@@ -3,6 +3,23 @@ import { getUserFromToken, type TokenPayload } from "../../../lib/auth.ts";
 import { CES_ROLES } from "../../../lib/routing.ts";
 
 export const OBSERVER_ROLE = "Observer";
+export const SUPERINTENDENT_ROLE = "Superintendent";
+
+export const ADMIN_PANEL_ROLES = [
+  "Admin",
+  OBSERVER_ROLE,
+  SUPERINTENDENT_ROLE,
+];
+
+export const ADMIN_ANALYTICS_ROLES = [
+  "Admin",
+  OBSERVER_ROLE,
+  SUPERINTENDENT_ROLE,
+];
+
+export const SYSTEM_ADMIN_ROLES = [
+  "Admin",
+];
 
 export async function requireAdmin(
   c: Context | string | undefined,
@@ -17,6 +34,26 @@ export async function requireAdminOrObserver(
 ): Promise<TokenPayload | null> {
   const user = await getUserFromToken(c);
   if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE)) {
+    return null;
+  }
+  return user;
+}
+
+export async function requireAdminObserverOrSuperintendent(
+  c: Context | string | undefined,
+): Promise<TokenPayload | null> {
+  const user = await getUserFromToken(c);
+  if (!user || !ADMIN_PANEL_ROLES.includes(user.role)) {
+    return null;
+  }
+  return user;
+}
+
+export async function requireSuperintendent(
+  c: Context | string | undefined,
+): Promise<TokenPayload | null> {
+  const user = await getUserFromToken(c);
+  if (!user || user.role !== SUPERINTENDENT_ROLE) {
     return null;
   }
   return user;
@@ -53,6 +90,14 @@ export const adminOnly: MiddlewareHandler = async (c, next) => {
 export const adminOrObserverOnly: MiddlewareHandler = async (c, next) => {
   const user = await getUserFromToken(c);
   if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  await next();
+};
+
+export const adminAnalyticsOnly: MiddlewareHandler = async (c, next) => {
+  const user = await getUserFromToken(c);
+  if (!user || !ADMIN_ANALYTICS_ROLES.includes(user.role)) {
     return c.json({ error: "Forbidden" }, 403);
   }
   await next();

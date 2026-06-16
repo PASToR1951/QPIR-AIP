@@ -5,6 +5,7 @@ export const VALID_STATUSES = new Set([
   "Under Review",
   "For Recommendation",
   "For CES Review",
+  "For Superintendent Review",
   "For Admin Review",
   "Approved",
   "Returned",

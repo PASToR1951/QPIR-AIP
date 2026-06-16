@@ -59,6 +59,9 @@ function canCESReviewAipRecord(
     program?: { division?: string | null } | null;
   },
 ): boolean {
+  if (aip.school_id == null) {
+    return role === "Superintendent";
+  }
   return aip.school_id != null &&
     aip.focal_person_id != null &&
     canCESReviewDivision(role, aip.program?.division ?? null);
@@ -81,7 +84,7 @@ function canCESReviewPirRecord(
     return pir.focal_person_id != null &&
       canCESReviewDivision(role, aip.program?.division ?? null);
   }
-  return canCESReviewDivision(role, aip.program?.division ?? null);
+  return role === "Superintendent";
 }
 
 function cesSchoolProgramWhere(role: string): Record<string, any> {
@@ -318,7 +321,7 @@ pirReviewRoutes.get("/ces/pirs", async (c) => {
 
   const pirs = await prisma.pIR.findMany({
     where: {
-      status: { in: ["For CES Review", "Under Review"] },
+      status: { in: ["For CES Review", "Under Review", "For Superintendent Review"] },
       ...cesPirWhereForRole(tokenUser.role),
       ...(quarterFilter ? { quarter: quarterFilter } : {}),
       ...(yearFilter ? { aip: { is: { year: yearFilter } } } : {}),
@@ -402,7 +405,7 @@ pirReviewRoutes.get("/ces/aips", async (c) => {
   const year = c.req.query("year") ? Number(c.req.query("year")) : undefined;
   const aips = await prisma.aIP.findMany({
     where: {
-      status: "For CES Review",
+      status: { in: ["For CES Review", "For Superintendent Review"] },
       ...cesAipWhereForRole(tokenUser.role),
       ...(year && Number.isInteger(year) ? { year } : {}),
     },
@@ -478,8 +481,11 @@ pirReviewRoutes.post(
           if (!lockedAip) {
             throw new HttpError(404, "AIP not found", "NOT_FOUND");
           }
-          if (lockedAip.status !== "For CES Review") {
+          if (!["For CES Review", "For Superintendent Review"].includes(lockedAip.status)) {
             throw new ConflictError("AIP is not pending CES review");
+          }
+          if (lockedAip.status === "For Superintendent Review" && tokenUser.role !== "Superintendent") {
+            throw new HttpError(403, "Forbidden", "FORBIDDEN");
           }
           if (!canCESReviewAipRecord(tokenUser.role, lockedAip as any)) {
             throw new HttpError(403, "Forbidden", "FORBIDDEN");
@@ -556,8 +562,11 @@ pirReviewRoutes.post(
           if (!lockedAip) {
             throw new HttpError(404, "AIP not found", "NOT_FOUND");
           }
-          if (lockedAip.status !== "For CES Review") {
+          if (!["For CES Review", "For Superintendent Review"].includes(lockedAip.status)) {
             throw new ConflictError("AIP is not pending CES review");
+          }
+          if (lockedAip.status === "For Superintendent Review" && tokenUser.role !== "Superintendent") {
+            throw new HttpError(403, "Forbidden", "FORBIDDEN");
           }
           if (!canCESReviewAipRecord(tokenUser.role, lockedAip as any)) {
             throw new HttpError(403, "Forbidden", "FORBIDDEN");
@@ -621,11 +630,14 @@ pirReviewRoutes.post(
           throw new HttpError(404, "PIR not found", "NOT_FOUND");
         }
         if (
-          !["For CES Review", "Under Review"].includes(
+          !["For CES Review", "Under Review", "For Superintendent Review"].includes(
             (lockedPir as any).status,
           )
         ) {
           throw new ConflictError("PIR is not in a reviewable state");
+        }
+        if ((lockedPir as any).status === "For Superintendent Review" && tokenUser.role !== "Superintendent") {
+          throw new HttpError(403, "Forbidden", "FORBIDDEN");
         }
         if ((lockedPir as any).active_reviewer_id !== null) {
           throw new ConflictError("PIR is already under review");
@@ -702,11 +714,14 @@ pirReviewRoutes.post(
           throw new HttpError(404, "PIR not found", "NOT_FOUND");
         }
         if (
-          !["For CES Review", "Under Review"].includes(
+          !["For CES Review", "Under Review", "For Superintendent Review"].includes(
             (lockedPir as any).status,
           )
         ) {
           throw new ConflictError("PIR is not pending CES review");
+        }
+        if ((lockedPir as any).status === "For Superintendent Review" && tokenUser.role !== "Superintendent") {
+          throw new HttpError(403, "Forbidden", "FORBIDDEN");
         }
         if (!canCESReviewPirRecord(tokenUser.role, lockedPir as any)) {
           throw new HttpError(403, "Forbidden", "FORBIDDEN");
@@ -778,11 +793,14 @@ pirReviewRoutes.post(
           throw new HttpError(404, "PIR not found", "NOT_FOUND");
         }
         if (
-          !["For CES Review", "Under Review"].includes(
+          !["For CES Review", "Under Review", "For Superintendent Review"].includes(
             (lockedPir as any).status,
           )
         ) {
           throw new ConflictError("PIR is not pending CES review");
+        }
+        if ((lockedPir as any).status === "For Superintendent Review" && tokenUser.role !== "Superintendent") {
+          throw new HttpError(403, "Forbidden", "FORBIDDEN");
         }
         if (!canCESReviewPirRecord(tokenUser.role, lockedPir as any)) {
           throw new HttpError(403, "Forbidden", "FORBIDDEN");

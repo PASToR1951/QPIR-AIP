@@ -24,7 +24,9 @@ const VIEW_MODES = {
 const CONSOLIDATION_STATUSES = [
   'Submitted',
   'Under Review',
+  'For Recommendation',
   'For CES Review',
+  'For Superintendent Review',
   'For Admin Review',
   'Approved',
   'Returned',

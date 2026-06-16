@@ -5,6 +5,7 @@ const VALID_ROLES = new Set([
   'CES-SGOD',
   'CES-ASDS',
   'CES-CID',
+  'Superintendent',
 ]);
 
 const SYSTEM_ROLES = new Set([
@@ -12,6 +13,7 @@ const SYSTEM_ROLES = new Set([
   'CES-SGOD',
   'CES-ASDS',
   'CES-CID',
+  'Superintendent',
 ]);
 
 export function parseCSV(text) {

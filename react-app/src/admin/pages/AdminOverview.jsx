@@ -167,6 +167,7 @@ export default function AdminOverview() {
                 navigate={navigate}
                 setClusterSort={setClusterSort}
                 sortedClusters={sortedClusters}
+                user={user}
               />
             </Suspense>
           </DeferredOverviewSection>

@@ -173,8 +173,8 @@ const FAQ_FALLBACK = [
         a: "Quarterly deadlines and submission windows are configured by the administrator. Submission outside the configured window may be blocked or marked late depending on configuration. Contact your administrator if you missed a deadline."
       },
       {
-        q: "Why does my PIR enter For Admin Review instead of For CES Review?",
-        a: "If you submit a PIR while signed in with a CES role, the record routes to For Admin Review because a CES user cannot review their own submission. The administrator handles the record from the consolidation view."
+        q: "Why does my PIR enter For Superintendent Review instead of For CES Review?",
+        a: "If you submit a PIR while signed in with a CES role, the record routes to For Superintendent Review because a CES user cannot review their own submission. The Superintendent handles the record directly."
       }
     ]
   },
@@ -199,8 +199,8 @@ const FAQ_FALLBACK = [
         a: "A CES reviewer has explicitly started reviewing the PIR. This status indicates active review and helps avoid two reviewers acting on the same record at once."
       },
       {
-        q: "What does For Admin Review mean?",
-        a: "A PIR submitted by a CES-role user enters this holding state because CES users cannot review their own work. Administrators see the record in the consolidation view."
+        q: "What does For Superintendent Review mean?",
+        a: "A division-level AIP or PIR created by a CES reviewer enters this status to be reviewed directly by the Superintendent."
       },
       {
         q: "What does Approved mean?",

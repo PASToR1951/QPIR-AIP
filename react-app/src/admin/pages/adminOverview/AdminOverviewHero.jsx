@@ -36,7 +36,7 @@ export function AdminOverviewHero({ appLogo, navigate, stats, user }) {
               <img src="/DepEd NIR Logo.webp" alt="DepEd NIR" className="h-10 w-auto object-contain sm:h-12" />
               <img src="/Division_Logo.webp" alt="Division" className="h-10 w-auto object-contain sm:h-12" />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Admin Overview</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">{user?.role === 'Superintendent' ? 'Superintendent Overview' : 'Admin Overview'}</span>
             <h1 className="mt-1.5 mb-3 text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl md:text-4xl">
               Welcome back, <span className="text-pink-600">{user?.name || 'Admin'}</span>
             </h1>

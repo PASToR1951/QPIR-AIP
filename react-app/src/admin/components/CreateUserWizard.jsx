@@ -53,6 +53,17 @@ const ROLES = [
     hoverBg: 'hover:border-rose-300 dark:hover:border-rose-700 hover:bg-rose-50/50 dark:hover:bg-rose-950/20',
     iconBg: 'bg-rose-100 dark:bg-rose-950/50',
   },
+  {
+    value: 'Superintendent',
+    label: 'Superintendent',
+    icon: ShieldStar,
+    description: 'Division head role. Reviews and approves CES-authored submissions.',
+    group: 'system',
+    iconColor: 'text-emerald-500',
+    activeBg: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-400 dark:border-emerald-600',
+    hoverBg: 'hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20',
+    iconBg: 'bg-emerald-100 dark:bg-emerald-950/50',
+  },
 ];
 
 function RoleCard({ role, selected, onSelect }) {
@@ -149,7 +160,7 @@ function DetailsForm({ form, setForm, schools, users = [], programs }) {
 
   return (
     <div className="space-y-4">
-      {form.role === 'Admin' && (
+      {['Admin', 'Superintendent'].includes(form.role) && (
         <div className="grid grid-cols-[120px_1fr] gap-3">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
@@ -168,7 +179,7 @@ function DetailsForm({ form, setForm, schools, users = [], programs }) {
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               className={inputCls}
-              placeholder="Administrator Name"
+              placeholder={form.role === 'Superintendent' ? 'Superintendent Name' : 'Administrator Name'}
             />
           </div>
         </div>

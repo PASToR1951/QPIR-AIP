@@ -69,6 +69,17 @@ statusRouter.patch(
           403,
         );
       }
+      if (
+        currentAip.status === "For Superintendent Review" &&
+        admin.role !== "Superintendent"
+      ) {
+        return c.json(
+          {
+            error: "Only Superintendents can approve AIPs pending Superintendent review",
+          },
+          403,
+        );
+      }
       const id = currentAip.id;
 
       const aip = await withAdvisoryLock(

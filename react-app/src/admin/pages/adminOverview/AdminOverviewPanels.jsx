@@ -62,6 +62,7 @@ export function AdminOverviewPanels({
   navigate,
   setClusterSort,
   sortedClusters,
+  user,
 }) {
   const [recentSubmissionPage, setRecentSubmissionPage] = useState(1);
   const recentSubmissions = data?.recentSubmissions ?? [];
@@ -128,6 +129,7 @@ export function AdminOverviewPanels({
         </div>
       )}
 
+      {user?.role !== 'Superintendent' && (
       <div className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-dark-border dark:bg-dark-surface">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -277,6 +279,7 @@ export function AdminOverviewPanels({
           <p className="py-8 text-center text-sm text-slate-400 dark:text-slate-600">No submissions yet.</p>
         )}
       </div>
+      )}
     </Motion.div>
   );
 }

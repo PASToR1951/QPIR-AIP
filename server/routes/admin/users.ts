@@ -16,8 +16,8 @@ const usersRoutes = new Hono();
 usersRoutes.use("/users", adminOnly);
 usersRoutes.use("/users/*", adminOnly);
 
-const CES_ROLES: string[] = ["CES-SGOD", "CES-ASDS", "CES-CID", "Superintendent"];
-const SYSTEM_ROLES = new Set(["Admin", ...CES_ROLES, OBSERVER_ROLE]);
+const CES_ROLES: string[] = ["CES-SGOD", "CES-ASDS", "CES-CID"];
+const SYSTEM_ROLES = new Set(["Admin", ...CES_ROLES, "Superintendent", OBSERVER_ROLE]);
 const VALID_ROLES = new Set([...SYSTEM_ROLES, "Division Personnel", "School"]);
 const PATCHABLE_ROLES = new Set([...VALID_ROLES, "Pending"]);
 

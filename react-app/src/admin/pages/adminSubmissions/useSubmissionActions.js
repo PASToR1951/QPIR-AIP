@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import api from '../../../lib/api.js';
 
-export function useSubmissionActions({ fetchSubmissions, showToast, isObserver }) {
+export function useSubmissionActions({ fetchSubmissions, showToast, isObserver, isSuperintendent }) {
   const [approveItem, setApproveItem]               = useState(null);
   const [returnItem, setReturnItem]                 = useState(null);
   const [returnFeedback, setReturnFeedback]         = useState('');
@@ -13,6 +13,7 @@ export function useSubmissionActions({ fetchSubmissions, showToast, isObserver }
     if (isObserver) return false;
     if (item?.type === 'PIR') return false;
     if (['For Recommendation', 'For CES Review'].includes(item?.status)) return false;
+    if (item?.status === 'For Superintendent Review' && !isSuperintendent) return false;
     return item?.status !== 'Approved' && item?.status !== 'Returned';
   };
 

@@ -362,7 +362,11 @@ aipRoutes.post(
         prepared_by_title: prepared_by_title || "",
         approved_by_name: approved_by_name || "",
         approved_by_title: approved_by_title || "",
-        status: isSchoolSubmission ? "For Recommendation" : "Approved",
+        status: isSchoolSubmission
+          ? "For Recommendation"
+          : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
+          ? "For Superintendent Review"
+          : "Approved",
       };
 
       if (hasInvalidActivityBudget(activities)) {
@@ -714,7 +718,11 @@ aipRoutes.put(
               prepared_by_title: prepared_by_title || "",
               approved_by_name: approved_by_name || "",
               approved_by_title: approved_by_title || "",
-              status: isSchoolResubmission ? "For Recommendation" : "Approved",
+              status: isSchoolResubmission
+                ? "For Recommendation"
+                : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
+                ? "For Superintendent Review"
+                : "Approved",
               ...(isSchoolResubmission && {
                 focal_person_id: null,
                 focal_recommended_at: null,

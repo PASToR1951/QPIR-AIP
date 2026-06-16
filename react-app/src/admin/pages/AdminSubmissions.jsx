@@ -88,6 +88,7 @@ export default function AdminSubmissions() {
   const group    = searchParams.get('group') || 'flat';
   const reviewId = searchParams.get('review');
   const isObserver = auth.isObserver();
+  const isSuperintendent = auth.isSuperintendent();
 
   const setTab   = (key) => { setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('type',  key); return next; }); setPage(1); setHighlightRowId(null); };
   const setGroup = (key) => { setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('group', key); return next; }); };
@@ -137,7 +138,7 @@ export default function AdminSubmissions() {
   const { submissions, totals, loading, fetchError, fetchSubmissions, clusters, schools, programs } =
     useSubmissionsData({ tab, filters, page });
 
-  const actions    = useSubmissionActions({ fetchSubmissions, showToast, isObserver });
+  const actions    = useSubmissionActions({ fetchSubmissions, showToast, isObserver, isSuperintendent });
   const modal      = useSubmissionModal({
     isObserver,
     fetchSubmissions,

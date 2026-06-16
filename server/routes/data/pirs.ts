@@ -400,7 +400,7 @@ pirRoutes.post(
       const nextStatus = isSchoolSubmission
         ? "For Recommendation"
         : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
-        ? "For Admin Review"
+        ? "For Superintendent Review"
         : "For CES Review";
       const resource = pirResourceKey(aip.id, cleanQuarter);
       const pir = await mapTargetlessUniqueConflict(
@@ -686,6 +686,8 @@ pirRoutes.put(
 
           const resubmitStatus = isSchoolResubmission
             ? "For Recommendation"
+            : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
+            ? "For Superintendent Review"
             : "For CES Review";
 
           await tx.pIRActivityReview.deleteMany({ where: { pir_id: pirId } });
