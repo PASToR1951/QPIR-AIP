@@ -22,6 +22,7 @@ import { useAipProgramInit } from './useAipProgramInit.js';
 import { useAipMutations } from './useAipMutations.js';
 import { DeletedProgramsPopup } from './DeletedProgramsPopup.jsx';
 import { getDefaultReportingYear } from '../../lib/periods.js';
+import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
 
 export default function AIPFormContainer() {
     const navigate = useNavigate();
@@ -42,13 +43,10 @@ export default function AIPFormContainer() {
     const isSchoolUser        = user?.role === 'School';
     const projectTerminology  = getProjectTerminology(isSchoolUser);
     const schoolOrUserId      = user?.school_id || user?.id;
+    
+    const { selectedYear } = useReportingPeriod();
     const defaultReportingYear = getDefaultReportingYear(user?.role);
-    const previousReportingYear = defaultReportingYear - 1;
-    const initialPeriodMode = searchParams.get('year') === String(previousReportingYear)
-        ? 'previous'
-        : 'current';
-    const [periodMode, setPeriodMode] = useState(initialPeriodMode);
-    const reportingYear = String(periodMode === 'previous' ? previousReportingYear : defaultReportingYear);
+    const reportingYear = String(selectedYear || defaultReportingYear);
     const periodSearchParams = useMemo(() => ({ year: reportingYear }), [reportingYear]);
 
     const data = useProgramsAndConfig({ kind: 'aip', year: reportingYear, schoolOrUserId, clusterId: user?.cluster_id });
@@ -156,12 +154,6 @@ export default function AIPFormContainer() {
         extraSearchParams:                 periodSearchParams,
     });
 
-    const handlePeriodModeChange = useCallback((nextMode) => {
-        setPeriodMode(nextMode);
-        shell.setSplashSelectedProgram(null);
-        setSearchParams({ year: nextMode === 'previous' ? String(previousReportingYear) : String(defaultReportingYear) }, { replace: true });
-    }, [defaultReportingYear, previousReportingYear, setSearchParams, shell]);
-
     const renderEditor = () => (
         <AIPFormEditor
             usesSchoolTerminology={isSchoolUser}
@@ -215,10 +207,6 @@ export default function AIPFormContainer() {
                                 theme="pink" isMobile={shell.isMobile}
                                 selectedProgram={shell.splashSelectedProgram}
                                 formKind="aip"
-                                periodMode={periodMode}
-                                currentYear={defaultReportingYear}
-                                previousYear={previousReportingYear}
-                                onPeriodModeChange={handlePeriodModeChange}
                                 onSelectProgram={(program) => {
                                     shell.setSplashSelectedProgram(program);
                                     setSearchParams(program ? { ...periodSearchParams, program } : periodSearchParams, { replace: true });

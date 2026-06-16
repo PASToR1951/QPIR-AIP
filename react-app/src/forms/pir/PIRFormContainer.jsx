@@ -20,6 +20,7 @@ import submitPir from './submitPir.js';
 import PIRFormEditor from './PIRFormEditor.jsx';
 import { getCurrentPeriodLabel, getDefaultReportingYear, getPeriodNumber, getPeriodTypeForRole, getQuarterLabel } from '../../lib/periods.js';
 import { emitOnboardingSignal } from '../../lib/onboardingSignals.js';
+import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
 
 function hasFactorInput(factors) {
     return Object.values(factors).some((factorGroup) => {
@@ -54,39 +55,23 @@ export default function PIRFormContainer() {
         sessionStorage.removeItem('user');
     }
 
+    const { selectedYear: globalSelectedYear, selectedQuarter: globalSelectedQuarter } = useReportingPeriod();
     const isDivisionPersonnel = ['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role);
     const defaultReportingYear = getDefaultReportingYear(user?.role);
-    const previousReportingYear = defaultReportingYear - 1;
-    const initialPeriodMode = searchParams.get('year') === String(previousReportingYear)
-        ? 'previous'
-        : 'current';
-    const initialQuarter = Number(searchParams.get('quarter'));
-    const [periodMode, setPeriodMode] = useState(initialPeriodMode);
-    const [previousQuarter, setPreviousQuarter] = useState(
-        Number.isInteger(initialQuarter) && initialQuarter >= 1 && initialQuarter <= 4
-            ? initialQuarter
-            : 1,
-    );
-    const selectedYear = periodMode === 'previous' ? previousReportingYear : defaultReportingYear;
-    const fallbackPeriodLabel = useMemo(() => (
-        periodMode === 'previous'
-            ? getQuarterLabel(previousQuarter, previousReportingYear)
-            : getCurrentPeriodLabel(user?.role)
-    ), [periodMode, previousQuarter, previousReportingYear, user?.role]);
+    const selectedYear = globalSelectedYear || defaultReportingYear;
+    const currentQuarterStr = globalSelectedQuarter ? getQuarterLabel(globalSelectedQuarter, selectedYear) : getCurrentPeriodLabel(user?.role);
+    
     const periodSearchParams = useMemo(() => ({
         year: String(selectedYear),
-        ...(periodMode === 'previous' ? { quarter: String(previousQuarter) } : {}),
-    }), [periodMode, previousQuarter, selectedYear]);
-    const previousQuarterOptions = useMemo(() => [1, 2, 3, 4].map((quarter) => ({
-        value: quarter,
-        label: getQuarterLabel(quarter, previousReportingYear),
-    })), [previousReportingYear]);
+        quarter: String(globalSelectedQuarter || 1),
+    }), [selectedYear, globalSelectedQuarter]);
+
     const [periodInfo, setPeriodInfo] = useState({
-        label: fallbackPeriodLabel,
+        label: currentQuarterStr,
         type: getPeriodTypeForRole(user?.role),
         range: null,
     });
-    const quarterString = periodInfo.label || fallbackPeriodLabel;
+    const quarterString = periodInfo.label || currentQuarterStr;
     const periodType = periodInfo.type || getPeriodTypeForRole(user?.role);
     const periodRange = periodInfo.range;
     const currentQuarterNum = useMemo(() => getPeriodNumber(quarterString), [quarterString]);
@@ -96,27 +81,14 @@ export default function PIRFormContainer() {
         api.get('/api/dashboard', { params: { year: selectedYear } })
             .then((response) => {
                 if (!isActive) return;
-                if (periodMode === 'previous') {
-                    const quarterInfo = response.data.quarters?.find((quarter) => quarter.name === `Q${previousQuarter}`);
-                    setPeriodInfo({
-                        label: getQuarterLabel(previousQuarter, previousReportingYear),
-                        type: response.data.period_type || getPeriodTypeForRole(user?.role),
-                        range: quarterInfo
-                            ? {
-                                start: quarterInfo.period_start_month,
-                                end: quarterInfo.period_end_month,
-                            }
-                            : null,
-                    });
-                    return;
-                }
+                const quarterInfo = response.data.quarters?.find((quarter) => quarter.name === `Q${globalSelectedQuarter || 1}`);
                 setPeriodInfo({
-                    label: response.data.currentPeriodLabel || fallbackPeriodLabel,
+                    label: currentQuarterStr,
                     type: response.data.period_type || getPeriodTypeForRole(user?.role),
-                    range: response.data.currentPeriodRange
+                    range: quarterInfo
                         ? {
-                            start: response.data.currentPeriodRange.start_month,
-                            end: response.data.currentPeriodRange.end_month,
+                            start: quarterInfo.period_start_month,
+                            end: quarterInfo.period_end_month,
                         }
                         : null,
                 });
@@ -124,7 +96,7 @@ export default function PIRFormContainer() {
             .catch(() => {
                 if (!isActive) return;
                 setPeriodInfo({
-                    label: fallbackPeriodLabel,
+                    label: currentQuarterStr,
                     type: getPeriodTypeForRole(user?.role),
                     range: null,
                 });
@@ -132,7 +104,7 @@ export default function PIRFormContainer() {
         return () => {
             isActive = false;
         };
-    }, [fallbackPeriodLabel, periodMode, previousQuarter, previousReportingYear, selectedYear, user?.role]);
+    }, [currentQuarterStr, globalSelectedQuarter, selectedYear, user?.role]);
 
     const data = useProgramsAndConfig({
         kind: 'pir',
@@ -211,7 +183,7 @@ export default function PIRFormContainer() {
         state,
         quarterString,
         isDivisionPersonnel,
-        isBackfill: periodMode === 'previous',
+        isBackfill: false,
         onHydrate: (draftData) => {
             dispatch({ type: 'HYDRATE_DRAFT', payload: { draft: draftData, isDivisionPersonnel } });
         },
@@ -448,7 +420,7 @@ export default function PIRFormContainer() {
     }, []);
 
     const handleConfirmSubmit = useCallback(async () => {
-        const payload = buildPirPayload(state, { isDivisionPersonnel, quarterString, isBackfill: periodMode === 'previous' });
+        const payload = buildPirPayload(state, { isDivisionPersonnel, quarterString, isBackfill: false });
 
         try {
             await submitPir({
@@ -512,23 +484,7 @@ export default function PIRFormContainer() {
         }
     }, [dispatch, draft, handleStart, isDivisionPersonnel, navigate, periodMode, profile.program, quarterString, shell, state, submission.isEditing, submission.pirId]);
 
-    const handlePeriodModeChange = useCallback((nextMode) => {
-        setPeriodMode(nextMode);
-        shell.setSplashSelectedProgram(null);
-        setAipDocumentData(null);
-        const nextYear = nextMode === 'previous' ? previousReportingYear : defaultReportingYear;
-        setSearchParams({
-            year: String(nextYear),
-            ...(nextMode === 'previous' ? { quarter: String(previousQuarter) } : {}),
-        }, { replace: true });
-    }, [defaultReportingYear, previousQuarter, previousReportingYear, setSearchParams, shell]);
-
-    const handlePreviousQuarterChange = useCallback((nextQuarter) => {
-        setPreviousQuarter(nextQuarter);
-        shell.setSplashSelectedProgram(null);
-        setAipDocumentData(null);
-        setSearchParams({ year: String(previousReportingYear), quarter: String(nextQuarter) }, { replace: true });
-    }, [previousReportingYear, setSearchParams, shell]);
+    // Period handlers removed, using ReportingPeriodContext instead
 
     return (
         <FormShellProvider value={shell}>
@@ -553,13 +509,6 @@ export default function PIRFormContainer() {
                                 theme="blue"
                                 selectedProgram={shell.splashSelectedProgram}
                                 formKind="pir"
-                                periodMode={periodMode}
-                                currentYear={defaultReportingYear}
-                                previousYear={previousReportingYear}
-                                selectedQuarter={previousQuarter}
-                                quarterOptions={previousQuarterOptions}
-                                onPeriodModeChange={handlePeriodModeChange}
-                                onQuarterChange={handlePreviousQuarterChange}
                                 onSelectProgram={(program) => {
                                     shell.setSplashSelectedProgram(program);
                                     if (program) {
