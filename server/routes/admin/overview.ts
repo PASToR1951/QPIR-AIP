@@ -26,7 +26,13 @@ overviewRoutes.get("/overview", async (c) => {
   );
 
   const month = new Date().getMonth() + 1;
-  const currentQuarter = Math.ceil(month / 3);
+  const actualQuarter = Math.ceil(month / 3);
+  const currentQuarter = safeParseInt(
+    c.req.query("quarter"),
+    actualQuarter,
+    1,
+    4,
+  );
   const quarterPrefixes: Record<number, string> = {
     1: "1st",
     2: "2nd",
@@ -677,9 +683,20 @@ overviewRoutes.get("/onboarding-overview", async (c) => {
 });
 
 overviewRoutes.get("/layout-info", async (c) => {
-  const year = new Date().getFullYear();
+  const year = safeParseInt(
+    c.req.query("year"),
+    new Date().getFullYear(),
+    2020,
+    2100,
+  );
   const month = new Date().getMonth() + 1;
-  const currentQuarter = Math.ceil(month / 3);
+  const actualQuarter = Math.ceil(month / 3);
+  const currentQuarter = safeParseInt(
+    c.req.query("quarter"),
+    actualQuarter,
+    1,
+    4,
+  );
 
   const deadline = await prisma.deadline.findUnique({
     where: { year_quarter: { year, quarter: currentQuarter } },

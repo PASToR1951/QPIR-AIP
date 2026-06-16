@@ -36,7 +36,7 @@ export async function requireCES(
   c: Context | string | undefined,
 ): Promise<TokenPayload | null> {
   const user = await getUserFromToken(c);
-  if (!user || !(CES_ROLES as readonly string[]).includes(user.role)) {
+  if (!user || (!(CES_ROLES as readonly string[]).includes(user.role) && user.role !== "Superintendent")) {
     return null;
   }
   return user;

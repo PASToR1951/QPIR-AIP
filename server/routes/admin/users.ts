@@ -16,7 +16,7 @@ const usersRoutes = new Hono();
 usersRoutes.use("/users", adminOnly);
 usersRoutes.use("/users/*", adminOnly);
 
-const CES_ROLES: string[] = ["CES-SGOD", "CES-ASDS", "CES-CID"];
+const CES_ROLES: string[] = ["CES-SGOD", "CES-ASDS", "CES-CID", "Superintendent"];
 const SYSTEM_ROLES = new Set(["Admin", ...CES_ROLES, OBSERVER_ROLE]);
 const VALID_ROLES = new Set([...SYSTEM_ROLES, "Division Personnel", "School"]);
 const PATCHABLE_ROLES = new Set([...VALID_ROLES, "Pending"]);
@@ -485,7 +485,7 @@ usersRoutes.patch("/users/:id", async (c) => {
   if (role === "School" && school_id !== undefined) {
     updateData.school_id = school_id;
   } else if (
-    ["Division Personnel", "Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Pending", OBSERVER_ROLE].includes(role)
+    ["Division Personnel", "Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Superintendent", "Pending", OBSERVER_ROLE].includes(role)
   ) {
     updateData.school_id = null;
   }

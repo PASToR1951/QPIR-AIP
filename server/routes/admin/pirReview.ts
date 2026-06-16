@@ -42,10 +42,12 @@ const PIR_READABLE_ROLES = [
   "CES-SGOD",
   "CES-ASDS",
   "CES-CID",
+  "Superintendent",
   OBSERVER_ROLE,
 ];
 
 function canCESReviewDivision(role: string, division: string | null): boolean {
+  if (role === "Superintendent") return true;
   return getCESRoleForDivisionPIR(division) === role;
 }
 
@@ -83,6 +85,7 @@ function canCESReviewPirRecord(
 }
 
 function cesSchoolProgramWhere(role: string): Record<string, any> {
+  if (role === "Superintendent") return {};
   if (role === "CES-SGOD") return { division: "SGOD" };
   if (role === "CES-ASDS") return { division: "OSDS" };
   return { OR: [{ division: "CID" }, { division: null }] };
@@ -111,6 +114,14 @@ function cesPirWhereForRole(role: string): Record<string, any> {
         { aip: { school_id: null, program: { division: "OSDS" } } },
         schoolRecommended,
       ],
+    };
+  }
+  if (role === "Superintendent") {
+    return {
+      OR: [
+        { aip: { school_id: null } },
+        schoolRecommended,
+      ]
     };
   }
   return {
@@ -287,14 +298,30 @@ pirReviewRoutes.get("/ces/pirs", async (c) => {
   const tokenUser = await requireCES(c);
   if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-  const quarter = c.req.query("quarter")
-    ? normalizeQuarterLabel(sanitizeString(c.req.query("quarter")))
-    : undefined;
+  const rawQuarter = c.req.query("quarter");
+  const rawYear = c.req.query("year");
+  
+  let quarterFilter: string | undefined;
+  let yearFilter: number | undefined;
+
+  if (rawQuarter && rawYear) {
+    const q = Number(rawQuarter);
+    const y = Number(rawYear);
+    if (q >= 1 && q <= 4 && !isNaN(y)) {
+       const ordinals = ["", "1st", "2nd", "3rd", "4th"];
+       quarterFilter = `${ordinals[q]} Quarter CY ${y}`;
+       yearFilter = y;
+    }
+  } else if (c.req.query("quarter")) {
+    quarterFilter = normalizeQuarterLabel(sanitizeString(c.req.query("quarter") || ""));
+  }
+
   const pirs = await prisma.pIR.findMany({
     where: {
       status: { in: ["For CES Review", "Under Review"] },
       ...cesPirWhereForRole(tokenUser.role),
-      ...(quarter ? { quarter } : {}),
+      ...(quarterFilter ? { quarter: quarterFilter } : {}),
+      ...(yearFilter ? { aip: { is: { year: yearFilter } } } : {}),
     },
     include: REVIEW_QUEUE_INCLUDE,
     orderBy: { created_at: "desc" },
