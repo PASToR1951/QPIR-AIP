@@ -276,7 +276,7 @@ export default function OnboardingController() {
       {hasChecklist && isHydrated && (
         <>
           <OnboardingChecklist
-            open={checklistOpen}
+            open={activeTaskTour ? false : checklistOpen}
             hidden={!showChecklistOnPage || onboarding.checklist_progress.panel_hidden || (isComplete && !checklistOpen)}
             tasks={tasks}
             completedIds={onboarding.checklist_progress.completed_task_ids}
