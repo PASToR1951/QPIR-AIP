@@ -17,7 +17,6 @@ export default React.memo(function AIPReadonlyView({
     hasRequestedEdit,
     editRequestCount,
     onDelete,
-    onPrint,
     isSaving,
     isSaved,
     lastSavedTime,
@@ -33,12 +32,12 @@ export default React.memo(function AIPReadonlyView({
         style.textContent = '@media print { @page { size: 13in 8.5in; margin: 1cm; } }';
         document.head.appendChild(style);
 
-        window.print();
-
         window.addEventListener('afterprint', () => {
             document.title = prev;
             style.remove();
         }, { once: true });
+
+        window.print();
     }, [aipData.year, aipData.sipTitle]);
 
     const handleDownloadPdf = useCallback(() => {

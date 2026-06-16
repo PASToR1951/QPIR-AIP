@@ -24,6 +24,7 @@ import { fetchAIPForUser, fetchProgramByReference } from "./shared/lookups.ts";
 import { CES_ROLES } from "../../lib/routing.ts";
 import { getDefaultReportingYear } from "../../lib/trimesters.ts";
 import {
+  normalizeAipMetricFields,
   normalizeIndicators,
   serializeIndicators,
   transformAIPActivities,
@@ -147,6 +148,9 @@ aipRoutes.get(
         outcome: aip.outcome,
         targetDescription: aip.target_description ||
           indicators[0]?.description || "",
+        kpis: (aip as any).kpis ?? null,
+        baseline: (aip as any).baseline ?? null,
+        quarterlyTarget: (aip as any).quarterly_target ?? null,
         sipTitle: aip.sip_title,
         projectCoord: aip.project_coordinator,
         objectives: aip.objectives,
@@ -269,6 +273,9 @@ aipRoutes.post(
         project_coordinator,
         objectives,
         indicators,
+        kpis,
+        baseline,
+        quarterly_target,
         prepared_by_name,
         prepared_by_title,
         approved_by_name,
@@ -325,6 +332,20 @@ aipRoutes.post(
         2020,
         2100,
       );
+      let metricFields;
+      try {
+        metricFields = normalizeAipMetricFields({
+          kpis,
+          baseline,
+          quarterly_target,
+        });
+      } catch (error) {
+        return c.json({
+          error: error instanceof Error
+            ? error.message
+            : "Invalid AIP metrics",
+        }, 400);
+      }
 
       const aipFields = {
         outcome,
@@ -336,6 +357,7 @@ aipRoutes.post(
         project_coordinator,
         objectives,
         indicators: normalizeIndicators(indicators),
+        ...metricFields,
         prepared_by_name: prepared_by_name || "",
         prepared_by_title: prepared_by_title || "",
         approved_by_name: approved_by_name || "",
@@ -599,12 +621,30 @@ aipRoutes.put(
         project_coordinator,
         objectives,
         indicators,
+        kpis,
+        baseline,
+        quarterly_target,
         prepared_by_name,
         prepared_by_title,
         approved_by_name,
         approved_by_title,
         activities,
       } = body;
+
+      let metricFields;
+      try {
+        metricFields = normalizeAipMetricFields({
+          kpis,
+          baseline,
+          quarterly_target,
+        });
+      } catch (error) {
+        return c.json({
+          error: error instanceof Error
+            ? error.message
+            : "Invalid AIP metrics",
+        }, 400);
+      }
 
       if (hasInvalidActivityBudget(activities)) {
         return c.json(
@@ -669,6 +709,7 @@ aipRoutes.put(
               project_coordinator,
               objectives,
               indicators: normalizeIndicators(indicators),
+              ...metricFields,
               prepared_by_name: prepared_by_name || "",
               prepared_by_title: prepared_by_title || "",
               approved_by_name: approved_by_name || "",

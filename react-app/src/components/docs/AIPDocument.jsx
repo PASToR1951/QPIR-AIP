@@ -12,6 +12,9 @@ export const AIPDocument = ({
     projectCoord,
     objectives = [],
     indicators = [],
+    kpis,
+    baseline,
+    quarterlyTarget,
     activities = [],
     preparedByName,
     preparedByTitle,
@@ -23,6 +26,9 @@ export const AIPDocument = ({
         return `₱ ${parseFloat(val).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
     const projectTerminology = getProjectTerminology(usesSchoolTerminology);
+    const metricValue = (value) => (
+        value === undefined || value === null || value === '' ? "\u00A0" : String(value)
+    );
 
     return (
         <div className="aip-printable text-black font-sans print:p-0 print:m-0 print:bg-white">
@@ -80,7 +86,7 @@ export const AIPDocument = ({
 
                 {/* Performance Indicators + Annual Target */}
                 <div className="flex py-1 border-b border-dotted border-slate-400">
-                    <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0 pt-0.5">Performance Indicator/s OVI):</span>
+                    <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0 pt-0.5">Performance Indicator/s (OVI):</span>
                     {(() => {
                         const visibleIndicators = indicators.filter(ind => ind.description.trim() !== '');
                         return <>
@@ -109,6 +115,21 @@ export const AIPDocument = ({
                             )}
                         </>;
                     })()}
+                </div>
+
+                <div className="flex py-1 border-b border-dotted border-slate-400">
+                    <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0">KPIs:</span>
+                    <span className="font-medium flex-1">{metricValue(kpis)}</span>
+                </div>
+
+                <div className="flex py-1 border-b border-dotted border-slate-400">
+                    <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0">Baseline:</span>
+                    <span className="font-medium flex-1">{metricValue(baseline)}</span>
+                </div>
+
+                <div className="flex py-1 border-b border-dotted border-slate-400">
+                    <span className="font-bold w-[30%] uppercase text-[10px] tracking-tight shrink-0">Target:</span>
+                    <span className="font-medium flex-1">{metricValue(quarterlyTarget)}</span>
                 </div>
             </div>
 

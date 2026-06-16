@@ -1,0 +1,4 @@
+ALTER TABLE "AIP"
+  ADD COLUMN "kpis" INTEGER,
+  ADD COLUMN "baseline" INTEGER,
+  ADD COLUMN "quarterly_target" INTEGER;

@@ -25,6 +25,7 @@ import {
 } from "./shared/lookups.ts";
 import {
   factorFieldsToClientShape,
+  normalizeAipMetricFields,
   normalizeIndicators,
   pirActivityClientId,
   serializeIndicators,
@@ -96,6 +97,9 @@ draftsRoutes.post(
         project_coordinator,
         objectives,
         indicators,
+        kpis,
+        baseline,
+        quarterly_target,
         prepared_by_name,
         prepared_by_title,
         approved_by_name,
@@ -124,6 +128,20 @@ draftsRoutes.post(
         2100,
       );
       const schoolId = tokenUser.role === "School" ? tokenUser.school_id : null;
+      let metricFields;
+      try {
+        metricFields = normalizeAipMetricFields({
+          kpis,
+          baseline,
+          quarterly_target,
+        });
+      } catch (error) {
+        return c.json({
+          error: error instanceof Error
+            ? error.message
+            : "Invalid AIP metrics",
+        }, 400);
+      }
 
       const aipData = {
         outcome: outcome || "",
@@ -135,6 +153,7 @@ draftsRoutes.post(
         project_coordinator: project_coordinator || "",
         objectives: objectives || [],
         indicators: normalizeIndicators(indicators),
+        ...metricFields,
         prepared_by_name: prepared_by_name || "",
         prepared_by_title: prepared_by_title || "",
         approved_by_name: approved_by_name || "",
@@ -274,6 +293,9 @@ draftsRoutes.get(
         outcome: aip.outcome,
         targetDescription: aip.target_description ||
           indicators[0]?.description || "",
+        kpis: (aip as any).kpis ?? null,
+        baseline: (aip as any).baseline ?? null,
+        quarterlyTarget: (aip as any).quarterly_target ?? null,
         year: String(aip.year),
         depedProgram: aip.program.title,
         sipTitle: aip.sip_title,

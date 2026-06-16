@@ -9,8 +9,14 @@ export default React.memo(function AIPGoalsTargetsSection() {
     const dispatch = useAipDispatch();
     const objectives = useAipSelector(selectAipObjectives);
     const indicators = useAipSelector(selectAipIndicators);
+    const metrics = useAipSelector((state) => state.metrics);
     const objectiveRefs = useRef([]);
     const indicatorRefs = useRef([]);
+    const metricFields = [
+        { field: 'kpis', label: 'KPIs' },
+        { field: 'baseline', label: 'Baseline' },
+        { field: 'quarterlyTarget', label: 'Target' },
+    ];
 
     useEffect(() => {
         objectiveRefs.current[objectives.length - 1]?.focus();
@@ -155,6 +161,32 @@ export default React.memo(function AIPGoalsTargetsSection() {
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                             Add Indicator
                         </button>
+                    </div>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-dark-base border border-slate-200 dark:border-dark-border p-6 rounded-2xl">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest select-none mb-3 block">KPI Metrics</label>
+                    <div className="grid gap-4 md:grid-cols-3">
+                        {metricFields.map(({ field, label }) => (
+                            <div key={field}>
+                                <label className="block text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">{label}</label>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    className="w-full bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border focus:border-pink-400 focus:ring-2 focus:ring-pink-500/20 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-100 transition-all outline-none"
+                                    placeholder="0"
+                                    value={metrics[field]}
+                                    onChange={(event) => dispatch({
+                                        type: 'SET_METRIC',
+                                        payload: {
+                                            field,
+                                            value: event.target.value.replace(/\D/g, ''),
+                                        },
+                                    })}
+                                />
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

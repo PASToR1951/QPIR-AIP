@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { DownloadSimple, XCircle } from '@phosphor-icons/react';
 import { Spinner } from '../../components/Spinner.jsx';
 
@@ -40,7 +40,7 @@ export function ExportLogsModal({ open, onClose, onExport }) {
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
-          <motion.button
+          <Motion.button
             type="button"
             aria-label="Close export modal"
             initial={{ opacity: 0 }}
@@ -50,7 +50,7 @@ export function ExportLogsModal({ open, onClose, onExport }) {
             className="absolute inset-0 bg-slate-950/35 backdrop-blur-sm"
           />
 
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
@@ -136,7 +136,7 @@ export function ExportLogsModal({ open, onClose, onExport }) {
                 )}
               </button>
             </div>
-          </motion.div>
+          </Motion.div>
         </div>
       )}
     </AnimatePresence>

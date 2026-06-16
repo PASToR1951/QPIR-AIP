@@ -212,7 +212,7 @@ export async function generatePIRPdf(data) {
         colSpan: 14,
         styles: { halign: 'center', fontStyle: 'bold', fillColor: LIGHT_GRAY, fontSize: FONT_SIZES.xs },
       }]);
-      unplannedActivities.forEach((activity, index) => monitoringBody.push(activityRow(activity, index)));
+      unplannedActivities.forEach((activity, index) => monitoringBody.push(activityRow(activity, aipActivities.length + index)));
     }
   }
 

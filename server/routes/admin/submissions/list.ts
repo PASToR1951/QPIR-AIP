@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import { prisma } from "../../../db/client.ts";
 import { getUserFromToken } from "../../../lib/auth.ts";
 import { logger } from "../../../lib/logger.ts";
-import { safeParseInt } from "../../../lib/safeParseInt.ts";
 import { writeAuditLog } from "../shared/audit.ts";
 import { toCSV, toXLSX } from "../shared/exports.ts";
 import { buildSubmittedBy } from "../shared/display.ts";
@@ -96,19 +95,21 @@ listRouter.get("/submissions", async (c) => {
 listRouter.get("/submissions/export", async (c) => {
   const exporter = (await getUserFromToken(c))!;
   const format = parseExportFormat(c.req.query("format"));
-  const type = c.req.query("type");
-  const year = c.req.query("year")
-    ? safeParseInt(c.req.query("year"), 0)
-    : undefined;
-  const status = c.req.query("status");
+  const {
+    type,
+    clusterId,
+    schoolId,
+    programId,
+    quarter,
+    year,
+    status,
+    aipWhere,
+    pirWhere,
+  } = buildSubmissionFilters(c);
 
   const aips = (!type || type === "aip" || type === "all")
     ? await prisma.aIP.findMany({
-      where: {
-        status: { not: "Draft" },
-        ...(year && { year }),
-        ...(status && { status }),
-      },
+      where: aipWhere,
       include: AIP_SUBMISSION_INCLUDE,
       orderBy: { created_at: "desc" },
     })
@@ -116,11 +117,7 @@ listRouter.get("/submissions/export", async (c) => {
 
   const pirs = (!type || type === "pir" || type === "all")
     ? await prisma.pIR.findMany({
-      where: {
-        status: { not: "Draft" },
-        ...(status && { status }),
-        aip: { ...(year && { year }) },
-      },
+      where: pirWhere,
       include: PIR_SUBMISSION_INCLUDE,
       orderBy: { created_at: "desc" },
     })
@@ -158,6 +155,10 @@ listRouter.get("/submissions/export", async (c) => {
   await writeAuditLog(exporter.id, "exported_submissions", "Export", 0, {
     format,
     type: type ?? "all",
+    cluster_id: clusterId ?? "all",
+    school_id: schoolId ?? "all",
+    program_id: programId ?? "all",
+    quarter: quarter ?? "all",
     year: year ?? "all",
     status: status ?? "all",
     row_count: rows.length,

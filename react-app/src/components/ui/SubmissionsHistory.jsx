@@ -132,6 +132,9 @@ export default function SubmissionsHistory() {
           projectCoord={d.projectCoord}
           objectives={d.objectives}
           indicators={d.indicators}
+          kpis={d.kpis}
+          baseline={d.baseline}
+          quarterlyTarget={d.quarterlyTarget}
           activities={d.activities}
           preparedByName={d.preparedByName}
           preparedByTitle={d.preparedByTitle}

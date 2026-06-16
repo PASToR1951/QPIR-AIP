@@ -13,6 +13,12 @@ export interface IndicatorInput {
   target?: string | number | null;
 }
 
+export interface AipMetricInput {
+  kpis?: string | number | null;
+  baseline?: string | number | null;
+  quarterly_target?: string | number | null;
+}
+
 export interface ActivityInput {
   phase?: string | null;
   name?: string | null;

@@ -1,3 +1,9 @@
+function toOptionalInteger(value) {
+    if (value === '' || value === undefined || value === null) return null;
+    const text = String(value).trim();
+    return /^\d+$/.test(text) ? parseInt(text, 10) : null;
+}
+
 export function buildAipPayload(state) {
     return {
         program_id: state.profile.programId,
@@ -9,6 +15,9 @@ export function buildAipPayload(state) {
         project_coordinator: state.profile.projectCoord,
         objectives: state.objectives.filter((objective) => objective.trim() !== ''),
         indicators: state.indicators.filter((indicator) => indicator.description.trim() !== ''),
+        kpis: toOptionalInteger(state.metrics.kpis),
+        baseline: toOptionalInteger(state.metrics.baseline),
+        quarterly_target: toOptionalInteger(state.metrics.quarterlyTarget),
         prepared_by_name: state.signatories.preparedByName,
         prepared_by_title: state.signatories.preparedByTitle,
         approved_by_name: state.signatories.approvedByName,
@@ -27,6 +36,9 @@ export function buildAipLocalSnapshot(state) {
         projectCoord: state.profile.projectCoord,
         objectives: state.objectives.filter((objective) => objective.trim() !== ''),
         indicators: state.indicators.filter((indicator) => indicator.description.trim() !== ''),
+        kpis: state.metrics.kpis,
+        baseline: state.metrics.baseline,
+        quarterlyTarget: state.metrics.quarterlyTarget,
         activities: state.activities,
         preparedByName: state.signatories.preparedByName,
         preparedByTitle: state.signatories.preparedByTitle,

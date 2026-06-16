@@ -211,6 +211,9 @@ model AIP {
   project_coordinator String
   objectives          Json     // Array of objective strings
   indicators          Json     // Array of { description, target } objects
+  kpis                Int?
+  baseline            Int?
+  quarterly_target    Int?
   prepared_by_name    String   @default("")
   prepared_by_title   String   @default("")
   approved_by_name    String   @default("")

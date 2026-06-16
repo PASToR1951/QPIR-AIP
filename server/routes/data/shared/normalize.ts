@@ -2,6 +2,7 @@ import { safeParseInt } from "../../../lib/safeParseInt.ts";
 import type {
   ActivityInput,
   ActivityReviewInput,
+  AipMetricInput,
   FactorInput,
   FactorMapInput,
   IndicatorInput,
@@ -153,6 +154,37 @@ export function serializeIndicators(
       ? ""
       : (ind.target?.toString().trim() || ""),
   }));
+}
+
+export function normalizeOptionalNonNegativeInteger(
+  raw: unknown,
+  fieldLabel: string,
+): number | null {
+  if (raw === undefined || raw === null) return null;
+
+  const text = String(raw).trim();
+  if (text === "") return null;
+  if (!/^\d+$/.test(text)) {
+    throw new Error(`${fieldLabel} must be a non-negative integer`);
+  }
+
+  const value = Number(text);
+  if (!Number.isSafeInteger(value) || value > 2_147_483_647) {
+    throw new Error(`${fieldLabel} must be a non-negative integer`);
+  }
+
+  return value;
+}
+
+export function normalizeAipMetricFields(input: AipMetricInput) {
+  return {
+    kpis: normalizeOptionalNonNegativeInteger(input.kpis, "KPIs"),
+    baseline: normalizeOptionalNonNegativeInteger(input.baseline, "Baseline"),
+    quarterly_target: normalizeOptionalNonNegativeInteger(
+      input.quarterly_target,
+      "Target",
+    ),
+  };
 }
 
 export function validateBudgetAmount(raw: unknown): number {

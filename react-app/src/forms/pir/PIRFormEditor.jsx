@@ -121,12 +121,12 @@ export default function PIRFormEditor({
         style.textContent = '@media print { @page { size: 13in 8.5in; margin: 1cm; } }';
         document.head.appendChild(style);
 
-        window.print();
-
         window.addEventListener('afterprint', () => {
             document.title = prev;
             style.remove();
         }, { once: true });
+
+        window.print();
     }, [profile.program, quarterString]);
 
     const handleDownloadPirPdf = useCallback(() => {

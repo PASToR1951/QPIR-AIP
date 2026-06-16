@@ -13,6 +13,10 @@ export const AIP_PHASES = ["Planning", "Implementation", "Monitoring and Evaluat
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+function toOptionalMetricString(value) {
+    return value === undefined || value === null ? '' : String(value);
+}
+
 export function deriveAipPeriodLabel(startMonth, endMonth) {
     if (!startMonth || !endMonth) {
         return '';
@@ -72,6 +76,11 @@ export function createInitialAipState({
         },
         objectives: [''],
         indicators: [{ description: '', target: '' }],
+        metrics: {
+            kpis: '',
+            baseline: '',
+            quarterlyTarget: '',
+        },
         activities: createInitialAipActivities(),
         signatories: {
             preparedByName: '',
@@ -118,6 +127,11 @@ function aipReducer(state, action) {
                     selectedTarget: '',
                 },
                 indicators: [{ description: '', target: '' }],
+                metrics: {
+                    kpis: '',
+                    baseline: '',
+                    quarterlyTarget: '',
+                },
             };
 
         case 'SET_SELECTED_TARGET':
@@ -145,6 +159,11 @@ function aipReducer(state, action) {
                     selectedTarget: action.payload.targetDescription,
                 },
                 indicators,
+                metrics: {
+                    kpis: '',
+                    baseline: '',
+                    quarterlyTarget: '',
+                },
             };
         }
 
@@ -196,6 +215,15 @@ function aipReducer(state, action) {
                 indicators: nextIndicators,
             };
         }
+
+        case 'SET_METRIC':
+            return {
+                ...state,
+                metrics: {
+                    ...state.metrics,
+                    [action.payload.field]: action.payload.value,
+                },
+            };
 
         case 'DUPLICATE_ACTIVITY': {
             const sourceActivity = state.activities.find((a) => a.id === action.payload.id);
@@ -329,6 +357,11 @@ function aipReducer(state, action) {
                 },
                 objectives: draft.objectives?.length ? draft.objectives : [''],
                 indicators: nextIndicators,
+                metrics: {
+                    kpis: toOptionalMetricString(draft.kpis),
+                    baseline: toOptionalMetricString(draft.baseline),
+                    quarterlyTarget: toOptionalMetricString(draft.quarterlyTarget),
+                },
                 activities: hydratedActivities.items,
                 signatories: {
                     preparedByName: draft.preparedByName || '',
@@ -364,6 +397,11 @@ function aipReducer(state, action) {
                 },
                 objectives: aip.objectives || [],
                 indicators: nextIndicators,
+                metrics: {
+                    kpis: toOptionalMetricString(aip.kpis),
+                    baseline: toOptionalMetricString(aip.baseline),
+                    quarterlyTarget: toOptionalMetricString(aip.quarterlyTarget),
+                },
                 activities: hydratedActivities.items,
                 signatories: {
                     preparedByName: aip.preparedByName || '',

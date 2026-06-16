@@ -69,6 +69,7 @@ export default React.memo(function AIPFormEditor({
     const activities = useAipSelector(selectAipActivities);
     const objectives = useAipSelector(selectAipObjectives);
     const indicators = useAipSelector(selectAipIndicators);
+    const metrics = useAipSelector((state) => state.metrics);
     const signatories = useAipSelector(selectAipSignatories);
     const suggestions = useAipSelector(selectAipSuggestions);
     const submission = useAipSelector(selectAipSubmission);
@@ -108,10 +109,6 @@ export default React.memo(function AIPFormEditor({
         onShowFinalConfirm(true);
     }, [onShowFinalConfirm]);
 
-    const handlePrint = useCallback(() => {
-        window.print();
-    }, []);
-
     const previewFilename = useMemo(() => {
         const sanitizedSipTitle = profile.sipTitle ? sanitizeFilenameSegment(profile.sipTitle) : '';
 
@@ -128,6 +125,9 @@ export default React.memo(function AIPFormEditor({
         projectCoord: profile.projectCoord,
         objectives,
         indicators,
+        kpis: metrics.kpis,
+        baseline: metrics.baseline,
+        quarterlyTarget: metrics.quarterlyTarget,
         activities,
         preparedByName: signatories.preparedByName,
         preparedByTitle: signatories.preparedByTitle,
@@ -136,6 +136,9 @@ export default React.memo(function AIPFormEditor({
     }), [
         activities,
         indicators,
+        metrics.baseline,
+        metrics.kpis,
+        metrics.quarterlyTarget,
         objectives,
         profile.depedProgram,
         profile.outcome,
@@ -168,7 +171,6 @@ export default React.memo(function AIPFormEditor({
                 hasRequestedEdit={hasRequestedEdit}
                 editRequestCount={editRequestCount}
                 onDelete={onDeleteSubmission}
-                onPrint={handlePrint}
                 isSaving={isSaving}
                 isSaved={isSaved}
                 lastSavedTime={lastSavedTime}

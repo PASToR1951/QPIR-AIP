@@ -144,7 +144,11 @@ export default function AdminSubmissions() {
     setActionError: actions.setActionError,
     showToast,
   });
-  const { downloadRef, handleExportCSV, handleExportXLSX } = useSubmissionExport({ tab, filters });
+  const { downloadRef, handleExportCSV, handleExportXLSX } = useSubmissionExport({
+    tab,
+    filters,
+    onError: (message) => showToast(message, 'error'),
+  });
 
   // Wrap handleStatusUpdate to sync the open detail view after AIP status changes.
   const handleStatusUpdate = async (id, type, status, feedback = '') => {

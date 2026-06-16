@@ -56,12 +56,15 @@ export function useAipProgramInit({
         profile.outcome || profile.sipTitle || profile.projectCoord
         || state.objectives.some((o) => o.trim())
         || state.indicators.some((i) => i.description.trim() || i.target.trim())
+        || state.metrics.kpis.trim()
+        || state.metrics.baseline.trim()
+        || state.metrics.quarterlyTarget.trim()
         || state.signatories.preparedByName
         || state.signatories.approvedByName
         || state.activities.some((a) => a.name || a.period || a.persons || a.outputs || a.budgetAmount || a.budgetSource)
     ), [
         profile.outcome, profile.sipTitle, profile.projectCoord,
-        state.activities, state.indicators, state.objectives,
+        state.activities, state.indicators, state.metrics, state.objectives,
         state.signatories.approvedByName, state.signatories.preparedByName,
     ]);
 

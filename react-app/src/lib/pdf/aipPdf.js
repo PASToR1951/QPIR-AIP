@@ -20,6 +20,9 @@ export async function generateAIPPdf(data) {
     projectCoord,
     objectives = [],
     indicators = [],
+    kpis,
+    baseline,
+    quarterlyTarget,
     activities = [],
     preparedByName,
     preparedByTitle,
@@ -27,6 +30,9 @@ export async function generateAIPPdf(data) {
     approvedByTitle,
   } = data;
   const projectTerminology = getProjectTerminology(usesSchoolTerminology);
+  const metricValue = (value) => (
+    value === undefined || value === null || value === '' ? '' : String(value)
+  );
 
   const sealData = await loadSealImage();
   const pdf = createLandscapePdf();
@@ -74,6 +80,10 @@ export async function generateAIPPdf(data) {
     y += Math.max(4, visibleIndicators.length * 3.5 + 2);
   }
 
+  y = drawProfileRow(pdf, y, 'KPIs:', metricValue(kpis));
+  y = drawProfileRow(pdf, y, 'BASELINE:', metricValue(baseline));
+  y = drawProfileRow(pdf, y, 'TARGET:', metricValue(quarterlyTarget));
+
   y += 2;
 
   pdf.autoTable({
@@ -117,7 +127,9 @@ export async function generateAIPPdf(data) {
           activity.period || '',
           activity.persons || '',
           activity.outputs || '',
-          activity.budgetAmount ? formatCurrency(activity.budgetAmount) : '',
+          activity.budgetAmount !== undefined && activity.budgetAmount !== null && activity.budgetAmount !== ''
+            ? formatCurrency(activity.budgetAmount)
+            : '',
           activity.budgetSource || '',
         ]),
   });

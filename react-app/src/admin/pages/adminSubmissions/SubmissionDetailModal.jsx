@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { XCircle, FileText, LockKeyOpen, LockKey } from '@phosphor-icons/react';
 import { StatusBadge } from '../../components/StatusBadge.jsx';
 import { Spinner } from '../../components/Spinner.jsx';
@@ -19,6 +19,9 @@ const toAipDocumentData = (viewData) => {
     projectCoord: viewData.project_coordinator,
     objectives: Array.isArray(viewData.objectives) ? viewData.objectives : [],
     indicators: Array.isArray(viewData.indicators) ? viewData.indicators : [],
+    kpis: viewData.kpis,
+    baseline: viewData.baseline,
+    quarterlyTarget: viewData.quarterly_target,
     activities: (viewData.activities ?? []).map((a) => ({
       id: a.id,
       phase: a.phase,
@@ -42,11 +45,8 @@ export function SubmissionDetailModal({
   editActionLoading, onEditAction,
   canDownloadSubmission,
 }) {
-  const [documentOpen, setDocumentOpen] = useState(false);
-
-  useEffect(() => {
-    if (!viewItem) setDocumentOpen(false);
-  }, [viewItem]);
+  const [documentPreview, setDocumentPreview] = useState({ itemId: null, open: false });
+  const documentOpen = Boolean(viewItem) && documentPreview.open && documentPreview.itemId === viewItem.id;
 
   if (!viewItem) return null;
 
@@ -107,6 +107,18 @@ export function SubmissionDetailModal({
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Coordinator</p>
                       <p className="font-bold text-slate-800 dark:text-slate-200">{viewData.project_coordinator}</p>
                     </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">KPIs</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">{viewData.kpis ?? '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Baseline</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">{viewData.baseline ?? '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target</p>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">{viewData.quarterly_target ?? '—'}</p>
+                    </div>
                   </>
                 )}
               </div>
@@ -157,7 +169,7 @@ export function SubmissionDetailModal({
             )}
             {canViewDocument && (
               <button
-                onClick={() => setDocumentOpen(true)}
+                onClick={() => setDocumentPreview({ itemId: viewItem.id, open: true })}
                 className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl transition-colors sm:flex-none shadow-sm shadow-indigo-100/50 dark:shadow-none active:scale-95"
               >
                 <FileText size={17} /> View Document
@@ -176,7 +188,7 @@ export function SubmissionDetailModal({
     {aipDocumentData && (
       <DocumentPreviewModal
         isOpen={documentOpen}
-        onClose={() => setDocumentOpen(false)}
+        onClose={() => setDocumentPreview({ itemId: viewItem.id, open: false })}
         title="Annual Implementation Plan"
         subtitle={`${aipDocumentData.depedProgram ?? ''} — FY ${aipDocumentData.year ?? ''}`}
         landscape

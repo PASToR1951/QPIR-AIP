@@ -5,14 +5,33 @@ import { downloadCSV, exportReport } from '../../../lib/reportExport.js';
 import { EXPORT_STYLES } from './constants.js';
 
 export function ExportButtons({ type, year }) {
+  const [loadingFormat, setLoadingFormat] = useState(null);
+  const [error, setError] = useState('');
+
+  const handleExport = async (format) => {
+    setLoadingFormat(format);
+    setError('');
+    try {
+      await exportReport(type, format, year);
+    } catch (requestError) {
+      setError(requestError.message || 'Failed to export report.');
+    } finally {
+      setLoadingFormat(null);
+    }
+  };
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {['csv', 'xlsx', 'pdf'].map(fmt => (
-        <button key={fmt} onClick={() => exportReport(type, fmt, year)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl transition-colors uppercase ${EXPORT_STYLES[fmt]}`}>
-          <DownloadSimple size={15} /> {fmt}
+        <button key={fmt} onClick={() => handleExport(fmt)} disabled={!!loadingFormat}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-400 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl transition-colors uppercase disabled:cursor-not-allowed disabled:opacity-60 ${EXPORT_STYLES[fmt]}`}>
+          {loadingFormat === fmt ? <SpinnerBase size="sm" /> : <DownloadSimple size={15} />}
+          {fmt}
         </button>
       ))}
+      {error && (
+        <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">{error}</span>
+      )}
     </div>
   );
 }

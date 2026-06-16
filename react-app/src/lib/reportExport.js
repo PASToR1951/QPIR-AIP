@@ -69,12 +69,43 @@ function patchOklchInClone(clonedDoc, convert) {
   });
 }
 
+function getFilenameFromDisposition(contentDisposition, fallback) {
+  if (!contentDisposition) return fallback;
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1]);
+  const fallbackMatch = contentDisposition.match(/filename="([^"]+)"/i);
+  return fallbackMatch?.[1] || fallback;
+}
+
+async function readFetchError(response, fallback) {
+  try {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await response.json();
+      return data?.error || fallback;
+    }
+    const text = await response.text();
+    return text || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveBlob(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
 /**
  * Downloads a report as PDF with formal DepEd header.
  */
 export async function downloadReportAsPDF(type, year) {
   const el = document.getElementById('report-content');
-  if (!el) return;
+  if (!el) throw new Error('Report content is not ready yet.');
 
   const template = REPORT_TEMPLATES[type] || { title: type, subtitle: '' };
 
@@ -163,11 +194,15 @@ export function downloadCSV(rows, filename) {
 export async function downloadServerReport(type, format, year) {
   const ext = format === 'xlsx' ? 'xlsx' : format;
   const url = `${API}/api/admin/reports/${type}/export?format=${format}&year=${year}`;
-  const blob = await fetch(url, { credentials: 'include' }).then(r => r.blob());
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${type}-report-${year}.${ext}`;
-  a.click();
+  const response = await fetch(url, { credentials: 'include' });
+  if (!response.ok) {
+    throw new Error(await readFetchError(response, `Failed to export ${type} report.`));
+  }
+  const blob = await response.blob();
+  saveBlob(
+    blob,
+    getFilenameFromDisposition(response.headers.get('content-disposition'), `${type}-report-${year}.${ext}`),
+  );
 }
 
 /**

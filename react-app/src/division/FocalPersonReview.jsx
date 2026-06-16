@@ -150,8 +150,11 @@ export default function FocalPersonReview({ type }) {
             <div className="grid gap-3 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
               <div><span className="block text-xs font-bold text-slate-400">Outcome</span>{document.outcome || '—'}</div>
               <div><span className="block text-xs font-bold text-slate-400">SIP Title</span>{document.sipTitle || '—'}</div>
-              <div><span className="block text-xs font-bold text-slate-400">Target</span>{document.targetDescription || '—'}</div>
+              <div><span className="block text-xs font-bold text-slate-400">Outcome Target</span>{document.targetDescription || '—'}</div>
               <div><span className="block text-xs font-bold text-slate-400">Project Coordinator</span>{document.projectCoordinator || '—'}</div>
+              <div><span className="block text-xs font-bold text-slate-400">KPIs</span>{document.kpis ?? '—'}</div>
+              <div><span className="block text-xs font-bold text-slate-400">Baseline</span>{document.baseline ?? '—'}</div>
+              <div><span className="block text-xs font-bold text-slate-400">Target</span>{document.quarterlyTarget ?? '—'}</div>
             </div>
           </Section>
           <Section title="Activities">

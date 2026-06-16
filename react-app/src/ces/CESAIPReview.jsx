@@ -139,8 +139,11 @@ export default function CESAIPReview() {
         <div className="grid gap-3 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
           <div><span className="block text-xs font-bold text-slate-400">Outcome</span>{aip.outcome || '—'}</div>
           <div><span className="block text-xs font-bold text-slate-400">SIP Title</span>{aip.sipTitle || '—'}</div>
-          <div><span className="block text-xs font-bold text-slate-400">Target</span>{aip.targetDescription || '—'}</div>
+          <div><span className="block text-xs font-bold text-slate-400">Outcome Target</span>{aip.targetDescription || '—'}</div>
           <div><span className="block text-xs font-bold text-slate-400">Project Coordinator</span>{aip.projectCoordinator || '—'}</div>
+          <div><span className="block text-xs font-bold text-slate-400">KPIs</span>{aip.kpis ?? '—'}</div>
+          <div><span className="block text-xs font-bold text-slate-400">Baseline</span>{aip.baseline ?? '—'}</div>
+          <div><span className="block text-xs font-bold text-slate-400">Target</span>{aip.quarterlyTarget ?? '—'}</div>
         </div>
       </Section>
 

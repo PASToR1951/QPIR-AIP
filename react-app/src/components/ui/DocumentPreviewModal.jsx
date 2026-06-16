@@ -25,12 +25,12 @@ export const DocumentPreviewModal = ({
             document.head.appendChild(injected);
         }
 
-        window.print();
-
         window.addEventListener('afterprint', () => {
             document.title = prev;
             if (injected) injected.remove();
         }, { once: true });
+
+        window.print();
     };
     // Prevent scrolling when modal is open
     useEffect(() => {
