@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import {
   CaretDown,
@@ -41,7 +41,8 @@ function ChecklistTaskButton({ task, index, done, isNext, theme, onClick }) {
     <button
       type="button"
       onClick={() => onClick(task)}
-      className={`w-full rounded-xl border px-3.5 py-2.5 text-left transition-all ${
+      title={`${task.label}. ${task.description}`}
+      className={`w-full rounded-lg border px-2.5 py-2 text-left transition-all ${
         done
           ? 'cursor-pointer border-emerald-200 bg-emerald-50/60 hover:border-emerald-300 hover:bg-emerald-50 dark:border-emerald-700/50 dark:bg-emerald-950/15 dark:hover:border-emerald-600/60'
           : isNext
@@ -49,9 +50,9 @@ function ChecklistTaskButton({ task, index, done, isNext, theme, onClick }) {
             : 'border-slate-200 bg-slate-50/60 hover:border-slate-300 dark:border-slate-700 dark:bg-dark-base/50 dark:hover:border-slate-600'
       }`}
     >
-      <div className="flex items-start gap-2.5">
+      <div className="flex items-start gap-2">
         <div
-          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-[11px] font-semibold ${
+          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-[10px] font-semibold ${
             done
               ? 'border-emerald-200 bg-emerald-100 text-emerald-600 dark:border-emerald-800/50 dark:bg-emerald-950/30 dark:text-emerald-300'
               : isNext
@@ -59,13 +60,13 @@ function ChecklistTaskButton({ task, index, done, isNext, theme, onClick }) {
                 : 'border-slate-200 bg-white text-slate-400 dark:border-dark-border dark:bg-dark-surface dark:text-slate-400'
           }`}
         >
-          {done ? <CheckCircle size={14} weight="fill" /> : stepNumber}
+          {done ? <CheckCircle size={13} weight="fill" /> : stepNumber}
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
             <p
-              className={`text-sm font-medium ${
+              className={`min-w-0 flex-1 truncate text-[13px] font-semibold leading-5 ${
                 done
                   ? 'text-emerald-700 dark:text-emerald-300'
                   : 'text-slate-700 dark:text-slate-200'
@@ -74,14 +75,14 @@ function ChecklistTaskButton({ task, index, done, isNext, theme, onClick }) {
               {task.label}
             </p>
             {isNext && !done && (
-              <span className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${theme.tab}`}>
+              <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${theme.tab}`}>
                 Next
               </span>
             )}
           </div>
 
           <p
-            className={`mt-0.5 text-xs leading-relaxed ${
+            className={`mt-0.5 line-clamp-1 text-[11px] leading-4 ${
               done
                 ? 'text-emerald-600/70 dark:text-emerald-300/60'
                 : 'text-slate-400 dark:text-slate-500'
@@ -117,6 +118,7 @@ export default function OnboardingChecklist({
   const themeName = resolveRouteThemeName(location.pathname);
   const theme = THEMES[themeName];
   const containerRef = useRef(null);
+  const [isFooterVisible, setIsFooterVisible] = useState(false);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -130,7 +132,13 @@ export default function OnboardingChecklist({
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [open, onClose, isMobile]);
 
-  if (hidden) return null;
+  useEffect(() => {
+    const handleFooterVisibility = (event) => setIsFooterVisible(Boolean(event.detail));
+    window.addEventListener('footer-visibility-change', handleFooterVisibility);
+    return () => window.removeEventListener('footer-visibility-change', handleFooterVisibility);
+  }, []);
+
+  if (hidden || isFooterVisible) return null;
 
   const handleTaskClick = (task) => {
     const isDone = completedIds.includes(task.id);
@@ -143,13 +151,13 @@ export default function OnboardingChecklist({
   const remaining = tasks.length - completedCount;
   const nextTask = tasks.find((task) => !completedIds.includes(task.id)) ?? null;
   const shellClasses = open
-    ? 'w-full rounded-2xl border border-slate-300 shadow-xl dark:border-slate-600'
+    ? 'w-full rounded-xl border border-slate-300 shadow-xl dark:border-slate-600'
     : 'w-fit max-w-full rounded-xl border border-slate-300 shadow-lg hover:shadow-xl dark:border-slate-600';
 
   if (!open && hidePill) return null;
 
   return (
-    <div ref={containerRef} className={`fixed bottom-5 z-[103] ${open ? 'w-[calc(100vw-2rem)] max-w-sm sm:w-80' : 'w-auto max-w-[calc(100vw-5rem)] sm:max-w-sm'} ${sidebarOffset ? 'left-5 lg:left-[248px]' : 'left-5'}`}>
+    <div ref={containerRef} className={`fixed bottom-5 z-[103] ${open ? 'w-[calc(100vw-2rem)] max-w-[22rem] sm:w-[19.5rem]' : 'w-auto max-w-[calc(100vw-5rem)] sm:max-w-sm'} ${sidebarOffset ? 'left-5 lg:left-[248px]' : 'left-5'}`}>
       <Motion.div
         layout={!settings.reduceMotion}
         initial={false}
@@ -219,29 +227,30 @@ export default function OnboardingChecklist({
                   onClose?.();
                 }
               }}
-              className="w-full touch-pan-y"
+              className="flex w-full flex-col touch-pan-y"
+              style={{ maxHeight: 'calc(100dvh - var(--tour-safe-top) - 1.25rem)' }}
             >
               <button
                 type="button"
                 onClick={onToggle}
                 aria-label="Collapse checklist"
-                className="flex min-h-11 w-full items-center justify-center border-b border-slate-200 py-2 dark:border-slate-700 sm:hidden"
+                className="flex min-h-10 w-full shrink-0 items-center justify-center border-b border-slate-200 py-2 dark:border-slate-700 sm:hidden"
               >
                 <span className="h-1 w-8 rounded-full bg-slate-300 dark:bg-slate-600" />
               </button>
 
-              <div className="p-4 sm:p-5">
+              <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-3.5">
                 {/* Header */}
                 <div className="flex items-center gap-2.5">
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${theme.tourIconShell}`}>
-                    <ListChecks size={16} />
+                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${theme.tourIconShell}`}>
+                    <ListChecks size={15} />
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className={`text-[10px] font-semibold uppercase tracking-widest ${theme.tourLabel}`}>
+                    <p className={`text-[9px] font-semibold uppercase tracking-widest ${theme.tourLabel}`}>
                       Onboarding
                     </p>
-                    <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                    <h3 className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                       {isComplete ? "You're all set!" : 'Finish your first actions'}
                     </h3>
                   </div>
@@ -249,7 +258,7 @@ export default function OnboardingChecklist({
                   <button
                     type="button"
                     onClick={onToggle}
-                    className="hidden sm:inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-dark-base hover:text-slate-600 dark:hover:text-slate-200"
+                    className="hidden sm:inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-dark-base hover:text-slate-600 dark:hover:text-slate-200"
                     aria-label="Collapse checklist"
                   >
                     <CaretDown size={14} />
@@ -257,12 +266,12 @@ export default function OnboardingChecklist({
                 </div>
 
                 {/* Progress bar */}
-                <div className="mt-3">
+                <div className="mt-2.5 shrink-0">
                   <div className="mb-1.5 flex items-center justify-between">
-                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
                       {isComplete ? 'All done' : `${remaining} remaining`}
                     </span>
-                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
                       {completedCount}/{tasks.length}
                     </span>
                   </div>
@@ -298,7 +307,7 @@ export default function OnboardingChecklist({
                     </button>
                   </div>
                 ) : (
-                  <div className="mt-3 space-y-1.5">
+                  <div className="mt-2.5 min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
                     {tasks.map((task, index) => (
                       <ChecklistTaskButton
                         key={task.id}
@@ -314,9 +323,9 @@ export default function OnboardingChecklist({
                 )}
 
                 {/* Footer */}
-                <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-2.5 dark:border-slate-700">
+                <div className="mt-2.5 flex shrink-0 items-center justify-between border-t border-slate-200 pt-2 dark:border-slate-700">
                   <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                    Page tours available in Help anytime.
+                    Tours stay in Help.
                   </p>
                   <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${theme.tourLabel}`}>
                     <Lifebuoy size={11} />
