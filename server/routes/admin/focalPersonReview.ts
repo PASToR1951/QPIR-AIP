@@ -11,7 +11,8 @@ import { getUserFromToken, type TokenPayload } from "../../lib/auth.ts";
 import { ConflictError, HttpError } from "../../lib/errors.ts";
 import { pushNotification, pushNotifications } from "../../lib/notifStream.ts";
 import { getCESRoleForDivisionPIR } from "../../lib/routing.ts";
-import { sanitizeObject } from "../../lib/sanitize.ts";
+import { normalizeQuarterLabel } from "../../lib/quarters.ts";
+import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { buildSubmittedBy } from "./shared/display.ts";
 import {
@@ -268,6 +269,26 @@ focalRoutes.get(
       const tokenUser = await requireDivisionPersonnel(c);
       if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
+      const rawQuarter = c.req.query("quarter");
+      const rawYear = c.req.query("year");
+      let quarterFilter: string | undefined;
+      let yearFilter: number | undefined;
+
+      if (rawQuarter && rawYear) {
+        const q = Number(rawQuarter);
+        const y = Number(rawYear);
+        if (q >= 1 && q <= 4 && !isNaN(y)) {
+           const ordinals = ["", "1st", "2nd", "3rd", "4th"];
+           quarterFilter = `${ordinals[q]} Quarter CY ${y}`;
+           yearFilter = y;
+        }
+      } else if (c.req.query("quarter")) {
+        quarterFilter = normalizeQuarterLabel(sanitizeString(c.req.query("quarter") || ""));
+      }
+      if (!yearFilter && c.req.query("year")) {
+        yearFilter = Number(c.req.query("year"));
+      }
+
       const where = {
         status: "For Recommendation",
         focal_person_id: null,
@@ -276,13 +297,15 @@ focalRoutes.get(
         },
       };
       const [aips, pirs] = await Promise.all([
-        prisma.aIP.count({ where: { ...where, school_id: { not: null } } }),
+        prisma.aIP.count({ where: { ...where, school_id: { not: null }, ...(yearFilter ? { year: yearFilter } : {}) } }),
         prisma.pIR.count({
           where: {
             status: "For Recommendation",
             focal_person_id: null,
+            ...(quarterFilter ? { quarter: quarterFilter } : {}),
             aip: {
               school_id: { not: null },
+              ...(yearFilter ? { year: yearFilter } : {}),
               program: {
                 focal_persons: { some: { user_id: tokenUser.id } },
               },
@@ -304,12 +327,14 @@ focalRoutes.get(
       const tokenUser = await requireDivisionPersonnel(c);
       if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
+      const year = c.req.query("year") ? Number(c.req.query("year")) : undefined;
       const aips = await prisma.aIP.findMany({
         where: {
           status: "For Recommendation",
           focal_person_id: null,
           school_id: { not: null },
           program: { focal_persons: { some: { user_id: tokenUser.id } } },
+          ...(year && Number.isInteger(year) ? { year } : {}),
         },
         include: {
           program: true,
@@ -340,12 +365,35 @@ focalRoutes.get(
       const tokenUser = await requireDivisionPersonnel(c);
       if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
+      const rawQuarter = c.req.query("quarter");
+      const rawYear = c.req.query("year");
+      let quarterFilter: string | undefined;
+      let yearFilter: number | undefined;
+
+      if (rawQuarter && rawYear) {
+        const q = Number(rawQuarter);
+        const y = Number(rawYear);
+        if (q >= 1 && q <= 4 && !isNaN(y)) {
+           const ordinals = ["", "1st", "2nd", "3rd", "4th"];
+           quarterFilter = `${ordinals[q]} Quarter CY ${y}`;
+           yearFilter = y;
+        }
+      } else if (c.req.query("quarter")) {
+        quarterFilter = normalizeQuarterLabel(sanitizeString(c.req.query("quarter") || ""));
+      }
+
+      if (!yearFilter && c.req.query("year")) {
+        yearFilter = Number(c.req.query("year"));
+      }
+
       const pirs = await prisma.pIR.findMany({
         where: {
           status: "For Recommendation",
           focal_person_id: null,
+          ...(quarterFilter ? { quarter: quarterFilter } : {}),
           aip: {
             school_id: { not: null },
+            ...(yearFilter ? { year: yearFilter } : {}),
             program: { focal_persons: { some: { user_id: tokenUser.id } } },
           },
         },

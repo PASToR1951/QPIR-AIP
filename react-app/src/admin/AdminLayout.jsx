@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, Outlet } from 'react-router-dom';
+import { useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { useReportingPeriod } from '../context/ReportingPeriodContext.jsx';
 import { AdminSidebar } from './AdminSidebar.jsx';
 import { AdminTopBar } from './AdminTopBar.jsx';
 import api, { API } from '../lib/api.js';
@@ -11,6 +12,8 @@ import { AnnouncementBanner } from '../components/ui/AnnouncementBanner.jsx';
 
 export const AdminLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { selectedYear, selectedQuarter } = useReportingPeriod();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [deadline, setDeadline] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -21,12 +24,12 @@ export const AdminLayout = () => {
   }, [navigate]);
 
   useEffect(() => {
-    api.get('/api/admin/layout-info')
+    api.get(`/api/admin/layout-info?year=${selectedYear}&quarter=${selectedQuarter}`)
       .then(r => setDeadline({ daysLeft: r.data.daysLeft, currentQuarter: r.data.currentQuarter }))
       .catch((err) => {
         console.warn('[layout-info]', err?.response?.status);
       });
-  }, []);
+  }, [selectedYear, selectedQuarter]);
 
   const fetchNotifications = useCallback(() => {
     api.get('/api/notifications')

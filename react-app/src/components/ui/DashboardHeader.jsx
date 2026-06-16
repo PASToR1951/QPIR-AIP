@@ -10,6 +10,8 @@ import { SchoolAvatar } from './SchoolAvatar.jsx';
 import MyDevicesModal from './MyDevicesModal.jsx';
 import api from '../../lib/api.js';
 import { getRoleVisualTheme } from '../../lib/roleVisualTheme.js';
+import { ReportingPeriodPicker } from './ReportingPeriodPicker.jsx';
+import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
 
 const MotionDiv = motion.div;
 
@@ -19,6 +21,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
     const [isDevicesOpen, setIsDevicesOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
     const dropdownRef = useRef(null);
+    const { selectedYear, selectedQuarter } = useReportingPeriod();
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -34,7 +37,13 @@ export const DashboardHeader = ({ user, onLogout }) => {
     useEffect(() => {
         if (user?.role !== 'Division Personnel') return;
         let cancelled = false;
-        api.get('/api/admin/focal/pending-count')
+        
+        const params = new URLSearchParams();
+        if (selectedYear) params.set('year', selectedYear);
+        if (selectedQuarter) params.set('quarter', selectedQuarter);
+        const suffix = params.toString() ? `?${params.toString()}` : '';
+
+        api.get(`/api/admin/focal/pending-count${suffix}`)
             .then(res => {
                 if (!cancelled) setPendingCount(res.data?.total ?? 0);
             })
@@ -42,7 +51,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                 if (!cancelled) setPendingCount(0);
             });
         return () => { cancelled = true; };
-    }, [user?.role]);
+    }, [user?.role, selectedYear, selectedQuarter]);
 
     const displayRole = user?.role || (user?.email?.includes('deped.gov.ph') ? 'DepEd Personnel' : 'User');
     const displayName =
@@ -72,6 +81,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
                 </div>
 
                 <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+                <ReportingPeriodPicker />
                 {user?.role === 'Division Personnel' && (
                     <Link
                         to="/division"

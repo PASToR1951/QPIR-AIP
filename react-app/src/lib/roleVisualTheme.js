@@ -4,6 +4,7 @@ const ROLE_THEME_NAMES = {
   'CES-SGOD': 'teal',
   'CES-ASDS': 'teal',
   'CES-CID': 'teal',
+  'Superintendent': 'teal',
   Admin: 'indigo',
   Observer: 'slate',
   Pending: 'amber',

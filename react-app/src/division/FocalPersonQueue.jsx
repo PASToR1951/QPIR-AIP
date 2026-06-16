@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle, FileText, MagnifyingGlass, Table, X } from '@phosphor-icons/react';
+import { useReportingPeriod } from '../context/ReportingPeriodContext.jsx';
 import api from '../lib/api.js';
 
 const formatDate = (value) =>
@@ -13,13 +14,19 @@ export default function FocalPersonQueue() {
   const [loading, setLoading] = useState(true);
   const [kind, setKind] = useState('all');
   const [search, setSearch] = useState('');
+  const { selectedYear, selectedQuarter } = useReportingPeriod();
 
   const fetchQueue = useCallback(async () => {
     setLoading(true);
+    const params = new URLSearchParams();
+    if (selectedYear) params.set('year', selectedYear);
+    if (selectedQuarter) params.set('quarter', selectedQuarter);
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+
     try {
       const [aipRes, pirRes] = await Promise.all([
-        api.get('/api/admin/focal/aips'),
-        api.get('/api/admin/focal/pirs'),
+        api.get(`/api/admin/focal/aips${suffix}`),
+        api.get(`/api/admin/focal/pirs${suffix}`),
       ]);
       setAips(aipRes.data ?? []);
       setPirs(pirRes.data ?? []);
@@ -29,7 +36,7 @@ export default function FocalPersonQueue() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedYear, selectedQuarter]);
 
   useEffect(() => { fetchQueue(); }, [fetchQueue]);
 

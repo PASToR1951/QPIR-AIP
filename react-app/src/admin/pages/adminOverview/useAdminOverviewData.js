@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useReportingPeriod } from '../../../context/ReportingPeriodContext.jsx';
 import { useAppLogo } from '../../../context/BrandingContext.jsx';
 import api from '../../../lib/api.js';
 import { CHART_COLORS, getNivoTheme, useIsDark } from './chartTheme.js';
 
 export function useAdminOverviewData() {
   const appLogo = useAppLogo();
+  const location = useLocation();
+  const { selectedYear, selectedQuarter } = useReportingPeriod();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -13,14 +17,16 @@ export function useAdminOverviewData() {
   const nivoTheme = getNivoTheme(isDark);
 
   useEffect(() => {
-    api.get('/api/admin/overview')
+    setLoading(true);
+    setFetchError(null);
+    api.get(`/api/admin/overview?year=${selectedYear}&quarter=${selectedQuarter}`)
       .then((response) => setData(response.data))
       .catch((error) => {
         console.error(error);
         setFetchError('Failed to load dashboard data. Please refresh and try again.');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedYear, selectedQuarter]);
 
   const stats = data?.stats;
 

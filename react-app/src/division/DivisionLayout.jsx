@@ -8,6 +8,7 @@ import { getRoleVisualTheme } from '../lib/roleVisualTheme.js';
 import FocalPersonQueue from './FocalPersonQueue.jsx';
 import FocalPersonReview from './FocalPersonReview.jsx';
 import AdminConsolidationTemplate from '../admin/pages/AdminConsolidationTemplate.jsx';
+import { ReportingPeriodPicker } from '../components/ui/ReportingPeriodPicker.jsx';
 
 export default function DivisionLayout() {
   const appLogo = useAppLogo();
@@ -51,6 +52,9 @@ export default function DivisionLayout() {
           </div>
 
           <nav className="ml-auto flex min-w-0 items-center gap-1 overflow-x-auto">
+            <div className="mr-3">
+              <ReportingPeriodPicker />
+            </div>
             {navItems.map((item) => (
               <NavLink
                 key={item.to}

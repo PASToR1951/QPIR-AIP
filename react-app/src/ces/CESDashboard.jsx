@@ -5,32 +5,14 @@ import { ArrowRight, MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icon
 import { EndOfListCue } from '../components/ui/EndOfListCue.jsx';
 import { shouldShowEndOfListCue } from '../components/ui/endOfListCue';
 import { emitOnboardingSignal } from '../lib/onboardingSignals.js';
-import {
-  getCurrentQuarterNumber,
-  getQuarterLabel,
-} from '../lib/periods.js';
-
-const currentQ = getCurrentQuarterNumber();
-const currentYear = new Date().getFullYear();
-
-const buildQuarterOptions = () => {
-  const opts = [{ value: '', label: 'All Periods' }];
-  for (let y = currentYear; y >= currentYear - 1; y--) {
-    for (let q = 4; q >= 1; q--) {
-      if (y === currentYear && q > currentQ) continue;
-      const label = getQuarterLabel(q, y);
-      opts.push({ value: label, label });
-    }
-  }
-  return opts;
-};
+import { useReportingPeriod } from '../context/ReportingPeriodContext.jsx';
 
 export default function CESDashboard() {
   const navigate = useNavigate();
+  const { selectedYear, selectedQuarter } = useReportingPeriod();
   const [pirs, setPirs] = useState([]);
   const [aips, setAips] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [quarter, setQuarter] = useState('');
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('pirs');
 
@@ -42,10 +24,14 @@ export default function CESDashboard() {
 
   const fetchPIRs = useCallback(() => {
     setLoading(true);
-    const params = quarter ? `?quarter=${encodeURIComponent(quarter)}` : '';
+    const params = new URLSearchParams();
+    if (selectedYear) params.set('year', selectedYear);
+    if (selectedQuarter) params.set('quarter', selectedQuarter);
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    
     Promise.all([
-      api.get(`/api/admin/ces/pirs${params}`),
-      api.get('/api/admin/ces/aips'),
+      api.get(`/api/admin/ces/pirs${suffix}`),
+      api.get(`/api/admin/ces/aips${suffix}`),
     ])
       .then(([pirRes, aipRes]) => {
         setPirs(pirRes.data);
@@ -56,7 +42,7 @@ export default function CESDashboard() {
         setAips([]);
       })
       .finally(() => setLoading(false));
-  }, [quarter]);
+  }, [selectedYear, selectedQuarter]);
 
   useEffect(() => { fetchPIRs(); }, [fetchPIRs]);
 
@@ -138,20 +124,6 @@ export default function CESDashboard() {
             className="w-full pl-8 pr-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:focus:ring-teal-700"
           />
         </div>
-        {activeTab === 'pirs' && (
-          <select
-            value={quarter}
-            onChange={e => {
-              setQuarter(e.target.value);
-              emitOnboardingSignal('ces.filter_applied', { control: 'quarter' });
-            }}
-            className="text-sm rounded-xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-300 dark:focus:ring-teal-700"
-          >
-            {buildQuarterOptions().map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        )}
       </div>
 
       {/* Table */}
@@ -163,7 +135,7 @@ export default function CESDashboard() {
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-sm text-slate-400 dark:text-slate-500">
-              No {activeTab === 'pirs' ? 'PIRs' : 'AIPs'} pending your review{activeTab === 'pirs' && quarter ? ` for ${quarter}` : ''}.
+              No {activeTab === 'pirs' ? 'PIRs' : 'AIPs'} pending your review{selectedQuarter ? ` for Q${selectedQuarter} ${selectedYear}` : ''}.
             </p>
             <p className="mt-2 text-xs font-medium text-slate-400 dark:text-slate-500">
               {activeTab === 'pirs'
@@ -251,7 +223,7 @@ export default function CESDashboard() {
         <div className="mt-3">
           <EndOfListCue
             count={filtered.length}
-            message={search || activeTab === 'aips' || !quarter ? `All matching ${activeTab.toUpperCase()} shown` : 'End of review queue'}
+            message={search || activeTab === 'aips' ? `All matching ${activeTab.toUpperCase()} shown` : 'End of review queue'}
             countLabel={activeTab === 'pirs' ? 'PIR' : 'AIP'}
             showCount
           />

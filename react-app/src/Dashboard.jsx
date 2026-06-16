@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowRight, ClipboardText, NotePencil, Table, LockKey as Lock } from '@phosphor-icons/react';
+import { useReportingPeriod } from './context/ReportingPeriodContext.jsx';
 import { auth } from './lib/auth';
 import api from './lib/api.js';
 import { DashboardHeader } from './components/ui/DashboardHeader';
@@ -77,6 +78,7 @@ function WorkspaceTile({ to, preload, icon, eyebrow, title, description, meta, a
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { selectedYear, selectedQuarter } = useReportingPeriod();
   const userStr = sessionStorage.getItem('user');
   let user = null;
   try {
@@ -102,7 +104,7 @@ export default function Dashboard() {
       setDashboardError('');
       try {
         // Fetch aggregated dashboard stats
-        const dashRes = await api.get('/api/dashboard');
+        const dashRes = await api.get(`/api/dashboard?year=${selectedYear}&quarter=${selectedQuarter}`);
         setDashboardData(dashRes.data);
 
         // Derive AIP card status from dashboard data + draft check
@@ -125,7 +127,7 @@ export default function Dashboard() {
       }
     };
     fetchDashboard();
-  }, [navigate, user?.id]);
+  }, [selectedYear, selectedQuarter, navigate, user?.id]);
 
   const hasAIP = dashboardData ? dashboardData.aipCompletion.completed > 0 : false;
 
@@ -283,6 +285,20 @@ export default function Dashboard() {
                 title="Review Queue"
                 meta="Assigned"
                 description="Review school submissions assigned to your focal programs."
+                action="Open queue"
+              />
+            )}
+            
+            {user?.role === 'Superintendent' && (
+              <WorkspaceTile
+                to="/ces"
+                preload={() => import('./ces/CESLayout.jsx')}
+                tone="slate"
+                icon={<ClipboardText size={22} weight="bold" />}
+                eyebrow="Final approval"
+                title="Approval Queue"
+                meta="Superintendent"
+                description="Review and approve final submissions from schools and personnel."
                 action="Open queue"
               />
             )}

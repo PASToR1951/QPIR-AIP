@@ -8,6 +8,7 @@ import { AnnouncementBanner } from '../components/ui/AnnouncementBanner.jsx';
 import { useAppLogo } from '../context/BrandingContext.jsx';
 import { auth } from '../lib/auth.js';
 import { getRoleVisualTheme } from '../lib/roleVisualTheme.js';
+import { ReportingPeriodPicker } from '../components/ui/ReportingPeriodPicker.jsx';
 
 export default function CESLayout() {
   const appLogo = useAppLogo();
@@ -18,6 +19,7 @@ export default function CESLayout() {
     'CES-SGOD': 'CES – SGOD',
     'CES-ASDS': 'CES – ASDS',
     'CES-CID':  'CES – CID',
+    'Superintendent': 'Superintendent',
   }[user?.role] ?? 'CES Portal';
   const roleTheme = getRoleVisualTheme(user);
 
@@ -55,6 +57,9 @@ export default function CESLayout() {
           </div>
 
           <nav className="flex items-center gap-1">
+            <div className="mr-4">
+              <ReportingPeriodPicker />
+            </div>
             <button
               onClick={() => navigate('/ces')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
@@ -63,21 +68,25 @@ export default function CESLayout() {
               Review Queue
             </button>
 
-            <button
-              onClick={() => navigate('/aip')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
-            >
-              <FileText size={15} />
-              My AIP
-            </button>
+            {user?.role !== 'Superintendent' && (
+              <>
+                <button
+                  onClick={() => navigate('/aip')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
+                >
+                  <FileText size={15} />
+                  My AIP
+                </button>
 
-            <button
-              onClick={() => navigate('/pir')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
-            >
-              <ChartBar size={15} />
-              My PIR
-            </button>
+                <button
+                  onClick={() => navigate('/pir')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
+                >
+                  <ChartBar size={15} />
+                  My PIR
+                </button>
+              </>
+            )}
 
             <button
               onClick={handleLogout}
