@@ -1,6 +1,42 @@
-export const CURRENT_VERSION = '1.3.0-beta';
+export const CURRENT_VERSION = '1.3.1-beta';
 
 export const CHANGELOG = [
+  {
+    version: '1.3.1-beta',
+    date: '2026-06-16',
+    title: 'AIP-PIR Beta 4 Refinements',
+    description: 'Stabilization and UI polish for Beta 4, including the Global Reporting Period Picker, role-based visual themes, and new AIP metrics fields.',
+    changes: [
+      {
+        type: 'feature',
+        text: 'Added Global Reporting Period Picker and integrated it into the Dashboard, Layouts, and Focal Person Queues.',
+      },
+      {
+        type: 'feature',
+        text: 'Introduced new AIP metrics fields (KPIs, Baseline, Quarterly Target) across frontend forms, server routes, and PDF generation/export.',
+      },
+      {
+        type: 'improvement',
+        text: 'Centralized role-based styling definitions via roleVisualTheme and applied them across layout and header components for better contrast.',
+      },
+      {
+        type: 'improvement',
+        text: 'Refactored Dashboard UI components, Division Layout, and FocalPersonQueue for improved user experience, empty states, and filter clearing.',
+      },
+      {
+        type: 'improvement',
+        text: 'Refined OnboardingChecklist with smooth exit animations, state resets, and confirmation prompts before navigating away.',
+      },
+      {
+        type: 'fix',
+        text: 'Fixed duplicate activity button logic in AIPActionPlanSection.',
+      },
+      {
+        type: 'improvement',
+        text: 'Completed final alignments of server routes, forms, and admin pages to support the cluster-less review flow.',
+      },
+    ],
+  },
   {
     version: '1.3.0-beta',
     date: '2026-06-12',
