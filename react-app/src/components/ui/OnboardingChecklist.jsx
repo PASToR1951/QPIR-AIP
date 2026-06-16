@@ -119,9 +119,10 @@ export default function OnboardingChecklist({
   const theme = THEMES[themeName];
   const containerRef = useRef(null);
   const [isFooterVisible, setIsFooterVisible] = useState(false);
+  const shouldRender = !hidden && !isFooterVisible && (open || !hidePill);
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open || !shouldRender) return undefined;
     if (isMobile) return undefined;
     const handlePointerDown = (e) => {
       if (containerRef.current && !containerRef.current.contains(e.target)) {
@@ -130,15 +131,13 @@ export default function OnboardingChecklist({
     };
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [open, onClose, isMobile]);
+  }, [open, onClose, isMobile, shouldRender]);
 
   useEffect(() => {
     const handleFooterVisibility = (event) => setIsFooterVisible(Boolean(event.detail));
     window.addEventListener('footer-visibility-change', handleFooterVisibility);
     return () => window.removeEventListener('footer-visibility-change', handleFooterVisibility);
   }, []);
-
-  if (hidden || isFooterVisible) return null;
 
   const handleTaskClick = (task) => {
     const isDone = completedIds.includes(task.id);
@@ -154,189 +153,198 @@ export default function OnboardingChecklist({
     ? 'w-full rounded-xl border border-slate-300 shadow-xl dark:border-slate-600'
     : 'w-fit max-w-full rounded-xl border border-slate-300 shadow-lg hover:shadow-xl dark:border-slate-600';
 
-  if (!open && hidePill) return null;
-
   return (
-    <div ref={containerRef} className={`fixed bottom-5 z-[103] ${open ? 'w-[calc(100vw-2rem)] max-w-[22rem] sm:w-[19.5rem]' : 'w-auto max-w-[calc(100vw-5rem)] sm:max-w-sm'} ${sidebarOffset ? 'left-5 lg:left-[248px]' : 'left-5'}`}>
-      <Motion.div
-        layout={!settings.reduceMotion}
-        initial={false}
-        transition={settings.reduceMotion ? { duration: 0.1 } : {
-          layout: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
-        }}
-        className={`origin-bottom-left overflow-hidden bg-white text-left dark:bg-dark-surface ${shellClasses}`}
-      >
-        <AnimatePresence initial={false} mode="wait">
-          {!open && !hidePill && (
-            <Motion.button
-              key="pill"
-              type="button"
-              onClick={onToggle}
-              initial={settings.reduceMotion ? false : { opacity: 0, scale: 0.98 }}
-              animate={settings.reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-              exit={settings.reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
-              transition={settings.reduceMotion ? { duration: 0.1 } : {
-                opacity: { duration: 0.14, ease: 'easeInOut' },
-                scale: { duration: 0.16, ease: 'easeInOut' },
-              }}
-              className="w-full text-left"
-            >
-              <div className="flex items-center gap-2.5 px-2.5 py-2 sm:px-3.5 sm:py-2.5">
-                <div className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg ${theme.tourIconShell}`}>
-                  <ListChecks size={14} />
-                </div>
+    <AnimatePresence>
+      {shouldRender && (
+        <Motion.div
+          ref={containerRef}
+          className={`fixed bottom-5 z-[103] origin-bottom-left ${open ? 'w-[calc(100vw-2rem)] max-w-[22rem] sm:w-[19.5rem]' : 'w-auto max-w-[calc(100vw-5rem)] sm:max-w-sm'} ${sidebarOffset ? 'left-5 lg:left-[248px]' : 'left-5'}`}
+          initial={settings.reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8 }}
+          animate={settings.reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+          exit={settings.reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.8, transition: { duration: 0.15 } }}
+          transition={settings.reduceMotion ? { duration: 0.1 } : { type: 'spring', stiffness: 400, damping: 20 }}
+        >
+          <Motion.div
+            layout={!settings.reduceMotion}
+            initial={false}
+            transition={settings.reduceMotion ? { duration: 0.1 } : {
+              layout: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
+            }}
+            className={`origin-bottom-left overflow-hidden bg-white text-left dark:bg-dark-surface ${shellClasses}`}
+          >
+            <AnimatePresence initial={false} mode="wait">
+              {!open && !hidePill && (
+                <Motion.button
+                  key="pill"
+                  type="button"
+                  onClick={onToggle}
+                  initial={settings.reduceMotion ? false : { opacity: 0, scale: 0.98 }}
+                  animate={settings.reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                  exit={settings.reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.98 }}
+                  transition={settings.reduceMotion ? { duration: 0.1 } : {
+                    opacity: { duration: 0.14, ease: 'easeInOut' },
+                    scale: { duration: 0.16, ease: 'easeInOut' },
+                  }}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-center gap-2.5 px-2.5 py-2 sm:px-3.5 sm:py-2.5">
+                    <div className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg ${theme.tourIconShell}`}>
+                      <ListChecks size={14} />
+                    </div>
 
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                    Onboarding
-                  </p>
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                    {isComplete ? "You're all set" : `${completedCount} of ${tasks.length} done`}
-                  </p>
-                  <div className="mt-1.5">
-                    <SegmentedProgress
-                      completed={completedCount}
-                      total={tasks.length}
-                      theme={theme}
-                      compact
-                    />
-                  </div>
-                </div>
-
-                <CaretUp size={13} className="ml-auto shrink-0 text-slate-400 dark:text-slate-500" />
-              </div>
-            </Motion.button>
-          )}
-
-          {open && (
-            <Motion.div
-              key="panel"
-              initial={settings.reduceMotion ? false : { opacity: 0, scale: 0.985 }}
-              animate={settings.reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
-              exit={settings.reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.985 }}
-              transition={settings.reduceMotion ? { duration: 0.1 } : {
-                opacity: { duration: 0.16, ease: 'easeInOut' },
-                scale: { duration: 0.18, ease: [0.22, 1, 0.36, 1] },
-              }}
-              drag={isMobile && !settings.reduceMotion ? 'y' : false}
-              dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={{ top: 0, bottom: 0.4 }}
-              dragMomentum={false}
-              onDragEnd={(_, info) => {
-                if (info.offset.y > 80 || info.velocity.y > 500) {
-                  onClose?.();
-                }
-              }}
-              className="flex w-full flex-col touch-pan-y"
-              style={{ maxHeight: 'calc(100dvh - var(--tour-safe-top) - 1.25rem)' }}
-            >
-              <button
-                type="button"
-                onClick={onToggle}
-                aria-label="Collapse checklist"
-                className="flex min-h-10 w-full shrink-0 items-center justify-center border-b border-slate-200 py-2 dark:border-slate-700 sm:hidden"
-              >
-                <span className="h-1 w-8 rounded-full bg-slate-300 dark:bg-slate-600" />
-              </button>
-
-              <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-3.5">
-                {/* Header */}
-                <div className="flex items-center gap-2.5">
-                  <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${theme.tourIconShell}`}>
-                    <ListChecks size={15} />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-[9px] font-semibold uppercase tracking-widest ${theme.tourLabel}`}>
-                      Onboarding
-                    </p>
-                    <h3 className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
-                      {isComplete ? "You're all set!" : 'Finish your first actions'}
-                    </h3>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={onToggle}
-                    className="hidden sm:inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-dark-base hover:text-slate-600 dark:hover:text-slate-200"
-                    aria-label="Collapse checklist"
-                  >
-                    <CaretDown size={14} />
-                  </button>
-                </div>
-
-                {/* Progress bar */}
-                <div className="mt-2.5 shrink-0">
-                  <div className="mb-1.5 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                      {isComplete ? 'All done' : `${remaining} remaining`}
-                    </span>
-                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                      {completedCount}/{tasks.length}
-                    </span>
-                  </div>
-                  <SegmentedProgress
-                    completed={completedCount}
-                    total={tasks.length}
-                    theme={theme}
-                  />
-                </div>
-
-                {/* Task list or completion */}
-                {isComplete ? (
-                  <div className="mt-4 rounded-xl border border-emerald-100 dark:border-emerald-800/40 bg-emerald-50/60 dark:bg-emerald-950/15 p-3.5">
-                    <div className="flex items-start gap-2.5">
-                      <CheckCircle size={16} className="mt-0.5 shrink-0 text-emerald-500 dark:text-emerald-400" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
-                          All done
-                        </p>
-                        <p className="mt-0.5 text-xs text-emerald-600/80 dark:text-emerald-300/70">
-                          Page tours stay available in Help whenever you need a refresher.
-                        </p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                        Onboarding
+                      </p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                        {isComplete ? "You're all set" : `${completedCount} of ${tasks.length} done`}
+                      </p>
+                      <div className="mt-1.5">
+                        <SegmentedProgress
+                          completed={completedCount}
+                          total={tasks.length}
+                          theme={theme}
+                          compact
+                        />
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={onDismiss}
-                      className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-700/50 bg-emerald-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-600 dark:border-emerald-700/50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
-                    >
-                      <CheckCircle size={15} weight="fill" />
-                      Got it
-                    </button>
+                    <CaretUp size={13} className="ml-auto shrink-0 text-slate-400 dark:text-slate-500" />
                   </div>
-                ) : (
-                  <div className="mt-2.5 min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
-                    {tasks.map((task, index) => (
-                      <ChecklistTaskButton
-                        key={task.id}
-                        task={task}
-                        index={index}
-                        done={completedIds.includes(task.id)}
-                        isNext={nextTask?.id === task.id}
-                        theme={theme}
-                        onClick={handleTaskClick}
-                      />
-                    ))}
-                  </div>
-                )}
+                </Motion.button>
+              )}
 
-                {/* Footer */}
-                <div className="mt-2.5 flex shrink-0 items-center justify-between border-t border-slate-200 pt-2 dark:border-slate-700">
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                    Tours stay in Help.
-                  </p>
-                  <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${theme.tourLabel}`}>
-                    <Lifebuoy size={11} />
-                    Help
-                  </span>
-                </div>
-              </div>
-            </Motion.div>
-          )}
-        </AnimatePresence>
-      </Motion.div>
-    </div>
+              {open && (
+                <Motion.div
+                  key="panel"
+                  initial={settings.reduceMotion ? false : { opacity: 0, scale: 0.985 }}
+                  animate={settings.reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+                  exit={settings.reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.985 }}
+                  transition={settings.reduceMotion ? { duration: 0.1 } : {
+                    opacity: { duration: 0.16, ease: 'easeInOut' },
+                    scale: { duration: 0.18, ease: [0.22, 1, 0.36, 1] },
+                  }}
+                  drag={isMobile && !settings.reduceMotion ? 'y' : false}
+                  dragConstraints={{ top: 0, bottom: 0 }}
+                  dragElastic={{ top: 0, bottom: 0.4 }}
+                  dragMomentum={false}
+                  onDragEnd={(_, info) => {
+                    if (info.offset.y > 80 || info.velocity.y > 500) {
+                      onClose?.();
+                    }
+                  }}
+                  className="flex w-full flex-col touch-pan-y"
+                  style={{ maxHeight: 'calc(100dvh - var(--tour-safe-top) - 1.25rem)' }}
+                >
+                  <button
+                    type="button"
+                    onClick={onToggle}
+                    aria-label="Collapse checklist"
+                    className="flex min-h-10 w-full shrink-0 items-center justify-center border-b border-slate-200 py-2 dark:border-slate-700 sm:hidden"
+                  >
+                    <span className="h-1 w-8 rounded-full bg-slate-300 dark:bg-slate-600" />
+                  </button>
+
+                  <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-3.5">
+                    {/* Header */}
+                    <div className="flex items-center gap-2.5">
+                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${theme.tourIconShell}`}>
+                        <ListChecks size={15} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-[9px] font-semibold uppercase tracking-widest ${theme.tourLabel}`}>
+                          Onboarding
+                        </p>
+                        <h3 className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          {isComplete ? "You're all set!" : 'Finish your first actions'}
+                        </h3>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={onToggle}
+                        className="hidden sm:inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-dark-base hover:text-slate-600 dark:hover:text-slate-200"
+                        aria-label="Collapse checklist"
+                      >
+                        <CaretDown size={14} />
+                      </button>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="mt-2.5 shrink-0">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                          {isComplete ? 'All done' : `${remaining} remaining`}
+                        </span>
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                          {completedCount}/{tasks.length}
+                        </span>
+                      </div>
+                      <SegmentedProgress
+                        completed={completedCount}
+                        total={tasks.length}
+                        theme={theme}
+                      />
+                    </div>
+
+                    {/* Task list or completion */}
+                    {isComplete ? (
+                      <div className="mt-4 rounded-xl border border-emerald-100 dark:border-emerald-800/40 bg-emerald-50/60 dark:bg-emerald-950/15 p-3.5">
+                        <div className="flex items-start gap-2.5">
+                          <CheckCircle size={16} className="mt-0.5 shrink-0 text-emerald-500 dark:text-emerald-400" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                              All done
+                            </p>
+                            <p className="mt-0.5 text-xs text-emerald-600/80 dark:text-emerald-300/70">
+                              Page tours stay available in Help whenever you need a refresher.
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={onDismiss}
+                          className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-200 dark:border-emerald-700/50 bg-emerald-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-600 dark:border-emerald-700/50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                        >
+                          <CheckCircle size={15} weight="fill" />
+                          Got it
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-2.5 min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]">
+                        {tasks.map((task, index) => (
+                          <ChecklistTaskButton
+                            key={task.id}
+                            task={task}
+                            index={index}
+                            done={completedIds.includes(task.id)}
+                            isNext={nextTask?.id === task.id}
+                            theme={theme}
+                            onClick={handleTaskClick}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Footer */}
+                    <div className="mt-2.5 flex shrink-0 items-center justify-between border-t border-slate-200 pt-2 dark:border-slate-700">
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                        Tours stay in Help.
+                      </p>
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${theme.tourLabel}`}>
+                        <Lifebuoy size={11} />
+                        Help
+                      </span>
+                    </div>
+                  </div>
+                </Motion.div>
+              )}
+            </AnimatePresence>
+          </Motion.div>
+        </Motion.div>
+      )}
+    </AnimatePresence>
   );
 }

@@ -314,25 +314,23 @@ export default function OnboardingController() {
 
       {hasChecklist && isHydrated && (
         <>
-          {showChecklistOnPage && (!isComplete || checklistOpen) && (
-            <OnboardingChecklist
-              open={checklistOpen}
-              hidden={onboarding.checklist_progress.panel_hidden}
-              tasks={tasks}
-              completedIds={onboarding.checklist_progress.completed_task_ids}
-              completedCount={completedCount}
-              isComplete={isComplete}
-              onToggle={toggleChecklist}
-              onDismiss={dismissChecklist}
-              onTaskClick={(task) => {
-                setChecklistOpen(true);
-                launchTour(task);
-              }}
-              onClose={() => setChecklistOpen(false)}
-              sidebarOffset={roleKey === 'admin'}
-              hidePill={roleKey === 'admin'}
-            />
-          )}
+          <OnboardingChecklist
+            open={checklistOpen}
+            hidden={!showChecklistOnPage || onboarding.checklist_progress.panel_hidden || (isComplete && !checklistOpen)}
+            tasks={tasks}
+            completedIds={onboarding.checklist_progress.completed_task_ids}
+            completedCount={completedCount}
+            isComplete={isComplete}
+            onToggle={toggleChecklist}
+            onDismiss={dismissChecklist}
+            onTaskClick={(task) => {
+              setChecklistOpen(true);
+              launchTour(task);
+            }}
+            onClose={() => setChecklistOpen(false)}
+            sidebarOffset={roleKey === 'admin'}
+            hidePill={roleKey === 'admin'}
+          />
           {activeTaskTour && (
             <OnboardingTour
               key={`checklist-task-tour:${activeTaskTour.id}`}
