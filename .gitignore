@@ -5,6 +5,7 @@ commit-stage.sh
 commit-stages.sh
 /actions-runner
 /actions-runner/*
+/PIR Sample/*
 
 # ── Internal documentation (not for public/repo consumers) ───────────────────
 /docs/*

@@ -7,7 +7,8 @@
     "start": "deno task prisma:prepare && deno run --env --allow-net --allow-env --allow-read --allow-write --allow-sys server.ts",
     "dev": "deno task prisma:prepare && deno run --watch --env --allow-net --allow-env --allow-read --allow-write --allow-sys server.ts",
     "tunnel": "deno task prisma:prepare && deno run --watch --env-file=.env.tunnel --allow-net --allow-env --allow-read --allow-write --allow-sys server.ts",
-    "seed": "deno run -A --env scripts/seed.ts"
+    "seed": "deno run -A --env scripts/seed.ts",
+    "import:pir-demo": "deno run -A --env scripts/import_pir_demo_from_csv.ts"
   },
   "compilerOptions": {
     "types": ["./types/npm-shims.d.ts"]
