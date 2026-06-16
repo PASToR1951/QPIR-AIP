@@ -18,6 +18,7 @@ generated/
 # scripts plus backup scripts used by the dedicated backup service image.
 scripts/*
 !scripts/seed.ts
+!scripts/import_pir_demo_from_csv.ts
 !scripts/migrate_trimesters_to_quarters.ts
 !scripts/migrate_focal_persons.ts
 !scripts/backup/
