@@ -384,10 +384,23 @@ def normalize_row(
 def consolidate() -> list[dict[str, str]]:
     records: list[dict[str, str]] = []
 
-    for path in sorted(INPUT_DIR.glob("*.csv")):
-        if path.name == OUTPUT_FILE.name:
-            continue
+    if not INPUT_DIR.exists():
+        raise SystemExit(
+            f"Missing input folder: {INPUT_DIR}\n"
+            "Create a 'PIR Sample' folder at the project root and copy the raw PIR CSV exports into it."
+        )
 
+    input_files = [
+        path for path in sorted(INPUT_DIR.glob("*.csv"))
+        if path.name != OUTPUT_FILE.name
+    ]
+    if not input_files:
+        raise SystemExit(
+            f"No source CSV files found in: {INPUT_DIR}\n"
+            "Copy the raw PIR CSV exports into that folder, then rerun this script."
+        )
+
+    for path in input_files:
         with path.open(newline="", encoding="utf-8-sig") as handle:
             rows = list(csv.reader(handle))
 
