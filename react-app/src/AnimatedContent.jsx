@@ -11,6 +11,8 @@ import PracticeModeController from './components/ui/PracticeModeController.jsx';
 import ForceChangePasswordModal from './components/ui/ForceChangePasswordModal.jsx';
 import { auth } from './lib/auth';
 import Login from './Login';
+import { ReportingPeriodProvider } from './context/ReportingPeriodContext.jsx';
+import { Outlet } from 'react-router-dom';
 
 // Route-level lazy imports — each becomes its own chunk
 const Dashboard = lazy(() => import('./Dashboard'));
@@ -50,7 +52,7 @@ const AdminConsolidationTemplate = lazy(() => import('./admin/pages/AdminConsoli
 const AdminFAQ = lazy(() => import('./admin/pages/AdminFAQ.jsx'));
 const UserLogs = lazy(() => import('./UserLogs.jsx'));
 
-const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID'];
+const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent'];
 
 // Preload only the chunks the logged-in user's role will actually navigate to.
 function preloadForRole(role) {
@@ -141,6 +143,15 @@ const AdminRouteGuard = ({ children }) => {
   const user = getCurrentUser();
   if (!user) return <Navigate to="/login" replace />;
   if (!auth.isAdminPanelRole(user.role)) return <Navigate to="/403" replace />;
+  return children;
+};
+
+const AdminAnalyticsGuard = ({ children }) => {
+  if (isTokenObsolete()) return <Navigate to="/login" replace />;
+  const user = getCurrentUser();
+  if (!user) return <Navigate to="/login" replace />;
+  // Admin, Observer, Superintendent
+  if (!['Admin', 'Observer', 'Superintendent'].includes(user.role)) return <Navigate to="/403" replace />;
   return children;
 };
 
@@ -235,9 +246,15 @@ const PIRRouteGuard = ({ children }) => {
 };
 
 const Spinner = () => (
-  <div className="fixed inset-0 flex items-center justify-center bg-slate-50 dark:bg-dark-base">
+  <div className="fixed inset-0 flex items-center justify-center bg-slate-50 dark:bg-dark-base z-50">
     <div className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-600 border-t-pink-500 animate-spin" />
   </div>
+);
+
+const ReportingPeriodLayout = () => (
+  <ReportingPeriodProvider>
+    <Outlet />
+  </ReportingPeriodProvider>
 );
 
 function SessionBootstrap({ pathname, children }) {
@@ -298,26 +315,28 @@ export default function AnimatedContent() {
     return (
       <MotionConfig reducedMotion={settings.reduceMotion ? 'always' : 'never'}>
         <SessionBootstrap pathname={location.pathname}>
-          <Suspense fallback={<Spinner />}>
-            <Routes location={location}>
-              <Route path="/admin" element={<AdminRouteGuard><AdminLayout /></AdminRouteGuard>}>
-                <Route index element={<AdminOverview />} />
-                <Route path="submissions" element={<AdminSubmissions />} />
-                <Route path="users" element={<AdminOnlyGuard><AdminUsers /></AdminOnlyGuard>} />
-                <Route path="schools" element={<AdminOnlyGuard><AdminSchools /></AdminOnlyGuard>} />
-                <Route path="programs" element={<AdminOnlyGuard><AdminPrograms /></AdminOnlyGuard>} />
-                <Route path="deadlines" element={<AdminOnlyGuard><AdminDeadlines /></AdminOnlyGuard>} />
-                <Route path="reports" element={<AdminOnlyGuard><AdminReports /></AdminOnlyGuard>} />
-                <Route path="consolidation-template" element={<AdminConsolidationTemplate />} />
-                <Route path="sessions" element={<AdminOnlyGuard><AdminSessions /></AdminOnlyGuard>} />
-                <Route path="logs" element={<AdminOnlyGuard><AdminLogs /></AdminOnlyGuard>} />
-                <Route path="settings" element={<AdminOnlyGuard><AdminSettings /></AdminOnlyGuard>} />
-                <Route path="backups" element={<AdminOnlyGuard><AdminBackups /></AdminOnlyGuard>} />
-                <Route path="faq" element={<AdminOnlyGuard><AdminFAQ /></AdminOnlyGuard>} />
-                <Route path="pirs/:id" element={<AdminPIRReview />} />
-              </Route>
-            </Routes>
-          </Suspense>
+          <ReportingPeriodProvider>
+            <Suspense fallback={<Spinner />}>
+              <Routes location={location}>
+                <Route path="/admin" element={<AdminRouteGuard><AdminLayout /></AdminRouteGuard>}>
+                  <Route index element={<AdminAnalyticsGuard><AdminOverview /></AdminAnalyticsGuard>} />
+                  <Route path="submissions" element={<AdminAnalyticsGuard><AdminSubmissions /></AdminAnalyticsGuard>} />
+                  <Route path="users" element={<AdminOnlyGuard><AdminUsers /></AdminOnlyGuard>} />
+                  <Route path="schools" element={<AdminOnlyGuard><AdminSchools /></AdminOnlyGuard>} />
+                  <Route path="programs" element={<AdminOnlyGuard><AdminPrograms /></AdminOnlyGuard>} />
+                  <Route path="deadlines" element={<AdminOnlyGuard><AdminDeadlines /></AdminOnlyGuard>} />
+                  <Route path="reports" element={<AdminAnalyticsGuard><AdminReports /></AdminAnalyticsGuard>} />
+                  <Route path="consolidation-template" element={<AdminAnalyticsGuard><AdminConsolidationTemplate /></AdminAnalyticsGuard>} />
+                  <Route path="sessions" element={<AdminOnlyGuard><AdminSessions /></AdminOnlyGuard>} />
+                  <Route path="logs" element={<AdminOnlyGuard><AdminLogs /></AdminOnlyGuard>} />
+                  <Route path="settings" element={<AdminOnlyGuard><AdminSettings /></AdminOnlyGuard>} />
+                  <Route path="backups" element={<AdminOnlyGuard><AdminBackups /></AdminOnlyGuard>} />
+                  <Route path="faq" element={<AdminOnlyGuard><AdminFAQ /></AdminOnlyGuard>} />
+                  <Route path="pirs/:id" element={<AdminAnalyticsGuard><AdminPIRReview /></AdminAnalyticsGuard>} />
+                </Route>
+              </Routes>
+            </Suspense>
+          </ReportingPeriodProvider>
         </SessionBootstrap>
         <OnboardingController />
         <PracticeModeController />
@@ -348,39 +367,44 @@ export default function AnimatedContent() {
             <Route path="/faq" element={<PageTransition><FAQ /></PageTransition>} />
             <Route path="/privacy" element={<PageTransition><PrivacyPolicy /></PageTransition>} />
 
-            {/* Protected Routes */}
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <PageTransition><Dashboard /></PageTransition>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/aip"
-              element={
-                <SubmitterRoute>
-                  <PageTransition><AIPForm /></PageTransition>
-                </SubmitterRoute>
-              }
-            />
-            <Route
-              path="/pir"
-              element={
-                <SubmitterRoute>
-                  <PIRRouteGuard>
-                    <PageTransition><PIRForm /></PageTransition>
-                  </PIRRouteGuard>
-                </SubmitterRoute>
-              }
-            />
+            {/* Protected Routes inside ReportingPeriodLayout */}
+            <Route element={<ReportingPeriodLayout />}>
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <PageTransition><Dashboard /></PageTransition>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/aip"
+                element={
+                  <SubmitterRoute>
+                    <PageTransition><AIPForm /></PageTransition>
+                  </SubmitterRoute>
+                }
+              />
+              <Route
+                path="/pir"
+                element={
+                  <SubmitterRoute>
+                    <PIRRouteGuard>
+                      <PageTransition><PIRForm /></PageTransition>
+                    </PIRRouteGuard>
+                  </SubmitterRoute>
+                }
+              />
 
-            {/* CES Routes */}
-            <Route path="/ces/*" element={<CESRouteGuard><CESLayout /></CESRouteGuard>} />
+              {/* CES Routes */}
+              <Route path="/ces/*" element={<CESRouteGuard><CESLayout /></CESRouteGuard>} />
 
-            {/* Division Focal Review Routes */}
-            <Route path="/division/*" element={<DivisionPersonnelRouteGuard><DivisionLayout /></DivisionPersonnelRouteGuard>} />
+              {/* Division Focal Review Routes */}
+              <Route path="/division/*" element={<DivisionPersonnelRouteGuard><DivisionLayout /></DivisionPersonnelRouteGuard>} />
+              
+              <Route path="/user-logs" element={<AuthenticatedRoute><PageTransition><UserLogs /></PageTransition></AuthenticatedRoute>} />
+              <Route path="/announcements/:id" element={<AuthenticatedRoute><PageTransition><AnnouncementDetail /></PageTransition></AuthenticatedRoute>} />
+            </Route>
 
             {/* Error Pages */}
             <Route path="/403" element={<PageTransition><ErrorPage type="403" /></PageTransition>} />
