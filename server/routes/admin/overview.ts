@@ -9,7 +9,6 @@ import {
 } from "./shared/dates.ts";
 import { adminOrObserverOnly } from "./shared/guards.ts";
 import { parseQuarterLabel } from "../../lib/quarters.ts";
-import { getTrimesterNumbers, parseTrimesterLabel } from "../../lib/trimesters.ts";
 
 const overviewRoutes = new Hono();
 
@@ -33,12 +32,6 @@ overviewRoutes.get("/overview", async (c) => {
     1,
     4,
   );
-  const quarterPrefixes: Record<number, string> = {
-    1: "1st",
-    2: "2nd",
-    3: "3rd",
-    4: "4th",
-  };
 
   // All DB queries run in parallel — no sequential awaits
   const [
@@ -217,9 +210,6 @@ overviewRoutes.get("/overview", async (c) => {
   const divisionPirs = pirsByQuarter.filter((pir) =>
     pir.aip?.school_id == null
   );
-  const schoolPirs = pirsByQuarter.filter((pir) =>
-    pir.aip?.school_id != null
-  );
   const pirQuarterly = getQuarterNumbers().map((quarter) => {
     const quarterPirs = divisionPirs.filter((pir) =>
       parseQuarterLabel(pir.quarter)?.quarter === quarter
@@ -250,41 +240,6 @@ overviewRoutes.get("/overview", async (c) => {
       CID: quarterPirs.filter((pir) => resolvePirSection(pir) === "CID").length,
       OSDS:
         quarterPirs.filter((pir) => resolvePirSection(pir) === "OSDS").length,
-    };
-  });
-
-  const pirByTrimester = getTrimesterNumbers().map((trimester) => {
-    const trimesterPirs = schoolPirs.filter((pir) =>
-      parseTrimesterLabel(pir.quarter)?.trimester === trimester
-    );
-    return {
-      quarter: `T${trimester}`,
-      trimester: `T${trimester}`,
-      submitted: trimesterPirs.filter((pir) =>
-        ["Submitted", "For Recommendation"].includes(pir.status)
-      ).length,
-      forRecommendation: trimesterPirs.filter((pir) =>
-        pir.status === "For Recommendation"
-      ).length,
-      forCESReview: trimesterPirs.filter((pir) =>
-        pir.status === "For CES Review"
-      ).length,
-      approved: trimesterPirs.filter((pir) => pir.status === "Approved").length,
-      underReview: trimesterPirs.filter((pir) =>
-        ["Under Review", "For Recommendation", "For CES Review"].includes(
-          pir.status,
-        )
-      ).length,
-      returned: trimesterPirs.filter((pir) =>
-        pir.status === "Returned"
-      ).length,
-      SGOD: trimesterPirs.filter((pir) =>
-        resolvePirSection(pir) === "SGOD"
-      ).length,
-      CID:
-        trimesterPirs.filter((pir) => resolvePirSection(pir) === "CID").length,
-      OSDS:
-        trimesterPirs.filter((pir) => resolvePirSection(pir) === "OSDS").length,
     };
   });
 
@@ -388,12 +343,6 @@ overviewRoutes.get("/overview", async (c) => {
     })
     .slice(0, 20);
 
-  const currentTrimester = month >= 6 && month <= 9
-    ? 1
-    : month >= 10 && month <= 12
-    ? 2
-    : 3;
-
   const clusterCompliance = clusters.map((cluster) => {
     const total = cluster.schools.length;
     const compliant = cluster.schools.filter((school) => school.aips.length > 0)
@@ -436,7 +385,7 @@ overviewRoutes.get("/overview", async (c) => {
       const expectedPrograms = getExpectedProgramCount(school.id, school.level);
       const schoolPirs = school.aips.flatMap((aip) =>
         aip.pirs.filter((pir) =>
-          parseTrimesterLabel(pir.quarter)?.trimester === currentTrimester
+          parseQuarterLabel(pir.quarter)?.quarter === currentQuarter
         )
       );
       return {
@@ -571,7 +520,6 @@ overviewRoutes.get("/overview", async (c) => {
     recentSubmissions,
     clusterCompliance,
     pirQuarterly,
-    pirByTrimester,
     pirClusterStatus,
     divisionSections,
     divisionAipCompliance,
