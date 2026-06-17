@@ -69,7 +69,7 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
         onClick={handleOpen}
         className="w-full min-h-11 flex items-center justify-between gap-2 px-3 py-2 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-left text-sm font-medium text-slate-900 dark:text-slate-100 hover:border-indigo-400 transition-colors"
       >
-        <span className={`min-w-0 flex-1 whitespace-normal break-words leading-snug ${selected ? '' : 'text-slate-400 dark:text-slate-500'}`}>
+        <span className={`min-w-0 flex-1 truncate ${selected ? '' : 'text-slate-400 dark:text-slate-500'}`}>
           {selected?.label ?? placeholder}
         </span>
         <div className="flex shrink-0 items-center gap-1 self-center">
