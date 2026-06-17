@@ -27,6 +27,11 @@ Deno.test("admin-facing reviewer roles can read non-draft PIRs", () => {
     "CES-CID should be readable",
   );
   assertEquals(
+    canReadPirRecord({ role: "Superintendent" }, { aip: { school: null } }),
+    true,
+    "Superintendent should be readable",
+  );
+  assertEquals(
     canReadPirRecord({ role: "School" }, { aip: { school: { cluster_id: 7 } } }),
     false,
     "submitter roles should not be readable through admin PIR access",

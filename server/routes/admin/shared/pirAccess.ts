@@ -4,6 +4,7 @@ const PIR_READABLE_ROLES = new Set([
   "CES-SGOD",
   "CES-ASDS",
   "CES-CID",
+  "Superintendent",
 ]);
 
 export function pirReadableWhereFor(
