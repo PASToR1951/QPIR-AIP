@@ -28,15 +28,15 @@ const FAQ_FALLBACK = [
       },
       {
         q: "What does AIP stand for and what is it for?",
-        a: "AIP stands for Annual Implementation Plan. It is the planning baseline for the fiscal year and identifies target outcomes, projects, activities, timelines, persons involved, expected outputs, and budget sources."
+        a: "AIP stands for Annual Implementation Plan. It is the planning baseline for the fiscal year and identifies target outcomes, KPIs, baseline values, quarterly targets, projects, activities, timelines, persons involved, expected outputs, and budget sources."
       },
       {
         q: "What does PIR stand for and what is it for?",
-        a: "PIR stands for Program Implementation Review. It is the monitoring record that compares actual accomplishments and budget utilization against the AIP baseline, including facilitating and hindering factors."
+        a: "PIR stands for Program Implementation Review. It is the monitoring record that compares actual accomplishments, indicator targets, and budget utilization against the AIP baseline, including gaps, actions, facilitating factors, and hindering factors."
       },
       {
         q: "Who can use the portal?",
-        a: "The Beta Build supports School Users, Division Personnel, CES reviewers (CES-SGOD, CES-ASDS, CES-CID), Admin users, Observers with read-only access, and Pending accounts awaiting administrator assignment. Your role controls which schools, programs, and review queues you can access."
+        a: "The current portal supports School Users, Division Personnel, CES reviewers (CES-SGOD, CES-ASDS, CES-CID), the Superintendent, Admin users, Observers with read-only access, and Pending accounts awaiting administrator assignment. Your role controls which schools, programs, and review queues you can access."
       },
       {
         q: "What does Apir mean in this system?",
@@ -48,7 +48,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "Is this a final release?",
-        a: "No. The portal is currently labeled Beta 3 (v1.2.0-beta). Workflows, statuses, and reports may continue to evolve based on user feedback before a stable release."
+        a: "No. The portal is currently labeled Beta 4 Refinements (v1.3.1-beta). Workflows, statuses, and reports may continue to evolve based on user feedback before a stable release."
       }
     ]
   },
@@ -82,7 +82,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "Can multiple people share one school account?",
-        a: "The Beta Build enforces one active School-role account per school so AIP and PIR ownership stays clear. Contact the SDO administrator if the assigned account needs to be changed."
+        a: "The current build enforces one active School-role account per school so AIP and PIR ownership stays clear. Contact the SDO administrator if the assigned account needs to be changed."
       },
       {
         q: "How long does my session stay signed in?",
@@ -104,7 +104,11 @@ const FAQ_FALLBACK = [
     questions: [
       {
         q: "How do I create an AIP?",
-        a: "Open the AIP form for your assigned program and fiscal year, fill in activities under the Planning, Implementation, and Monitoring and Evaluation phases, then save a draft or submit. School users submit on behalf of their school; Division Personnel can submit division-level AIPs."
+        a: "Open the AIP form for your assigned program and fiscal year, complete the profile, strategic alignment, goals, KPIs, baseline, quarterly target, activities, budget, and signature sections, then save a draft or submit. School users submit on behalf of their school; Division Personnel can submit division-level AIPs."
+      },
+      {
+        q: "What are KPIs, baseline, and quarterly target fields?",
+        a: "These numeric AIP metrics help reviewers compare planned outcomes with later PIR accomplishments. KPIs describe the performance measure, the baseline records the starting value, and the quarterly target records the expected progress for the selected reporting period."
       },
       {
         q: "What are the AIP activity phases?",
@@ -112,11 +116,11 @@ const FAQ_FALLBACK = [
       },
       {
         q: "Can I have more than one AIP for the same program and year?",
-        a: "No. The system enforces one school AIP per school, program, and fiscal year. Division-level AIPs follow a similar rule per division user. If you need to revise an approved AIP, contact your administrator."
+        a: "No. The system enforces one school AIP per school, program, and fiscal year. Division-level AIPs follow a similar rule per division user. If you need to revise an approved AIP, use the edit request flow where available or contact your administrator."
       },
       {
         q: "Why can't I submit my school AIP?",
-        a: "School AIPs require focal-person assignments on the selected program before they can enter the recommendation workflow. If the program has no assigned focal persons, ask your administrator to set them up first."
+        a: "School AIPs require complete required fields, valid budget and metric entries, signatures, and focal-person assignments on the selected program before they can enter the recommendation workflow. If the program has no assigned focal persons, ask your administrator to set them up first."
       },
       {
         q: "Why can't I see certain programs?",
@@ -124,7 +128,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "What happens after I submit an AIP?",
-        a: "A school AIP enters For Recommendation and appears in the queue of the assigned focal person. After focal recommendation it moves to For CES Review for the appropriate functional division. Division-level AIPs follow a simpler path managed by Division Personnel."
+        a: "A school AIP enters For Recommendation and appears in the queue of the assigned focal person. After focal recommendation it moves to For CES Review for the appropriate functional division. Division Personnel AIPs are accepted for their own workflow, while CES-owned AIPs route to For Superintendent Review."
       },
       {
         q: "What does it mean when my AIP is Returned?",
@@ -142,7 +146,7 @@ const FAQ_FALLBACK = [
     questions: [
       {
         q: "Can I submit a PIR without an approved AIP?",
-        a: "No. A PIR can only be created after an AIP has been submitted for the same school or Division Personnel account, program, and fiscal year."
+        a: "For school users, no. A PIR can only be submitted after the related AIP for the same school, program, and reporting year is Approved. Division Personnel and CES-owned records still require a matching AIP record for the same program and year."
       },
       {
         q: "Why are my AIP activities already filled in on the PIR form?",
@@ -151,6 +155,10 @@ const FAQ_FALLBACK = [
       {
         q: "Why are some activities missing from my PIR?",
         a: "The PIR form uses timeline-aware filtering. It only shows activities whose implementation months overlap with the quarter you are currently reviewing."
+      },
+      {
+        q: "How do indicator quarterly targets work in PIR?",
+        a: "The PIR asks you to review the AIP indicators and enter the target for the selected quarter. These targets help reviewers compare planned progress with the physical and financial accomplishments you report."
       },
       {
         q: "Can I submit multiple PIRs for one AIP?",
@@ -216,7 +224,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "Can I edit a PIR while it is being reviewed?",
-        a: "No. PIRs in active review statuses are locked until a reviewer returns them. Draft and Returned PIRs can be edited; approved or terminal submissions stay locked."
+        a: "No. PIRs in active review statuses are locked until a reviewer returns them. Draft and Returned PIRs can be edited; approved, For CES Review, Under Review, and For Superintendent Review submissions stay locked."
       },
       {
         q: "Who is a Focal Person?",
@@ -227,8 +235,12 @@ const FAQ_FALLBACK = [
         a: "CES-SGOD reviews SGOD programs, CES-ASDS reviews OSDS programs, and CES-CID reviews CID programs and any programs that do not yet have a declared functional division."
       },
       {
+        q: "What can the Superintendent do?",
+        a: "The Superintendent can review CES-owned AIPs and PIRs that route to For Superintendent Review and can monitor division activity through restricted oversight views."
+      },
+      {
         q: "Can Admin approve school AIPs or PIRs directly?",
-        a: "Admin users have oversight tools but do not act as focal or CES reviewers for the normal school review chain. AIP and PIR approvals go through the configured focal and CES roles."
+        a: "Admin users have oversight tools but do not act as focal, CES, or Superintendent reviewers for the normal review chain. School AIP and PIR approvals go through the configured focal and CES roles."
       }
     ]
   },
@@ -301,8 +313,12 @@ const FAQ_FALLBACK = [
         a: "The portal uses an uploaded school logo first, then the uploaded cluster logo, then the bundled default cluster logo when no upload exists."
       },
       {
+        q: "What is the global reporting period picker?",
+        a: "The Reporting Period picker in the header selects the reporting year and quarter used by dashboards, queues, PIR forms, reports, and some admin views. If data looks missing, confirm that the selected period is correct."
+      },
+      {
         q: "What is a quarterly deadline?",
-        a: "Quarterly deadlines define submission windows for specific reporting periods. The administrator configures the open and close dates and optional grace periods that the system enforces."
+        a: "Quarterly deadlines define submission windows for specific reporting periods. The administrator configures the coverage months, open date, due date, and optional grace period that the system enforces."
       },
       {
         q: "Why is a program tagged with a functional division?",
@@ -320,11 +336,15 @@ const FAQ_FALLBACK = [
     questions: [
       {
         q: "What can Admin manage?",
-        a: "Admin users can manage overview metrics, users, schools, clusters, programs, deadlines, submissions, PIR review, reports, backups, settings, announcements, audit logs, school logos, and cluster logos."
+        a: "Admin users can manage overview metrics, users, schools, clusters, programs, deadlines, submissions, PIR review, reports, backups, settings, announcements, FAQs, email templates, audit logs, school logos, and cluster logos."
       },
       {
         q: "How do I add or remove a user?",
         a: "From the Users page in the admin console, an administrator can create accounts, change roles, deactivate accounts, or anonymize accounts that should no longer be associated with personal data."
+      },
+      {
+        q: "Can Admin edit the public FAQ?",
+        a: "Yes. Admin users can open FAQ Management to add, edit, reorder, hide, delete, rename categories, or restore missing default questions. Public FAQ changes are live immediately."
       },
       {
         q: "How do reports work?",
@@ -396,7 +416,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "Where can I find user documentation?",
-        a: "The Help Center hosts this FAQ plus role-aware onboarding inside the dashboard. Detailed system documentation is also maintained as a technical reference and is available from the administrator on request."
+        a: "The Help Center hosts this FAQ, the Getting Started guide, and role-aware onboarding inside the dashboard. Detailed system documentation is also maintained as a technical reference and is available from the administrator on request."
       }
     ]
   }

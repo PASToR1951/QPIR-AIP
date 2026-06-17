@@ -152,7 +152,7 @@ function CollapsibleSubmissions({ onNavigate, roleTheme }) {
                     key={type}
                     to={`/admin/submissions?type=${type}`}
                     onClick={onNavigate}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150
+                    className={() => `flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150
                       ${isActive
                         ? 'font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/30'
                         : 'font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-900/[0.07] dark:hover:bg-white/[0.10]'
@@ -235,7 +235,7 @@ function CollapsibleReports({ onNavigate, roleTheme }) {
                     key={tab}
                     to={`/admin/reports?tab=${tab}`}
                     onClick={onNavigate}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150
+                    className={() => `flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150
                       ${isActive
                         ? 'font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/30'
                         : 'font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-900/[0.07] dark:hover:bg-white/[0.10]'
