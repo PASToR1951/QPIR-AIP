@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../lib/api.js';
 
@@ -24,6 +24,44 @@ function getLivePeriod() {
 
 const STORAGE_KEY = 'qpir.reportingPeriod';
 const ALL_QUARTERS = [1, 2, 3, 4];
+
+function normalizePeriod(period) {
+  const year = Number(period?.year);
+  const quarter = Number(period?.quarter);
+  if (year >= 2020 && year <= 2100 && ALL_QUARTERS.includes(quarter)) {
+    return { year, quarter };
+  }
+  return null;
+}
+
+function getPeriodFromSearch(search) {
+  const params = new URLSearchParams(search);
+  return normalizePeriod({
+    year: params.get('year'),
+    quarter: params.get('quarter'),
+  });
+}
+
+function getPeriodFromStorage() {
+  try {
+    const storedStr = localStorage.getItem(STORAGE_KEY);
+    if (!storedStr) return null;
+    return normalizePeriod(JSON.parse(storedStr));
+  } catch (e) {
+    console.error('Failed to parse reporting period from local storage', e);
+    return null;
+  }
+}
+
+function resolveInitialPeriod(search) {
+  const urlPeriod = getPeriodFromSearch(search);
+  if (urlPeriod) return { period: urlPeriod, source: 'url' };
+
+  const storedPeriod = getPeriodFromStorage();
+  if (storedPeriod) return { period: storedPeriod, source: 'storage' };
+
+  return { period: getLivePeriod(), source: 'live' };
+}
 
 function normalizeAvailablePeriods(periods) {
   if (!Array.isArray(periods)) return [];
@@ -63,41 +101,16 @@ export function ReportingPeriodProvider({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // 1. Initial State Resolution
-  const initialPeriod = useMemo(() => {
-    // a. URL Hydration
-    const params = new URLSearchParams(location.search);
-    const urlYear = parseInt(params.get('year'), 10);
-    const urlQuarter = parseInt(params.get('quarter'), 10);
+  const [initialPeriod] = useState(() => resolveInitialPeriod(location.search));
+  const initialPeriodSourceRef = useRef(initialPeriod.source);
+  const periodWasExplicitlyChangedRef = useRef(initialPeriod.source !== 'live');
 
-    if (urlYear >= 2020 && urlYear <= 2100 && [1, 2, 3, 4].includes(urlQuarter)) {
-      return { year: urlYear, quarter: urlQuarter };
-    }
-
-    // b. LocalStorage
-    try {
-      const storedStr = localStorage.getItem(STORAGE_KEY);
-      if (storedStr) {
-        const stored = JSON.parse(storedStr);
-        if (stored.year >= 2020 && stored.year <= 2100 && [1, 2, 3, 4].includes(stored.quarter)) {
-          return stored;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse reporting period from local storage', e);
-    }
-
-    // c. Live Fallback
-    return getLivePeriod();
-  }, [location.search]);
-
-  const [selectedYear, setSelectedYear] = useState(initialPeriod.year);
-  const [selectedQuarter, setSelectedQuarter] = useState(initialPeriod.quarter);
+  const [selectedYear, setSelectedYear] = useState(initialPeriod.period.year);
+  const [selectedQuarter, setSelectedQuarter] = useState(initialPeriod.period.quarter);
+  const [livePeriod, setLivePeriod] = useState(() => getLivePeriod());
   const [availablePeriods, setAvailablePeriods] = useState(null);
   const [periodOptionsLoading, setPeriodOptionsLoading] = useState(true);
 
-  // Derive live state
-  const livePeriod = useMemo(() => getLivePeriod(), []);
   const selectablePeriods = useMemo(() => {
     const periodMap = new Map();
 
@@ -124,6 +137,17 @@ export function ReportingPeriodProvider({ children }) {
     api.get('/api/reporting-periods')
       .then((response) => {
         if (cancelled) return;
+        const serverLivePeriod = normalizePeriod(response.data?.live);
+        if (serverLivePeriod) {
+          setLivePeriod(serverLivePeriod);
+          if (
+            initialPeriodSourceRef.current === 'live' &&
+            !periodWasExplicitlyChangedRef.current
+          ) {
+            setSelectedYear(serverLivePeriod.year);
+            setSelectedQuarter(serverLivePeriod.quarter);
+          }
+        }
         setAvailablePeriods(normalizeAvailablePeriods(response.data?.periods));
       })
       .catch((error) => {
@@ -138,6 +162,24 @@ export function ReportingPeriodProvider({ children }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const urlPeriod = getPeriodFromSearch(location.search);
+    if (!urlPeriod) return undefined;
+    if (urlPeriod.year === selectedYear && urlPeriod.quarter === selectedQuarter) return undefined;
+
+    periodWasExplicitlyChangedRef.current = true;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setSelectedYear(urlPeriod.year);
+      setSelectedQuarter(urlPeriod.quarter);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.search, selectedQuarter, selectedYear]);
 
   const getAvailableQuartersForYear = useCallback((year) => {
     return selectablePeriodMap.get(Number(year)) ?? [];
@@ -185,6 +227,11 @@ export function ReportingPeriodProvider({ children }) {
     const params = new URLSearchParams(location.search);
     const urlYear = parseInt(params.get('year'), 10);
     const urlQuarter = parseInt(params.get('quarter'), 10);
+    const urlPeriod = getPeriodFromSearch(location.search);
+
+    if (urlPeriod && (urlPeriod.year !== selectedYear || urlPeriod.quarter !== selectedQuarter)) {
+      return;
+    }
 
     const hasUrlParams = !isNaN(urlYear) && !isNaN(urlQuarter);
     
@@ -219,15 +266,16 @@ export function ReportingPeriodProvider({ children }) {
       ? requestedQuarter
       : (availableQuarters[0] ?? requestedQuarter);
 
+    periodWasExplicitlyChangedRef.current = true;
     setSelectedYear(nextYear);
     setSelectedQuarter(nextQuarter);
   }, [getAvailableQuartersForYear]);
 
   const resetToLivePeriod = useCallback(() => {
-    const live = getLivePeriod();
-    setSelectedYear(live.year);
-    setSelectedQuarter(live.quarter);
-  }, []);
+    periodWasExplicitlyChangedRef.current = true;
+    setSelectedYear(livePeriod.year);
+    setSelectedQuarter(livePeriod.quarter);
+  }, [livePeriod]);
 
   const getPeriodParams = useCallback(() => {
     return { year: selectedYear, quarter: selectedQuarter };
