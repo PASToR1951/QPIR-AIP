@@ -3,7 +3,7 @@ import { prisma } from "../../db/client.ts";
 import { getUserFromToken } from "../../lib/auth.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { toCSV, toXLSX } from "./shared/exports.ts";
-import { adminOnly } from "./shared/guards.ts";
+import { adminObserverOrDivisionPersonnelOnly } from "./shared/guards.ts";
 import { parseReportQuery } from "./shared/params.ts";
 import {
   REPORT_AIP_INCLUDE,
@@ -49,7 +49,7 @@ const FUNNEL_STATUSES = [
   "Returned",
 ];
 
-reportsRoutes.use("/reports/*", adminOnly);
+reportsRoutes.use("/reports/*", adminObserverOrDivisionPersonnelOnly);
 reportsRoutes.use("/reports/*", async (c, next) => {
   const admin = (await getUserFromToken(c))!;
   const now = Date.now();
