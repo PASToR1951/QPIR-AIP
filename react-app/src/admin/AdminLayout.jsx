@@ -137,7 +137,7 @@ export const AdminLayout = () => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gradient-to-br from-slate-100 via-slate-50 to-rose-50/30 dark:bg-none dark:bg-dark-base relative select-none [&_input]:select-text [&_textarea]:select-text">
+    <div className="flex h-screen overflow-hidden bg-slate-50 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200/60 dark:bg-none dark:bg-dark-base relative select-none [&_input]:select-text [&_textarea]:select-text">
       {/* Ambient gradient blobs for glassmorphism depth */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#E94560]/[0.06] dark:bg-[#E94560]/[0.04] rounded-full blur-3xl" />
