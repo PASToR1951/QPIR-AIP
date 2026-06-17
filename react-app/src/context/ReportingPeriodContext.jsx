@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import api from '../lib/api.js';
 
 const ReportingPeriodContext = createContext(null);
 
@@ -22,6 +23,41 @@ function getLivePeriod() {
 }
 
 const STORAGE_KEY = 'qpir.reportingPeriod';
+const ALL_QUARTERS = [1, 2, 3, 4];
+
+function normalizeAvailablePeriods(periods) {
+  if (!Array.isArray(periods)) return [];
+
+  return periods
+    .map((period) => {
+      const year = Number(period?.year);
+      const quarters = Array.isArray(period?.quarters)
+        ? Array.from(new Set(period.quarters.map(Number)))
+          .filter((quarter) => ALL_QUARTERS.includes(quarter))
+          .sort((left, right) => left - right)
+        : [];
+
+      return { year, quarters };
+    })
+    .filter((period) => period.year >= 2020 && period.year <= 2100 && period.quarters.length > 0)
+    .sort((left, right) => right.year - left.year);
+}
+
+function addQuarter(periodMap, year, quarter) {
+  if (!year || !ALL_QUARTERS.includes(quarter)) return;
+  const existing = periodMap.get(year) ?? new Set();
+  existing.add(quarter);
+  periodMap.set(year, existing);
+}
+
+function mapToPeriods(periodMap) {
+  return Array.from(periodMap.entries())
+    .sort(([leftYear], [rightYear]) => rightYear - leftYear)
+    .map(([year, quarters]) => ({
+      year,
+      quarters: Array.from(quarters).sort((left, right) => left - right),
+    }));
+}
 
 export function ReportingPeriodProvider({ children }) {
   const location = useLocation();
@@ -57,11 +93,82 @@ export function ReportingPeriodProvider({ children }) {
 
   const [selectedYear, setSelectedYear] = useState(initialPeriod.year);
   const [selectedQuarter, setSelectedQuarter] = useState(initialPeriod.quarter);
+  const [availablePeriods, setAvailablePeriods] = useState(null);
+  const [periodOptionsLoading, setPeriodOptionsLoading] = useState(true);
 
   // Derive live state
   const livePeriod = useMemo(() => getLivePeriod(), []);
+  const selectablePeriods = useMemo(() => {
+    const periodMap = new Map();
+
+    if (availablePeriods === null) {
+      ALL_QUARTERS.forEach((quarter) => addQuarter(periodMap, selectedYear, quarter));
+    } else {
+      availablePeriods.forEach((period) => {
+        period.quarters.forEach((quarter) => addQuarter(periodMap, period.year, quarter));
+      });
+    }
+
+    return mapToPeriods(periodMap);
+  }, [availablePeriods, selectedYear]);
+  const selectablePeriodMap = useMemo(() => {
+    return new Map(selectablePeriods.map((period) => [period.year, period.quarters]));
+  }, [selectablePeriods]);
+  const availableYears = useMemo(() => selectablePeriods.map((period) => period.year), [selectablePeriods]);
   const isLivePeriod = selectedYear === livePeriod.year && selectedQuarter === livePeriod.quarter;
   const selectedQuarterLabel = getQuarterLabel(selectedQuarter, selectedYear);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api.get('/api/reporting-periods')
+      .then((response) => {
+        if (cancelled) return;
+        setAvailablePeriods(normalizeAvailablePeriods(response.data?.periods));
+      })
+      .catch((error) => {
+        console.error('Failed to fetch reporting period options', error);
+        if (!cancelled) setAvailablePeriods([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPeriodOptionsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const getAvailableQuartersForYear = useCallback((year) => {
+    return selectablePeriodMap.get(Number(year)) ?? [];
+  }, [selectablePeriodMap]);
+
+  useEffect(() => {
+    if (periodOptionsLoading || availablePeriods === null) return;
+    if (getAvailableQuartersForYear(selectedYear).includes(selectedQuarter)) return;
+    if (selectedYear === livePeriod.year && selectedQuarter === livePeriod.quarter) return;
+
+    const selectedYearQuarters = getAvailableQuartersForYear(selectedYear);
+    const fallback = selectedYearQuarters.length > 0
+      ? { year: selectedYear, quarters: selectedYearQuarters }
+      : selectablePeriods[0] ?? {
+        year: livePeriod.year,
+        quarters: [livePeriod.quarter],
+      };
+
+    queueMicrotask(() => {
+      setSelectedYear(fallback.year);
+      setSelectedQuarter(fallback.quarters[0]);
+    });
+  }, [
+    availablePeriods,
+    getAvailableQuartersForYear,
+    livePeriod,
+    periodOptionsLoading,
+    selectablePeriods,
+    selectedQuarter,
+    selectedYear,
+  ]);
 
   // URL & Storage Sync Effect when state changes
   useEffect(() => {
@@ -105,9 +212,16 @@ export function ReportingPeriodProvider({ children }) {
   }, [selectedYear, selectedQuarter, isLivePeriod, location.search, location.pathname, location.hash, navigate]);
 
   const setReportingPeriod = useCallback(({ year, quarter }) => {
-    setSelectedYear(year);
-    setSelectedQuarter(quarter);
-  }, []);
+    const nextYear = Number(year);
+    const availableQuarters = getAvailableQuartersForYear(nextYear);
+    const requestedQuarter = Number(quarter);
+    const nextQuarter = availableQuarters.includes(requestedQuarter)
+      ? requestedQuarter
+      : (availableQuarters[0] ?? requestedQuarter);
+
+    setSelectedYear(nextYear);
+    setSelectedQuarter(nextQuarter);
+  }, [getAvailableQuartersForYear]);
 
   const resetToLivePeriod = useCallback(() => {
     const live = getLivePeriod();
@@ -124,10 +238,24 @@ export function ReportingPeriodProvider({ children }) {
     selectedQuarter,
     selectedQuarterLabel,
     isLivePeriod,
+    availableYears,
+    periodOptionsLoading,
+    getAvailableQuartersForYear,
     setReportingPeriod,
     resetToLivePeriod,
     getPeriodParams
-  }), [selectedYear, selectedQuarter, selectedQuarterLabel, isLivePeriod, setReportingPeriod, resetToLivePeriod, getPeriodParams]);
+  }), [
+    selectedYear,
+    selectedQuarter,
+    selectedQuarterLabel,
+    isLivePeriod,
+    availableYears,
+    periodOptionsLoading,
+    getAvailableQuartersForYear,
+    setReportingPeriod,
+    resetToLivePeriod,
+    getPeriodParams,
+  ]);
 
   return (
     <ReportingPeriodContext.Provider value={value}>
@@ -136,6 +264,7 @@ export function ReportingPeriodProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useReportingPeriod() {
   const context = useContext(ReportingPeriodContext);
   if (context === null) {
@@ -146,6 +275,9 @@ export function useReportingPeriod() {
       selectedQuarter: live.quarter,
       selectedQuarterLabel: getQuarterLabel(live.quarter, live.year),
       isLivePeriod: true,
+      availableYears: [live.year],
+      periodOptionsLoading: false,
+      getAvailableQuartersForYear: () => [live.quarter],
       setReportingPeriod: () => {},
       resetToLivePeriod: () => {},
       getPeriodParams: () => live,

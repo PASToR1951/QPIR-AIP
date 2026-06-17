@@ -7,12 +7,28 @@ export function ReportingPeriodPicker() {
     selectedYear,
     selectedQuarter,
     isLivePeriod,
+    availableYears,
+    periodOptionsLoading,
+    getAvailableQuartersForYear,
     setReportingPeriod,
     resetToLivePeriod
   } = useReportingPeriod();
 
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: currentYear + 1 - 2020 + 1 }, (_, i) => currentYear + 1 - i);
+  const yearOptions = availableYears?.includes(selectedYear)
+    ? availableYears
+    : [selectedYear, ...(availableYears ?? [])].sort((left, right) => right - left);
+  const quarterOptions = getAvailableQuartersForYear?.(selectedYear) ?? [];
+  const visibleQuarterOptions = quarterOptions.includes(selectedQuarter)
+    ? quarterOptions
+    : [selectedQuarter, ...quarterOptions].filter((quarter, index, list) => list.indexOf(quarter) === index);
+  const handleYearChange = (event) => {
+    const year = parseInt(event.target.value, 10);
+    const quarters = getAvailableQuartersForYear?.(year) ?? [];
+    setReportingPeriod({
+      year,
+      quarter: quarters.includes(selectedQuarter) ? selectedQuarter : (quarters[0] ?? selectedQuarter),
+    });
+  };
 
   return (
     <div className="flex items-center gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-2 py-1.5 text-sm text-slate-700 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/10 dark:text-slate-100">
@@ -21,7 +37,7 @@ export function ReportingPeriodPicker() {
       <select
         aria-label="Fiscal year"
         value={selectedYear}
-        onChange={(e) => setReportingPeriod({ year: parseInt(e.target.value, 10), quarter: selectedQuarter })}
+        onChange={handleYearChange}
         className="cursor-pointer rounded border-none bg-transparent px-1 font-semibold text-slate-700 outline-none hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
       >
         {yearOptions.map(y => (
@@ -35,12 +51,12 @@ export function ReportingPeriodPicker() {
         aria-label="Quarter"
         value={selectedQuarter}
         onChange={(e) => setReportingPeriod({ year: selectedYear, quarter: parseInt(e.target.value, 10) })}
+        disabled={periodOptionsLoading && visibleQuarterOptions.length === 0}
         className="cursor-pointer rounded border-none bg-transparent px-1 font-semibold text-slate-700 outline-none hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
       >
-        <option value={1} className="text-gray-900 bg-white">Q1</option>
-        <option value={2} className="text-gray-900 bg-white">Q2</option>
-        <option value={3} className="text-gray-900 bg-white">Q3</option>
-        <option value={4} className="text-gray-900 bg-white">Q4</option>
+        {visibleQuarterOptions.map((quarter) => (
+          <option key={quarter} value={quarter} className="text-gray-900 bg-white">Q{quarter}</option>
+        ))}
       </select>
 
       <span className="hidden font-light text-slate-300 dark:text-white/30 sm:inline">|</span>

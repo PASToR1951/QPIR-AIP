@@ -6,6 +6,7 @@ import pirRoutes from "./pirs.ts";
 import dashboardRoutes from "./dashboard.ts";
 import notificationsRoutes from "./notifications.ts";
 import activityLogsRoutes from "./activityLogs.ts";
+import reportingPeriodRoutes from "./reportingPeriods.ts";
 
 const dataRoutes = new Hono();
 
@@ -16,5 +17,6 @@ dataRoutes.route("/", pirRoutes);
 dataRoutes.route("/", dashboardRoutes);
 dataRoutes.route("/", notificationsRoutes);
 dataRoutes.route("/", activityLogsRoutes);
+dataRoutes.route("/", reportingPeriodRoutes);
 
 export default dataRoutes;
