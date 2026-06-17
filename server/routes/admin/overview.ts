@@ -7,14 +7,14 @@ import {
   endOfDeadlineDay,
   getQuarterNumbers,
 } from "./shared/dates.ts";
-import { adminOrObserverOnly } from "./shared/guards.ts";
+import { adminAnalyticsOnly } from "./shared/guards.ts";
 import { parseQuarterLabel } from "../../lib/quarters.ts";
 
 const overviewRoutes = new Hono();
 
-overviewRoutes.use("/overview", adminOrObserverOnly);
-overviewRoutes.use("/onboarding-overview", adminOrObserverOnly);
-overviewRoutes.use("/layout-info", adminOrObserverOnly);
+overviewRoutes.use("/overview", adminAnalyticsOnly);
+overviewRoutes.use("/onboarding-overview", adminAnalyticsOnly);
+overviewRoutes.use("/layout-info", adminAnalyticsOnly);
 
 overviewRoutes.get("/overview", async (c) => {
   const year = safeParseInt(

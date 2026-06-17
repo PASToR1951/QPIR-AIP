@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import {
   adminOnly,
-  adminOrObserverOnly,
+  adminAnalyticsOnly,
 } from "./shared/guards.ts";
 import { listRouter } from "./submissions/list.ts";
 import { detailRouter } from "./submissions/detail.ts";
@@ -14,9 +14,9 @@ export const adminRoutes = new Hono();
 
 // ── Auth guards ────────────────────────────────────────────────────────────
 
-observerRoutes.use("/submissions", adminOrObserverOnly);
-observerRoutes.use("/submissions/export", adminOrObserverOnly);
-observerRoutes.use("/submissions/:id", adminOrObserverOnly);
+observerRoutes.use("/submissions", adminAnalyticsOnly);
+observerRoutes.use("/submissions/export", adminAnalyticsOnly);
+observerRoutes.use("/submissions/:id", adminAnalyticsOnly);
 
 adminRoutes.use("/submissions/:id/status", adminOnly);
 adminRoutes.use("/aips/:id/approve-edit", adminOnly);

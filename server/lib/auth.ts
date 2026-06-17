@@ -32,6 +32,7 @@ const VALID_ROLES = [
   "CES-CID",
   "Pending",
   "Observer",
+  "Superintendent",
 ] as const;
 
 import type { Context } from "hono";
