@@ -7,7 +7,7 @@ import api from '../../lib/api.js';
 
 function displayName(user) {
   if (!user) return '';
-  if ((user.role === 'Division Personnel' || user.role === 'School') && user.first_name && user.last_name) {
+  if ((user.role === 'Division Personnel' || user.role === 'School' || user.role === 'Superintendent') && user.first_name && user.last_name) {
     const mi = user.middle_initial ? ` ${user.middle_initial}.` : '';
     return `${user.first_name}${mi} ${user.last_name}`;
   }

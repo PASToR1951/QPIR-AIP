@@ -160,7 +160,7 @@ function DetailsForm({ form, setForm, schools, users = [], programs }) {
 
   return (
     <div className="space-y-4">
-      {['Admin', 'Superintendent'].includes(form.role) && (
+      {form.role === 'Admin' && (
         <div className="grid grid-cols-[120px_1fr] gap-3">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
@@ -179,7 +179,7 @@ function DetailsForm({ form, setForm, schools, users = [], programs }) {
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               className={inputCls}
-              placeholder={form.role === 'Superintendent' ? 'Superintendent Name' : 'Administrator Name'}
+              placeholder="Administrator Name"
             />
           </div>
         </div>
@@ -236,7 +236,7 @@ function DetailsForm({ form, setForm, schools, users = [], programs }) {
         </>
       )}
 
-      {form.role === 'Division Personnel' && (
+      {(['Division Personnel', 'Superintendent'].includes(form.role)) && (
         <>
           <div className="grid grid-cols-[120px_1fr_80px] gap-3">
             <div>

@@ -34,10 +34,10 @@ export function PasteStep({ csvText, setCsvText, parseError }) {
                 {[
                   ['email', 'All roles', 'Must end @deped.gov.ph'],
                   ['role', 'All roles', 'School | Division Personnel | Admin | CES-SGOD | CES-ASDS | CES-CID | Superintendent'],
-                  ['name', 'Admin, CES-*, Superintendent', 'Full display name'],
-                  ['first_name', 'Division Personnel', 'Given name'],
-                  ['last_name', 'Division Personnel', 'Surname'],
-                  ['middle_initial', 'Division Personnel', 'Optional (e.g. "D")'],
+                  ['name', 'Admin, CES-*', 'Full display name'],
+                  ['first_name', 'Division Personnel, Superintendent', 'Given name'],
+                  ['last_name', 'Division Personnel, Superintendent', 'Surname'],
+                  ['middle_initial', 'Division Personnel, Superintendent', 'Optional (e.g. "D")'],
                   ['school_id', 'School', 'Numeric ID from Schools list'],
                   ['program_ids', 'Division Personnel', 'Optional; semicolon-separated IDs e.g. "2;5;8"'],
                 ].map(([column, requiredFor, notes]) => (

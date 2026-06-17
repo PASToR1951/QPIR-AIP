@@ -19,7 +19,7 @@ export const EMPTY_USER_FORM = {
 
 export function userDisplayName(u) {
   if (!u) return '';
-  if ((u.role === 'Division Personnel' || u.role === 'School') && u.first_name && u.last_name) {
+  if ((u.role === 'Division Personnel' || u.role === 'School' || u.role === 'Superintendent') && u.first_name && u.last_name) {
     const mi = u.middle_initial ? ` ${u.middle_initial}.` : '';
     return `${u.first_name}${mi} ${u.last_name}`;
   }
@@ -41,7 +41,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
 
   return (
     <div className="space-y-4">
-      {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent', 'Observer'].includes(form.role)) && (
+      {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Observer'].includes(form.role)) && (
         <div className="grid grid-cols-[120px_1fr] gap-3">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Title</label>
@@ -57,7 +57,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
           </div>
         </div>
       )}
-      {(form.role === 'Division Personnel' || form.role === 'School') && (
+      {(form.role === 'Division Personnel' || form.role === 'School' || form.role === 'Superintendent') && (
         <>
           {form.role === 'School' && (
             <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest -mb-1">School Head</p>
@@ -120,8 +120,8 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
           options={ROLES.map(r => ({ value: r, label: r }))}
           value={form.role}
           onChange={v => setForm(f => {
-            const wasSplit = f.role === 'Division Personnel' || f.role === 'School';
-            const nowSplit = v === 'Division Personnel' || v === 'School';
+            const wasSplit = f.role === 'Division Personnel' || f.role === 'School' || f.role === 'Superintendent';
+            const nowSplit = v === 'Division Personnel' || v === 'School' || v === 'Superintendent';
             let nameUpdate = {};
             if (wasSplit && !nowSplit) {
               const parts = [f.first_name, f.middle_initial ? `${f.middle_initial}.` : '', f.last_name].filter(Boolean);
@@ -146,7 +146,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
           />
         </div>
       )}
-      {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent'].includes(form.role)) && (
+      {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(form.role)) && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Assigned Programs</label>
           <MultiSelect

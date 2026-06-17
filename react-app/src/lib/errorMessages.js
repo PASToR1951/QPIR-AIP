@@ -133,6 +133,8 @@ const EXACT_MAP = {
     "A name is required for this role. Please provide the user's full name.",
   'first_name and last_name are required for Division Personnel':
     'First name and last name are required for Division Personnel accounts.',
+  'first_name and last_name are required for Superintendent':
+    'First name and last name are required for Superintendent accounts.',
   'email, password, role are required':
     'Email, password, and role are all required to create a new user.',
   'Selected school not found':

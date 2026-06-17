@@ -2,6 +2,24 @@ import { useState } from 'react';
 import api from '../../../lib/api.js';
 import { EMPTY_USER_FORM } from './UserForm.jsx';
 
+const splitNameRoles = new Set(['School', 'Division Personnel', 'Superintendent']);
+
+function buildDisplayName(form) {
+  const parts = [
+    form.first_name,
+    form.middle_initial ? `${form.middle_initial}.` : '',
+    form.last_name,
+  ].filter(Boolean);
+  return parts.join(' ').trim();
+}
+
+function normalizeUserPayload(form) {
+  const name = splitNameRoles.has(form.role)
+    ? buildDisplayName(form)
+    : form.name;
+  return { ...form, name };
+}
+
 export function useUserMutations({ fetchAll, showToast }) {
   const [actionLoading, setActionLoading] = useState(false);
   const [formError, setFormError] = useState('');
@@ -10,7 +28,7 @@ export function useUserMutations({ fetchAll, showToast }) {
   const handleCreate = async (wizardForm) => {
     setActionLoading(true); setFormError('');
     try {
-      await api.post('/api/admin/users', { ...wizardForm });
+      await api.post('/api/admin/users', normalizeUserPayload(wizardForm));
       showToast('User created successfully.');
       fetchAll();
       return true;
@@ -23,18 +41,21 @@ export function useUserMutations({ fetchAll, showToast }) {
   const handleEdit = async (editUser) => {
     setActionLoading(true); setFormError('');
     try {
-      await api.patch(`/api/admin/users/${editUser.id}`, {
+      const payload = normalizeUserPayload({
         salutation: form.salutation, name: form.name, first_name: form.first_name,
         middle_initial: form.middle_initial, last_name: form.last_name, position: form.position,
         role: form.role, school_id: form.school_id, program_ids: form.program_ids,
+      });
+      await api.patch(`/api/admin/users/${editUser.id}`, {
+        ...payload,
       });
       try {
         const stored = JSON.parse(sessionStorage.getItem('user') || 'null');
         if (stored && stored.id === editUser.id) {
           sessionStorage.setItem('user', JSON.stringify({
             ...stored,
-            salutation: form.salutation, name: form.name, first_name: form.first_name,
-            middle_initial: form.middle_initial, last_name: form.last_name, position: form.position,
+            salutation: payload.salutation, name: payload.name, first_name: payload.first_name,
+            middle_initial: payload.middle_initial, last_name: payload.last_name, position: payload.position,
           }));
         }
       } catch { /* non-critical */ }

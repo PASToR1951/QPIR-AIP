@@ -13,7 +13,6 @@ const SYSTEM_ROLES = new Set([
   'CES-SGOD',
   'CES-ASDS',
   'CES-CID',
-  'Superintendent',
 ]);
 
 export function parseCSV(text) {
@@ -51,8 +50,8 @@ export function parseCSV(text) {
       if (SYSTEM_ROLES.has(row.role) && !row.name?.trim()) {
         errors.push(`"name" is required for role "${row.role}"`);
       }
-      if (row.role === 'Division Personnel' && (!row.first_name?.trim() || !row.last_name?.trim())) {
-        errors.push('first_name and last_name are required for Division Personnel');
+      if (['Division Personnel', 'Superintendent'].includes(row.role) && (!row.first_name?.trim() || !row.last_name?.trim())) {
+        errors.push(`first_name and last_name are required for ${row.role}`);
       }
       if (row.role === 'School' && !row.school_id) {
         errors.push('Valid school_id is required for School role');
@@ -72,4 +71,5 @@ export const EXAMPLE_CSV = `email,role,name,first_name,last_name,middle_initial,
 101234@deped.gov.ph,School,,,,,42,
 juan.delacruz@deped.gov.ph,Division Personnel,,Juan,Dela Cruz,D,,2;5
 juan.delacruz001@deped.gov.ph,Division Personnel,,Juan,Dela Cruz,A,,3
+superintendent@deped.gov.ph,Superintendent,,Maria,Santos,R,,
 ces.head@deped.gov.ph,CES-SGOD,Rowena Flores,,,,,`;

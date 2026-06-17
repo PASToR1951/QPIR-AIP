@@ -18,7 +18,7 @@ import { useOnboardingData } from './adminUsers/useUserData.js';
 import { useUserMutations } from './adminUsers/useUserMutations.js';
 import { SignatoriesPanel } from './adminSettings/SignatoriesPanel.jsx';
 
-const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Admin', 'Observer'];
+const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent', 'Admin', 'Observer'];
 
 export default function AdminUsers() {
   const [search, setSearch] = useState('');

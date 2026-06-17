@@ -7,7 +7,7 @@ export function buildUserColumns({ onEdit, onManageSessions, onResetPassword, on
   return withResponsiveHide([
     {
       key: 'name', label: 'Name', sortable: true, render: (v, row) => {
-        const display = (row.role === 'Division Personnel' || row.role === 'School') && row.first_name && row.last_name
+        const display = (row.role === 'Division Personnel' || row.role === 'School' || row.role === 'Superintendent') && row.first_name && row.last_name
           ? `${row.first_name}${row.middle_initial ? ` ${row.middle_initial}.` : ''} ${row.last_name}`
           : (v || (row.role === 'School' ? row.school?.name : null) || row.email);
         return <span className="font-bold text-slate-900 dark:text-slate-100">{display}</span>;
@@ -17,7 +17,11 @@ export function buildUserColumns({ onEdit, onManageSessions, onResetPassword, on
     { key: 'role', label: 'Role', render: v => <StatusBadge status={v} size="xs" /> },
     {
       key: 'school', label: 'Affiliation',
-      render: (_, row) => <span className="text-xs text-slate-500 dark:text-slate-400">{row.role === 'Division Personnel' ? 'Division' : (row.school?.name ?? '—')}</span>,
+      render: (_, row) => (
+        <span className="text-xs text-slate-500 dark:text-slate-400">
+          {['Division Personnel', 'Superintendent'].includes(row.role) ? 'Division' : (row.school?.name ?? '—')}
+        </span>
+      ),
     },
     {
       key: 'programs', label: 'Programs', render: (_, row) => {

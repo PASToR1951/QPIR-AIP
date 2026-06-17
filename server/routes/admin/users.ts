@@ -20,6 +20,20 @@ const CES_ROLES: string[] = ["CES-SGOD", "CES-ASDS", "CES-CID"];
 const SYSTEM_ROLES = new Set(["Admin", ...CES_ROLES, "Superintendent", OBSERVER_ROLE]);
 const VALID_ROLES = new Set([...SYSTEM_ROLES, "Division Personnel", "School"]);
 const PATCHABLE_ROLES = new Set([...VALID_ROLES, "Pending"]);
+const PROGRAM_ASSIGNABLE_ROLES = new Set(["Division Personnel", ...CES_ROLES]);
+const SPLIT_NAME_ROLES = new Set(["Division Personnel", "Superintendent"]);
+
+function buildNameFromParts(
+  firstName?: string,
+  middleInitial?: string,
+  lastName?: string,
+) {
+  return [
+    firstName,
+    middleInitial ? `${middleInitial}.` : "",
+    lastName,
+  ].filter(Boolean).join(" ").trim();
+}
 
 interface ImportRow {
   email: string;
@@ -84,6 +98,10 @@ function buildUserPrograms(
     restricted_schools: Array<{ id: number }>;
   }>,
 ) {
+  if (!PROGRAM_ASSIGNABLE_ROLES.has(user.role) && user.role !== "School") {
+    return [];
+  }
+
   if (user.role === "School" && user.school) {
     const schoolLevel = user.school.level;
     const schoolId = user.school.id;
@@ -222,11 +240,11 @@ usersRoutes.post("/users", async (c) => {
     program_ids,
   } = sanitizeObject(await c.req.json());
 
-  if (SYSTEM_ROLES.has(role) && !name) {
+  if (SYSTEM_ROLES.has(role) && !SPLIT_NAME_ROLES.has(role) && !name) {
     return c.json({ error: "name is required for this role" }, 400);
   }
-  if (role === "Division Personnel" && (!first_name || !last_name)) {
-    return c.json({ error: "first_name and last_name are required for Division Personnel" }, 400);
+  if (SPLIT_NAME_ROLES.has(role) && (!first_name || !last_name)) {
+    return c.json({ error: `first_name and last_name are required for ${role}` }, 400);
   }
   if (!email || !password || !role) {
     return c.json({ error: "email, password, role are required" }, 400);
@@ -254,6 +272,7 @@ usersRoutes.post("/users", async (c) => {
   }
 
   const hashed = await hashPassword(password);
+  const canAssignPrograms = PROGRAM_ASSIGNABLE_ROLES.has(role);
 
   try {
     const user = await prisma.$transaction(async (tx) => {
@@ -269,7 +288,7 @@ usersRoutes.post("/users", async (c) => {
           password: hashed,
           role,
           ...(school_id && { school_id }),
-          ...(program_ids?.length && {
+          ...(canAssignPrograms && program_ids?.length && {
             programs: { connect: program_ids.map((id: number) => ({ id })) },
           }),
         },
@@ -329,13 +348,13 @@ usersRoutes.post("/users/import", async (c) => {
       errors.push({ email, reason: "Observer role cannot be created via bulk import. Assign it to an existing account." });
       continue;
     }
-    if (SYSTEM_ROLES.has(role) && !(row.name as string)?.trim()) {
+    if (SYSTEM_ROLES.has(role) && !SPLIT_NAME_ROLES.has(role) && !(row.name as string)?.trim()) {
       errors.push({ email, reason: `"name" is required for role "${role}"` });
       continue;
     }
-    if (role === "Division Personnel" &&
+    if (SPLIT_NAME_ROLES.has(role) &&
       (!(row.first_name as string)?.trim() || !(row.last_name as string)?.trim())) {
-      errors.push({ email, reason: "first_name and last_name are required for Division Personnel" });
+      errors.push({ email, reason: `first_name and last_name are required for ${role}` });
       continue;
     }
 
@@ -346,14 +365,22 @@ usersRoutes.post("/users/import", async (c) => {
     }
 
     const rawProgramIds = row.program_ids;
-    const programIds: number[] = Array.isArray(rawProgramIds)
+    const programIds: number[] = PROGRAM_ASSIGNABLE_ROLES.has(role) && Array.isArray(rawProgramIds)
       ? (rawProgramIds as unknown[]).map(Number).filter((v) => Number.isInteger(v) && v > 0)
       : [];
 
     validRows.push({
       email,
       role,
-      name: (row.name as string)?.trim() || undefined,
+      name: (row.name as string)?.trim() ||
+        (SPLIT_NAME_ROLES.has(role)
+          ? buildNameFromParts(
+            (row.first_name as string)?.trim() || undefined,
+            (row.middle_initial as string)?.trim() || undefined,
+            (row.last_name as string)?.trim() || undefined,
+          )
+          : undefined) ||
+        undefined,
       first_name: (row.first_name as string)?.trim() || undefined,
       last_name: (row.last_name as string)?.trim() || undefined,
       middle_initial: (row.middle_initial as string)?.trim() || undefined,
@@ -391,7 +418,7 @@ usersRoutes.post("/users/import", async (c) => {
           ...(row.last_name && { last_name: row.last_name }),
           ...(row.middle_initial && { middle_initial: row.middle_initial }),
           ...(row.school_id_int && { school_id: row.school_id_int }),
-          ...(row.program_ids?.length && {
+          ...(PROGRAM_ASSIGNABLE_ROLES.has(row.role) && row.program_ids?.length && {
             programs: { connect: row.program_ids.map((id) => ({ id })) },
           }),
         },
@@ -495,9 +522,11 @@ usersRoutes.patch("/users/:id", async (c) => {
       where: { id },
       data: {
         ...updateData,
-        ...(program_ids !== undefined && {
-          programs: { set: program_ids.map((programId: number) => ({ id: programId })) },
-        }),
+        ...(!PROGRAM_ASSIGNABLE_ROLES.has(nextRole)
+          ? { programs: { set: [] } }
+          : program_ids !== undefined
+          ? { programs: { set: program_ids.map((programId: number) => ({ id: programId })) } }
+          : {}),
       },
     });
 
