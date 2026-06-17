@@ -14,6 +14,7 @@ import { SubmissionsFilterBar } from './adminSubmissions/SubmissionsFilterBar.js
 import { SubmissionDetailModal } from './adminSubmissions/SubmissionDetailModal.jsx';
 import { SubmissionModals } from './adminSubmissions/SubmissionModals.jsx';
 import { buildSubmissionColumns } from './adminSubmissions/submissionColumns.jsx';
+import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
 
 const VALID_TABS = new Set(['all', 'aip', 'pir']);
 const FILTER_PARAM_KEYS = ['cluster', 'school', 'program', 'quarter', 'year', 'status'];
@@ -23,7 +24,7 @@ const defaultFilters = () => ({
   school: null,
   program: null,
   quarter: null,
-  year: new Date().getFullYear(),
+  year: null,
   status: null,
 });
 
@@ -93,9 +94,13 @@ export default function AdminSubmissions() {
   const setTab   = (key) => { setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('type',  key); return next; }); setPage(1); setHighlightRowId(null); };
   const setGroup = (key) => { setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('group', key); return next; }); };
 
+  const { selectedYear, selectedQuarter } = useReportingPeriod();
+
   const [page, setPage]                     = useState(1);
   const [filters, setFilters]               = useState(() => ({
     ...defaultFilters(),
+    year: selectedYear,
+    quarter: selectedQuarter,
     ...normalizeFilterPatch(location.state?.filters ?? {}),
     ...readFilterParams(searchParams),
   }));
@@ -134,6 +139,17 @@ export default function AdminSubmissions() {
     setPage(1);
     setSearchParams(prev => writeFilterParams(prev, nextFilters), { replace: true });
   };
+
+  useEffect(() => {
+    setFilters(prev => {
+      if (prev.year !== selectedYear || prev.quarter !== selectedQuarter) {
+        const nextFilters = { ...prev, year: selectedYear, quarter: selectedQuarter };
+        setSearchParams(p => writeFilterParams(p, nextFilters), { replace: true });
+        return nextFilters;
+      }
+      return prev;
+    });
+  }, [selectedYear, selectedQuarter, setSearchParams]);
 
   const { submissions, totals, loading, fetchError, fetchSubmissions, clusters, schools, programs } =
     useSubmissionsData({ tab, filters, page });

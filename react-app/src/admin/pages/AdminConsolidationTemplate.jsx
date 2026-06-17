@@ -14,7 +14,7 @@ import {
 import api from '../../lib/api.js';
 import { useUser } from '../../lib/auth.js';
 import { Spinner } from '../components/Spinner.jsx';
-import { useReportYears } from './adminReports/useReportYears.js';
+import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
 
 const FUNCTIONAL_DIVISIONS = ['SGOD', 'CID', 'OSDS'];
 const VIEW_MODES = {
@@ -33,11 +33,7 @@ const CONSOLIDATION_STATUSES = [
 ];
 const DEBOUNCE_MS = 800;
 
-function getCurrentQuarterAndYear() {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  return { year: now.getFullYear(), quarter: Math.ceil(month / 3) };
-}
+
 
 const QUARTER_LABELS = { 1: 'Q1', 2: 'Q2', 3: 'Q3', 4: 'Q4' };
 
@@ -60,14 +56,12 @@ function getEditableFields(role) {
 }
 
 const AdminConsolidationTemplate = () => {
-  const { year: defaultYear, quarter: defaultQuarter } = getCurrentQuarterAndYear();
-
+  const { selectedYear: year, selectedQuarter: quarter } = useReportingPeriod();
+  
   const currentUser = useUser();
   const editableFields = useMemo(() => getEditableFields(currentUser?.role), [currentUser?.role]);
   const canEdit = useCallback((field) => editableFields.has(field), [editableFields]);
 
-  const { year, setYear, availableYears } = useReportYears();
-  const [quarter, setQuarter] = useState(defaultQuarter);
   const [reportGroups, setReportGroups] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [clusters, setClusters] = useState([]);
@@ -84,7 +78,6 @@ const AdminConsolidationTemplate = () => {
   const [toast, setToast] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const debounceTimers = useRef({});
-  const yearOptions = availableYears.length > 0 ? availableYears : [year || defaultYear];
   const schoolScopeClusterId = viewMode === 'school' && selectedClusterId ? Number(selectedClusterId) : null;
   const schoolScopeSchoolId = viewMode === 'school' && selectedSchoolId ? Number(selectedSchoolId) : null;
 
@@ -286,15 +279,7 @@ const AdminConsolidationTemplate = () => {
     }, DEBOUNCE_MS);
   }, [year, quarter, showToast, canEdit]);
 
-  const handlePeriodChange = (newYear, newQuarter) => {
-    Object.values(debounceTimers.current).forEach(t => clearTimeout(t));
-    debounceTimers.current = {};
-    setHasUnsavedChanges(false);
-    setLoading(true);
-    setError(null);
-    setYear(newYear);
-    setQuarter(newQuarter);
-  };
+
 
   const handleViewModeChange = (nextMode) => {
     if (nextMode === viewMode) return;
@@ -430,25 +415,6 @@ const AdminConsolidationTemplate = () => {
 
           {/* Right: period + search + save indicator */}
           <div className="flex items-center gap-2 flex-wrap">
-            <select
-              value={year}
-              onChange={e => handlePeriodChange(Number(e.target.value), quarter)}
-              className="h-8 px-2.5 bg-white/80 dark:bg-dark-surface/70 dark:text-slate-200 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            >
-              {yearOptions.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-            <select
-              value={quarter}
-              onChange={e => handlePeriodChange(year, Number(e.target.value))}
-              className="h-8 px-2.5 bg-white/80 dark:bg-dark-surface/70 dark:text-slate-200 backdrop-blur-md border border-slate-200 dark:border-white/[0.08] rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            >
-              {[1, 2, 3, 4].map(q => (
-                <option key={q} value={q}>{QUARTER_LABELS[q]}</option>
-              ))}
-            </select>
-
             <div className="relative group">
               <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-indigo-500 transition-colors">
                 <MagnifyingGlass size={14} weight="bold" />
@@ -597,7 +563,7 @@ const AdminConsolidationTemplate = () => {
                     {visibleRows.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-4 py-16 text-center text-sm text-slate-400 dark:text-slate-500">
-                          No programs found for this scope in {QUARTER_LABELS[quarter]} {year || defaultYear}.
+                          No programs found for this scope in {QUARTER_LABELS[quarter]} {year}.
                         </td>
                       </tr>
                     ) : (

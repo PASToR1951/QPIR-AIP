@@ -3,8 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { CaretDown } from '@phosphor-icons/react';
 import { TABS } from './adminReports/constants.js';
 import { REPORT_COMPONENTS } from './adminReports/reportRegistry.js';
-import { ExportButtons, YearDropdown } from './adminReports/shared.jsx';
-import { useReportYears } from './adminReports/useReportYears.js';
+import { ExportButtons } from './adminReports/shared.jsx';
+import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
 
 export default function AdminReports() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -16,7 +16,7 @@ export default function AdminReports() {
     });
   };
 
-  const { year, setYear, availableYears } = useReportYears();
+  const { selectedYear: year } = useReportingPeriod();
   const ActiveReport = REPORT_COMPONENTS[tab] ?? REPORT_COMPONENTS.compliance;
 
   const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
@@ -53,7 +53,6 @@ export default function AdminReports() {
         </div>
 
         <div className="flex items-center gap-3 pb-2">
-          <YearDropdown year={year} setYear={setYear} availableYears={availableYears} />
           <ExportButtons type={tab} year={year} />
         </div>
       </div>
