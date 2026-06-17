@@ -45,6 +45,8 @@ const EXACT_MAP = {
     'A program with that title already exists in that division. Please use a unique title.',
   'Cannot delete a cluster that has schools assigned to it':
     'This cluster cannot be deleted because it still has schools assigned to it.',
+  'A school with this unique identifier already exists.':
+    'A school with this name or abbreviation already exists. Please use a unique identifier.',
 
   // ── Submission window ────────────────────────────────────────────────────────
   'Submission window has not opened yet for this quarter.':
