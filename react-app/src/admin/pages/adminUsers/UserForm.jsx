@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { SearchableSelect } from '../../components/SearchableSelect.jsx';
 import { MultiSelect } from '../../components/MultiSelect.jsx';
 import {
   getAvailableSchoolRoleSchools,
 } from './schoolAssignmentOptions.js';
+import {
+  getCesProgramIds,
+  getDefaultProgramIdsForRole,
+  getDivisionProgramOptions,
+  haveSameProgramIds,
+  isCesRole,
+} from './cesProgramAssignments.js';
 
 const inputCls = "w-full px-3 py-2 h-[38px] text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 const selectCls = "w-full px-3 h-[38px] text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
@@ -33,6 +40,18 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
     users,
     currentUserId: form.id,
   });
+  const divisionProgramOptions = useMemo(() => getDivisionProgramOptions(programs), [programs]);
+  const cesAutoProgramIds = useMemo(() => getCesProgramIds(form.role, programs), [form.role, programs]);
+
+  useEffect(() => {
+    if (!isCesRole(form.role) || cesAutoProgramIds.length === 0) return;
+    setForm((current) => {
+      if (current.role !== form.role || haveSameProgramIds(current.program_ids, cesAutoProgramIds)) {
+        return current;
+      }
+      return { ...current, program_ids: cesAutoProgramIds };
+    });
+  }, [cesAutoProgramIds, form.role, setForm]);
 
   const handleEmailChange = (e) => {
     const val = e.target.value.replace(/@.*$/, '');
@@ -130,7 +149,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
               const tokens = f.name.trim().split(/\s+/);
               nameUpdate = { first_name: tokens[0] || '', last_name: tokens.slice(-1)[0] || '' };
             }
-            return { ...f, role: v, school_id: null, program_ids: [], ...nameUpdate };
+            return { ...f, role: v, school_id: null, program_ids: getDefaultProgramIdsForRole(v, programs), ...nameUpdate };
           })}
           placeholder="Select role"
         />
@@ -150,7 +169,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Assigned Programs</label>
           <MultiSelect
-            options={programs.filter(p => p.school_level_requirement === 'Division').map(p => ({ value: p.id, label: p.title }))}
+            options={divisionProgramOptions}
             selected={form.program_ids}
             onChange={v => setForm(f => ({ ...f, program_ids: v }))}
             placeholder="Select programs"

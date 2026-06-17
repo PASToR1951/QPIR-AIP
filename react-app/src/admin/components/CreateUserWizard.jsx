@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   XCircle, CaretLeft, Buildings, IdentificationBadge, ShieldStar,
   UserPlus, CaretRight, Eye, EyeSlash,
@@ -8,6 +8,13 @@ import { MultiSelect } from './MultiSelect.jsx';
 import {
   getAvailableSchoolRoleSchools,
 } from '../pages/adminUsers/schoolAssignmentOptions.js';
+import {
+  getCesProgramIds,
+  getDefaultProgramIdsForRole,
+  getDivisionProgramOptions,
+  haveSameProgramIds,
+  isCesRole,
+} from '../pages/adminUsers/cesProgramAssignments.js';
 
 const inputCls =
   'w-full px-3 py-2 h-[38px] text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all';
@@ -150,8 +157,20 @@ function DetailsForm({ form, setForm, schools, users = [], programs }) {
     schools,
     users,
   });
+  const divisionProgramOptions = useMemo(() => getDivisionProgramOptions(programs), [programs]);
+  const cesAutoProgramIds = useMemo(() => getCesProgramIds(form.role, programs), [form.role, programs]);
 
   const emailLocal = isDepedEmail ? form.email.replace(/@deped\.gov\.ph$/, '') : form.email;
+
+  useEffect(() => {
+    if (!isCesRole(form.role) || cesAutoProgramIds.length === 0) return;
+    setForm((current) => {
+      if (current.role !== form.role || haveSameProgramIds(current.program_ids, cesAutoProgramIds)) {
+        return current;
+      }
+      return { ...current, program_ids: cesAutoProgramIds };
+    });
+  }, [cesAutoProgramIds, form.role, setForm]);
 
   const handleEmailChange = (e) => {
     const val = e.target.value.replace(/@.*$/, '');
@@ -390,7 +409,7 @@ function DetailsForm({ form, setForm, schools, users = [], programs }) {
             Assigned Programs
           </label>
           <MultiSelect
-            options={programs.filter(p => p.school_level_requirement === 'Division').map(p => ({ value: p.id, label: p.title }))}
+            options={divisionProgramOptions}
             selected={form.program_ids}
             onChange={v => setForm(f => ({ ...f, program_ids: v }))}
             placeholder="Select programs"
@@ -498,7 +517,7 @@ export function CreateUserWizard({ open, onClose, onSave, schools, users = [], p
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {step === 1 && (
-            <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, program_ids: [] }))} />
+            <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, program_ids: getDefaultProgramIdsForRole(v, programs) }))} />
           )}
           {step === 2 && (
             <DetailsForm form={form} setForm={setForm} schools={schools} users={users} programs={programs} />
