@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XCircle, GraduationCap, MagnifyingGlass, X } from '@phosphor-icons/react';
+import { XCircle, GraduationCap, MagnifyingGlass, XCircle } from '@phosphor-icons/react';
 import { Spinner } from './Spinner.jsx';
 import api from '../../lib/api.js';
 
@@ -96,7 +96,7 @@ export default function ProgramMembersModal({ open, program, onClose }) {
                       onClick={() => setSearch('')}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                     >
-                      <X size={14} />
+                      <XCircle size={14} />
                     </button>
                   )}
                 </div>

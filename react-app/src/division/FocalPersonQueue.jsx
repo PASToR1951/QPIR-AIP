@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle, FileText, MagnifyingGlass, Table, X } from '@phosphor-icons/react';
+import { ArrowRight, CheckCircle, FileText, MagnifyingGlass, Table, XCircle } from '@phosphor-icons/react';
 import { useReportingPeriod } from '../context/ReportingPeriodContext.jsx';
 import api from '../lib/api.js';
 
@@ -121,7 +121,7 @@ export default function FocalPersonQueue() {
               aria-label="Clear search"
               className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-dark-border dark:hover:text-slate-200"
             >
-              <X size={14} />
+              <XCircle size={14} />
             </button>
           )}
         </div>
@@ -149,7 +149,7 @@ export default function FocalPersonQueue() {
                 onClick={clearFilters}
                 className="mt-4 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-dark-border dark:bg-dark-base dark:text-slate-300 dark:hover:bg-dark-border/40"
               >
-                <X size={14} />
+                <XCircle size={14} />
                 Clear filters
               </button>
             )}

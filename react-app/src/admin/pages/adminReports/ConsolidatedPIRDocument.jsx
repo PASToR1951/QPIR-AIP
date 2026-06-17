@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { X, Printer, FilePdf } from '@phosphor-icons/react';
+import { XCircle, Printer, FilePdf } from '@phosphor-icons/react';
 import { ReportHeader } from '../../../components/docs/ReportHeader.jsx';
 
 const FACTOR_TYPES = ['Institutional', 'Technical', 'Infrastructure', 'Learning Resources', 'Environmental', 'Others'];
@@ -69,7 +69,7 @@ export function ConsolidatedPIRDocument({ data, year, quarter, groupBy, onClose 
       {/* Controls — hidden on print */}
       <div className="sticky top-0 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-dark-border px-6 py-3 flex items-center gap-3 print:hidden">
         <button onClick={onClose} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-surface rounded-xl hover:bg-slate-200 dark:hover:bg-white/[0.08] transition-colors">
-          <X size={14} weight="bold" /> Close
+          <XCircle size={14} weight="bold" /> Close
         </button>
         <button onClick={handlePrint} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-dark-surface rounded-xl hover:bg-slate-200 dark:hover:bg-white/[0.08] transition-colors">
           <Printer size={14} weight="bold" /> Print

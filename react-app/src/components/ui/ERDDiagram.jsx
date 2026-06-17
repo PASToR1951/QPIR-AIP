@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { MagnifyingGlassPlus, MagnifyingGlassMinus, ArrowsOut, X } from '@phosphor-icons/react';
+import { MagnifyingGlassPlus, MagnifyingGlassMinus, ArrowsOut, XCircle } from '@phosphor-icons/react';
 import { DiagramViewport } from './erd/DiagramViewport.jsx';
 import { computePositions, computeViewBounds } from './erd/layout.js';
 import { buildSchemaSourceText } from './erd/schemaData.js';
@@ -184,7 +184,7 @@ export default function ERDDiagram() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-dark-border transition-all"
                 title="Exit fullscreen (Esc)"
               >
-                <X size={14} weight="bold" /> Exit
+                <XCircle size={14} weight="bold" /> Exit
               </button>
             </div>
           </div>

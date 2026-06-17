@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { LockKey, PencilSimple, Printer, Trash, DownloadSimple, CheckCircle, Warning, X } from '@phosphor-icons/react';
+import { LockKey, PencilSimple, Printer, Trash, DownloadSimple, CheckCircle, Warning, XCircle } from '@phosphor-icons/react';
 import { FormHeader } from '../../../components/ui/FormHeader';
 import AIPDocumentPreview from './AIPDocumentPreview.jsx';
 import { generateAIPPdf } from '../../../lib/formPdfExport.js';
@@ -96,7 +96,7 @@ export default React.memo(function AIPReadonlyView({
                                     title="Cancel edit request"
                                 >
                                     <CheckCircle size={15} weight="fill" className="group-hover:hidden" />
-                                    <X size={15} weight="bold" className="hidden group-hover:block" />
+                                    <XCircle size={15} weight="bold" className="hidden group-hover:block" />
                                     <span className="group-hover:hidden">Edit Request Sent</span>
                                     <span className="hidden group-hover:inline">Cancel Request</span>
                                 </button>
@@ -168,7 +168,7 @@ export default React.memo(function AIPReadonlyView({
                                 onClick={() => setConfirmOpen(false)}
                                 className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
                             >
-                                <X size={16} weight="bold" />
+                                <XCircle size={16} weight="bold" />
                             </button>
 
                             <div className="flex items-start gap-4">

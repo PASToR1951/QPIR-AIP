@@ -1,7 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, startTransition } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
-import { ArrowClockwise, DownloadSimple, FunnelSimple, ShieldWarning, CheckCircle, X } from '@phosphor-icons/react';
+import { ArrowClockwise, DownloadSimple, FunnelSimple, ShieldWarning, CheckCircle, XCircle } from '@phosphor-icons/react';
 import { LogFilters } from './adminLogs/LogFilters.jsx';
 import { LogTable } from './adminLogs/LogTable.jsx';
 import { LogDetailDrawer } from './adminLogs/LogDetailDrawer.jsx';
@@ -364,7 +364,7 @@ export default function AdminLogs() {
                   onClick={() => setMobileFiltersOpen(false)}
                   className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100 dark:border-dark-border dark:bg-dark-surface dark:text-slate-300 dark:hover:bg-dark-border"
                 >
-                  <X size={18} />
+                  <XCircle size={18} />
                 </button>
               </div>
 

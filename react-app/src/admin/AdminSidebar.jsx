@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAppLogo } from '../context/BrandingContext.jsx';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
-  House, X,
+  House, XCircle,
   FileText, Users, Buildings, BookOpenIcon, BookOpenUserIcon,
   CalendarSlash, ChartLine, Gear, SignOut, Checks,
   CaretDown, ChartBar, Wallet, TrendUp, ListChecks, FunnelSimple, Coins,
@@ -422,7 +422,7 @@ export const AdminSidebar = ({ user, onLogout, mobileOpen = false, onMobileClose
               onClick={onMobileClose}
               className="absolute top-4 right-3 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-white/40 dark:hover:bg-white/[0.08] transition-all border border-transparent hover:border-white/40 dark:hover:border-white/[0.06]"
             >
-              <X size={15} weight="bold" />
+              <XCircle size={15} weight="bold" />
             </button>
             {sidebarContent}
           </Motion.aside>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../lib/api.js';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Buildings, BookOpen, PencilSimple, Trash, Plus, CheckCircle, X, UsersThree, ArrowsDownUp, User } from '@phosphor-icons/react';
+import { Buildings, BookOpen, PencilSimple, Trash, Plus, CheckCircle, XCircle, UsersThree, ArrowsDownUp, User } from '@phosphor-icons/react';
 import { Spinner } from '../components/Spinner.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
@@ -325,7 +325,7 @@ export default function AdminPrograms() {
                     className="w-full px-3 py-2 pr-8 text-sm bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
                   {search && (
                     <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                      <X size={15} />
+                      <XCircle size={15} />
                     </button>
                   )}
                 </div>
@@ -460,7 +460,7 @@ export default function AdminPrograms() {
                     className="w-full px-3 py-2 pr-8 text-sm bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-400" />
                   {divSearch && (
                     <button onClick={() => setDivSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                      <X size={15} />
+                      <XCircle size={15} />
                     </button>
                   )}
                 </div>

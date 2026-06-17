@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '../../lib/api.js';
 import {
-  Database, CheckCircle, Warning, X, CloudArrowUp,
+  Database, CheckCircle, Warning, XCircle, CloudArrowUp,
   ArrowClockwise, Terminal, Clock, HardDrive, CalendarBlank,
   ShieldCheck, Info,
 } from '@phosphor-icons/react';
@@ -45,7 +45,7 @@ function AlertBadge({ level }) {
   const icons = {
     ok:       <CheckCircle size={13} weight="fill" />,
     warn:     <Warning size={13} weight="fill" />,
-    critical: <X size={13} weight="bold" />,
+    critical: <XCircle size={13} weight="bold" />,
     unknown:  <Info size={13} />,
   };
   const labels = { ok: 'Healthy', warn: 'Warning', critical: 'Critical', unknown: 'Unknown' };

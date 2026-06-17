@@ -20,7 +20,7 @@ import {
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
   Tag,
-  X,
+  XCircle,
   List as Menu,
 } from '@phosphor-icons/react';
 import { MeshGradient } from '@paper-design/shaders-react';
@@ -285,7 +285,7 @@ export default function SystemDocs() {
               className="lg:hidden w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all border border-indigo-200 dark:border-indigo-800/50 shadow-sm"
               onClick={() => setIsMobileTocOpen(!isMobileTocOpen)}
             >
-              {isMobileTocOpen ? <X size={20} weight="bold" /> : <Menu size={20} weight="bold" />}
+              {isMobileTocOpen ? <XCircle size={20} weight="bold" /> : <Menu size={20} weight="bold" />}
             </button>
           </div>
         </div>
@@ -464,7 +464,7 @@ export default function SystemDocs() {
                   className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white transition-colors hover:bg-white/10"
                   title="Close"
                 >
-                  <X size={18} weight="bold" />
+                  <XCircle size={18} weight="bold" />
                 </button>
               </div>
             </div>

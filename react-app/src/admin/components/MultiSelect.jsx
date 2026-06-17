@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { CaretDown, X, MagnifyingGlass } from '@phosphor-icons/react';
+import { CaretDown, XCircle, MagnifyingGlass } from '@phosphor-icons/react';
 
 export const MultiSelect = ({ options = [], selected = [], onChange, placeholder = 'Select…', className = '' }) => {
   const [open, setOpen] = useState(false);
@@ -82,7 +82,7 @@ export const MultiSelect = ({ options = [], selected = [], onChange, placeholder
                 onClick={(e) => { e.stopPropagation(); toggle(o.value); }}
                 className="hover:text-indigo-900 dark:hover:text-indigo-200"
               >
-                <X size={12} />
+                <XCircle size={12} />
               </span>
             </span>
           ))

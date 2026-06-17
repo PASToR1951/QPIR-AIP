@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Signature, MagnifyingGlass, WarningCircle, X } from '@phosphor-icons/react';
+import { Signature, MagnifyingGlass, WarningCircle, XCircle } from '@phosphor-icons/react';
 import { Spinner } from '../../components/Spinner.jsx';
 import api from '../../../lib/api.js';
 import { SettingsCard } from './SettingsUI.jsx';
@@ -99,7 +99,7 @@ export function SignatoriesPanel() {
           />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-              <X size={13} />
+              <XCircle size={13} />
             </button>
           )}
         </div>

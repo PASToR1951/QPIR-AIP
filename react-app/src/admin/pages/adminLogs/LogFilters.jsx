@@ -1,4 +1,4 @@
-import { MagnifyingGlass, FunnelSimple, X } from '@phosphor-icons/react';
+import { MagnifyingGlass, FunnelSimple, XCircle } from '@phosphor-icons/react';
 import MultiSelect from '../../components/MultiSelect.jsx';
 
 function FilterField({ label, children, className = '' }) {
@@ -49,7 +49,7 @@ export function LogFilters({
               onClick={onClear}
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-dark-border dark:bg-dark-surface dark:text-slate-300 dark:hover:bg-dark-border/70"
             >
-              <X size={14} />
+              <XCircle size={14} />
               Clear Filters
             </button>
           </div>

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
     PersonArmsSpread as Accessibility,
-    XCircleIcon as X,
+    XCircleIcon as XCircle,
     Moon,
     Sun,
     Lightning as ZapOff,
@@ -100,7 +100,7 @@ export default function AccessibilityPanel() {
                             className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
                             aria-label="Close accessibility panel"
                         >
-                            <X className="w-5 h-5" />
+                            <XCircle className="w-5 h-5" />
                         </button>
                     </div>
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle, MagnifyingGlass, Plus, X } from '@phosphor-icons/react';
+import { CheckCircle, MagnifyingGlass, Plus, XCircle } from '@phosphor-icons/react';
 import { Spinner } from '../components/Spinner.jsx';
 import { ConfirmModal } from '../components/ConfirmModal.jsx';
 import { FormModal } from '../components/FormModal.jsx';
@@ -78,7 +78,7 @@ export default function AdminSchools() {
             <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search schools..."
               className="w-full pl-9 pr-8 py-2 text-sm bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400" />
-            {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"><X size={14} /></button>}
+            {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"><XCircle size={14} /></button>}
           </div>
           <button type="button" onClick={() => { if (mobileSearchActive) { setSearch(''); setSearchOpen(false); } else setSearchOpen(true); }}
             className={`sm:hidden flex items-center justify-center w-10 h-10 rounded-xl border transition-colors ${mobileSearchActive ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 text-indigo-600' : 'bg-white dark:bg-dark-surface border-slate-200 dark:border-dark-border text-slate-500 hover:text-indigo-600'}`}>
@@ -101,7 +101,7 @@ export default function AdminSchools() {
                 <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search schools..." autoFocus
                   className="w-full pl-9 pr-9 py-2.5 text-sm bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400" />
-                {search && <button type="button" onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"><X size={14} /></button>}
+                {search && <button type="button" onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"><XCircle size={14} /></button>}
               </MotionDiv>
             )}
           </AnimatePresence>
@@ -200,7 +200,7 @@ export default function AdminSchools() {
           <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input value={restrictSearch} onChange={e => setRestrictSearch(e.target.value)} placeholder="Search programs..."
             className="w-full pl-8 pr-8 py-2 text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400" />
-          {restrictSearch && <button onClick={() => setRestrictSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"><X size={13} /></button>}
+          {restrictSearch && <button onClick={() => setRestrictSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"><XCircle size={13} /></button>}
         </div>
         <div className="space-y-2">
           {programs.filter(p => {

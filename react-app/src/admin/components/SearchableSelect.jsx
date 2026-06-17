@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { CaretDown, MagnifyingGlass, X } from '@phosphor-icons/react';
+import { CaretDown, MagnifyingGlass, XCircle } from '@phosphor-icons/react';
 
 export const SearchableSelect = ({ options = [], value, onChange, placeholder = 'Select…', clearable = false, className = '' }) => {
   const [open, setOpen] = useState(false);
@@ -75,7 +75,7 @@ export const SearchableSelect = ({ options = [], value, onChange, placeholder = 
         <div className="flex shrink-0 items-center gap-1 self-center">
           {clearable && selected && (
             <span onClick={(e) => { e.stopPropagation(); onChange(null); }} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-              <X size={16} />
+              <XCircle size={16} />
             </span>
           )}
           <CaretDown size={16} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />

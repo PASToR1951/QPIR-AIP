@@ -8,7 +8,7 @@ import {
   UserGear,
   NotePencil,
   Table,
-  X,
+  XCircle,
   CheckCircle,
 } from '@phosphor-icons/react';
 import { useAccessibility } from '../../context/AccessibilityContext.jsx';
@@ -436,7 +436,7 @@ export default function PracticeInteractionModal({ task, onComplete, onClose }) 
                 className="ml-auto rounded-lg p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                 aria-label="Close practice interaction"
               >
-                <X size={14} />
+                <XCircle size={14} />
               </button>
             </div>
           )}

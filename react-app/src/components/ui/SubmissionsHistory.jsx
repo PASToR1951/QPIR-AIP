@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ClockCounterClockwise, CaretDown, CaretUp, Eye, SpinnerGap, Tray, PencilSimple, CheckCircle, Warning, X, TrashSimple, FileX } from '@phosphor-icons/react';
+import { ClockCounterClockwise, CaretDown, CaretUp, Eye, SpinnerGap, Tray, PencilSimple, CheckCircle, Warning, XCircle, TrashSimple, FileX } from '@phosphor-icons/react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
@@ -381,7 +381,7 @@ export default function SubmissionsHistory() {
                                         className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:hover:border-red-900/50 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
                                       >
                                         <CheckCircle size={11} weight="fill" className="group-hover:hidden" />
-                                        <X size={11} weight="bold" className="hidden group-hover:block" />
+                                        <XCircle size={11} weight="bold" className="hidden group-hover:block" />
                                         <span className="group-hover:hidden">{cancelingEditId === aip.id ? 'Cancelling…' : 'Request Sent'}</span>
                                         <span className="hidden group-hover:inline">Cancel Request</span>
                                       </button>
@@ -525,7 +525,7 @@ export default function SubmissionsHistory() {
                 onClick={() => setCancelConfirmId(null)}
                 className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
               >
-                <X size={16} weight="bold" />
+                <XCircle size={16} weight="bold" />
               </button>
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex items-center justify-center">
@@ -582,7 +582,7 @@ export default function SubmissionsHistory() {
                 onClick={() => setConfirmEditId(null)}
                 className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
               >
-                <X size={16} weight="bold" />
+                <XCircle size={16} weight="bold" />
               </button>
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-center justify-center">
@@ -639,7 +639,7 @@ export default function SubmissionsHistory() {
                 onClick={() => setConfirmDeleteAipId(null)}
                 className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
               >
-                <X size={16} weight="bold" />
+                <XCircle size={16} weight="bold" />
               </button>
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex items-center justify-center">
@@ -696,7 +696,7 @@ export default function SubmissionsHistory() {
                 onClick={() => setConfirmDeletePirId(null)}
                 className="absolute top-4 right-4 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-dark-border transition-colors"
               >
-                <X size={16} weight="bold" />
+                <XCircle size={16} weight="bold" />
               </button>
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 flex items-center justify-center">

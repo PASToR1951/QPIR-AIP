@@ -1,4 +1,4 @@
-import { Flask, X } from '@phosphor-icons/react';
+import { Flask, XCircle } from '@phosphor-icons/react';
 import { useAccessibility } from '../../context/AccessibilityContext.jsx';
 
 export default function PracticeModeBanner({ onExit }) {
@@ -20,7 +20,7 @@ export default function PracticeModeBanner({ onExit }) {
         className="ml-2 flex items-center gap-1.5 rounded-lg bg-amber-900/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-950 transition-colors hover:bg-amber-900/25"
         aria-label="Exit practice mode"
       >
-        <X size={11} weight="bold" />
+        <XCircle size={11} weight="bold" />
         Exit
       </button>
     </div>
