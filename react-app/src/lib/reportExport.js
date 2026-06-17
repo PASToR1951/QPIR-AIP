@@ -8,14 +8,14 @@ import { API_BASE_URL } from './apiBase.js';
 const API = API_BASE_URL;
 
 export const REPORT_TEMPLATES = {
-  compliance: { title: 'AIP Compliance Report', subtitle: 'School Annual Implementation Plan Submission Status' },
+  compliance: { title: 'PIR Compliance Report', subtitle: 'School Program Implementation Review Submission Status', usesQuarter: true },
   quarterly: { title: 'PIR Quarterly Report', subtitle: 'Program Implementation Review Quarterly Summary' },
   budget: { title: 'Budget Report', subtitle: 'Program Budgetary Requirements Analysis' },
-  workload: { title: 'Personnel Workload Report', subtitle: 'Division Personnel Assignment Summary' },
+  workload: { title: 'Personnel Workload Report', subtitle: 'Division Personnel PIR Workload Summary', usesQuarter: true },
   accomplishment: { title: 'Accomplishment Rates Report', subtitle: 'School Physical and Financial Accomplishment Rates' },
   factors: { title: 'Factors Analysis Report', subtitle: 'Facilitating and Hindering Factors Analysis' },
   sources: { title: 'Budget Sources Report', subtitle: 'Funding Source Analysis by Program' },
-  funnel: { title: 'AIP Status Funnel Report', subtitle: 'Annual Implementation Plan Status Distribution' },
+  funnel: { title: 'PIR Status Funnel Report', subtitle: 'Program Implementation Review Status Distribution', usesQuarter: true },
   'cluster-pir': { title: 'Cluster PIR Summary', subtitle: 'Cluster Program Implementation Review Summary' },
   consolidation: { title: 'Consolidated PIR Report', subtitle: 'Division Program Implementation Review Consolidation' },
 };
@@ -103,11 +103,12 @@ function saveBlob(blob, filename) {
 /**
  * Downloads a report as PDF with formal DepEd header.
  */
-export async function downloadReportAsPDF(type, year) {
+export async function downloadReportAsPDF(type, year, quarter) {
   const el = document.getElementById('report-content');
   if (!el) throw new Error('Report content is not ready yet.');
 
   const template = REPORT_TEMPLATES[type] || { title: type, subtitle: '' };
+  const quarterLabel = template.usesQuarter && quarter ? `Q${quarter}` : '';
 
   // Create temporary wrapper
   const wrapper = document.createElement('div');
@@ -127,6 +128,7 @@ export async function downloadReportAsPDF(type, year) {
     reportTitle: template.title,
     reportSubtitle: template.subtitle,
     fiscalYear: year,
+    reportPeriod: quarterLabel,
   }));
 
   // Clone and append report content
@@ -172,7 +174,7 @@ export async function downloadReportAsPDF(type, year) {
     }
   }
 
-  pdf.save(`${type}-report-${year}.pdf`);
+  pdf.save(`${type}-report-${year}${quarterLabel ? `-${quarterLabel.toLowerCase()}` : ''}.pdf`);
 }
 
 /**
@@ -191,9 +193,13 @@ export function downloadCSV(rows, filename) {
 /**
  * Downloads a report from the server (xlsx, csv, etc).
  */
-export async function downloadServerReport(type, format, year) {
+export async function downloadServerReport(type, format, year, quarter) {
   const ext = format === 'xlsx' ? 'xlsx' : format;
-  const url = `${API}/api/admin/reports/${type}/export?format=${format}&year=${year}`;
+  const template = REPORT_TEMPLATES[type];
+  const quarterSuffix = template?.usesQuarter && quarter ? `-q${quarter}` : '';
+  const params = new URLSearchParams({ format, year: String(year) });
+  if (quarter) params.set('quarter', String(quarter));
+  const url = `${API}/api/admin/reports/${type}/export?${params}`;
   const response = await fetch(url, { credentials: 'include' });
   if (!response.ok) {
     throw new Error(await readFetchError(response, `Failed to export ${type} report.`));
@@ -201,17 +207,17 @@ export async function downloadServerReport(type, format, year) {
   const blob = await response.blob();
   saveBlob(
     blob,
-    getFilenameFromDisposition(response.headers.get('content-disposition'), `${type}-report-${year}.${ext}`),
+    getFilenameFromDisposition(response.headers.get('content-disposition'), `${type}-report-${year}${quarterSuffix}.${ext}`),
   );
 }
 
 /**
  * Main export handler — routes to PDF or server download.
  */
-export async function exportReport(type, format, year) {
+export async function exportReport(type, format, year, quarter) {
   if (format === 'pdf') {
-    await downloadReportAsPDF(type, year);
+    await downloadReportAsPDF(type, year, quarter);
   } else {
-    await downloadServerReport(type, format, year);
+    await downloadServerReport(type, format, year, quarter);
   }
 }

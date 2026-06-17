@@ -5,7 +5,7 @@ import { WorkloadReport } from './WorkloadReport.jsx';
 import { AccomplishmentReport } from './AccomplishmentReport.jsx';
 import { FactorsReport } from './FactorsReport.jsx';
 import { BudgetSourcesReport } from './BudgetSourcesReport.jsx';
-import { AIPFunnelReport } from './AIPFunnelReport.jsx';
+import { PIRStatusFunnelReport } from './AIPFunnelReport.jsx';
 import { ClusterPIRSummary } from './ClusterPIRSummary.jsx';
 
 export const REPORT_COMPONENTS = {
@@ -16,6 +16,6 @@ export const REPORT_COMPONENTS = {
   accomplishment: AccomplishmentReport,
   factors: FactorsReport,
   sources: BudgetSourcesReport,
-  funnel: AIPFunnelReport,
+  funnel: PIRStatusFunnelReport,
   'cluster-pir': ClusterPIRSummary,
 };

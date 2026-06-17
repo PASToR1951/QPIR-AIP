@@ -6,32 +6,32 @@ import api from '../../../lib/api.js';
 import { ExportButtons, Spinner } from './shared.jsx';
 import { STATUS_COLORS_FUNNEL } from './constants.js';
 
-export function AIPFunnelReport({ year }) {
+export function PIRStatusFunnelReport({ year, quarter }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   useEffect(() => {
     setLoading(true); setError(null);
-    api.get(`/api/admin/reports/aip-funnel?year=${year}`)
-      .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load AIP funnel data.'); }).finally(() => setLoading(false));
-  }, [year]);
+    api.get(`/api/admin/reports/pir-funnel?year=${year}&quarter=${quarter}`)
+      .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load PIR funnel data.'); }).finally(() => setLoading(false));
+  }, [year, quarter]);
 
   if (loading) return <Spinner />;
   if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;
-  if (!data?.data?.length) return <p className="text-center text-slate-400 py-16">No AIP data for FY {year}.</p>;
+  if (!data?.data?.length) return <p className="text-center text-slate-400 py-16">No PIR data for Q{quarter} FY {year}.</p>;
 
   const total = data.data.reduce((s, r) => s + r.count, 0);
 
   return (
     <div className="space-y-6">
-      <ExportButtons type="funnel" year={year} />
+      <ExportButtons type="funnel" year={year} quarter={quarter} />
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={data.data} barCategoryGap="35%">
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-grid-line)" />
           <XAxis dataKey="status" tick={{ fontSize: 12, fontWeight: 700 }} />
           <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
           <Tooltip />
-          <Bar dataKey="count" name="AIPs" radius={[4, 4, 0, 0]}>
+          <Bar dataKey="count" name="PIRs" radius={[4, 4, 0, 0]}>
             {data.data.map((entry, i) => (
               <Cell key={i} fill={STATUS_COLORS_FUNNEL[entry.status] ?? '#6366f1'} />
             ))}

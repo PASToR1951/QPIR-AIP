@@ -7,7 +7,7 @@ import { ComplianceToolbar } from './ComplianceToolbar.jsx';
 import { Spinner } from './shared.jsx';
 import { buildComplianceKpi, buildComplianceRows, filterComplianceRows } from './complianceUtils.js';
 
-export function ComplianceReport({ year }) {
+export function ComplianceReport({ year, quarter }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,9 +19,9 @@ export function ComplianceReport({ year }) {
 
   useEffect(() => {
     setLoading(true); setError(null);
-    api.get(`/api/admin/reports/compliance?year=${year}`)
+    api.get(`/api/admin/reports/compliance?year=${year}&quarter=${quarter}`)
       .then(r => setData(r.data)).catch(e => { console.error(e); setError('Failed to load compliance report.'); }).finally(() => setLoading(false));
-  }, [year]);
+  }, [year, quarter]);
 
   if (loading) return <Spinner />;
   if (error) return <p className="text-center text-red-500 font-bold py-8">{error}</p>;

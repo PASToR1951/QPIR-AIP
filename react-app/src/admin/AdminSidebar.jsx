@@ -176,14 +176,14 @@ function CollapsibleSubmissions({ onNavigate, roleTheme }) {
 }
 
 const REPORT_TABS = [
-  { tab: 'compliance', label: 'AIP Compliance', Icon: Checks },
+  { tab: 'compliance', label: 'PIR Compliance', Icon: Checks },
   { tab: 'quarterly', label: 'PIR Quarterly', Icon: ChartBar },
   { tab: 'budget', label: 'Budget', Icon: Wallet },
   { tab: 'workload', label: 'Personnel Workload', Icon: Users },
   { tab: 'accomplishment', label: 'Accomplishment', Icon: TrendUp },
   { tab: 'factors', label: 'Factors Analysis', Icon: ListChecks },
   { tab: 'sources', label: 'Budget Sources', Icon: Coins },
-  { tab: 'funnel', label: 'AIP Status Funnel', Icon: FunnelSimple },
+  { tab: 'funnel', label: 'PIR Status Funnel', Icon: FunnelSimple },
 ];
 
 function CollapsibleReports({ onNavigate, roleTheme }) {

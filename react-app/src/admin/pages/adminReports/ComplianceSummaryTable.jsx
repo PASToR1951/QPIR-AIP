@@ -10,9 +10,9 @@ export function ComplianceSummaryTable({ data, rows, expandedRows, setExpandedRo
           <tr className="border-b border-slate-200 bg-slate-50 dark:border-dark-border dark:bg-dark-surface">
             <th className="sticky left-0 z-10 min-w-[180px] bg-slate-50 px-4 py-3 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:bg-dark-surface dark:text-slate-400">School</th>
             <th className="px-4 py-3 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Level</th>
-            <th className="px-4 py-3 text-center text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Submitted</th>
+            <th className="px-4 py-3 text-center text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">PIRs Filed</th>
             <th className="min-w-[140px] px-4 py-3 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Rate</th>
-            <th className="min-w-[220px] px-4 py-3 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Missing Programs</th>
+            <th className="min-w-[220px] px-4 py-3 text-left text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400">Missing PIRs</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-dark-border">
@@ -57,7 +57,7 @@ export function ComplianceSummaryTable({ data, rows, expandedRows, setExpandedRo
                   </td>
                   <td className="px-4 py-3">
                     {row.missingPrograms.length === 0 ? (
-                      <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">All submitted</span>
+                      <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">All filed</span>
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {row.missingPrograms.slice(0, 3).map((program) => (
@@ -73,7 +73,7 @@ export function ComplianceSummaryTable({ data, rows, expandedRows, setExpandedRo
                 {isExpanded && (
                   <tr className={`border-l-4 ${rowBorderColor(row.rate)}`}>
                     <td colSpan={5} className="bg-slate-50 px-6 py-4 dark:bg-dark-surface/60">
-                      <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Full Program Breakdown — {row.school}</p>
+                      <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">PIR Program Breakdown — {row.school}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {data.programs.map((program) => {
                           const status = row[program] ?? 'na';

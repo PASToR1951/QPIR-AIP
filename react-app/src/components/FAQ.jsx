@@ -348,7 +348,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "How do reports work?",
-        a: "Admin users can generate compliance, monitoring, budget, workload, accomplishment, factor, AIP funnel, and cluster summary reports. Reports can typically be exported as CSV or XLSX where supported."
+        a: "Admin users can generate PIR compliance, monitoring, budget, workload, accomplishment, factor, PIR status funnel, and cluster summary reports. Reports can typically be exported as CSV or XLSX where supported."
       },
       {
         q: "How do backups work?",

@@ -4,7 +4,7 @@ import { DownloadSimple } from '@phosphor-icons/react';
 import { downloadCSV, exportReport } from '../../../lib/reportExport.js';
 import { EXPORT_STYLES } from './constants.js';
 
-export function ExportButtons({ type, year }) {
+export function ExportButtons({ type, year, quarter }) {
   const [loadingFormat, setLoadingFormat] = useState(null);
   const [error, setError] = useState('');
 
@@ -12,7 +12,7 @@ export function ExportButtons({ type, year }) {
     setLoadingFormat(format);
     setError('');
     try {
-      await exportReport(type, format, year);
+      await exportReport(type, format, year, quarter);
     } catch (requestError) {
       setError(requestError.message || 'Failed to export report.');
     } finally {
@@ -54,4 +54,3 @@ export function Spinner() {
     </div>
   );
 }
-

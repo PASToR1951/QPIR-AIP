@@ -4,7 +4,7 @@ import React from 'react';
  * Formal report header matching the DepEd government document style.
  * Used for PDF exports of admin reports to give them official formality.
  */
-export const ReportHeader = ({ reportTitle, reportSubtitle, fiscalYear }) => (
+export const ReportHeader = ({ reportTitle, reportSubtitle, fiscalYear, reportPeriod }) => (
     <div className="report-header mb-6 pb-3 border-b-2 border-black text-center print:bg-white">
         {/* DepEd Seal */}
         <div className="flex justify-center mb-2">
@@ -36,6 +36,9 @@ export const ReportHeader = ({ reportTitle, reportSubtitle, fiscalYear }) => (
             )}
             {fiscalYear && (
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">Fiscal Year {fiscalYear}</p>
+            )}
+            {reportPeriod && (
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-0.5">{reportPeriod}</p>
             )}
         </div>
     </div>

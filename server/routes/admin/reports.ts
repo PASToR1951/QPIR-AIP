@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { prisma } from "../../db/client.ts";
 import { getUserFromToken } from "../../lib/auth.ts";
 import { writeAuditLog } from "./shared/audit.ts";
@@ -45,9 +45,11 @@ const FUNNEL_STATUSES = [
   "Under Review",
   "For Recommendation",
   "For CES Review",
+  "For Superintendent Review",
   "Approved",
   "Returned",
 ];
+const QUARTER_SCOPED_EXPORTS = new Set(["compliance", "workload", "funnel"]);
 
 reportsRoutes.use("/reports/*", adminObserverOrDivisionPersonnelOnly);
 reportsRoutes.use("/reports/*", async (c, next) => {
@@ -130,20 +132,122 @@ function aggregateAccomplishmentBySchool(
   return bySchool;
 }
 
-type ExportBuilder = (year: number) => Promise<Record<string, unknown>[]>;
+async function buildPirComplianceData(
+  {
+    year,
+    quarter,
+    clusterId,
+  }: { year: number; quarter: number; clusterId?: number },
+) {
+  const schools = await prisma.school.findMany({
+    where: clusterId ? { cluster_id: clusterId } : undefined,
+    include: {
+      restricted_programs: { select: { id: true } },
+    },
+    orderBy: { name: "asc" },
+  });
+  const programs = await prisma.program.findMany({
+    where: { school_level_requirement: { not: "Division" } },
+    orderBy: { title: "asc" },
+  });
+
+  const schoolIds = schools.map((school) => school.id);
+  const pirs = schoolIds.length
+    ? await prisma.pIR.findMany({
+      where: {
+        status: { not: "Draft" },
+        aip: {
+          year,
+          school_id: { in: schoolIds },
+        },
+      },
+      select: {
+        quarter: true,
+        aip: { select: { school_id: true, program_id: true } },
+      },
+    })
+    : [];
+
+  const submittedPairs = new Set<string>();
+  for (const pir of pirs) {
+    const parsedQuarter = parseQuarterLabel(pir.quarter);
+    if (
+      parsedQuarter?.year === year &&
+      parsedQuarter.quarter === quarter &&
+      pir.aip.school_id
+    ) {
+      submittedPairs.add(`${pir.aip.school_id}:${pir.aip.program_id}`);
+    }
+  }
+
+  const matrix = schools.map((school) => {
+    const row: Record<string, unknown> = {
+      schoolId: school.id,
+      school: school.name,
+      level: school.level,
+    };
+    for (const program of programs) {
+      const eligible = program.school_level_requirement === "Both" ||
+        program.school_level_requirement === school.level ||
+        (program.school_level_requirement === "Select Schools" &&
+          !school.restricted_programs?.some((restricted) =>
+            restricted.id === program.id
+          ));
+      const submitted = submittedPairs.has(`${school.id}:${program.id}`);
+      row[program.title] = eligible
+        ? (submitted ? "submitted" : "missing")
+        : "na";
+    }
+    return row;
+  });
+
+  return {
+    matrix,
+    programs: programs.map((program) => program.title),
+    year,
+    quarter,
+  };
+}
+
+async function buildPirFunnelData(year: number, quarter: number) {
+  const pirs = await prisma.pIR.findMany({
+    where: { aip: { year } },
+    select: { status: true, quarter: true },
+  });
+  const quarterPirs = pirs.filter((pir) => {
+    const parsedQuarter = parseQuarterLabel(pir.quarter);
+    return parsedQuarter?.year === year && parsedQuarter.quarter === quarter;
+  });
+  return FUNNEL_STATUSES.map((status) => ({
+    status,
+    count: quarterPirs.filter((pir) => pir.status === status).length,
+  })).filter((row) => row.count > 0);
+}
+
+type ExportBuilder = (
+  year: number,
+  quarter: number,
+) => Promise<Record<string, unknown>[]>;
 
 const EXPORT_BUILDERS: Record<string, ExportBuilder> = {
-  workload: async (_year) => {
+  workload: async (year, quarter) => {
     const personnel = await prisma.user.findMany({
       where: { role: "Division Personnel", is_active: true },
-      include: { programs: true, aips: true, pirs: true },
+      include: {
+        programs: true,
+        pirs: { where: { aip: { year } } },
+      },
     });
     return personnel.map((person) => ({
       Name: person.name ?? person.email,
       Email: person.email,
       Programs: person.programs.length,
-      AIPs: person.aips.length,
-      PIRs: person.pirs.length,
+      Quarter: QUARTER_LABELS[quarter],
+      PIRs: person.pirs.filter((pir) => {
+        const parsedQuarter = parseQuarterLabel(pir.quarter);
+        return parsedQuarter?.year === year &&
+          parsedQuarter.quarter === quarter;
+      }).length,
     }));
   },
   budget: async (year) => {
@@ -160,20 +264,33 @@ const EXPORT_BUILDERS: Record<string, ExportBuilder> = {
       "Budget Source": activity.budget_source,
     }));
   },
-  compliance: async (year) => {
-    const aips = await prisma.aIP.findMany({
-      where: { year },
-      include: REPORT_AIP_INCLUDE,
+  compliance: async (year, quarter) => {
+    const data = await buildPirComplianceData({ year, quarter });
+    return data.matrix.map((row) => {
+      const eligiblePrograms = data.programs.filter((program) =>
+        row[program] !== "na"
+      );
+      const filedPrograms = data.programs.filter((program) =>
+        row[program] === "submitted"
+      );
+      const missingPrograms = data.programs.filter((program) =>
+        row[program] === "missing"
+      );
+      return {
+        School: row.school,
+        Level: row.level,
+        Year: year,
+        Quarter: QUARTER_LABELS[quarter],
+        "PIRs Filed": filedPrograms.length,
+        "Eligible Programs": eligiblePrograms.length,
+        "Compliance Rate (%)": eligiblePrograms.length
+          ? Math.round((filedPrograms.length / eligiblePrograms.length) * 100)
+          : "N/A",
+        "Missing PIR Programs": missingPrograms.length
+          ? missingPrograms.join("; ")
+          : "None",
+      };
     });
-    return aips.map((aip) => ({
-      School: aip.school?.name ?? "Division",
-      Cluster: aip.school?.cluster
-        ? `Cluster ${aip.school.cluster.cluster_number}`
-        : "—",
-      Program: aip.program.title,
-      Year: aip.year,
-      Status: aip.status,
-    }));
   },
   quarterly: async (year) => {
     const pirs = await prisma.pIR.findMany({
@@ -225,10 +342,9 @@ const EXPORT_BUILDERS: Record<string, ExportBuilder> = {
       const facilitating = matching.filter((f) =>
         storedFactorFieldHasContent(f.facilitating_factors)
       ).length;
-      const hindering =
-        matching.filter((f) =>
-          storedFactorFieldHasContent(f.hindering_factors)
-        ).length;
+      const hindering = matching.filter((f) =>
+        storedFactorFieldHasContent(f.hindering_factors)
+      ).length;
       return {
         "Factor Type": factorType,
         Facilitating: facilitating,
@@ -251,22 +367,19 @@ const EXPORT_BUILDERS: Record<string, ExportBuilder> = {
       .sort(([, a], [, b]) => b - a)
       .map(([source, total]) => ({ Source: source, "Total Amount": total }));
   },
-  funnel: async (year) => {
-    const aips = await prisma.aIP.findMany({
-      where: { year },
-      select: { status: true },
-    });
-    const total = aips.length;
-    return FUNNEL_STATUSES.map((status) => {
-      const count = aips.filter((a) => a.status === status).length;
+  funnel: async (year, quarter) => {
+    const data = await buildPirFunnelData(year, quarter);
+    const total = data.reduce((sum, row) => sum + row.count, 0);
+    return data.map((row) => {
+      const count = row.count;
       return {
-        Status: status,
+        Status: row.status,
         Count: count,
         "% of Total": total > 0
           ? ((count / total) * 100).toFixed(1) + "%"
           : "0.0%",
       };
-    }).filter((row) => Number(row.Count) > 0);
+    });
   },
 };
 
@@ -280,53 +393,22 @@ reportsRoutes.get("/reports/years", async (c) => {
 });
 
 reportsRoutes.get("/reports/compliance", async (c) => {
-  const { year, clusterId, isValidYear } = parseReportQuery(c);
+  const {
+    year,
+    quarter,
+    clusterId,
+    isValidYear,
+    isValidQuarter: quarterValid,
+  } = parseReportQuery(c);
   if (!isValidYear) return invalidYearResponse();
+  if (!quarterValid) {
+    return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
+  }
   if (clusterId !== undefined && clusterId < 1) {
     return c.json({ error: "Invalid cluster" }, 400);
   }
 
-  const schools = await prisma.school.findMany({
-    where: clusterId ? { cluster_id: clusterId } : undefined,
-    include: {
-      aips: { where: { year }, include: { program: true } },
-      restricted_programs: { select: { id: true } },
-    },
-    orderBy: { name: "asc" },
-  });
-  const programs = await prisma.program.findMany({
-    where: { school_level_requirement: { not: "Division" } },
-    orderBy: { title: "asc" },
-  });
-
-  const matrix = schools.map((school) => {
-    const row: Record<string, unknown> = {
-      schoolId: school.id,
-      school: school.name,
-      level: school.level,
-    };
-    for (const program of programs) {
-      const submitted = school.aips.some((aip) =>
-        aip.program_id === program.id
-      );
-      const eligible = program.school_level_requirement === "Both" ||
-        program.school_level_requirement === school.level ||
-        (program.school_level_requirement === "Select Schools" &&
-          !school.restricted_programs?.some((restricted) =>
-            restricted.id === program.id
-          ));
-      row[program.title] = eligible
-        ? (submitted ? "submitted" : "missing")
-        : "na";
-    }
-    return row;
-  });
-
-  return c.json({
-    matrix,
-    programs: programs.map((program) => program.title),
-    year,
-  });
+  return c.json(await buildPirComplianceData({ year, quarter, clusterId }));
 });
 
 reportsRoutes.get("/reports/quarterly", async (c) => {
@@ -351,14 +433,17 @@ reportsRoutes.get("/reports/quarterly", async (c) => {
       );
       return {
         quarter: `Q${index + 1}`,
-        submitted: quarterPirs.filter((pir) =>
-          pir.status !== "Draft"
-        ).length,
+        submitted: quarterPirs.filter((pir) => pir.status !== "Draft").length,
         pending: quarterPirs.filter((pir) =>
-          ["Submitted", "For Recommendation", "For CES Review", "Under Review"].includes(pir.status)
+          ["Submitted", "For Recommendation", "For CES Review", "Under Review"]
+            .includes(pir.status)
         ).length,
-        approved: quarterPirs.filter((pir) => pir.status === "Approved").length,
-        returned: quarterPirs.filter((pir) => pir.status === "Returned").length,
+        approved: quarterPirs.filter((pir) =>
+          pir.status === "Approved"
+        ).length,
+        returned: quarterPirs.filter((pir) =>
+          pir.status === "Returned"
+        ).length,
       };
     });
 
@@ -404,14 +489,21 @@ reportsRoutes.get("/reports/budget", async (c) => {
 });
 
 reportsRoutes.get("/reports/workload", async (c) => {
-  const { year, isValidYear } = parseReportQuery(c);
+  const {
+    year,
+    quarter,
+    isValidYear,
+    isValidQuarter: quarterValid,
+  } = parseReportQuery(c);
   if (!isValidYear) return invalidYearResponse();
+  if (!quarterValid) {
+    return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
+  }
 
   const personnel = await prisma.user.findMany({
     where: { role: "Division Personnel", is_active: true },
     include: {
       programs: true,
-      aips: { where: { year } },
       pirs: { where: { aip: { year } } },
     },
   });
@@ -421,8 +513,10 @@ reportsRoutes.get("/reports/workload", async (c) => {
     name: person.name ?? person.email,
     email: person.email,
     programCount: person.programs.length,
-    aipCount: person.aips.length,
-    pirCount: person.pirs.length,
+    pirCount: person.pirs.filter((pir) => {
+      const parsedQuarter = parseQuarterLabel(pir.quarter);
+      return parsedQuarter?.year === year && parsedQuarter.quarter === quarter;
+    }).length,
   })));
 });
 
@@ -478,21 +572,24 @@ reportsRoutes.get("/reports/factors", async (c) => {
   return c.json({ data, year });
 });
 
-reportsRoutes.get("/reports/aip-funnel", async (c) => {
-  const { year, isValidYear } = parseReportQuery(c);
+async function pirFunnelResponse(c: Context) {
+  const {
+    year,
+    quarter,
+    isValidYear,
+    isValidQuarter: quarterValid,
+  } = parseReportQuery(c);
   if (!isValidYear) return invalidYearResponse();
+  if (!quarterValid) {
+    return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
+  }
 
-  const aips = await prisma.aIP.findMany({
-    where: { year },
-    select: { status: true },
-  });
-  const data = FUNNEL_STATUSES.map((status) => ({
-    status,
-    count: aips.filter((aip) => aip.status === status).length,
-  })).filter((row) => row.count > 0);
+  const data = await buildPirFunnelData(year, quarter);
 
-  return c.json({ data, year });
-});
+  return c.json({ data, year, quarter });
+}
+
+reportsRoutes.get("/reports/pir-funnel", pirFunnelResponse);
 
 reportsRoutes.get("/reports/cluster-pir-summary", async (c) => {
   const {
@@ -616,15 +713,25 @@ reportsRoutes.get("/reports/cluster-pir-summary", async (c) => {
 reportsRoutes.get("/reports/:type/export", async (c) => {
   const reportExporter = (await getUserFromToken(c))!;
   const type = c.req.param("type");
-  const { year, format, isValidYear } = parseReportQuery(c);
+  const {
+    year,
+    quarter,
+    format,
+    isValidYear,
+    isValidQuarter: quarterValid,
+  } = parseReportQuery(c);
   if (!isValidYear) return invalidYearResponse();
+  if (!quarterValid) {
+    return c.json({ error: "Invalid quarter (must be 1–4)" }, 400);
+  }
 
   const builder = EXPORT_BUILDERS[type];
-  const rows = builder ? await builder(year) : [];
+  const rows = builder ? await builder(year, quarter) : [];
 
   await writeAuditLog(reportExporter.id, "exported_report", "Export", 0, {
     report_type: type,
     year,
+    quarter,
     format,
     row_count: rows.length,
   }, { ctx: c });
@@ -636,27 +743,33 @@ reportsRoutes.get("/reports/:type/export", async (c) => {
   }
 
   if (format === "csv") {
+    const quarterSuffix = QUARTER_SCOPED_EXPORTS.has(type)
+      ? `-q${quarter}`
+      : "";
     return new Response(toCSV(rows), {
       headers: {
         "Content-Type": "text/csv",
         "Content-Disposition":
-          `attachment; filename="${type}-report-${year}.csv"`,
+          `attachment; filename="${type}-report-${year}${quarterSuffix}.csv"`,
       },
     });
   }
 
   if (format === "xlsx") {
+    const quarterSuffix = QUARTER_SCOPED_EXPORTS.has(type)
+      ? `-q${quarter}`
+      : "";
     return new Response(await toXLSX(rows, type), {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition":
-          `attachment; filename="${type}-report-${year}.xlsx"`,
+          `attachment; filename="${type}-report-${year}${quarterSuffix}.xlsx"`,
       },
     });
   }
 
-  return c.json({ data: rows, type, year });
+  return c.json({ data: rows, type, year, quarter });
 });
 
 export default reportsRoutes;

@@ -21,7 +21,7 @@ export function ComplianceKpiCards({ kpi }) {
       icon: <Warning size={18} weight="fill" className="text-rose-600 dark:text-rose-400" />,
       iconBg: 'bg-rose-100 dark:bg-rose-950/40',
       value: kpi.withMissing,
-      label: 'With Missing AIPs',
+      label: 'With Missing PIRs',
       valueClass: 'text-rose-600 dark:text-rose-400',
     },
     {

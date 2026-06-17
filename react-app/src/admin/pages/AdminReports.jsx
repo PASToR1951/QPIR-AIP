@@ -16,10 +16,8 @@ export default function AdminReports() {
     });
   };
 
-  const { selectedYear: year } = useReportingPeriod();
+  const { selectedYear: year, selectedQuarter: quarter } = useReportingPeriod();
   const ActiveReport = REPORT_COMPONENTS[tab] ?? REPORT_COMPONENTS.compliance;
-
-  const activeTab = TABS.find((t) => t.key === tab) ?? TABS[0];
 
   return (
     <div className="space-y-4">
@@ -53,12 +51,12 @@ export default function AdminReports() {
         </div>
 
         <div className="flex items-center gap-3 pb-2">
-          <ExportButtons type={tab} year={year} />
+          <ExportButtons type={tab} year={year} quarter={quarter} />
         </div>
       </div>
 
       <div id="report-content" className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-dark-border dark:bg-dark-surface">
-        <ActiveReport year={year} />
+        <ActiveReport year={year} quarter={quarter} />
       </div>
     </div>
   );
