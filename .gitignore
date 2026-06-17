@@ -6,7 +6,7 @@ commit-stages.sh
 /actions-runner
 /actions-runner/*
 /PIR Sample/*
-
+/docs/wiki/user-guides/assets/*
 # ── Internal documentation (not for public/repo consumers) ───────────────────
 /docs/*
 /docs/commit-batches/

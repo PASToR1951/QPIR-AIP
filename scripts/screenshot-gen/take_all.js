@@ -21,14 +21,20 @@ async function run() {
 
     async function login(email, password = 'password') {
       await page.goto(`${BASE_URL}/login`);
+      await page.waitForSelector('button', { timeout: 10000 });
       await page.evaluate(() => {
         const btns = Array.from(document.querySelectorAll('button'));
         const btn = btns.find(b => b.textContent.includes('Sign in manually') || b.textContent.includes('Email & Password'));
         if (btn) btn.click();
       });
-      await new Promise(r => setTimeout(r, 500));
-      await page.type('input[type="email"]', email);
-      await page.type('input[type="password"]', password);
+      await page.waitForSelector('input[name="email"]', { timeout: 10000 });
+      await page.evaluate(() => {
+        document.querySelector('input[name="email"]').disabled = false;
+        document.querySelector('input[name="password"]').disabled = false;
+        document.querySelector('button[type="submit"]').disabled = false;
+      });
+      await page.type('input[name="email"]', email);
+      await page.type('input[name="password"]', password);
       await page.click('button[type="submit"]');
       await new Promise(r => setTimeout(r, 3000));
     }

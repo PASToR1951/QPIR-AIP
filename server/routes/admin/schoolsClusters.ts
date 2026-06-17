@@ -92,7 +92,7 @@ adminRoutes.post("/clusters", async (c) => {
     }, { ctx: c });
     return c.json(cluster);
   } catch (error: any) {
-    if (error?.code === "P2002") {
+    if (error?.code === "P2002" && (error.meta?.target as string | string[] | undefined)?.includes("cluster_number")) {
       return c.json({ error: `Cluster ${cluster_number} already exists` }, 409);
     }
     throw error;
@@ -117,7 +117,7 @@ adminRoutes.patch("/clusters/:id", async (c) => {
     }, { ctx: c });
     return c.json(cluster);
   } catch (error: any) {
-    if (error?.code === "P2002") {
+    if (error?.code === "P2002" && (error.meta?.target as string | string[] | undefined)?.includes("cluster_number")) {
       return c.json({ error: `Cluster ${cluster_number} already exists` }, 409);
     }
     throw error;
