@@ -51,6 +51,12 @@ async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, salt);
 }
 
+function normalizeDepedEmail(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const email = value.trim().toLowerCase();
+  return /^[^\s@]+@deped\.gov\.ph$/.test(email) ? email : null;
+}
+
 async function fetchAllPrograms() {
   return prisma.program.findMany({
     where: { school_level_requirement: { not: "Division" } },
@@ -249,6 +255,10 @@ usersRoutes.post("/users", async (c) => {
   if (!email || !password || !role) {
     return c.json({ error: "email, password, role are required" }, 400);
   }
+  const normalizedEmail = normalizeDepedEmail(email);
+  if (!normalizedEmail) {
+    return c.json({ error: "email must be a valid @deped.gov.ph address" }, 400);
+  }
   if (!VALID_ROLES.has(role)) {
     return c.json({ error: `Unknown role: "${role}"` }, 400);
   }
@@ -284,7 +294,7 @@ usersRoutes.post("/users", async (c) => {
           ...(middle_initial !== undefined && { middle_initial }),
           ...(last_name !== undefined && { last_name }),
           ...(position !== undefined && { position }),
-          email,
+          email: normalizedEmail,
           password: hashed,
           role,
           ...(school_id && { school_id }),
@@ -461,6 +471,7 @@ usersRoutes.patch("/users/:id", async (c) => {
     middle_initial,
     last_name,
     position,
+    email,
     role,
     school_id,
     program_ids,
@@ -500,6 +511,13 @@ usersRoutes.patch("/users/:id", async (c) => {
   }
 
   const updateData: Record<string, unknown> = {};
+  if (email !== undefined) {
+    const nextEmail = normalizeDepedEmail(email);
+    if (!nextEmail) {
+      return c.json({ error: "email must be a valid @deped.gov.ph address" }, 400);
+    }
+    updateData.email = nextEmail;
+  }
   if (salutation !== undefined) updateData.salutation = salutation;
   if (name !== undefined) updateData.name = name;
   if (first_name !== undefined) updateData.first_name = first_name;
@@ -542,6 +560,9 @@ usersRoutes.patch("/users/:id", async (c) => {
 
     return c.json({ id: user.id, email: user.email, role: user.role, is_active: user.is_active });
   } catch (error: unknown) {
+    if ((error as { code?: string })?.code === "P2002") {
+      return c.json({ error: "Email already exists" }, 409);
+    }
     logger.error("Error updating user", error);
     return c.json({ error: "Failed to update user." }, 500);
   }
