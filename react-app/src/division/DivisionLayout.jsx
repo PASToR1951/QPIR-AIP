@@ -39,7 +39,7 @@ export default function DivisionLayout() {
         <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
-            <img src={appLogo} alt="AIP-PIR Logo" className={`h-8 w-auto shrink-0 rounded-sm drop-shadow-sm ring-2 ${roleTheme.ring}`} />
+            <img src={appLogo} alt="AIP-PIR Logo" className="h-8 w-auto shrink-0 drop-shadow-sm" />
             <div className="hidden h-6 w-px bg-slate-200 dark:bg-dark-border sm:block" />
             <div className="min-w-0">
               <p className="truncate text-sm font-black tracking-tight text-slate-900 dark:text-slate-100">
