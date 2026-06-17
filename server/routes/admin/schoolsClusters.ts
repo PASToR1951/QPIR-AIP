@@ -252,82 +252,109 @@ observerRoutes.get("/schools", async (c) => {
 adminRoutes.post("/schools", async (c) => {
   const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  const { name, abbreviation, level, cluster_id } = sanitizeObject(
-    await c.req.json(),
-  );
-  if (!SCHOOL_LEVELS.has(level)) {
-    return c.json({
-      error: "School level must be Elementary or Secondary",
-    }, 400);
-  }
-  const clusterId = parsePositiveInt(cluster_id);
-  if (!clusterId) return c.json({ error: "Cluster is required" }, 400);
+  
+  try {
+    const { name, abbreviation, level, cluster_id } = sanitizeObject(
+      await c.req.json(),
+    );
+    
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return c.json({ error: "School name is required" }, 400);
+    }
+    
+    if (!SCHOOL_LEVELS.has(level)) {
+      return c.json({
+        error: "School level must be Elementary or Secondary",
+      }, 400);
+    }
+    const clusterId = parsePositiveInt(cluster_id);
+    if (!clusterId) return c.json({ error: "Cluster is required" }, 400);
 
-  const clusterExists = await prisma.cluster.findUnique({
-    where: { id: clusterId },
-    select: { id: true },
-  });
-  if (!clusterExists) return c.json({ error: "Cluster not found" }, 404);
+    const clusterExists = await prisma.cluster.findUnique({
+      where: { id: clusterId },
+      select: { id: true },
+    });
+    if (!clusterExists) return c.json({ error: "Cluster not found" }, 404);
 
-  const school = await prisma.school.create({
-    data: {
-      name,
-      abbreviation: abbreviation || null,
+    const school = await prisma.school.create({
+      data: {
+        name: name.trim(),
+        abbreviation: abbreviation ? String(abbreviation).trim() : null,
+        level,
+        cluster: { connect: { id: clusterId } },
+      },
+    });
+
+    await writeAuditLog(admin.id, "created_school", "School", school.id, {
+      name: school.name,
+      abbreviation: school.abbreviation,
       level,
-      cluster: { connect: { id: clusterId } },
-    },
-  });
-
-  await writeAuditLog(admin.id, "created_school", "School", school.id, {
-    name,
-    abbreviation,
-    level,
-    cluster_id: clusterId,
-  }, { ctx: c });
-  return c.json(school);
+      cluster_id: clusterId,
+    }, { ctx: c });
+    return c.json(school);
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      return c.json({ error: "A school with this unique identifier already exists." }, 409);
+    }
+    console.error("Error creating school:", error);
+    return c.json({ error: "An unexpected server error occurred while adding the school." }, 500);
+  }
 });
 
 adminRoutes.patch("/schools/:id", async (c) => {
   const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
-  const body = sanitizeObject(await c.req.json());
-  const { name, abbreviation, level, cluster_id } = body;
+  
+  try {
+    const body = sanitizeObject(await c.req.json());
+    const { name, abbreviation, level, cluster_id } = body;
 
-  if ("level" in body && !SCHOOL_LEVELS.has(level)) {
-    return c.json({
-      error: "School level must be Elementary or Secondary",
-    }, 400);
-  }
-
-  let clusterId: number | undefined;
-  if ("cluster_id" in body) {
-    const parsedClusterId = parsePositiveInt(cluster_id);
-    if (!parsedClusterId) {
-      return c.json({ error: "Cluster is required" }, 400);
+    if ("name" in body && (!name || typeof name !== "string" || !name.trim())) {
+      return c.json({ error: "School name cannot be empty" }, 400);
     }
-    const clusterExists = await prisma.cluster.findUnique({
-      where: { id: parsedClusterId },
-      select: { id: true },
+
+    if ("level" in body && !SCHOOL_LEVELS.has(level)) {
+      return c.json({
+        error: "School level must be Elementary or Secondary",
+      }, 400);
+    }
+
+    let clusterId: number | undefined;
+    if ("cluster_id" in body) {
+      const parsedClusterId = parsePositiveInt(cluster_id);
+      if (!parsedClusterId) {
+        return c.json({ error: "Cluster is required" }, 400);
+      }
+      const clusterExists = await prisma.cluster.findUnique({
+        where: { id: parsedClusterId },
+        select: { id: true },
+      });
+      if (!clusterExists) return c.json({ error: "Cluster not found" }, 404);
+      clusterId = parsedClusterId;
+    }
+
+    const school = await prisma.school.update({
+      where: { id },
+      data: {
+        ...(name && { name: name.trim() }),
+        ...("abbreviation" in body && { abbreviation: abbreviation ? String(abbreviation).trim() : null }),
+        ...(level && { level }),
+        ...(clusterId !== undefined &&
+          { cluster: { connect: { id: clusterId } } }),
+      },
     });
-    if (!clusterExists) return c.json({ error: "Cluster not found" }, 404);
-    clusterId = parsedClusterId;
+
+    await writeAuditLog(admin.id, "updated_school", "School", id, body, {
+      ctx: c,
+    });
+    return c.json(school);
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      return c.json({ error: "A school with this unique identifier already exists." }, 409);
+    }
+    console.error("Error updating school:", error);
+    return c.json({ error: "An unexpected server error occurred while updating the school." }, 500);
   }
-
-  const school = await prisma.school.update({
-    where: { id },
-    data: {
-      ...(name && { name }),
-      ...("abbreviation" in body && { abbreviation: abbreviation || null }),
-      ...(level && { level }),
-      ...(clusterId !== undefined &&
-        { cluster: { connect: { id: clusterId } } }),
-    },
-  });
-
-  await writeAuditLog(admin.id, "updated_school", "School", id, body, {
-    ctx: c,
-  });
-  return c.json(school);
 });
 
 adminRoutes.delete("/schools/:id", async (c) => {
