@@ -27,10 +27,10 @@ Your role controls which workspace, records, and actions you can access.
 | --- | --- | --- |
 | **School** | Dashboard, AIP, PIR | Prepare school AIPs, file quarterly PIRs after AIP approval, monitor returned items, and download documents. |
 | **Division Personnel / Focal Person** | Dashboard, AIP, PIR, Focal Queue | Prepare division-level AIPs/PIRs and recommend or return assigned school submissions as a focal person. |
-| **CES Reviewer** | CES Queue, AIP, PIR | Review submissions for the assigned functional division distinction: CES-SGOD, CES-ASDS, or CES-CID. |
+| **CES Reviewer** | CES Queue, Consolidation, AIP, PIR | Review submissions for the assigned functional division distinction and add Management Response entries in consolidation. |
 | **Superintendent** | Admin and review views | Review CES-owned submissions routed for Superintendent action and monitor division activity. |
 | **Admin** | Admin Portal | Manage users, schools, clusters, programs, deadlines, submissions, reports, backups, settings, announcements, FAQs, email templates, and audit logs. |
-| **Observer** | Admin Portal, read-only views | Monitor overview data, inspect submissions, view consolidation information, and add allowed management responses without changing workflow records. |
+| **Observer** | Admin Portal, read-only views | Monitor overview data, inspect submissions, and view consolidation information without changing workflow records. |
 | **Pending** | Onboarding | Complete profile setup or wait for admin action before role-specific tools open. |
 
 ---

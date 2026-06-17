@@ -3,11 +3,11 @@ export const observerRoleConfig = {
   isWelcomeEligible: true,
   content: {
     title: 'Welcome to Observer access',
-    subtitle: 'Your guided path focuses on safe, read-only monitoring and management response work.',
+    subtitle: 'Your guided path focuses on safe, read-only monitoring and consolidation review.',
     bullets: [
       'Monitor without changing records - review overview data and submission status safely.',
       'Inspect submissions - use filters, previews, and exports while operational actions stay protected.',
-      'Contribute responses - add management response in consolidation where your role allows it.',
+      'Review consolidation - inspect consolidated gaps, recommendations, and responses without editing them.',
     ],
   },
   tasks: [
@@ -29,8 +29,8 @@ export const observerRoleConfig = {
     },
     {
       id: 'observer-consolidation',
-      label: 'Open consolidation response',
-      description: 'Open Consolidation and find the management response workspace.',
+      label: 'Open consolidation',
+      description: 'Open Consolidation and review the consolidated findings workspace.',
       route: '/admin/consolidation-template',
       completeOn: ['observer.consolidation_visited'],
       tourChapterId: 'observer-consolidation',

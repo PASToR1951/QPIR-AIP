@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { prisma } from "../../db/client.ts";
 import { getUserFromToken } from "../../lib/auth.ts";
+import { CES_ROLES } from "../../lib/routing.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { isValidQuarter } from "./shared/dates.ts";
@@ -11,14 +12,31 @@ const consolidationNotesRoutes = new Hono();
 const QUARTER_PREFIXES: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
 
 // Roles that may read consolidation data
-const READ_ROLES = new Set(["Admin", "Observer", "Division Personnel", "Superintendent"]);
+const READ_ROLES = new Set([
+  "Admin",
+  "Observer",
+  "Division Personnel",
+  "Superintendent",
+  ...CES_ROLES,
+]);
 
 // Field → roles that may write that field
 const FIELD_WRITE_ROLES: Record<string, Set<string>> = {
   gaps: new Set(["Admin", "Division Personnel"]),
   recommendations: new Set(["Division Personnel"]),
-  management_response: new Set(["Observer", "Division Personnel"]),
+  management_response: new Set<string>(CES_ROLES),
 };
+
+function isCESRole(role: string) {
+  return (CES_ROLES as readonly string[]).includes(role);
+}
+
+function canCESManageProgram(role: string, programDivision: string | null) {
+  if (role === "CES-SGOD") return programDivision === "SGOD";
+  if (role === "CES-ASDS") return programDivision === "OSDS";
+  if (role === "CES-CID") return programDivision === "CID" || !programDivision;
+  return false;
+}
 
 function parseYearQuarter(c: { req: { query: (k: string) => string | undefined } }) {
   const year = safeParseInt(c.req.query("year"), 0, 2020, 2100);
@@ -211,6 +229,12 @@ consolidationNotesRoutes.put("/consolidation-notes", async (c) => {
     const isFocal = program.focal_persons.some((fp: any) => fp.user_id === user.id);
     if (!isFocal) {
       return c.json({ error: "Forbidden: you are not a focal person for this program" }, 403);
+    }
+  }
+
+  if (field === "management_response" && isCESRole(user.role)) {
+    if (!canCESManageProgram(user.role, program.division)) {
+      return c.json({ error: "Forbidden: this program is outside your CES scope" }, 403);
     }
   }
 

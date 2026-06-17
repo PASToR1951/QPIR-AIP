@@ -17,6 +17,13 @@ import { Spinner } from '../components/Spinner.jsx';
 import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
 
 const FUNCTIONAL_DIVISIONS = ['SGOD', 'CID', 'OSDS'];
+const CES_ROLE_DIVISIONS = {
+  'CES-SGOD': 'SGOD',
+  'CES-ASDS': 'OSDS',
+  'CES-CID': 'CID',
+};
+const CES_ROLES = Object.keys(CES_ROLE_DIVISIONS);
+const REVIEW_FIELDS = ['gaps', 'recommendations', 'management_response'];
 const VIEW_MODES = {
   division: 'Division',
   school: 'School',
@@ -47,11 +54,22 @@ function isProgramEligibleForSchool(program, school) {
   return false;
 }
 
+function getCesDivision(role) {
+  return CES_ROLE_DIVISIONS[role] || null;
+}
+
+function isProgramInCesScope(program, role) {
+  const cesDivision = getCesDivision(role);
+  if (!cesDivision) return false;
+  if (role === 'CES-CID') return program.division === 'CID' || !program.division;
+  return program.division === cesDivision;
+}
+
 // Returns the set of fields a given role may write
 function getEditableFields(role) {
   if (role === 'Admin') return new Set(['gaps']);
-  if (role === 'Division Personnel') return new Set(['gaps', 'recommendations', 'management_response']);
-  if (role === 'Observer') return new Set(['management_response']);
+  if (role === 'Division Personnel') return new Set(['gaps', 'recommendations']);
+  if (CES_ROLES.includes(role)) return new Set(['management_response']);
   return new Set();
 }
 
@@ -61,6 +79,8 @@ const AdminConsolidationTemplate = () => {
   const currentUser = useUser();
   const editableFields = useMemo(() => getEditableFields(currentUser?.role), [currentUser?.role]);
   const canEdit = useCallback((field) => editableFields.has(field), [editableFields]);
+  const isCesUser = CES_ROLES.includes(currentUser?.role);
+  const cesDivision = getCesDivision(currentUser?.role);
 
   const [reportGroups, setReportGroups] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -70,7 +90,7 @@ const AdminConsolidationTemplate = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('division');
-  const [activeDivision, setActiveDivision] = useState('SGOD');
+  const [activeDivision, setActiveDivision] = useState(() => cesDivision || 'SGOD');
   const [selectedClusterId, setSelectedClusterId] = useState('');
   const [selectedSchoolId, setSelectedSchoolId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,6 +98,7 @@ const AdminConsolidationTemplate = () => {
   const [toast, setToast] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const debounceTimers = useRef({});
+  const effectiveActiveDivision = cesDivision || activeDivision;
   const schoolScopeClusterId = viewMode === 'school' && selectedClusterId ? Number(selectedClusterId) : null;
   const schoolScopeSchoolId = viewMode === 'school' && selectedSchoolId ? Number(selectedSchoolId) : null;
 
@@ -202,11 +223,17 @@ const AdminConsolidationTemplate = () => {
     let basePrograms = programs;
     if (currentUser?.role === 'Division Personnel') {
       basePrograms = basePrograms.filter(program => program.focal_persons?.some(fp => fp.id === currentUser.id));
+    } else if (isCesUser) {
+      basePrograms = basePrograms.filter(program => isProgramInCesScope(program, currentUser.role));
     }
 
     if (viewMode === 'division') {
       return basePrograms.filter(
-        (program) => program.school_level_requirement === 'Division' && program.division === activeDivision,
+        (program) => program.school_level_requirement === 'Division' && (
+          isCesUser
+            ? isProgramInCesScope(program, currentUser.role)
+            : program.division === effectiveActiveDivision
+        ),
       );
     }
 
@@ -221,7 +248,7 @@ const AdminConsolidationTemplate = () => {
     }
 
     return basePrograms.filter((program) => program.school_level_requirement !== 'Division');
-  }, [programs, viewMode, activeDivision, selectedSchool, selectedClusterId, schoolOptions, currentUser]);
+  }, [programs, viewMode, effectiveActiveDivision, selectedSchool, selectedClusterId, schoolOptions, currentUser, isCesUser]);
 
   const rows = useMemo(() => {
     const rateMap = {};
@@ -316,14 +343,22 @@ const AdminConsolidationTemplate = () => {
   };
 
   const scopeLabel = viewMode === 'division'
-    ? activeDivision
+    ? effectiveActiveDivision
     : selectedSchool
       ? selectedSchool.name
       : selectedClusterId
         ? clusters.find((cluster) => String(cluster.id) === String(selectedClusterId))?.name || 'Selected cluster'
         : 'All schools';
 
-  const editableColCount = ['gaps', 'recommendations', 'management_response'].filter(f => canEdit(f)).length;
+  const screenReviewFields = useMemo(
+    () => REVIEW_FIELDS.filter((field) => field !== 'management_response' || isCesUser),
+    [isCesUser],
+  );
+  const editableColCount = screenReviewFields.filter(f => canEdit(f)).length;
+  const readOnlyColCount = screenReviewFields.length - editableColCount;
+  const managementResponseColumnClass = isCesUser ? '' : 'hidden print:table-cell';
+  const tableMinWidthClass = isCesUser ? 'min-w-[1400px]' : 'min-w-[1180px] print:min-w-[1400px]';
+  const divisionOptions = cesDivision ? [cesDivision] : FUNCTIONAL_DIVISIONS;
 
   return (
     <div data-tour="admin-consolidation-workspace" className={isFullscreen
@@ -367,13 +402,13 @@ const AdminConsolidationTemplate = () => {
             {/* Division / School scope */}
             {viewMode === 'division' ? (
               <div className="inline-flex rounded-xl bg-indigo-50 dark:bg-indigo-500/10 p-1">
-                {FUNCTIONAL_DIVISIONS.map((division) => (
+                {divisionOptions.map((division) => (
                   <button
                     key={division}
                     type="button"
                     onClick={() => handleDivisionChange(division)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                      activeDivision === division
+                      effectiveActiveDivision === division
                         ? 'bg-white text-indigo-700 shadow-sm dark:bg-white/10 dark:text-indigo-300'
                         : 'text-indigo-700/75 hover:text-indigo-800 dark:text-indigo-300/70 dark:hover:text-indigo-200'
                     }`}
@@ -478,11 +513,11 @@ const AdminConsolidationTemplate = () => {
 
           {!loading && !error && (
             <div className="flex-1 overflow-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse min-w-[1400px]">
+              <table className={`w-full text-left border-collapse ${tableMinWidthClass}`}>
                 <thead className="sticky top-0 z-20 backdrop-blur-xl">
 
                   {/* Column group labels */}
-                  <tr className="border-b border-slate-200 dark:border-white/[0.06]">
+                  <tr className="border-b border-slate-200 dark:border-white/[0.06] print:hidden">
                     {/* Source data: #, Program, Accomp.%, TA Schools = 4 cols */}
                     <th colSpan={4} className="px-4 py-1.5 bg-slate-100/95 dark:bg-slate-800/95">
                       <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -490,10 +525,9 @@ const AdminConsolidationTemplate = () => {
                         Source Data
                       </span>
                     </th>
-                    {/* Read-only review columns (Observer: gaps + recommendations) */}
-                    {3 - editableColCount > 0 && (
+                    {readOnlyColCount > 0 && (
                       <th
-                        colSpan={3 - editableColCount}
+                        colSpan={readOnlyColCount}
                         className="px-4 py-1.5 bg-slate-100/95 dark:bg-slate-800/95 border-l border-slate-200 dark:border-white/[0.06]"
                       >
                         <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
@@ -531,7 +565,7 @@ const AdminConsolidationTemplate = () => {
                       TA Schools
                     </th>
 
-                    {/* Gaps — editable for Admin, read-only for Observer */}
+                    {/* Gaps */}
                     <th className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border-b border-r border-slate-200 dark:border-white/[0.06] min-w-[220px] ${
                       canEdit('gaps')
                         ? 'text-indigo-500 dark:text-indigo-400 border-l-2 border-l-indigo-300 dark:border-l-indigo-600/60 bg-indigo-50/80 dark:bg-indigo-950/30'
@@ -539,7 +573,7 @@ const AdminConsolidationTemplate = () => {
                     }`}>
                       Gaps
                     </th>
-                    {/* Recommendations — editable (Admin) or read-only (Observer) */}
+                    {/* Recommendations */}
                     <th className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border-b border-r border-slate-200 dark:border-white/[0.06] min-w-[220px] ${
                       canEdit('recommendations')
                         ? 'text-indigo-500 dark:text-indigo-400 bg-indigo-50/80 dark:bg-indigo-950/30'
@@ -547,13 +581,12 @@ const AdminConsolidationTemplate = () => {
                     }`}>
                       Recommendations
                     </th>
-                    {/* Management Response — editable (Admin + Observer) */}
-                    <th className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border-b border-slate-200 dark:border-white/[0.06] min-w-[220px] ${
+                    <th className={`${managementResponseColumnClass} px-4 py-2.5 text-[10px] font-black uppercase tracking-widest border-b border-slate-200 dark:border-white/[0.06] min-w-[220px] ${
                       canEdit('management_response')
                         ? 'text-indigo-500 dark:text-indigo-400 border-l-2 border-l-indigo-300 dark:border-l-indigo-600/60 bg-indigo-50/80 dark:bg-indigo-950/30'
                         : 'text-slate-400 dark:text-slate-500 bg-slate-100/95 dark:bg-slate-800/95'
                     }`}>
-                      Mgmt Response
+                      Management Response
                     </th>
                   </tr>
                 </thead>
@@ -611,7 +644,7 @@ const AdminConsolidationTemplate = () => {
                               </span>
                             </td>
 
-                            {/* Gaps — Admin editable, Observer read-only */}
+                            {/* Gaps */}
                             <td className={`p-0 border-r border-slate-100 dark:border-white/[0.05] ${canEdit('gaps') ? 'bg-indigo-50/20 dark:bg-indigo-950/20' : 'bg-slate-50/30 dark:bg-slate-800/20'}`}>
                               {canEdit('gaps') ? (
                                 <textarea
@@ -646,7 +679,7 @@ const AdminConsolidationTemplate = () => {
                             </td>
 
                             {/* Management Response */}
-                            <td className={`p-0 ${canEdit('management_response') ? 'bg-indigo-50/20 dark:bg-indigo-950/20' : 'bg-slate-50/30 dark:bg-slate-800/20'}`}>
+                            <td className={`${managementResponseColumnClass} p-0 ${canEdit('management_response') ? 'bg-indigo-50/20 dark:bg-indigo-950/20' : 'bg-slate-50/30 dark:bg-slate-800/20'}`}>
                               {canEdit('management_response') ? (
                                 <textarea
                                   value={row.management_response}

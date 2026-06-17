@@ -1,8 +1,9 @@
-import { Routes, Route, useNavigate } from 'react-router-dom';
-import { ClipboardText, FileText, ChartBar, SignOut } from '@phosphor-icons/react';
+import { Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { ClipboardText, FileText, ChartBar, SignOut, Table } from '@phosphor-icons/react';
 import CESDashboard from './CESDashboard.jsx';
 import CESPIRReview from './CESPIRReview.jsx';
 import CESAIPReview from './CESAIPReview.jsx';
+import AdminConsolidationTemplate from '../admin/pages/AdminConsolidationTemplate.jsx';
 import Footer from '../components/ui/Footer.jsx';
 import { AnnouncementBanner } from '../components/ui/AnnouncementBanner.jsx';
 import { useAppLogo } from '../context/BrandingContext.jsx';
@@ -12,8 +13,11 @@ import { ReportingPeriodPicker } from '../components/ui/ReportingPeriodPicker.js
 
 export default function CESLayout() {
   const appLogo = useAppLogo();
+  const location = useLocation();
   const navigate = useNavigate();
   const user = (() => { try { return JSON.parse(sessionStorage.getItem('user') || 'null'); } catch { return null; } })();
+  const isCesReviewer = user?.role?.startsWith('CES-');
+  const isConsolidationRoute = location.pathname.startsWith('/ces/consolidation');
 
   const roleLabel = {
     'CES-SGOD': 'CES – SGOD',
@@ -68,6 +72,16 @@ export default function CESLayout() {
               Review Queue
             </button>
 
+            {isCesReviewer && (
+              <button
+                onClick={() => navigate('/ces/consolidation')}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
+              >
+                <Table size={15} />
+                Consolidation
+              </button>
+            )}
+
             {user?.role !== 'Superintendent' && (
               <>
                 <button
@@ -100,11 +114,12 @@ export default function CESLayout() {
       </header>
       <AnnouncementBanner />
 
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-8">
+      <main className={`flex-1 w-full mx-auto px-4 py-8 ${isConsolidationRoute ? 'max-w-7xl' : 'max-w-6xl'}`}>
         <Routes>
           <Route index element={<CESDashboard />} />
           <Route path="pirs/:id" element={<CESPIRReview />} />
           <Route path="aips/:id" element={<CESAIPReview />} />
+          <Route path="consolidation" element={isCesReviewer ? <AdminConsolidationTemplate /> : <Navigate to="/ces" replace />} />
         </Routes>
       </main>
       <Footer />

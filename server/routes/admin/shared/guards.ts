@@ -69,6 +69,25 @@ export async function requireAdminObserverOrDivisionPersonnel(
   return user;
 }
 
+export async function requireAdminObserverDivisionPersonnelOrCES(
+  c: Context | string | undefined,
+): Promise<TokenPayload | null> {
+  const user = await getUserFromToken(c);
+  if (
+    !user ||
+    (
+      user.role !== "Admin" &&
+      user.role !== OBSERVER_ROLE &&
+      user.role !== "Division Personnel" &&
+      user.role !== SUPERINTENDENT_ROLE &&
+      !(CES_ROLES as readonly string[]).includes(user.role)
+    )
+  ) {
+    return null;
+  }
+  return user;
+}
+
 export async function requireCES(
   c: Context | string | undefined,
 ): Promise<TokenPayload | null> {
@@ -106,6 +125,23 @@ export const adminAnalyticsOnly: MiddlewareHandler = async (c, next) => {
 export const adminObserverOrDivisionPersonnelOnly: MiddlewareHandler = async (c, next) => {
   const user = await getUserFromToken(c);
   if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE && user.role !== "Division Personnel" && user.role !== SUPERINTENDENT_ROLE)) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  await next();
+};
+
+export const adminObserverDivisionPersonnelOrCESOnly: MiddlewareHandler = async (c, next) => {
+  const user = await getUserFromToken(c);
+  if (
+    !user ||
+    (
+      user.role !== "Admin" &&
+      user.role !== OBSERVER_ROLE &&
+      user.role !== "Division Personnel" &&
+      user.role !== SUPERINTENDENT_ROLE &&
+      !(CES_ROLES as readonly string[]).includes(user.role)
+    )
+  ) {
     return c.json({ error: "Forbidden" }, 403);
   }
   await next();

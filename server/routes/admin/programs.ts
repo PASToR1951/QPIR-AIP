@@ -7,11 +7,11 @@ import { writeAuditLog } from "./shared/audit.ts";
 import {
   adminOnly,
   adminOrObserverOnly,
-  adminObserverOrDivisionPersonnelOnly,
+  adminObserverDivisionPersonnelOrCESOnly,
   OBSERVER_ROLE,
   requireAdmin,
   requireAdminOrObserver,
-  requireAdminObserverOrDivisionPersonnel,
+  requireAdminObserverDivisionPersonnelOrCES,
 } from "./shared/guards.ts";
 
 export const observerRoutes = new Hono();
@@ -48,7 +48,7 @@ function serializeProgramTemplate(
   };
 }
 
-observerRoutes.use("/programs", adminObserverOrDivisionPersonnelOnly);
+observerRoutes.use("/programs", adminObserverDivisionPersonnelOrCESOnly);
 
 adminRoutes.use("/programs/:id", adminOnly);
 adminRoutes.use("/programs/:id/template", adminOnly);
@@ -56,7 +56,7 @@ adminRoutes.use("/programs/:id/personnel", adminOnly);
 adminRoutes.use("/programs/:id/members", adminOnly);
 
 observerRoutes.get("/programs", async (c) => {
-  const actor = await requireAdminObserverOrDivisionPersonnel(c);
+  const actor = await requireAdminObserverDivisionPersonnelOrCES(c);
   if (!actor) return c.json({ error: "Unauthorized" }, 401);
 
   if (actor.role === OBSERVER_ROLE) {

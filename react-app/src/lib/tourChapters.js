@@ -558,9 +558,9 @@ export const TOUR_CHAPTERS = {
       {
         id: 'response',
         target: 'admin-consolidation-workspace',
-        title: 'Add management response when needed',
+        title: 'Review responses when present',
         description:
-          'Observer accounts can contribute management response while other sensitive fields remain protected.',
+          'Management Response entries are retained for review and printing, while editing is limited to CES accounts.',
         placement: 'top',
         icon: createTourIcon(Stamp),
       },
