@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XCircle, GraduationCap, MagnifyingGlass, XCircle } from '@phosphor-icons/react';
+import { XCircle, GraduationCap, MagnifyingGlass } from '@phosphor-icons/react';
 import { Spinner } from './Spinner.jsx';
 import api from '../../lib/api.js';
 
