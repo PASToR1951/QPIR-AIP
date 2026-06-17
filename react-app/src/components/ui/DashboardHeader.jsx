@@ -1,9 +1,9 @@
 
 
-import { useState, useRef, useEffect } from 'react';
+import { createElement, useState, useRef, useEffect } from 'react';
 import { useAppLogo } from '../../context/BrandingContext.jsx';
-import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageCircle, TagIcon, IdentificationCardIcon, ListBulletsIcon, BookOpenUserIcon, BooksIcon, ClockCounterClockwise, ClipboardText } from '@phosphor-icons/react';
-import { Link } from 'react-router-dom';
+import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageCircle, TagIcon, IdentificationCardIcon, ListBulletsIcon, BookOpenUserIcon, BooksIcon, ClockCounterClockwise, ClipboardText, House, ChartBar, FileText } from '@phosphor-icons/react';
+import { Link, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NotificationBell } from './NotificationBell.jsx';
 import { SchoolAvatar } from './SchoolAvatar.jsx';
@@ -62,6 +62,15 @@ export const DashboardHeader = ({ user, onLogout }) => {
           : /* Admin */
             (user?.name || user?.email?.split('@')[0] || 'User');
     const roleTheme = getRoleVisualTheme(user);
+    const divisionNavItems = user?.role === 'Division Personnel'
+        ? [
+            { to: '/', label: 'Dashboard', icon: House, end: true },
+            { to: '/division', label: 'Queue', icon: ClipboardText, end: true, badge: pendingCount, preload: () => import('../../division/DivisionLayout.jsx') },
+            { to: '/division/consolidation', label: 'Consolidation', icon: ChartBar, preload: () => import('../../division/DivisionLayout.jsx') },
+            { to: '/aip', label: 'My AIP', icon: FileText, preload: () => import('../../AIPForm.jsx') },
+            { to: '/pir', label: 'My PIR', icon: ChartBar, preload: () => import('../../PIRForm.jsx') },
+        ]
+        : [];
 
     return (
         <nav className={`sticky top-0 z-50 border-b shadow-sm backdrop-blur-md print:hidden ${roleTheme.header}`}>
@@ -82,20 +91,36 @@ export const DashboardHeader = ({ user, onLogout }) => {
 
                 <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
                 <ReportingPeriodPicker />
-                {user?.role === 'Division Personnel' && (
-                    <Link
-                        to="/division"
-                        onMouseEnter={() => import('../../division/DivisionLayout.jsx')}
-                        className={`relative inline-flex h-9 items-center gap-2 rounded-lg border px-2.5 text-xs font-black transition-colors sm:px-3 ${roleTheme.softButton}`}
-                    >
-                        <ClipboardText size={17} />
-                        <span className="hidden sm:inline">Review Queue</span>
-                        {pendingCount > 0 && (
-                            <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-blue-600 px-1.5 py-0.5 text-center text-[10px] font-black leading-none text-white shadow-sm">
-                                {pendingCount > 99 ? '99+' : pendingCount}
-                            </span>
-                        )}
-                    </Link>
+                {divisionNavItems.length > 0 && (
+                    <div className="hidden max-w-[48vw] items-center gap-1 overflow-x-auto rounded-lg border border-slate-200/70 bg-white/35 p-1 dark:border-white/10 dark:bg-white/5 lg:flex">
+                        {divisionNavItems.map(({ to, label, icon, end, badge, preload }) => (
+                            <NavLink
+                                key={to}
+                                to={to}
+                                end={end}
+                                onMouseEnter={preload}
+                                className={({ isActive }) =>
+                                    `relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-black transition-colors ${
+                                        isActive
+                                            ? roleTheme.activeNav
+                                            : `text-slate-500 dark:text-slate-400 ${roleTheme.hoverNav}`
+                                    }`
+                                }
+                            >
+                                {({ isActive }) => (
+                                    <>
+                                        {createElement(icon, { size: 15, weight: isActive ? 'fill' : 'regular' })}
+                                        <span className="hidden xl:inline">{label}</span>
+                                        {badge > 0 && (
+                                            <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-blue-600 px-1 text-center text-[9px] font-black leading-4 text-white shadow-sm">
+                                                {badge > 99 ? '99+' : badge}
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                            </NavLink>
+                        ))}
+                    </div>
                 )}
 
                 {/* Profile Dropdown */}
