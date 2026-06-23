@@ -18,7 +18,7 @@ const ROLE_KEY_MAP = {
   'CES-ASDS':             'ces',
   'CES-CID':              'ces',
   'Admin':                'admin',
-  'Observer':             'observer',
+  'Cluster Consultant':   'clusterConsultant',
   'Pending':              'pending',
 };
 

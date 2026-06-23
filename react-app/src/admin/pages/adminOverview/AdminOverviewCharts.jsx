@@ -278,6 +278,10 @@ export function AdminOverviewCharts({ pieData, quarterData, sectionData = [], di
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Approved</span>
                       <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{section.approved}</span>
                     </div>
+                    <div className="flex flex-col gap-0.5 border-r border-slate-100 px-5 py-3 dark:border-dark-border/60">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Needs Revision</span>
+                      <span className="text-xl font-black text-orange-600 dark:text-orange-400">{section.needsRevision ?? 0}</span>
+                    </div>
                     <div className="flex flex-col gap-0.5 px-5 py-3">
                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Returned</span>
                       <span className="text-xl font-black text-rose-600 dark:text-rose-400">{section.returned}</span>

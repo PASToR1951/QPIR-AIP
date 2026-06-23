@@ -13,6 +13,7 @@ interface SessionUser {
   id: number;
   role: string;
   school_id: number | null;
+  cluster_id?: number | null;
   school?: { cluster_id?: number | null } | null;
 }
 
@@ -108,7 +109,7 @@ export function deriveDeviceLabel(userAgent?: string | null): string {
 }
 
 function resolveClusterId(user: SessionUser): number | null {
-  return user.school?.cluster_id ?? null;
+  return user.school?.cluster_id ?? user.cluster_id ?? null;
 }
 
 export async function createSessionCookie(

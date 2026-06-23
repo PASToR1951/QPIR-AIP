@@ -1,6 +1,5 @@
 const PIR_READABLE_ROLES = new Set([
   "Admin",
-  "Observer",
   "CES-SGOD",
   "CES-ASDS",
   "CES-CID",

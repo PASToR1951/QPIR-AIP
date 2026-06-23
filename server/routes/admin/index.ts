@@ -3,16 +3,16 @@ import pirReviewRoutes from "./pirReview.ts";
 import focalReviewRoutes from "./focalPersonReview.ts";
 import overviewRoutes from "./overview.ts";
 import {
-  observerRoutes as submissionObserverRoutes,
+  readRoutes as submissionReadRoutes,
   adminRoutes as submissionAdminRoutes,
 } from "./submissions.ts";
 import usersRoutes from "./users.ts";
 import {
-  observerRoutes as schoolsObserverRoutes,
+  readRoutes as schoolsReadRoutes,
   adminRoutes as schoolsAdminRoutes,
 } from "./schoolsClusters.ts";
 import {
-  observerRoutes as programObserverRoutes,
+  readRoutes as programReadRoutes,
   adminRoutes as programAdminRoutes,
 } from "./programs.ts";
 import deadlinesRoutes from "./deadlines.ts";
@@ -33,9 +33,9 @@ adminRoutes.route("/", pirReviewRoutes);
 adminRoutes.route("/", focalReviewRoutes);
 
 adminRoutes.route("/", overviewRoutes);
-adminRoutes.route("/", submissionObserverRoutes);
-adminRoutes.route("/", schoolsObserverRoutes);
-adminRoutes.route("/", programObserverRoutes);
+adminRoutes.route("/", submissionReadRoutes);
+adminRoutes.route("/", schoolsReadRoutes);
+adminRoutes.route("/", programReadRoutes);
 
 adminRoutes.route("/", submissionAdminRoutes);
 adminRoutes.route("/", usersRoutes);

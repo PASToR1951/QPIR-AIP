@@ -5,6 +5,7 @@ export function useUserData({ search, roleFilter, showToast }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [schools, setSchools] = useState([]);
+  const [clusters, setClusters] = useState([]);
   const [programs, setPrograms] = useState([]);
   const dropdownsLoaded = useRef(false);
 
@@ -26,10 +27,11 @@ export function useUserData({ search, roleFilter, showToast }) {
     if (dropdownsLoaded.current) return;
     dropdownsLoaded.current = true;
     api.get('/api/admin/schools').then(r => setSchools(r.data)).catch(() => {});
+    api.get('/api/admin/clusters').then(r => setClusters(r.data)).catch(() => {});
     api.get('/api/admin/programs').then(r => setPrograms(r.data)).catch(() => {});
   }, []);
 
-  return { users, loading, schools, programs, fetchAll, loadDropdownData };
+  return { users, loading, schools, clusters, programs, fetchAll, loadDropdownData };
 }
 
 export function useOnboardingData() {

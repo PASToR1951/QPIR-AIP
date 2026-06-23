@@ -6,12 +6,9 @@ import { sanitizeObject } from "../../lib/sanitize.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import {
   adminOnly,
-  adminOrObserverOnly,
-  adminObserverDivisionPersonnelOrCESOnly,
-  OBSERVER_ROLE,
+  adminDivisionPersonnelOrCESOnly,
   requireAdmin,
-  requireAdminOrObserver,
-  requireAdminObserverDivisionPersonnelOrCES,
+  requireAdminDivisionPersonnelOrCES,
 } from "./shared/guards.ts";
 import {
   CLUSTER_LOGO_DIR,
@@ -24,11 +21,11 @@ import { parsePositiveInt } from "./shared/params.ts";
 
 const SCHOOL_LEVELS = new Set(["Elementary", "Secondary"]);
 
-export const observerRoutes = new Hono();
+export const readRoutes = new Hono();
 export const adminRoutes = new Hono();
 
-observerRoutes.use("/clusters", adminObserverDivisionPersonnelOrCESOnly);
-observerRoutes.use("/schools", adminObserverDivisionPersonnelOrCESOnly);
+readRoutes.use("/clusters", adminDivisionPersonnelOrCESOnly);
+readRoutes.use("/schools", adminDivisionPersonnelOrCESOnly);
 
 adminRoutes.use("/clusters/:id", adminOnly);
 adminRoutes.use("/clusters/:id/logo", adminOnly);
@@ -36,17 +33,9 @@ adminRoutes.use("/schools/:id", adminOnly);
 adminRoutes.use("/schools/:id/restrictions", adminOnly);
 adminRoutes.use("/schools/:id/logo", adminOnly);
 
-observerRoutes.get("/clusters", async (c) => {
-  const actor = await requireAdminObserverDivisionPersonnelOrCES(c);
+readRoutes.get("/clusters", async (c) => {
+  const actor = await requireAdminDivisionPersonnelOrCES(c);
   if (!actor) return c.json({ error: "Unauthorized" }, 401);
-
-  if (actor.role === OBSERVER_ROLE) {
-    const clusters = await prisma.cluster.findMany({
-      select: { id: true, name: true, cluster_number: true, logo: true },
-      orderBy: { cluster_number: "asc" },
-    });
-    return c.json(clusters);
-  }
 
   const clusters = await prisma.cluster.findMany({
     include: {
@@ -205,28 +194,12 @@ adminRoutes.delete("/clusters/:id/logo", async (c) => {
   return c.json({ logo: null });
 });
 
-observerRoutes.get("/schools", async (c) => {
-  const actor = await requireAdminObserverDivisionPersonnelOrCES(c);
+readRoutes.get("/schools", async (c) => {
+  const actor = await requireAdminDivisionPersonnelOrCES(c);
   if (!actor) return c.json({ error: "Unauthorized" }, 401);
   const clusterId = c.req.query("cluster")
     ? safeParseInt(c.req.query("cluster"), 0)
     : undefined;
-
-  if (actor.role === OBSERVER_ROLE) {
-    const schools = await prisma.school.findMany({
-      where: clusterId ? { cluster_id: clusterId } : undefined,
-      select: {
-        id: true,
-        name: true,
-        abbreviation: true,
-        cluster_id: true,
-        logo: true,
-        cluster: true,
-      },
-      orderBy: { name: "asc" },
-    });
-    return c.json(schools);
-  }
 
   const schools = await prisma.school.findMany({
     where: clusterId ? { cluster_id: clusterId } : undefined,

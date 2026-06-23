@@ -110,10 +110,10 @@ export const auth = {
   getUser:    ()  => parseStoredUser(),
   getExpiry:  ()  => Number.parseInt(sessionStorage.getItem('tokenExpiry') || '0', 10) || 0,
   isExpired:  ()  => Date.now() / 1000 >= auth.getExpiry(),
-  isObserver: () => auth.getUser()?.role === 'Observer',
+  isClusterConsultant: () => auth.getUser()?.role === 'Cluster Consultant',
   isSuperintendent: () => auth.getUser()?.role === 'Superintendent',
   isSystemAdmin: () => auth.getUser()?.role === 'Admin',
-  isAdminPanelRole: (role = auth.getUser()?.role) => ['Admin', 'Observer', 'Superintendent'].includes(role),
+  isAdminPanelRole: (role = auth.getUser()?.role) => ['Admin', 'Superintendent'].includes(role),
   setSession: (user, exp) => {
     clearLogoutBlock();
     sessionStorage.setItem('user', JSON.stringify(user));

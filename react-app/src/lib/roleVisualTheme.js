@@ -6,7 +6,7 @@ const ROLE_THEME_NAMES = {
   'CES-CID': 'teal',
   'Superintendent': 'green',
   Admin: 'indigo',
-  Observer: 'slate',
+  'Cluster Consultant': 'slate',
   Pending: 'amber',
 };
 

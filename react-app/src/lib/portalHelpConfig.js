@@ -31,12 +31,9 @@ export const portalHelpConfig = {
   adminResources: withHelpMetadata('admin-resources'),
   adminSubmissions: withHelpMetadata('admin-submissions'),
   adminReportsSettings: withHelpMetadata('admin-reports-settings'),
-  observerOverview: withHelpMetadata('observer-overview'),
-  observerSubmissions: withHelpMetadata('observer-submissions'),
-  observerConsolidation: withHelpMetadata('observer-consolidation'),
 };
 
-export function getPortalHelp(pathname, roleKey) {
+export function getPortalHelp(pathname) {
   if (pathname === '/') return portalHelpConfig.userDashboard;
   if (pathname === '/aip') return portalHelpConfig.aip;
   if (pathname === '/pir') return portalHelpConfig.pir;
@@ -50,24 +47,23 @@ export function getPortalHelp(pathname, roleKey) {
   if (pathname.startsWith('/division/')) return portalHelpConfig.divisionReview;
 
   if (pathname.startsWith('/admin')) {
-    const isObserver = roleKey === 'observer';
     if (pathname === '/admin') {
-      return isObserver ? portalHelpConfig.observerOverview : portalHelpConfig.adminDashboard;
+      return portalHelpConfig.adminDashboard;
     }
     if (pathname === '/admin/users') return portalHelpConfig.adminUsers;
     if (pathname === '/admin/schools' || pathname === '/admin/programs') {
       return portalHelpConfig.adminResources;
     }
     if (pathname === '/admin/submissions') {
-      return isObserver ? portalHelpConfig.observerSubmissions : portalHelpConfig.adminSubmissions;
+      return portalHelpConfig.adminSubmissions;
     }
     if (pathname === '/admin/consolidation-template') {
-      return isObserver ? portalHelpConfig.observerConsolidation : portalHelpConfig.adminReportsSettings;
+      return portalHelpConfig.adminReportsSettings;
     }
     if (pathname === '/admin/reports' || pathname === '/admin/settings') {
       return portalHelpConfig.adminReportsSettings;
     }
-    return isObserver ? portalHelpConfig.observerOverview : portalHelpConfig.adminDashboard;
+    return portalHelpConfig.adminDashboard;
   }
 
   return null;

@@ -12,6 +12,7 @@ import api from '../../lib/api.js';
 
 const ROW_PADDING_Y = 40;
 const PIR_BUTTON_HEIGHT = 32;
+const editKey = (type, id) => `${type}:${id}`;
 
 export default function SubmissionsHistory() {
   const userStr = sessionStorage.getItem('user');
@@ -94,8 +95,14 @@ export default function SubmissionsHistory() {
         for (const entry of r.data) {
           init[entry.year] = entry.year === currentYear;
           for (const aip of entry.aips) {
-            if (aip.editRequested) editedIds.add(aip.id);
-            counts[aip.id] = aip.editRequestCount ?? 0;
+            const aipKey = editKey('aip', aip.id);
+            if (aip.editRequested) editedIds.add(aipKey);
+            counts[aipKey] = aip.editRequestCount ?? 0;
+            for (const pir of aip.pirs ?? []) {
+              const pirKey = editKey('pir', pir.id);
+              if (pir.editRequested) editedIds.add(pirKey);
+              counts[pirKey] = pir.editRequestCount ?? 0;
+            }
           }
         }
         setExpanded(init);
@@ -181,13 +188,17 @@ export default function SubmissionsHistory() {
     }
   }, [supervisorName, supervisorTitle, usesSchoolTerminology]);
 
-  const handleRequestEdit = useCallback(async (aipId) => {
+  const handleRequestEdit = useCallback(async (request) => {
+    const type = request?.type ?? 'aip';
+    const id = request?.id ?? request;
+    const key = editKey(type, id);
+    const collection = type === 'pir' ? 'pirs' : 'aips';
     setConfirmEditId(null);
-    setRequestingEditId(aipId);
+    setRequestingEditId(key);
     try {
-      await api.post(`/api/aips/${aipId}/request-edit`);
-      setRequestedEditIds(prev => new Set(prev).add(aipId));
-      setEditRequestCounts(prev => ({ ...prev, [aipId]: (prev[aipId] ?? 0) + 1 }));
+      await api.post(`/api/${collection}/${id}/request-edit`);
+      setRequestedEditIds(prev => new Set(prev).add(key));
+      setEditRequestCounts(prev => ({ ...prev, [key]: (prev[key] ?? 0) + 1 }));
       setEditRequestToast('Edit request sent — an admin will be notified.');
       setTimeout(() => setEditRequestToast(null), 3500);
     } catch { /* silently fail */ } finally {
@@ -195,12 +206,16 @@ export default function SubmissionsHistory() {
     }
   }, []);
 
-  const handleCancelEditRequest = useCallback(async (aipId) => {
+  const handleCancelEditRequest = useCallback(async (request) => {
+    const type = request?.type ?? 'aip';
+    const id = request?.id ?? request;
+    const key = editKey(type, id);
+    const collection = type === 'pir' ? 'pirs' : 'aips';
     setCancelConfirmId(null);
-    setCancelingEditId(aipId);
+    setCancelingEditId(key);
     try {
-      await api.post(`/api/aips/${aipId}/cancel-edit-request`);
-      setRequestedEditIds(prev => { const s = new Set(prev); s.delete(aipId); return s; });
+      await api.post(`/api/${collection}/${id}/cancel-edit-request`);
+      setRequestedEditIds(prev => { const s = new Set(prev); s.delete(key); return s; });
       setEditRequestToast('Edit request cancelled.');
       setTimeout(() => setEditRequestToast(null), 3500);
     } catch { /* silently fail */ } finally {
@@ -373,27 +388,27 @@ export default function SubmissionsHistory() {
                                   )}
                                   {!isNotFound && <StatusBadge status={aip.status} size="xs" />}
                                   {aip.status === 'Approved' && !aip.archived && !isNotFound && (
-                                    requestedEditIds.has(aip.id) ? (
+                                    requestedEditIds.has(editKey('aip', aip.id)) ? (
                                       <button
-                                        onClick={() => setCancelConfirmId(aip.id)}
-                                        disabled={cancelingEditId === aip.id}
+                                        onClick={() => setCancelConfirmId({ type: 'aip', id: aip.id })}
+                                        disabled={cancelingEditId === editKey('aip', aip.id)}
                                         title="Cancel edit request"
                                         className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-red-50 hover:text-red-600 hover:border-red-200 dark:hover:bg-red-950/30 dark:hover:text-red-400 dark:hover:border-red-900/50 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
                                       >
                                         <CheckCircle size={11} weight="fill" className="group-hover:hidden" />
                                         <XCircle size={11} weight="bold" className="hidden group-hover:block" />
-                                        <span className="group-hover:hidden">{cancelingEditId === aip.id ? 'Cancelling…' : 'Request Sent'}</span>
+                                        <span className="group-hover:hidden">{cancelingEditId === editKey('aip', aip.id) ? 'Cancelling…' : 'Request Sent'}</span>
                                         <span className="hidden group-hover:inline">Cancel Request</span>
                                       </button>
-                                    ) : (editRequestCounts[aip.id] ?? 0) < 3 ? (
+                                    ) : (editRequestCounts[editKey('aip', aip.id)] ?? 0) < 3 ? (
                                       <button
-                                        onClick={() => setConfirmEditId(aip.id)}
-                                        disabled={requestingEditId === aip.id}
+                                        onClick={() => setConfirmEditId({ type: 'aip', id: aip.id })}
+                                        disabled={requestingEditId === editKey('aip', aip.id)}
                                         title="Request edit from admin"
                                         className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                       >
                                         <PencilSimple size={11} />
-                                        {requestingEditId === aip.id ? 'Sending…' : 'Request Edit'}
+                                        {requestingEditId === editKey('aip', aip.id) ? 'Sending…' : 'Request Edit'}
                                       </button>
                                     ) : (
                                       <span
@@ -452,6 +467,32 @@ export default function SubmissionsHistory() {
                                           <StatusBadge status={pir.status} size="xs" />
                                         )}
                                       </button>
+
+                                      {!pirDeleted && pir.status === 'Approved' && (
+                                        requestedEditIds.has(editKey('pir', pir.id)) ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => setCancelConfirmId({ type: 'pir', id: pir.id })}
+                                            disabled={cancelingEditId === editKey('pir', pir.id)}
+                                            title="Cancel edit request"
+                                            className="inline-flex items-center gap-0.5 border-l border-slate-200 bg-emerald-50 px-2 py-1.5 text-[10px] font-bold text-emerald-600 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-dark-border dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                                          >
+                                            <CheckCircle size={9} weight="fill" />
+                                            {cancelingEditId === editKey('pir', pir.id) ? 'Cancelling' : 'Request Sent'}
+                                          </button>
+                                        ) : (editRequestCounts[editKey('pir', pir.id)] ?? 0) < 3 ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => setConfirmEditId({ type: 'pir', id: pir.id })}
+                                            disabled={requestingEditId === editKey('pir', pir.id)}
+                                            title="Request edit from admin"
+                                            className="inline-flex items-center gap-0.5 border-l border-slate-200 bg-amber-50 px-2 py-1.5 text-[10px] font-bold text-amber-600 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-dark-border dark:bg-amber-950/30 dark:text-amber-400"
+                                          >
+                                            <PencilSimple size={9} />
+                                            {requestingEditId === editKey('pir', pir.id) ? 'Sending' : 'Request Edit'}
+                                          </button>
+                                        ) : null
+                                      )}
 
                                       {/* PIR delete button — School only, non-deleted */}
                                       {usesSchoolTerminology && !pirDeleted && (
@@ -591,7 +632,7 @@ export default function SubmissionsHistory() {
                 <div>
                   <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight">Request Edit Access?</h3>
                   <p className="mt-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
-                    This will notify the administrator that you need to make changes to your approved AIP. You can only send one request at a time.
+                    This will notify the administrator that you need to make changes to your approved {(confirmEditId?.type ?? 'aip').toUpperCase()}. You can only send one request at a time.
                   </p>
                 </div>
               </div>

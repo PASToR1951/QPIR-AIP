@@ -7,6 +7,7 @@ import { auth } from '../lib/auth.js';
 import { getRoleVisualTheme } from '../lib/roleVisualTheme.js';
 import FocalPersonQueue from './FocalPersonQueue.jsx';
 import FocalPersonReview from './FocalPersonReview.jsx';
+import ProgramDocuments from './ProgramDocuments.jsx';
 import AdminConsolidationTemplate from '../admin/pages/AdminConsolidationTemplate.jsx';
 import { ReportingPeriodPicker } from '../components/ui/ReportingPeriodPicker.jsx';
 
@@ -18,6 +19,7 @@ export default function DivisionLayout() {
   const navItems = [
     { to: '/', label: 'Dashboard', icon: House, end: true },
     { to: '/division', label: 'Queue', icon: ClipboardText, end: true },
+    { to: '/division/programs', label: 'Programs', icon: FileText },
     { to: '/division/consolidation', label: 'Consolidation', icon: ChartBar },
     { to: '/aip', label: 'My AIP', icon: FileText },
     { to: '/pir', label: 'My PIR', icon: ChartBar },
@@ -89,6 +91,7 @@ export default function DivisionLayout() {
           <Route index element={<FocalPersonQueue />} />
           <Route path="pirs/:id/review" element={<FocalPersonReview type="pir" />} />
           <Route path="aips/:id/review" element={<FocalPersonReview type="aip" />} />
+          <Route path="programs" element={<ProgramDocuments />} />
           <Route path="consolidation" element={<AdminConsolidationTemplate />} />
         </Routes>
       </main>

@@ -39,10 +39,9 @@ function getRouteSignal(roleKey, pathname) {
     if (pathname === '/admin/reports' || pathname === '/admin/settings' || pathname === '/admin/consolidation-template') return 'admin.reports_settings_visited';
   }
 
-  if (roleKey === 'observer') {
-    if (pathname === '/admin') return 'observer.overview_visited';
-    if (pathname === '/admin/submissions') return 'observer.submissions_visited';
-    if (pathname === '/admin/consolidation-template') return 'observer.consolidation_visited';
+  if (roleKey === 'clusterConsultant') {
+    if (pathname === '/cluster-consultant') return 'clusterConsultant.dashboard_visited';
+    if (pathname.startsWith('/cluster-consultant/pirs/')) return 'clusterConsultant.pir_detail_visited';
   }
 
   return null;

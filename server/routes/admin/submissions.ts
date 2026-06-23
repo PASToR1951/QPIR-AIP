@@ -9,24 +9,26 @@ import { statusRouter } from "./submissions/status.ts";
 import { aipEditRouter } from "./submissions/aipEdit.ts";
 import { pirActionsRouter } from "./submissions/pirActions.ts";
 
-export const observerRoutes = new Hono();
+export const readRoutes = new Hono();
 export const adminRoutes = new Hono();
 
 // ── Auth guards ────────────────────────────────────────────────────────────
 
-observerRoutes.use("/submissions", adminAnalyticsOnly);
-observerRoutes.use("/submissions/export", adminAnalyticsOnly);
-observerRoutes.use("/submissions/:id", adminAnalyticsOnly);
+readRoutes.use("/submissions", adminAnalyticsOnly);
+readRoutes.use("/submissions/export", adminAnalyticsOnly);
+readRoutes.use("/submissions/:id", adminAnalyticsOnly);
 
 adminRoutes.use("/submissions/:id/status", adminOnly);
 adminRoutes.use("/aips/:id/approve-edit", adminOnly);
 adminRoutes.use("/aips/:id/deny-edit", adminOnly);
+adminRoutes.use("/pirs/:id/approve-edit", adminOnly);
+adminRoutes.use("/pirs/:id/deny-edit", adminOnly);
 adminRoutes.use("/pirs/:id/presented", adminOnly);
 
 // ── Route handler mounts ───────────────────────────────────────────────────
 
-observerRoutes.route("/", listRouter);
-observerRoutes.route("/", detailRouter);
+readRoutes.route("/", listRouter);
+readRoutes.route("/", detailRouter);
 
 adminRoutes.route("/", statusRouter);
 adminRoutes.route("/", aipEditRouter);

@@ -19,7 +19,9 @@ export function buildUserColumns({ onEdit, onManageSessions, onResetPassword, on
       key: 'school', label: 'Affiliation',
       render: (_, row) => (
         <span className="text-xs text-slate-500 dark:text-slate-400">
-          {['Division Personnel', 'Superintendent'].includes(row.role) ? 'Division' : (row.school?.name ?? '—')}
+          {row.role === 'Cluster Consultant'
+            ? (row.cluster ? `Cluster ${row.cluster.cluster_number}` : 'No cluster')
+            : ['Division Personnel', 'Superintendent'].includes(row.role) ? 'Division' : (row.school?.name ?? '—')}
         </span>
       ),
     },

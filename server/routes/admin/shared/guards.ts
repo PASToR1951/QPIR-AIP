@@ -2,18 +2,15 @@ import type { Context, MiddlewareHandler } from "hono";
 import { getUserFromToken, type TokenPayload } from "../../../lib/auth.ts";
 import { CES_ROLES } from "../../../lib/routing.ts";
 
-export const OBSERVER_ROLE = "Observer";
 export const SUPERINTENDENT_ROLE = "Superintendent";
 
 export const ADMIN_PANEL_ROLES = [
   "Admin",
-  OBSERVER_ROLE,
   SUPERINTENDENT_ROLE,
 ];
 
 export const ADMIN_ANALYTICS_ROLES = [
   "Admin",
-  OBSERVER_ROLE,
   SUPERINTENDENT_ROLE,
 ];
 
@@ -29,17 +26,17 @@ export async function requireAdmin(
   return user;
 }
 
-export async function requireAdminOrObserver(
+export async function requireAdminOnlyRead(
   c: Context | string | undefined,
 ): Promise<TokenPayload | null> {
   const user = await getUserFromToken(c);
-  if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE)) {
+  if (!user || user.role !== "Admin") {
     return null;
   }
   return user;
 }
 
-export async function requireAdminObserverOrSuperintendent(
+export async function requireAdminOrSuperintendent(
   c: Context | string | undefined,
 ): Promise<TokenPayload | null> {
   const user = await getUserFromToken(c);
@@ -59,17 +56,17 @@ export async function requireSuperintendent(
   return user;
 }
 
-export async function requireAdminObserverOrDivisionPersonnel(
+export async function requireAdminDivisionPersonnelOrSuperintendent(
   c: Context | string | undefined,
 ): Promise<TokenPayload | null> {
   const user = await getUserFromToken(c);
-  if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE && user.role !== "Division Personnel" && user.role !== SUPERINTENDENT_ROLE)) {
+  if (!user || (user.role !== "Admin" && user.role !== "Division Personnel" && user.role !== SUPERINTENDENT_ROLE)) {
     return null;
   }
   return user;
 }
 
-export async function requireAdminObserverDivisionPersonnelOrCES(
+export async function requireAdminDivisionPersonnelOrCES(
   c: Context | string | undefined,
 ): Promise<TokenPayload | null> {
   const user = await getUserFromToken(c);
@@ -77,7 +74,6 @@ export async function requireAdminObserverDivisionPersonnelOrCES(
     !user ||
     (
       user.role !== "Admin" &&
-      user.role !== OBSERVER_ROLE &&
       user.role !== "Division Personnel" &&
       user.role !== SUPERINTENDENT_ROLE &&
       !(CES_ROLES as readonly string[]).includes(user.role)
@@ -106,9 +102,9 @@ export const adminOnly: MiddlewareHandler = async (c, next) => {
   await next();
 };
 
-export const adminOrObserverOnly: MiddlewareHandler = async (c, next) => {
+export const adminReadOnly: MiddlewareHandler = async (c, next) => {
   const user = await getUserFromToken(c);
-  if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE)) {
+  if (!user || user.role !== "Admin") {
     return c.json({ error: "Forbidden" }, 403);
   }
   await next();
@@ -122,21 +118,20 @@ export const adminAnalyticsOnly: MiddlewareHandler = async (c, next) => {
   await next();
 };
 
-export const adminObserverOrDivisionPersonnelOnly: MiddlewareHandler = async (c, next) => {
+export const adminDivisionPersonnelOrSuperintendentOnly: MiddlewareHandler = async (c, next) => {
   const user = await getUserFromToken(c);
-  if (!user || (user.role !== "Admin" && user.role !== OBSERVER_ROLE && user.role !== "Division Personnel" && user.role !== SUPERINTENDENT_ROLE)) {
+  if (!user || (user.role !== "Admin" && user.role !== "Division Personnel" && user.role !== SUPERINTENDENT_ROLE)) {
     return c.json({ error: "Forbidden" }, 403);
   }
   await next();
 };
 
-export const adminObserverDivisionPersonnelOrCESOnly: MiddlewareHandler = async (c, next) => {
+export const adminDivisionPersonnelOrCESOnly: MiddlewareHandler = async (c, next) => {
   const user = await getUserFromToken(c);
   if (
     !user ||
     (
       user.role !== "Admin" &&
-      user.role !== OBSERVER_ROLE &&
       user.role !== "Division Personnel" &&
       user.role !== SUPERINTENDENT_ROLE &&
       !(CES_ROLES as readonly string[]).includes(user.role)

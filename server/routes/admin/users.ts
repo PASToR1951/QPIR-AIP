@@ -8,7 +8,7 @@ import { sanitizeObject } from "../../lib/sanitize.ts";
 import { sendWelcomeEmail } from "../../lib/accountEmails.ts";
 import { revokeAllUserSessions } from "../../lib/userSessions.ts";
 import { writeAuditLog } from "./shared/audit.ts";
-import { adminOnly, OBSERVER_ROLE } from "./shared/guards.ts";
+import { adminOnly } from "./shared/guards.ts";
 import { parsePositiveInt } from "./shared/params.ts";
 
 const usersRoutes = new Hono();
@@ -17,7 +17,8 @@ usersRoutes.use("/users", adminOnly);
 usersRoutes.use("/users/*", adminOnly);
 
 const CES_ROLES: string[] = ["CES-SGOD", "CES-ASDS", "CES-CID"];
-const SYSTEM_ROLES = new Set(["Admin", ...CES_ROLES, "Superintendent", OBSERVER_ROLE]);
+const CLUSTER_CONSULTANT_ROLE = "Cluster Consultant";
+const SYSTEM_ROLES = new Set(["Admin", ...CES_ROLES, "Superintendent", CLUSTER_CONSULTANT_ROLE]);
 const VALID_ROLES = new Set([...SYSTEM_ROLES, "Division Personnel", "School"]);
 const PATCHABLE_ROLES = new Set([...VALID_ROLES, "Pending"]);
 const PROGRAM_ASSIGNABLE_ROLES = new Set(["Division Personnel", ...CES_ROLES]);
@@ -43,6 +44,7 @@ interface ImportRow {
   last_name?: string;
   middle_initial?: string;
   school_id_int?: number;
+  cluster_id_int?: number;
   program_ids?: number[];
 }
 
@@ -151,6 +153,7 @@ function serializeAdminUser(
     is_active: boolean;
     created_at: Date;
     school: { id: number; name: string; level: string } | null;
+    cluster: { id: number; name: string; cluster_number: number } | null;
     programs: Array<{ id: number; title: string; division: string | null }>;
   },
   allPrograms: Array<{
@@ -173,6 +176,13 @@ function serializeAdminUser(
     role: user.role,
     is_active: user.is_active,
     school: user.school ? { id: user.school.id, name: user.school.name } : null,
+    cluster: user.cluster
+      ? {
+        id: user.cluster.id,
+        name: user.cluster.name,
+        cluster_number: user.cluster.cluster_number,
+      }
+      : null,
     programs: buildUserPrograms(user, allPrograms),
     created_at: user.created_at,
   };
@@ -198,7 +208,7 @@ usersRoutes.get("/users", async (c) => {
           ],
         }),
       },
-      include: { school: { include: { cluster: true } }, programs: true },
+      include: { school: { include: { cluster: true } }, cluster: true, programs: true },
       orderBy: { created_at: "desc" },
     }),
     fetchAllPrograms(),
@@ -215,7 +225,7 @@ usersRoutes.get("/users/:id/profile", async (c) => {
   const [user, allPrograms] = await Promise.all([
     prisma.user.findUnique({
       where: { id },
-      include: { school: { include: { cluster: true } }, programs: true },
+      include: { school: { include: { cluster: true } }, cluster: true, programs: true },
     }),
     fetchAllPrograms(),
   ]);
@@ -243,6 +253,7 @@ usersRoutes.post("/users", async (c) => {
     password,
     role,
     school_id,
+    cluster_id,
     program_ids,
   } = sanitizeObject(await c.req.json());
 
@@ -266,19 +277,26 @@ usersRoutes.post("/users", async (c) => {
     return c.json({ error: "Minimum 6 characters required" }, 400);
   }
 
-  if (role === OBSERVER_ROLE) {
-    return c.json(
-      { error: "The Observer role cannot be created directly. Assign it to an existing account via the edit form." },
-      409,
-    );
-  }
-
   const cesError = await validateCesSingleton(role);
   if (cesError) return c.json({ error: cesError }, 409);
 
   if (role === "School" && school_id) {
     const schoolError = await validateSchoolSingleton(school_id);
     if (schoolError) return c.json({ error: schoolError }, 409);
+  }
+  if (role === "School" && !school_id) {
+    return c.json({ error: "school_id is required for School users" }, 400);
+  }
+  if (role === CLUSTER_CONSULTANT_ROLE) {
+    const parsedClusterId = parsePositiveInt(cluster_id);
+    if (!parsedClusterId) {
+      return c.json({ error: "cluster_id is required for Cluster Consultant users" }, 400);
+    }
+    const cluster = await prisma.cluster.findUnique({
+      where: { id: parsedClusterId },
+      select: { id: true },
+    });
+    if (!cluster) return c.json({ error: "Cluster not found" }, 404);
   }
 
   const hashed = await hashPassword(password);
@@ -297,7 +315,10 @@ usersRoutes.post("/users", async (c) => {
           email: normalizedEmail,
           password: hashed,
           role,
-          ...(school_id && { school_id }),
+          ...(role === "School" && school_id && { school_id }),
+          ...(role === CLUSTER_CONSULTANT_ROLE && {
+            cluster_id: parsePositiveInt(cluster_id),
+          }),
           ...(canAssignPrograms && program_ids?.length && {
             programs: { connect: program_ids.map((id: number) => ({ id })) },
           }),
@@ -354,10 +375,6 @@ usersRoutes.post("/users/import", async (c) => {
     }
 
     const role = row.role as string;
-    if (role === OBSERVER_ROLE) {
-      errors.push({ email, reason: "Observer role cannot be created via bulk import. Assign it to an existing account." });
-      continue;
-    }
     if (SYSTEM_ROLES.has(role) && !SPLIT_NAME_ROLES.has(role) && !(row.name as string)?.trim()) {
       errors.push({ email, reason: `"name" is required for role "${role}"` });
       continue;
@@ -371,6 +388,11 @@ usersRoutes.post("/users/import", async (c) => {
     const schoolId = parsePositiveInt(row.school_id) ?? undefined;
     if (role === "School" && !schoolId) {
       errors.push({ email, reason: "Valid school_id is required for School role" });
+      continue;
+    }
+    const clusterId = parsePositiveInt(row.cluster_id) ?? undefined;
+    if (role === CLUSTER_CONSULTANT_ROLE && !clusterId) {
+      errors.push({ email, reason: "Valid cluster_id is required for Cluster Consultant role" });
       continue;
     }
 
@@ -395,6 +417,7 @@ usersRoutes.post("/users/import", async (c) => {
       last_name: (row.last_name as string)?.trim() || undefined,
       middle_initial: (row.middle_initial as string)?.trim() || undefined,
       school_id_int: schoolId,
+      cluster_id_int: clusterId,
       program_ids: programIds,
     });
   }
@@ -428,6 +451,9 @@ usersRoutes.post("/users/import", async (c) => {
           ...(row.last_name && { last_name: row.last_name }),
           ...(row.middle_initial && { middle_initial: row.middle_initial }),
           ...(row.school_id_int && { school_id: row.school_id_int }),
+          ...(row.role === CLUSTER_CONSULTANT_ROLE && row.cluster_id_int && {
+            cluster_id: row.cluster_id_int,
+          }),
           ...(PROGRAM_ASSIGNABLE_ROLES.has(row.role) && row.program_ids?.length && {
             programs: { connect: row.program_ids.map((id) => ({ id })) },
           }),
@@ -474,18 +500,28 @@ usersRoutes.patch("/users/:id", async (c) => {
     email,
     role,
     school_id,
+    cluster_id,
     program_ids,
     is_active,
   } = body;
 
   const existingUser = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, is_active: true, role: true, school_id: true },
+    select: {
+      id: true,
+      is_active: true,
+      role: true,
+      school_id: true,
+      cluster_id: true,
+    },
   });
   if (!existingUser) return c.json({ error: "Not found" }, 404);
 
   const nextRole = role ?? existingUser.role;
   const nextSchoolId = school_id !== undefined ? school_id : existingUser.school_id;
+  const nextClusterId = cluster_id !== undefined
+    ? parsePositiveInt(cluster_id)
+    : existingUser.cluster_id;
 
   if (role !== undefined) {
     if (!PATCHABLE_ROLES.has(role)) {
@@ -495,19 +531,24 @@ usersRoutes.patch("/users/:id", async (c) => {
     const cesError = await validateCesSingleton(role, id);
     if (cesError) return c.json({ error: cesError }, 409);
 
-    if (role === OBSERVER_ROLE) {
-      const observerCount = await prisma.user.count({
-        where: { role: OBSERVER_ROLE, NOT: { id } },
-      });
-      if (observerCount > 0) {
-        return c.json({ error: "An Observer account already exists. Only one Observer is allowed." }, 409);
-      }
-    }
   }
 
   if (nextRole === "School" && nextSchoolId != null) {
     const schoolError = await validateSchoolSingleton(nextSchoolId, id);
     if (schoolError) return c.json({ error: schoolError }, 409);
+  }
+  if (nextRole === "School" && !nextSchoolId) {
+    return c.json({ error: "school_id is required for School users" }, 400);
+  }
+  if (nextRole === CLUSTER_CONSULTANT_ROLE) {
+    if (!nextClusterId) {
+      return c.json({ error: "cluster_id is required for Cluster Consultant users" }, 400);
+    }
+    const cluster = await prisma.cluster.findUnique({
+      where: { id: nextClusterId },
+      select: { id: true },
+    });
+    if (!cluster) return c.json({ error: "Cluster not found" }, 404);
   }
 
   const updateData: Record<string, unknown> = {};
@@ -527,12 +568,17 @@ usersRoutes.patch("/users/:id", async (c) => {
   if (role !== undefined) updateData.role = role;
   if (is_active !== undefined) updateData.is_active = is_active;
 
-  if (role === "School" && school_id !== undefined) {
-    updateData.school_id = school_id;
+  if (nextRole === "School") {
+    updateData.school_id = nextSchoolId;
+    updateData.cluster_id = null;
+  } else if (nextRole === CLUSTER_CONSULTANT_ROLE) {
+    updateData.school_id = null;
+    updateData.cluster_id = nextClusterId;
   } else if (
-    ["Division Personnel", "Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Superintendent", "Pending", OBSERVER_ROLE].includes(role)
+    ["Division Personnel", "Admin", "CES-SGOD", "CES-ASDS", "CES-CID", "Superintendent", "Pending"].includes(nextRole)
   ) {
     updateData.school_id = null;
+    updateData.cluster_id = null;
   }
 
   try {

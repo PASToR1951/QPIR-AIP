@@ -44,6 +44,9 @@ export type RawPIR = {
   status: string;
   quarter: string;
   created_at: Date;
+  edit_requested?: boolean;
+  edit_requested_at?: Date | null;
+  edit_request_count?: number;
   aip: {
     year: number;
     division?: string | null;
@@ -110,5 +113,8 @@ export function normalizePIR(pir: RawPIR, divisionLogo: string | null = null) {
     programId: pir.aip.program.id,
     dateSubmitted: pir.created_at,
     submittedBy: buildSubmittedBy(pir.created_by),
+    edit_requested: pir.edit_requested ?? false,
+    edit_requested_at: pir.edit_requested_at ?? null,
+    edit_request_count: pir.edit_request_count ?? 0,
   };
 }

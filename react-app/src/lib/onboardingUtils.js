@@ -31,8 +31,9 @@ export function isChecklistLandingPage(roleKey, pathname = '') {
     case 'ces':
       return pathname === '/ces';
     case 'admin':
-    case 'observer':
       return pathname === '/admin';
+    case 'clusterConsultant':
+      return pathname === '/cluster-consultant';
     default:
       return false;
   }

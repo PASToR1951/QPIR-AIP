@@ -18,7 +18,7 @@ import { useOnboardingData } from './adminUsers/useUserData.js';
 import { useUserMutations } from './adminUsers/useUserMutations.js';
 import { SignatoriesPanel } from './adminSettings/SignatoriesPanel.jsx';
 
-const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent', 'Admin', 'Observer'];
+const ROLE_PILLS = ['All', 'School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent', 'Admin', 'Cluster Consultant'];
 
 export default function AdminUsers() {
   const [search, setSearch] = useState('');
@@ -56,7 +56,7 @@ export default function AdminUsers() {
     setTimeout(() => setToast(null), 3500);
   }, []);
 
-  const { users, loading, schools, programs, fetchAll, loadDropdownData } = useUserData({ search, roleFilter, showToast });
+  const { users, loading, schools, clusters, programs, fetchAll, loadDropdownData } = useUserData({ search, roleFilter, showToast });
   const onboarding = useOnboardingData();
   const { actionLoading, formError, setFormError, form, setForm, handleCreate, handleEdit, handleDelete, handleToggle, handleResetPassword } = useUserMutations({ fetchAll, showToast });
 
@@ -66,7 +66,7 @@ export default function AdminUsers() {
   const openEdit = (u) => {
     loadDropdownData();
     setEditUser(u);
-    setForm({ id: u.id, salutation: u.salutation || '', name: u.name || '', first_name: u.first_name || '', middle_initial: u.middle_initial || '', last_name: u.last_name || '', position: u.position || '', email: u.email, password: '', role: u.role, school_id: u.school?.id ?? null, program_ids: u.programs?.map(p => p.id) ?? [] });
+    setForm({ id: u.id, salutation: u.salutation || '', name: u.name || '', first_name: u.first_name || '', middle_initial: u.middle_initial || '', last_name: u.last_name || '', position: u.position || '', email: u.email, password: '', role: u.role, school_id: u.school?.id ?? null, cluster_id: u.cluster?.id ?? null, program_ids: u.programs?.map(p => p.id) ?? [] });
     setFormError('');
   };
 
@@ -139,6 +139,7 @@ export default function AdminUsers() {
         onClose={() => { setCreateOpen(false); setForm(EMPTY_USER_FORM); setFormError(''); }}
         onSave={handleCreate}
         schools={schools}
+        clusters={clusters}
         users={users}
         programs={programs}
         loading={actionLoading} error={formError}
@@ -150,7 +151,7 @@ export default function AdminUsers() {
       />
 
       <FormModal open={!!editUser} title="Edit User" onSave={async () => { const ok = await handleEdit(editUser); if (ok) setEditUser(null); }} onCancel={() => setEditUser(null)} loading={actionLoading} saveLabel="Save Changes">
-        <UserForm form={form} setForm={setForm} schools={schools} users={users} programs={programs} />
+        <UserForm form={form} setForm={setForm} schools={schools} clusters={clusters} users={users} programs={programs} />
         {formError && <p className="mt-3 text-xs font-bold text-rose-600">{formError}</p>}
       </FormModal>
 

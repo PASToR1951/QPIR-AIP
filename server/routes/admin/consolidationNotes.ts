@@ -14,7 +14,6 @@ const QUARTER_PREFIXES: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd",
 // Roles that may read consolidation data
 const READ_ROLES = new Set([
   "Admin",
-  "Observer",
   "Division Personnel",
   "Superintendent",
   ...CES_ROLES,

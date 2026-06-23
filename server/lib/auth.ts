@@ -31,7 +31,7 @@ const VALID_ROLES = [
   "CES-ASDS",
   "CES-CID",
   "Pending",
-  "Observer",
+  "Cluster Consultant",
   "Superintendent",
 ] as const;
 

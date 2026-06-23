@@ -8,6 +8,7 @@ export const VALID_STATUSES = new Set([
   "For Superintendent Review",
   "For Admin Review",
   "Approved",
+  "Needs Revision",
   "Returned",
 ]);
 

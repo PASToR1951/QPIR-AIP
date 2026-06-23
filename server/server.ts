@@ -8,6 +8,8 @@ import oauthRoutes from "./routes/oauth.ts";
 import onboardingRoutes from "./routes/onboarding.ts";
 import dataRoutes from "./routes/data.ts";
 import adminRoutes from "./routes/admin.ts";
+import clusterConsultantRoutes from "./routes/clusterConsultant.ts";
+import programOwnerRoutes from "./routes/programOwner.ts";
 import backupRoutes from "./routes/backup.ts";
 import faqsRoutes from "./routes/faqs.ts";
 import announcementsRoutes from "./routes/announcements.ts";
@@ -192,6 +194,8 @@ app.route("/api/auth", authRoutes);
 app.route("/api", faqsRoutes);
 app.route("/api", announcementsRoutes);
 app.route("/api", dataRoutes);
+app.route("/api/cluster-consultant", clusterConsultantRoutes);
+app.route("/api/program-owner", programOwnerRoutes);
 app.route("/api/admin", adminRoutes);
 app.route("/api/admin/backup", backupRoutes);
 

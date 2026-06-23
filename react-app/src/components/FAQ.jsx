@@ -36,7 +36,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "Who can use the portal?",
-        a: "The current portal supports School Users, Division Personnel, CES reviewers (CES-SGOD, CES-ASDS, CES-CID), the Superintendent, Admin users, Observers with read-only access, and Pending accounts awaiting administrator assignment. Your role controls which schools, programs, and review queues you can access."
+        a: "The current portal supports School Users, Division Personnel / Program Owners, CES reviewers (CES-SGOD, CES-ASDS, CES-CID), the Superintendent, Admin users, Cluster Consultants with assigned-cluster access, and Pending accounts awaiting administrator assignment. Your role controls which schools, programs, and review queues you can access."
       },
       {
         q: "What does Apir mean in this system?",
@@ -74,7 +74,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "Why is my account stuck in Pending status?",
-        a: "New accounts, including OAuth sign-ups, are created in Pending state with restricted access. An administrator must assign your role (School, Division Personnel, CES, Observer, or Admin) before you can use role-specific features."
+        a: "New accounts, including OAuth sign-ups, are created in Pending state with restricted access. An administrator must assign your role (School, Division Personnel / Program Owner, CES, Cluster Consultant, Superintendent, or Admin) before you can use role-specific features."
       },
       {
         q: "Why does the portal mention cookies after login?",
@@ -215,20 +215,24 @@ const FAQ_FALLBACK = [
         a: "The reviewer has accepted the record. Approved records become read-only. For AIPs, approval is what unlocks the corresponding PIR."
       },
       {
-        q: "What does Returned mean?",
-        a: "A reviewer sent the record back for correction. The submitter receives a notification with the reviewer's remarks and can edit and resubmit."
+        q: "What does Needs Revision mean?",
+        a: "Needs Revision means a reviewer or Cluster Consultant left remarks that require correction. Open the record, review the remarks, update the PIR, and resubmit it to the proper review queue."
       },
       {
-        q: "What happens when a PIR is returned?",
-        a: "You receive an in-app notification with the reviewer remarks. Open the same program and quarter, make the correction, then submit again. Returned PIRs go back to the appropriate recommendation or CES review queue."
+        q: "What does Returned mean?",
+        a: "Returned means edit access was granted after the submitter requested to unlock an approved record. It is separate from reviewer-prompted corrections."
+      },
+      {
+        q: "What happens when a PIR needs revision?",
+        a: "You receive an in-app notification with reviewer or Cluster Consultant remarks. Open the same program and quarter, make the correction, then submit again. PIRs marked Needs Revision go back to the appropriate recommendation or CES review queue."
       },
       {
         q: "Can I edit a PIR while it is being reviewed?",
-        a: "No. PIRs in active review statuses are locked until a reviewer returns them. Draft and Returned PIRs can be edited; approved, For CES Review, Under Review, and For Superintendent Review submissions stay locked."
+        a: "No. PIRs in active review statuses are locked. Draft, Needs Revision, and Returned PIRs can be edited; approved, For CES Review, Under Review, and For Superintendent Review submissions stay locked unless an edit request is approved."
       },
       {
-        q: "Who is a Focal Person?",
-        a: "A Focal Person is a Division Personnel user assigned to one or more programs. They review school submissions before CES review and can either recommend or return them with remarks."
+        q: "Who is a Program Owner or Focal Person?",
+        a: "A Program Owner / Focal Person is a Division Personnel user assigned to one or more programs. They review school submissions before CES review and can recommend PIRs for the next review stage."
       },
       {
         q: "Which CES role reviews which programs?",

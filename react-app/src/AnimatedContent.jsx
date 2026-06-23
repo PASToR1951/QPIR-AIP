@@ -33,6 +33,7 @@ const OnboardingWizard = lazy(() => import('./OnboardingWizard.jsx'));
 // CES pages
 const CESLayout = lazy(() => import('./ces/CESLayout.jsx'));
 const DivisionLayout = lazy(() => import('./division/DivisionLayout.jsx'));
+const ClusterConsultantLayout = lazy(() => import('./cluster-consultant/ClusterConsultantLayout.jsx'));
 
 // Admin layout + pages
 const AdminLayout = lazy(() => import('./admin/AdminLayout.jsx'));
@@ -80,6 +81,8 @@ function preloadForRole(role) {
     import('./AIPForm');
     import('./PIRForm');
     import('./admin/pages/AdminConsolidationTemplate.jsx');
+  } else if (role === 'Cluster Consultant') {
+    import('./cluster-consultant/ClusterConsultantLayout.jsx');
   } else {
     import('./AIPForm');
     import('./PIRForm');
@@ -104,6 +107,7 @@ function isProtectedPath(pathname) {
     pathname.startsWith('/admin') ||
     pathname.startsWith('/ces') ||
     pathname.startsWith('/division') ||
+    pathname.startsWith('/cluster-consultant') ||
     pathname === '/onboarding'
   );
 }
@@ -126,6 +130,7 @@ const ProtectedRoute = ({ children }) => {
   if (user.needs_onboarding || user.role === 'Pending') return <Navigate to="/onboarding" replace />;
   if (auth.isAdminPanelRole(user.role)) return <Navigate to="/admin" replace />;
   if (CES_ROLES.includes(user.role)) return <Navigate to="/ces" replace />;
+  if (user.role === 'Cluster Consultant') return <Navigate to="/cluster-consultant" replace />;
   return children;
 };
 
@@ -150,8 +155,7 @@ const AdminAnalyticsGuard = ({ children }) => {
   if (isTokenObsolete()) return <Navigate to="/login" replace />;
   const user = getCurrentUser();
   if (!user) return <Navigate to="/login" replace />;
-  // Admin, Observer, Superintendent
-  if (!['Admin', 'Observer', 'Superintendent'].includes(user.role)) return <Navigate to="/403" replace />;
+  if (!['Admin', 'Superintendent'].includes(user.role)) return <Navigate to="/403" replace />;
   return children;
 };
 
@@ -169,6 +173,15 @@ const CESRouteGuard = ({ children }) => {
   if (!user) return <Navigate to="/login" replace />;
   if (user.needs_onboarding || user.role === 'Pending') return <Navigate to="/onboarding" replace />;
   if (!CES_ROLES.includes(user.role) && user.role !== 'Admin') return <Navigate to="/" replace />;
+  return children;
+};
+
+const ClusterConsultantRouteGuard = ({ children }) => {
+  if (isTokenObsolete()) return <Navigate to="/login" replace />;
+  const user = getCurrentUser();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.needs_onboarding || user.role === 'Pending') return <Navigate to="/onboarding" replace />;
+  if (user.role !== 'Cluster Consultant') return <Navigate to="/" replace />;
   return children;
 };
 
@@ -401,6 +414,9 @@ export default function AnimatedContent() {
 
               {/* Division Focal Review Routes */}
               <Route path="/division/*" element={<DivisionPersonnelRouteGuard><DivisionLayout /></DivisionPersonnelRouteGuard>} />
+
+              {/* Cluster Consultant Routes */}
+              <Route path="/cluster-consultant/*" element={<ClusterConsultantRouteGuard><ClusterConsultantLayout /></ClusterConsultantRouteGuard>} />
               
               <Route path="/user-logs" element={<AuthenticatedRoute><PageTransition><UserLogs /></PageTransition></AuthenticatedRoute>} />
               <Route path="/announcements/:id" element={<AuthenticatedRoute><PageTransition><AnnouncementDetail /></PageTransition></AuthenticatedRoute>} />

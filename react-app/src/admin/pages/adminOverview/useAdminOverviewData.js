@@ -43,6 +43,7 @@ export function useAdminOverviewData() {
       Submitted: quarter.submitted,
       Approved: quarter.approved,
       'Under Review': quarter.underReview,
+      'Needs Revision': quarter.needsRevision ?? 0,
       Returned: quarter.returned,
       SGOD: quarter.SGOD ?? 0,
       CID: quarter.CID ?? 0,

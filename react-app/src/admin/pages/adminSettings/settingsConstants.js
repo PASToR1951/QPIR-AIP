@@ -25,7 +25,7 @@ export const ANNOUNCEMENT_ROLE_OPTIONS = [
   { value: 'CES-ASDS', label: 'CES-ASDS' },
   { value: 'CES-CID', label: 'CES-CID' },
   { value: 'Admin', label: 'Admin' },
-  { value: 'Observer', label: 'Observer' },
+  { value: 'Cluster Consultant', label: 'Cluster Consultant' },
 ];
 
 export const EMPTY_EMAIL_CONFIG = {

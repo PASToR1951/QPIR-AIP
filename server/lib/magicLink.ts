@@ -76,6 +76,7 @@ export async function consumeMagicLink(token: string) {
       user: {
         include: {
           school: { include: { cluster: true } },
+          cluster: true,
         },
       },
     },

@@ -6,15 +6,12 @@ import { sanitizeObject } from "../../lib/sanitize.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import {
   adminOnly,
-  adminOrObserverOnly,
-  adminObserverDivisionPersonnelOrCESOnly,
-  OBSERVER_ROLE,
+  adminDivisionPersonnelOrCESOnly,
   requireAdmin,
-  requireAdminOrObserver,
-  requireAdminObserverDivisionPersonnelOrCES,
+  requireAdminDivisionPersonnelOrCES,
 } from "./shared/guards.ts";
 
-export const observerRoutes = new Hono();
+export const readRoutes = new Hono();
 export const adminRoutes = new Hono();
 
 function serializeTemplateIndicators(
@@ -48,30 +45,16 @@ function serializeProgramTemplate(
   };
 }
 
-observerRoutes.use("/programs", adminObserverDivisionPersonnelOrCESOnly);
+readRoutes.use("/programs", adminDivisionPersonnelOrCESOnly);
 
 adminRoutes.use("/programs/:id", adminOnly);
 adminRoutes.use("/programs/:id/template", adminOnly);
 adminRoutes.use("/programs/:id/personnel", adminOnly);
 adminRoutes.use("/programs/:id/members", adminOnly);
 
-observerRoutes.get("/programs", async (c) => {
-  const actor = await requireAdminObserverDivisionPersonnelOrCES(c);
+readRoutes.get("/programs", async (c) => {
+  const actor = await requireAdminDivisionPersonnelOrCES(c);
   if (!actor) return c.json({ error: "Unauthorized" }, 401);
-
-  if (actor.role === OBSERVER_ROLE) {
-    const programs = await prisma.program.findMany({
-      select: {
-        id: true,
-        title: true,
-        abbreviation: true,
-        division: true,
-        school_level_requirement: true,
-      },
-      orderBy: { title: "asc" },
-    });
-    return c.json(programs);
-  }
 
   const programs = await prisma.program.findMany({
     include: {

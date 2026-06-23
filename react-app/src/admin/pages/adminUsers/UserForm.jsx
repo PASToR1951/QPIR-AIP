@@ -15,13 +15,13 @@ import {
 const inputCls = "w-full px-3 py-2 h-[38px] text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 const selectCls = "w-full px-3 h-[38px] text-sm bg-white dark:bg-dark-base border border-slate-200 dark:border-dark-border rounded-xl text-slate-700 dark:text-slate-300 focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 transition-all";
 
-export const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent', 'Admin', 'Observer'];
+export const ROLES = ['School', 'Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent', 'Admin', 'Cluster Consultant'];
 const SALUTATIONS = ['Mr.', 'Ms.', 'Mrs.', 'Dr.'];
 
 export const EMPTY_USER_FORM = {
   id: null, salutation: '', name: '', first_name: '', middle_initial: '',
   last_name: '', position: '', email: '', password: '', role: 'School',
-  school_id: null, program_ids: [],
+  school_id: null, cluster_id: null, program_ids: [],
 };
 
 export function userDisplayName(u) {
@@ -33,7 +33,7 @@ export function userDisplayName(u) {
   return u.name || (u.role === 'School' ? u.school?.name : null) || u.email || '';
 }
 
-export function UserForm({ form, setForm, schools, users = [], programs }) {
+export function UserForm({ form, setForm, schools, clusters = [], users = [], programs }) {
   const emailLocal = form.email.replace(/@deped\.gov\.ph$/, '');
   const availableSchoolRoleSchools = getAvailableSchoolRoleSchools({
     schools,
@@ -60,7 +60,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
 
   return (
     <div className="space-y-4">
-      {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Observer'].includes(form.role)) && (
+      {(['Admin', 'CES-SGOD', 'CES-ASDS', 'CES-CID', 'Cluster Consultant'].includes(form.role)) && (
         <div className="grid grid-cols-[120px_1fr] gap-3">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Title</label>
@@ -72,7 +72,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Full Name</label>
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              className={inputCls} placeholder={form.role === 'Observer' ? 'Observer Name' : form.role.startsWith('CES') ? `${form.role} Name` : 'Administrator Name'} />
+              className={inputCls} placeholder={form.role === 'Cluster Consultant' ? 'Cluster Consultant Name' : form.role.startsWith('CES') ? `${form.role} Name` : 'Administrator Name'} />
           </div>
         </div>
       )}
@@ -149,7 +149,7 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
               const tokens = f.name.trim().split(/\s+/);
               nameUpdate = { first_name: tokens[0] || '', last_name: tokens.slice(-1)[0] || '' };
             }
-            return { ...f, role: v, school_id: null, program_ids: getDefaultProgramIdsForRole(v, programs), ...nameUpdate };
+            return { ...f, role: v, school_id: null, cluster_id: null, program_ids: getDefaultProgramIdsForRole(v, programs), ...nameUpdate };
           })}
           placeholder="Select role"
         />
@@ -163,6 +163,20 @@ export function UserForm({ form, setForm, schools, users = [], programs }) {
             onChange={v => setForm(f => ({ ...f, school_id: v }))}
             placeholder="Select school"
           />
+        </div>
+      )}
+      {form.role === 'Cluster Consultant' && (
+        <div>
+          <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Assigned Cluster</label>
+          <SearchableSelect
+            options={clusters.map(cluster => ({ value: cluster.id, label: `Cluster ${cluster.cluster_number} - ${cluster.name}` }))}
+            value={form.cluster_id}
+            onChange={v => setForm(f => ({ ...f, cluster_id: v, school_id: null, program_ids: [] }))}
+            placeholder="Select one cluster"
+          />
+          <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+            Cluster Consultants can only view and comment within this cluster.
+          </p>
         </div>
       )}
       {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(form.role)) && (

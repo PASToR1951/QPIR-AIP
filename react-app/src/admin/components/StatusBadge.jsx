@@ -8,6 +8,7 @@ const STATUS_STYLES = {
   'For Superintendent Review': 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-400',
   'For Admin Review': 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400',
   Approved: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+  'Needs Revision': 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400',
   Returned: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400',
   AIP: 'bg-pink-100 text-pink-700 dark:bg-pink-950/40 dark:text-pink-400',
   PIR: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
@@ -17,7 +18,7 @@ const STATUS_STYLES = {
   'CES-SGOD': 'bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400',
   'CES-ASDS': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-400',
   'CES-CID': 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400',
-  Observer: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+  'Cluster Consultant': 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
 };
 
 export const StatusBadge = ({ status, size = 'sm' }) => {

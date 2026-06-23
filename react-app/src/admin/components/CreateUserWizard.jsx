@@ -71,6 +71,17 @@ const ROLES = [
     hoverBg: 'hover:border-emerald-300 dark:hover:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20',
     iconBg: 'bg-emerald-100 dark:bg-emerald-950/50',
   },
+  {
+    value: 'Cluster Consultant',
+    label: 'Cluster Consultant',
+    icon: ShieldStar,
+    description: 'Cluster-scoped account. Views one assigned cluster and leaves PIR remarks.',
+    group: 'system',
+    iconColor: 'text-slate-500',
+    activeBg: 'bg-slate-50 dark:bg-slate-900/50 border-slate-400 dark:border-slate-600',
+    hoverBg: 'hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/70 dark:hover:bg-slate-900/30',
+    iconBg: 'bg-slate-100 dark:bg-slate-900/70',
+  },
 ];
 
 function RoleCard({ role, selected, onSelect }) {
@@ -149,7 +160,7 @@ const STRENGTH_CONFIG = {
   strong:   { label: 'Strong',   bars: 3, color: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
 };
 
-function DetailsForm({ form, setForm, schools, users = [], programs }) {
+function DetailsForm({ form, setForm, schools, clusters = [], users = [], programs }) {
   const [showPassword, setShowPassword] = useState(false);
   const isDepedEmail = true;
   const strength = getPasswordStrength(form.password);
@@ -179,7 +190,7 @@ function DetailsForm({ form, setForm, schools, users = [], programs }) {
 
   return (
     <div className="space-y-4">
-      {form.role === 'Admin' && (
+      {(['Admin', 'Cluster Consultant'].includes(form.role)) && (
         <div className="grid grid-cols-[120px_1fr] gap-3">
           <div>
             <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
@@ -198,7 +209,7 @@ function DetailsForm({ form, setForm, schools, users = [], programs }) {
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               className={inputCls}
-              placeholder="Administrator Name"
+              placeholder={form.role === 'Cluster Consultant' ? 'Cluster Consultant Name' : 'Administrator Name'}
             />
           </div>
         </div>
@@ -253,6 +264,20 @@ function DetailsForm({ form, setForm, schools, users = [], programs }) {
             />
           </div>
         </>
+      )}
+
+      {form.role === 'Cluster Consultant' && (
+        <div>
+          <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+            Assigned Cluster <span className="text-rose-500">*</span>
+          </label>
+          <SearchableSelect
+            options={clusters.map(cluster => ({ value: cluster.id, label: `Cluster ${cluster.cluster_number} - ${cluster.name}` }))}
+            value={form.cluster_id}
+            onChange={v => setForm(f => ({ ...f, cluster_id: v, school_id: null, program_ids: [] }))}
+            placeholder="Select one cluster"
+          />
+        </div>
       )}
 
       {(['Division Personnel', 'Superintendent'].includes(form.role)) && (
@@ -437,11 +462,12 @@ function createEmptyForm() {
     password: '',
     role: null,
     school_id: null,
+    cluster_id: null,
     program_ids: [],
   };
 }
 
-export function CreateUserWizard({ open, onClose, onSave, schools, users = [], programs, loading, error }) {
+export function CreateUserWizard({ open, onClose, onSave, schools, clusters = [], users = [], programs, loading, error }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(createEmptyForm);
 
@@ -517,10 +543,10 @@ export function CreateUserWizard({ open, onClose, onSave, schools, users = [], p
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {step === 1 && (
-            <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, program_ids: getDefaultProgramIdsForRole(v, programs) }))} />
+            <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, cluster_id: null, program_ids: getDefaultProgramIdsForRole(v, programs) }))} />
           )}
           {step === 2 && (
-            <DetailsForm form={form} setForm={setForm} schools={schools} users={users} programs={programs} />
+            <DetailsForm form={form} setForm={setForm} schools={schools} clusters={clusters} users={users} programs={programs} />
           )}
         </div>
 

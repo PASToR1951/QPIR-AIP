@@ -99,7 +99,7 @@ model User {
   id        Int       @id @default(autoincrement())
   email     String    @unique
   password  String?   // Hashed password — null for OAuth-only users
-  role            String    // "School" | "Division Personnel" | "Admin" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Pending" | "Observer" | "Superintendent"; CES-* are functional review distinctions encoded as role values.
+  role            String    // "School" | "Division Personnel" | "Admin" | "CES-SGOD" | "CES-ASDS" | "CES-CID" | "Pending" | "Cluster Consultant" | "Superintendent"; CES-* are functional review distinctions encoded as role values.
 
   // OAuth SSO fields — populated on first OAuth login
   oauth_provider  String?   // "google" | null
@@ -143,6 +143,9 @@ model User {
 
   // PIRs this user is currently actively reviewing
   active_pir_reviews PIR[] @relation("PIRActiveReviewer")
+
+  // PIR comments authored by cluster consultants
+  pir_comments PIRComment[] @relation("PIRCommentAuthor")
 
   // Admin audit logs
   audit_logs    AuditLog[]
@@ -281,6 +284,9 @@ model PIR {
   action_items                Json     @default("[]")
   // Shape: [{action: string, response_asds: string, response_sds: string}]
   status                      String   @default("For CES Review") // "Draft" | "For Recommendation" | "For CES Review" | "For Admin Review" | "Under Review" | "Approved" | "Returned"
+  edit_requested              Boolean  @default(false)
+  edit_requested_at           DateTime?
+  edit_request_count          Int      @default(0)
   deleted_at                  DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
   presented                   Boolean  @default(false) // Admin-toggled: whether school presented this PIR
   // CES review tracking
@@ -304,9 +310,27 @@ model PIR {
   active_reviewer    User?               @relation("PIRActiveReviewer", fields: [active_reviewer_id], references: [id], onDelete: SetNull)
   activity_reviews   PIRActivityReview[]
   factors            PIRFactor[]
+  comments           PIRComment[]
 
   @@unique([aip_id, quarter]) // Ensures only one PIR per quarter for a specific AIP
   @@index([status, focal_person_id])
+}
+
+model PIRComment {
+  id             Int      @id @default(autoincrement())
+  pir_id         Int
+  author_user_id Int
+  scope          String
+  section_key    String?
+  category       String
+  body           String
+  created_at     DateTime @default(now())
+
+  pir            PIR      @relation(fields: [pir_id], references: [id], onDelete: Cascade)
+  author         User     @relation("PIRCommentAuthor", fields: [author_user_id], references: [id], onDelete: Cascade)
+
+  @@index([pir_id, created_at])
+  @@index([author_user_id])
 }
 
 model PIRActivityReview {

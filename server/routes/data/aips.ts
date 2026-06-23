@@ -85,14 +85,26 @@ async function mapTargetlessUniqueConflict<T>(
 }
 
 async function getActiveFocalPersonIds(programId: number): Promise<number[]> {
-  const focalPeople = await prisma.programFocalPerson.findMany({
-    where: {
-      program_id: programId,
-      user: { role: "Division Personnel", is_active: true },
+  const program = await prisma.program.findUnique({
+    where: { id: programId },
+    select: {
+      focal_persons: {
+        where: { user: { role: "Division Personnel", is_active: true } },
+        select: { user_id: true },
+      },
+      personnel: {
+        where: { role: "Division Personnel", is_active: true },
+        select: { id: true },
+      },
     },
-    select: { user_id: true },
   });
-  return focalPeople.map((person) => person.user_id);
+  if (!program) return [];
+  return [
+    ...new Set([
+      ...program.focal_persons.map((person) => person.user_id),
+      ...program.personnel.map((person) => person.id),
+    ]),
+  ];
 }
 
 aipRoutes.use("/aips", requireAuth());
@@ -341,9 +353,7 @@ aipRoutes.post(
         });
       } catch (error) {
         return c.json({
-          error: error instanceof Error
-            ? error.message
-            : "Invalid AIP metrics",
+          error: error instanceof Error ? error.message : "Invalid AIP metrics",
         }, 400);
       }
 
@@ -478,7 +488,7 @@ aipRoutes.post(
         where: { role: "Admin" },
         select: { id: true },
       });
-      
+
       const notifyIds = [
         ...new Set([
           ...(isSchoolSubmission ? focalPersonIds : []),
@@ -644,9 +654,7 @@ aipRoutes.put(
         });
       } catch (error) {
         return c.json({
-          error: error instanceof Error
-            ? error.message
-            : "Invalid AIP metrics",
+          error: error instanceof Error ? error.message : "Invalid AIP metrics",
         }, 400);
       }
 

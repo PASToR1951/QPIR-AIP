@@ -6,6 +6,7 @@ const VALID_ROLES = new Set([
   'CES-ASDS',
   'CES-CID',
   'Superintendent',
+  'Cluster Consultant',
 ]);
 
 const SYSTEM_ROLES = new Set([
@@ -13,6 +14,7 @@ const SYSTEM_ROLES = new Set([
   'CES-SGOD',
   'CES-ASDS',
   'CES-CID',
+  'Cluster Consultant',
 ]);
 
 export function parseCSV(text) {
@@ -36,6 +38,7 @@ export function parseCSV(text) {
       : [];
 
     row.school_id = row.school_id ? parseInt(row.school_id, 10) || null : null;
+    row.cluster_id = row.cluster_id ? parseInt(row.cluster_id, 10) || null : null;
     const errors = [];
     const email = (row.email || '').toLowerCase().trim();
     row.email = email;
@@ -56,6 +59,9 @@ export function parseCSV(text) {
       if (row.role === 'School' && !row.school_id) {
         errors.push('Valid school_id is required for School role');
       }
+      if (row.role === 'Cluster Consultant' && !row.cluster_id) {
+        errors.push('Valid cluster_id is required for Cluster Consultant role');
+      }
     }
 
     return {
@@ -67,9 +73,10 @@ export function parseCSV(text) {
   });
 }
 
-export const EXAMPLE_CSV = `email,role,name,first_name,last_name,middle_initial,school_id,program_ids
+export const EXAMPLE_CSV = `email,role,name,first_name,last_name,middle_initial,school_id,cluster_id,program_ids
 101234@deped.gov.ph,School,,,,,42,
-juan.delacruz@deped.gov.ph,Division Personnel,,Juan,Dela Cruz,D,,2;5
-juan.delacruz001@deped.gov.ph,Division Personnel,,Juan,Dela Cruz,A,,3
-superintendent@deped.gov.ph,Superintendent,,Maria,Santos,R,,
-ces.head@deped.gov.ph,CES-SGOD,Rowena Flores,,,,,`;
+juan.delacruz@deped.gov.ph,Division Personnel,,Juan,Dela Cruz,D,,,2;5
+juan.delacruz001@deped.gov.ph,Division Personnel,,Juan,Dela Cruz,A,,,3
+cluster.consultant@deped.gov.ph,Cluster Consultant,Cluster Consultant Name,,,,,1,
+superintendent@deped.gov.ph,Superintendent,,Maria,Santos,R,,,
+ces.head@deped.gov.ph,CES-SGOD,Rowena Flores,,,,,,`;

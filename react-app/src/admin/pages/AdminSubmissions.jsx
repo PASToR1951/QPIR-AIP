@@ -88,7 +88,7 @@ export default function AdminSubmissions() {
   const tab      = normalizeTab(searchParams.get('type'));
   const group    = searchParams.get('group') || 'flat';
   const reviewId = searchParams.get('review');
-  const isObserver = auth.isObserver();
+  const isReadOnly = false;
   const isSuperintendent = auth.isSuperintendent();
 
   const setTab   = (key) => { setSearchParams(prev => { const next = new URLSearchParams(prev); next.set('type',  key); return next; }); setPage(1); setHighlightRowId(null); };
@@ -154,9 +154,9 @@ export default function AdminSubmissions() {
   const { submissions, totals, loading, fetchError, fetchSubmissions, clusters, schools, programs } =
     useSubmissionsData({ tab, filters, page });
 
-  const actions    = useSubmissionActions({ fetchSubmissions, showToast, isObserver, isSuperintendent });
+  const actions    = useSubmissionActions({ fetchSubmissions, showToast, isReadOnly, isSuperintendent });
   const modal      = useSubmissionModal({
-    isObserver,
+    isReadOnly,
     fetchSubmissions,
     setActionError: actions.setActionError,
     showToast,
@@ -218,7 +218,7 @@ export default function AdminSubmissions() {
 
   const renderTable = (data, extraProps = {}) => (
     <DataTable columns={columns} data={data}
-      selectable={!isObserver} selectedIds={selectedIds} onSelectChange={setSelectedIds}
+      selectable={!isReadOnly} selectedIds={selectedIds} onSelectChange={setSelectedIds}
       onRowClick={(row) => { if (row.type === 'PIR') navigate(`/admin/pirs/${row.id}`); else modal.openView(row); }}
       getRowClassName={(row) => [row.type === 'PIR' ? 'cursor-pointer' : '', row.id === highlightRowId ? 'row-highlight' : ''].filter(Boolean).join(' ')}
       highlightRowId={highlightRowId} endCountLabel="submission" showEndCount {...extraProps}
@@ -279,7 +279,7 @@ export default function AdminSubmissions() {
         )}
 
         {/* Bulk Actions */}
-        {!isObserver && selectedIds.length > 0 && (
+        {!isReadOnly && selectedIds.length > 0 && (
           <div className="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/40 rounded-2xl px-4 py-3">
             <span className="text-sm font-bold text-indigo-700 dark:text-indigo-400">{selectedIds.length} selected</span>
             {submissions.some(s => selectedIds.includes(s.id) && actions.canChangeSubmissionStatus(s)) && (
@@ -317,7 +317,7 @@ export default function AdminSubmissions() {
 
       <SubmissionDetailModal
         viewItem={modal.viewItem} viewData={modal.viewData} viewLoading={modal.viewLoading}
-        isObserver={isObserver} onClose={modal.closeView}
+        isReadOnly={isReadOnly} onClose={modal.closeView}
         editActionLoading={modal.editActionLoading} onEditAction={modal.handleEditAction}
         canDownloadSubmission={actions.canDownloadSubmission}
       />

@@ -37,6 +37,7 @@ import {
   fetchPIRForUser,
   fetchProgramByTitle,
 } from "./shared/lookups.ts";
+import { canOwnPir } from "./shared/pirOwnership.ts";
 import {
   factorFieldsToClientShape,
   pirActivityClientId,
@@ -52,6 +53,53 @@ import type {
 } from "./shared/types.ts";
 
 const pirRoutes = new Hono<{ Variables: DataRouteEnv }>();
+
+const PIR_COMMENT_AUTHOR_SELECT = {
+  id: true,
+  role: true,
+  name: true,
+  first_name: true,
+  middle_initial: true,
+  last_name: true,
+  email: true,
+};
+
+function displayUserName(user: any): string {
+  if (!user) return "Cluster Consultant";
+  if (user.first_name && user.last_name) {
+    return [
+      user.first_name,
+      user.middle_initial ? `${user.middle_initial}.` : "",
+      user.last_name,
+    ].filter(Boolean).join(" ");
+  }
+  return user.name ?? user.email ?? "Cluster Consultant";
+}
+
+function serializePirComment(comment: any) {
+  return {
+    id: comment.id,
+    scope: comment.scope,
+    sectionKey: comment.section_key ?? null,
+    category: comment.category,
+    body: comment.body,
+    createdAt: comment.created_at,
+    author: {
+      id: comment.author?.id ?? null,
+      name: displayUserName(comment.author),
+      role: comment.author?.role ?? "Cluster Consultant",
+    },
+  };
+}
+
+async function fetchPirCommentsForSubmitter(pirId: number) {
+  const comments = await (prisma as any).pIRComment.findMany({
+    where: { pir_id: pirId },
+    include: { author: { select: PIR_COMMENT_AUTHOR_SELECT } },
+    orderBy: { created_at: "asc" },
+  });
+  return comments.map(serializePirComment);
+}
 
 function buildDeadline(
   year: number,
@@ -134,14 +182,26 @@ async function mapTargetlessUniqueConflict<T>(
 }
 
 async function getActiveFocalPersonIds(programId: number): Promise<number[]> {
-  const focalPeople = await prisma.programFocalPerson.findMany({
-    where: {
-      program_id: programId,
-      user: { role: "Division Personnel", is_active: true },
+  const program = await prisma.program.findUnique({
+    where: { id: programId },
+    select: {
+      focal_persons: {
+        where: { user: { role: "Division Personnel", is_active: true } },
+        select: { user_id: true },
+      },
+      personnel: {
+        where: { role: "Division Personnel", is_active: true },
+        select: { id: true },
+      },
     },
-    select: { user_id: true },
   });
-  return focalPeople.map((person) => person.user_id);
+  if (!program) return [];
+  return [
+    ...new Set([
+      ...program.focal_persons.map((person) => person.user_id),
+      ...program.personnel.map((person) => person.id),
+    ]),
+  ];
 }
 
 pirRoutes.use("/pirs", requireAuth());
@@ -201,17 +261,7 @@ pirRoutes.get(
         );
       }
 
-      if (
-        tokenUser.role === "School" && aip.school_id !== tokenUser.school_id
-      ) {
-        return c.json({ error: "Forbidden" }, 403);
-      }
-      if (
-        pir.created_by_user_id !== null &&
-        pir.created_by_user_id !== tokenUser.id &&
-        tokenUser.role !== "Division Personnel" &&
-        tokenUser.role !== "School"
-      ) {
+      if (!canOwnPir(tokenUser, { ...pir, aip })) {
         return c.json({ error: "Forbidden" }, 403);
       }
 
@@ -233,7 +283,11 @@ pirRoutes.get(
       return c.json({
         id: pir.id,
         status: pir.status,
+        editRequested: (pir as any).edit_requested ?? false,
+        editRequestedAt: (pir as any).edit_requested_at ?? null,
+        editRequestCount: (pir as any).edit_request_count ?? 0,
         cesRemarks: pir.ces_remarks ?? null,
+        comments: await fetchPirCommentsForSubmitter(pir.id),
         quarter: pir.quarter,
         program: aip.program.title,
         school: aip.school?.name ?? "Division",
@@ -277,6 +331,30 @@ pirRoutes.get(
         })(),
         factors: factorsMap,
       });
+    },
+  ),
+);
+
+pirRoutes.get(
+  "/pirs/:id/comments",
+  asyncHandler(
+    "Failed to fetch PIR comments",
+    "Failed to fetch PIR comments",
+    async (c) => {
+      const tokenUser = getAuthedUser(c);
+      const pirId = safeParseInt(c.req.param("id"), 0);
+      if (!pirId) return c.json({ error: "Invalid PIR id" }, 400);
+
+      const pir = await prisma.pIR.findUnique({
+        where: { id: pirId },
+        include: { aip: { select: { school_id: true } } },
+      });
+      if (!pir) return c.json({ error: "PIR not found" }, 404);
+      if (!canOwnPir(tokenUser, pir as any)) {
+        return c.json({ error: "Forbidden" }, 403);
+      }
+
+      return c.json(await fetchPirCommentsForSubmitter(pirId));
     },
   ),
 );
@@ -416,9 +494,11 @@ pirRoutes.post(
             );
 
             if (existingDraft && existingDraft.status !== "Draft") {
-              if (existingDraft.status === "Returned") {
+              if (
+                ["Needs Revision", "Returned"].includes(existingDraft.status)
+              ) {
                 throw new ConflictError(
-                  "This PIR was returned for correction. Please update the returned PIR instead of submitting a new one.",
+                  "This PIR is open for revision. Please update the existing PIR instead of submitting a new one.",
                 );
               }
               throw new ConflictError(
@@ -646,8 +726,9 @@ pirRoutes.put(
             pirAip?.school_id != null;
           if (
             isSchoolResubmission
-              ? lockedPir.status !== "Returned"
+              ? !["Needs Revision", "Returned"].includes(lockedPir.status)
               : lockedPir.status !== "For CES Review" &&
+                lockedPir.status !== "Needs Revision" &&
                 lockedPir.status !== "Returned"
           ) {
             throw new ConflictError(
@@ -693,7 +774,7 @@ pirRoutes.put(
           await tx.pIRActivityReview.deleteMany({ where: { pir_id: pirId } });
           await tx.pIRFactor.deleteMany({ where: { pir_id: pirId } });
 
-          return tx.pIR.update({
+          return (tx.pIR as any).update({
             where: { id: pirId },
             data: {
               program_owner,
@@ -703,6 +784,8 @@ pirRoutes.put(
               indicator_quarterly_targets: indicator_quarterly_targets ?? [],
               action_items: action_items ?? [],
               status: resubmitStatus,
+              edit_requested: false,
+              edit_requested_at: null,
               ...(isSchoolResubmission && {
                 focal_person_id: null,
                 focal_recommended_at: null,
@@ -802,7 +885,7 @@ pirRoutes.delete(
 
           if (
             isSchoolOwner &&
-            !["Draft", "Returned"].includes(lockedPir.status)
+            !["Draft", "Needs Revision", "Returned"].includes(lockedPir.status)
           ) {
             throw new ConflictError(
               "This PIR can no longer be deleted — it is currently under review.",
@@ -829,6 +912,181 @@ pirRoutes.delete(
         ipAddress: getClientIp(c),
       });
       return c.json({ message: "PIR deleted successfully" });
+    },
+  ),
+);
+
+pirRoutes.post(
+  "/pirs/:id/request-edit",
+  asyncHandler(
+    "Failed to send PIR edit request",
+    "Failed to send edit request",
+    async (c) => {
+      const tokenUser = getAuthedUser(c);
+      const pirId = safeParseInt(c.req.param("id"), 0);
+      if (!pirId) return c.json({ error: "Invalid PIR id" }, 400);
+
+      const pir = await prisma.pIR.findUnique({
+        where: { id: pirId },
+        include: { aip: { include: { program: true, school: true } } },
+      });
+      if (!pir) return c.json({ error: "PIR not found" }, 404);
+
+      const MAX_EDIT_REQUESTS = 3;
+      const updatedPir = await withAdvisoryLock(
+        LOCK_NAMESPACE.PIR,
+        pirResourceKeyFromRecord(pir),
+        async (tx) => {
+          const lockedPir = await tx.pIR.findUnique({
+            where: { id: pirId },
+            include: { aip: { include: { program: true, school: true } } },
+          });
+          if (!lockedPir) {
+            throw new HttpError(404, "PIR not found", "NOT_FOUND");
+          }
+
+          if (!canOwnPir(tokenUser, lockedPir as any)) {
+            throw new HttpError(
+              403,
+              "Not authorized to request edit for this PIR",
+              "FORBIDDEN",
+            );
+          }
+
+          if (lockedPir.status !== "Approved") {
+            throw new ConflictError(
+              "Edit requests can only be made for Approved PIRs",
+            );
+          }
+
+          if (((lockedPir as any).edit_requested ?? false) === true) {
+            throw new ConflictError("An edit request is already pending.");
+          }
+
+          if (
+            ((lockedPir as any).edit_request_count ?? 0) >= MAX_EDIT_REQUESTS
+          ) {
+            throw new ConflictError(
+              "You have reached the maximum number of edit requests (3) for this PIR.",
+            );
+          }
+
+          return (tx.pIR as any).update({
+            where: { id: pirId },
+            data: {
+              edit_requested: true,
+              edit_requested_at: new Date(),
+              edit_request_count: { increment: 1 },
+            },
+            include: { aip: { include: { program: true, school: true } } },
+          });
+        },
+      );
+
+      let requesterLabel: string;
+      if (updatedPir.aip.school) {
+        requesterLabel = updatedPir.aip.school.name;
+      } else {
+        const requester = await prisma.user.findUnique({
+          where: { id: tokenUser.id },
+          select: { name: true, email: true },
+        });
+        requesterLabel = requester?.name ?? requester?.email ??
+          "Division Personnel";
+      }
+
+      const admins = await prisma.user.findMany({
+        where: { role: "Admin", is_active: true },
+        select: { id: true },
+      });
+      if (admins.length > 0) {
+        const editNotifs = await prisma.notification.createManyAndReturn({
+          data: admins.map((admin) => ({
+            user_id: admin.id,
+            title: "Edit Request - PIR",
+            message:
+              `${requesterLabel} is requesting permission to edit their PIR for ${updatedPir.aip.program.title} (${updatedPir.quarter}).`,
+            type: "pir_edit_requested",
+            entity_id: pirId,
+            entity_type: "pir",
+          })),
+        });
+        pushNotifications(editNotifs);
+      }
+
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "pir_edit_request",
+        entityType: "PIR",
+        entityId: pirId,
+        details: {
+          programTitle: updatedPir.aip.program.title,
+          quarter: updatedPir.quarter,
+        },
+        ipAddress: getClientIp(c),
+      });
+
+      return c.json({ message: "Edit request sent to admin" });
+    },
+  ),
+);
+
+pirRoutes.post(
+  "/pirs/:id/cancel-edit-request",
+  asyncHandler(
+    "Failed to cancel PIR edit request",
+    "Failed to cancel edit request",
+    async (c) => {
+      const tokenUser = getAuthedUser(c);
+      const pirId = safeParseInt(c.req.param("id"), 0);
+      if (!pirId) return c.json({ error: "Invalid PIR id" }, 400);
+
+      const pir = await prisma.pIR.findUnique({
+        where: { id: pirId },
+        include: { aip: { select: { school_id: true } } },
+      });
+      if (!pir) return c.json({ error: "PIR not found" }, 404);
+
+      await withAdvisoryLock(
+        LOCK_NAMESPACE.PIR,
+        pirResourceKeyFromRecord(pir),
+        async (tx) => {
+          const lockedPir = await tx.pIR.findUnique({
+            where: { id: pirId },
+            include: { aip: { select: { school_id: true } } },
+          });
+          if (!lockedPir) {
+            throw new HttpError(404, "PIR not found", "NOT_FOUND");
+          }
+
+          if (!canOwnPir(tokenUser, lockedPir as any)) {
+            throw new HttpError(
+              403,
+              "Not authorized to cancel this edit request",
+              "FORBIDDEN",
+            );
+          }
+
+          if (!((lockedPir as any).edit_requested ?? false)) {
+            throw new ConflictError("No pending edit request");
+          }
+
+          await (tx.pIR as any).update({
+            where: { id: pirId },
+            data: { edit_requested: false, edit_requested_at: null },
+          });
+        },
+      );
+
+      writeUserLog({
+        userId: tokenUser.id,
+        action: "pir_cancel_edit_request",
+        entityType: "PIR",
+        entityId: pirId,
+        details: { quarter: pir.quarter },
+        ipAddress: getClientIp(c),
+      });
+      return c.json({ message: "Edit request cancelled" });
     },
   ),
 );

@@ -21,6 +21,7 @@ export const STATUS_COLORS_FUNNEL = {
   'For CES Review': '#06b6d4',
   'For Superintendent Review': '#14b8a6',
   Approved: '#10b981',
+  'Needs Revision': '#f97316',
   Returned: '#E94560',
 };
 

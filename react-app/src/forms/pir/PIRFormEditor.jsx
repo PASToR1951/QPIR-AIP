@@ -156,15 +156,16 @@ export default function PIRFormEditor({
                     <div className="mx-auto max-w-[1500px] px-4 pb-4 pt-6 print:hidden">
                         {(() => {
                             const isReturned = submission.pirStatus === 'Returned';
+                            const needsRevision = submission.pirStatus === 'Needs Revision';
                             const isApproved = submission.pirStatus === 'Approved';
                             const isPending = ['For Recommendation', 'For CES Review'].includes(submission.pirStatus);
-                            const accentBorder = isReturned
+                            const accentBorder = (isReturned || needsRevision)
                                 ? 'border-l-amber-400'
                                 : isPending
                                     ? 'border-l-blue-400'
                                     : 'border-l-emerald-400';
-                            const iconColor = isReturned ? 'text-amber-500' : isPending ? 'text-blue-500' : 'text-emerald-500';
-                            const labelColor = isReturned
+                            const iconColor = (isReturned || needsRevision) ? 'text-amber-500' : isPending ? 'text-blue-500' : 'text-emerald-500';
+                            const labelColor = (isReturned || needsRevision)
                                 ? 'text-amber-800 dark:text-amber-200'
                                 : isPending
                                     ? 'text-blue-800 dark:text-blue-200'
@@ -175,8 +176,8 @@ export default function PIRFormEditor({
                                     ? `Currently ${submission.pirStatus.toLowerCase()} by reviewers`
                                     : 'Submitted — read-only';
                             const canEdit = user?.role === 'School'
-                                ? submission.pirStatus === 'Returned'
-                                : ['For CES Review', 'Returned'].includes(submission.pirStatus);
+                                ? ['Needs Revision', 'Returned'].includes(submission.pirStatus)
+                                : ['For CES Review', 'Needs Revision', 'Returned'].includes(submission.pirStatus);
                             return (
                                 <div className={`rounded-2xl border border-slate-200 border-l-4 bg-white shadow-sm dark:border-dark-border dark:border-l-4 dark:bg-dark-surface ${accentBorder} print:hidden`}>
                                     <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 dark:border-dark-border">
@@ -248,13 +249,13 @@ export default function PIRFormEditor({
                     {submission.cesRemarks && (
                         <div className={[
                             'mt-3 rounded-2xl border p-5 print:hidden',
-                            submission.pirStatus === 'Returned'
+                            ['Returned', 'Needs Revision'].includes(submission.pirStatus)
                                 ? 'border-amber-200 bg-amber-50 dark:border-amber-700/40 dark:bg-amber-950/10'
                                 : 'border-teal-200 bg-teal-50 dark:border-teal-700/40 dark:bg-teal-950/10',
                         ].join(' ')}>
                             <p className={[
                                 'mb-2 text-[11px] font-black uppercase tracking-widest',
-                                submission.pirStatus === 'Returned'
+                                ['Returned', 'Needs Revision'].includes(submission.pirStatus)
                                     ? 'text-amber-700 dark:text-amber-400'
                                     : 'text-teal-700 dark:text-teal-400',
                             ].join(' ')}>
@@ -262,12 +263,46 @@ export default function PIRFormEditor({
                             </p>
                             <p className={[
                                 'text-sm leading-relaxed whitespace-pre-wrap',
-                                submission.pirStatus === 'Returned'
+                                ['Returned', 'Needs Revision'].includes(submission.pirStatus)
                                     ? 'text-amber-900 dark:text-amber-200'
                                     : 'text-teal-900 dark:text-teal-200',
                             ].join(' ')}>
                                 {submission.cesRemarks}
                             </p>
+                        </div>
+                    )}
+                    {Array.isArray(submission.comments) && submission.comments.length > 0 && (
+                        <div className="mt-3 rounded-2xl border border-orange-200 bg-orange-50 p-5 print:hidden dark:border-orange-800/50 dark:bg-orange-950/20">
+                            <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-orange-700 dark:text-orange-300">
+                                Cluster Consultant Remarks
+                            </p>
+                            <div className="space-y-4">
+                                {['overall', 'section'].map((scope) => {
+                                    const comments = submission.comments.filter((comment) => comment.scope === scope);
+                                    if (!comments.length) return null;
+                                    return (
+                                        <div key={scope}>
+                                            <p className="mb-2 text-xs font-black text-orange-900 dark:text-orange-200">
+                                                {scope === 'overall' ? 'Overall Comments' : 'Section-Specific Comments'}
+                                            </p>
+                                            <div className="space-y-2">
+                                                {comments.map((comment) => (
+                                                    <div key={comment.id} className="rounded-xl border border-orange-200 bg-white/70 p-3 dark:border-orange-800/50 dark:bg-dark-surface/70">
+                                                        <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-orange-700 dark:text-orange-300">
+                                                            <span className="uppercase tracking-widest">{comment.category?.replace('_', ' ')}</span>
+                                                            {comment.sectionKey && <span>Section: {comment.sectionKey.replace('_', ' ')}</span>}
+                                                            <span>{comment.createdAt ? new Date(comment.createdAt).toLocaleString() : ''}</span>
+                                                        </div>
+                                                        <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-relaxed text-orange-950 dark:text-orange-100">
+                                                            {comment.body}
+                                                        </p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
                     </div>

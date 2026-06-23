@@ -36,6 +36,7 @@ const CONSOLIDATION_STATUSES = [
   'For Superintendent Review',
   'For Admin Review',
   'Approved',
+  'Needs Revision',
   'Returned',
 ];
 const DEBOUNCE_MS = 800;

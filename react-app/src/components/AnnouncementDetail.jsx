@@ -79,7 +79,7 @@ export default function AnnouncementDetail() {
       <DashboardHeader user={user} onLogout={handleLogout} />
       <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-8">
         <Link
-          to={user?.role === 'Admin' || user?.role === 'Observer' ? '/admin' : '/'}
+          to={user?.role === 'Admin' ? '/admin' : user?.role === 'Cluster Consultant' ? '/cluster-consultant' : '/'}
           className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300 transition-colors mb-5"
         >
           <ArrowLeft size={16} weight="bold" /> Back

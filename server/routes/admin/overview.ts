@@ -234,6 +234,9 @@ overviewRoutes.get("/overview", async (c) => {
       returned: quarterPirs.filter((pir) =>
         pir.status === "Returned"
       ).length,
+      needsRevision: quarterPirs.filter((pir) =>
+        pir.status === "Needs Revision"
+      ).length,
       SGOD: quarterPirs.filter((pir) =>
         resolvePirSection(pir) === "SGOD"
       ).length,
@@ -251,6 +254,8 @@ overviewRoutes.get("/overview", async (c) => {
     currentQuarterPirs.filter((pir) => pir.status === "Approved").length;
   const pirReturnedThisQ =
     currentQuarterPirs.filter((pir) => pir.status === "Returned").length;
+  const pirNeedsRevisionThisQ =
+    currentQuarterPirs.filter((pir) => pir.status === "Needs Revision").length;
 
   const pirTotalThisYear = pirsByQuarter.length;
   const pirApprovedThisYear =
@@ -470,6 +475,9 @@ overviewRoutes.get("/overview", async (c) => {
         ).length,
       approved: sectionPirs.filter((pir) => pir.status === "Approved").length,
       returned: sectionPirs.filter((pir) => pir.status === "Returned").length,
+      needsRevision: sectionPirs.filter((pir) =>
+        pir.status === "Needs Revision"
+      ).length,
     };
   });
 
@@ -506,6 +514,7 @@ overviewRoutes.get("/overview", async (c) => {
       pirSubmittedThisQ,
       pirApprovedThisQ,
       pirReturnedThisQ,
+      pirNeedsRevisionThisQ,
       pirApprovalRate,
       pirTotalThisYear,
       pirApprovedThisYear,
@@ -539,7 +548,7 @@ overviewRoutes.get("/onboarding-overview", async (c) => {
     "CES-ASDS",
     "CES-CID",
     "Admin",
-    "Observer",
+    "Cluster Consultant",
   ];
 
   const users = await prisma.user.findMany({

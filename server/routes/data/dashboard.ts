@@ -104,6 +104,8 @@ dashboardRoutes.get(
               status: true,
               created_at: true,
               deleted_at: true,
+              edit_requested: true,
+              edit_request_count: true,
             },
             orderBy: { created_at: "asc" },
           },
@@ -130,6 +132,8 @@ dashboardRoutes.get(
             quarter: pir.quarter,
             status: pir.status,
             deletedAt: pir.deleted_at ?? null,
+            editRequested: pir.edit_requested ?? false,
+            editRequestCount: (pir as any).edit_request_count ?? 0,
           })),
         });
       }

@@ -188,6 +188,7 @@ lookupsRoutes.get(
         "For Recommendation",
         "For CES Review",
         "Approved",
+        "Needs Revision",
         "Returned",
       ];
 

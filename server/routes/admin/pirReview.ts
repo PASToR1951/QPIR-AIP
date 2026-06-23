@@ -15,10 +15,7 @@ import { getCESRoleForDivisionPIR } from "../../lib/routing.ts";
 import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { buildSubmittedBy } from "./shared/display.ts";
-import {
-  OBSERVER_ROLE,
-  requireCES,
-} from "./shared/guards.ts";
+import { requireCES } from "./shared/guards.ts";
 import {
   PIR_DETAIL_INCLUDE,
   PIR_LIST_INCLUDE,
@@ -43,7 +40,6 @@ const PIR_READABLE_ROLES = [
   "CES-ASDS",
   "CES-CID",
   "Superintendent",
-  OBSERVER_ROLE,
 ];
 
 function canCESReviewDivision(role: string, division: string | null): boolean {
@@ -809,7 +805,7 @@ pirReviewRoutes.post(
         return tx.pIR.update({
           where: { id: pirId },
           data: {
-            status: "Returned",
+            status: "Needs Revision",
             active_reviewer_id: null,
             active_review_started_at: null,
             ces_reviewer_id: tokenUser.id,
@@ -824,13 +820,13 @@ pirReviewRoutes.post(
         const notification = await prisma.notification.create({
           data: {
             user_id: (pir as any).created_by_user_id,
-            title: "PIR Returned by CES",
+            title: "PIR Needs Revision",
             message: `Your PIR for ${(pir as any).aip.program.title} (${
               (pir as any).quarter
-            }) was returned by CES.${
+            }) needs revision.${
               ces_remarks ? ` Feedback: ${ces_remarks}` : ""
             }`,
-            type: "returned",
+            type: "needs_revision",
             entity_id: (pir as any).id,
             entity_type: "pir",
           },

@@ -33,15 +33,17 @@ export default function FocalPersonReview({ type }) {
   const [done, setDone] = useState(false);
 
   const label = type === 'aip' ? 'AIP' : 'PIR';
-  const endpointBase = `/api/admin/focal/${type}s/${id}`;
+  const actionEndpointBase = `/api/admin/focal/${type}s/${id}`;
+  const readEndpoint = `/api/program-owner/${type}s/${id}`;
 
   useEffect(() => {
     setLoading(true);
-    api.get(endpointBase)
+    api.get(readEndpoint)
+      .catch(() => api.get(actionEndpointBase))
       .then(res => setDocument(res.data))
       .catch(() => setDocument(null))
       .finally(() => setLoading(false));
-  }, [endpointBase]);
+  }, [actionEndpointBase, readEndpoint]);
 
   const canAct = document?.status === 'For Recommendation';
 
@@ -70,7 +72,7 @@ export default function FocalPersonReview({ type }) {
     setSubmitting(true);
     setError('');
     try {
-      await api.post(`${endpointBase}/${modal}`, { focal_remarks: remarks });
+      await api.post(`${actionEndpointBase}/${modal}`, { focal_remarks: remarks });
       setDone(true);
     } catch (err) {
       setError(err.friendlyMessage ?? 'Action failed. Please refresh the queue and try again.');
@@ -173,7 +175,7 @@ export default function FocalPersonReview({ type }) {
         <>
           <Section title="Performance">
             <div className="grid gap-3 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-3">
-              <div><span className="block text-xs font-bold text-slate-400">Program Owner</span>{document.owner || '—'}</div>
+              <div><span className="block text-xs font-bold text-slate-400">Program Owner</span>{document.owner || document.programOwner || '—'}</div>
               <div><span className="block text-xs font-bold text-slate-400">Budget from Division</span>{formatCurrency(document.budgetFromDivision)}</div>
               <div><span className="block text-xs font-bold text-slate-400">Budget from CO/PSF</span>{formatCurrency(document.budgetFromCoPSF)}</div>
             </div>
@@ -184,7 +186,7 @@ export default function FocalPersonReview({ type }) {
                 <div key={activity.id} className="rounded-xl border border-slate-100 p-4 text-sm dark:border-dark-border">
                   <p className="font-bold text-slate-700 dark:text-slate-200">{activity.name || 'Untitled Activity'}</p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {activity.complied === null ? 'Unplanned' : activity.complied ? 'Complied' : 'Not complied'} · {formatCurrency(activity.finAcc)}
+                    {activity.complied === null ? 'Unplanned' : activity.complied ? 'Complied' : 'Not complied'} · {formatCurrency(activity.finAcc ?? activity.financialAccomplished)}
                   </p>
                   <p className="mt-2 whitespace-pre-wrap text-slate-600 dark:text-slate-300">{activity.actualTasksConducted || '—'}</p>
                 </div>

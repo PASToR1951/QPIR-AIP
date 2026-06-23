@@ -297,7 +297,7 @@ settingsRoutes.get("/settings/signatories", async (c) => {
       where: {
         is_active: true,
         deleted_at: null,
-        role: { notIn: ["Pending", "Admin", "Observer"] },
+        role: { notIn: ["Pending", "Admin", "Cluster Consultant"] },
       },
       select: {
         id: true,

@@ -66,6 +66,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
         ? [
             { to: '/', label: 'Dashboard', icon: House, end: true },
             { to: '/division', label: 'Queue', icon: ClipboardText, end: true, badge: pendingCount, preload: () => import('../../division/DivisionLayout.jsx') },
+            { to: '/division/programs', label: 'Programs', icon: FileText, preload: () => import('../../division/DivisionLayout.jsx') },
             { to: '/division/consolidation', label: 'Consolidation', icon: ChartBar, preload: () => import('../../division/DivisionLayout.jsx') },
             { to: '/aip', label: 'My AIP', icon: FileText, preload: () => import('../../AIPForm.jsx') },
             { to: '/pir', label: 'My PIR', icon: ChartBar, preload: () => import('../../PIRForm.jsx') },

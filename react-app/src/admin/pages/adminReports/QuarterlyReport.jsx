@@ -29,6 +29,7 @@ export function QuarterlyReport({ year }) {
         <Legend />
         <Bar dataKey="submitted" name="Submitted" fill="#3b82f6" radius={[4, 4, 0, 0]} />
         <Bar dataKey="approved" name="Approved" fill="#10b981" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="needsRevision" name="Needs Revision" fill="#f97316" radius={[4, 4, 0, 0]} />
         <Bar dataKey="returned" name="Returned" fill="#E94560" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>

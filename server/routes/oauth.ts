@@ -224,6 +224,7 @@ async function finishOAuthLogin(
       id: number;
       role: string;
       school_id: number | null;
+      cluster_id: number | null;
       school: { cluster_id: number | null } | null;
     };
   }
@@ -282,6 +283,7 @@ async function finishOAuthLogin(
       id: user.id,
       role: user.role,
       school_id: user.school_id,
+      cluster_id: user.school?.cluster_id ?? user.cluster_id ?? null,
       school: user.school
         ? { cluster_id: user.school.cluster_id ?? null }
         : null,

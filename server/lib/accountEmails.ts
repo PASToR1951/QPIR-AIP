@@ -38,7 +38,9 @@ function buildAffiliation(user: EmailUser) {
   if (user.role === "School") return user.school?.name ?? "School";
   if (user.role === "Division Personnel") return "Division";
   if (user.role.startsWith("CES")) return "Curriculum Implementation Division";
-  if (user.role === "Admin" || user.role === "Observer") return "Division Office";
+  if (user.role === "Admin" || user.role === "Cluster Consultant") {
+    return "Division Office";
+  }
   return user.role;
 }
 

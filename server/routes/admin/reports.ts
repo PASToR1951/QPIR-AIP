@@ -3,7 +3,7 @@ import { prisma } from "../../db/client.ts";
 import { getUserFromToken } from "../../lib/auth.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { toCSV, toXLSX } from "./shared/exports.ts";
-import { adminObserverOrDivisionPersonnelOnly } from "./shared/guards.ts";
+import { adminDivisionPersonnelOrSuperintendentOnly } from "./shared/guards.ts";
 import { parseReportQuery } from "./shared/params.ts";
 import {
   REPORT_AIP_INCLUDE,
@@ -47,11 +47,12 @@ const FUNNEL_STATUSES = [
   "For CES Review",
   "For Superintendent Review",
   "Approved",
+  "Needs Revision",
   "Returned",
 ];
 const QUARTER_SCOPED_EXPORTS = new Set(["compliance", "workload", "funnel"]);
 
-reportsRoutes.use("/reports/*", adminObserverOrDivisionPersonnelOnly);
+reportsRoutes.use("/reports/*", adminDivisionPersonnelOrSuperintendentOnly);
 reportsRoutes.use("/reports/*", async (c, next) => {
   const admin = (await getUserFromToken(c))!;
   const now = Date.now();
@@ -440,6 +441,9 @@ reportsRoutes.get("/reports/quarterly", async (c) => {
         ).length,
         approved: quarterPirs.filter((pir) =>
           pir.status === "Approved"
+        ).length,
+        needsRevision: quarterPirs.filter((pir) =>
+          pir.status === "Needs Revision"
         ).length,
         returned: quarterPirs.filter((pir) =>
           pir.status === "Returned"

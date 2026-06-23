@@ -55,14 +55,55 @@ async function isFocalForProgram(
   programId: number,
   userId: number,
 ) {
-  const count = await db.programFocalPerson.count({
+  const count = await db.program.count({
     where: {
-      program_id: programId,
-      user_id: userId,
-      user: { role: "Division Personnel", is_active: true },
+      id: programId,
+      OR: [
+        {
+          focal_persons: {
+            some: {
+              user_id: userId,
+              user: { role: "Division Personnel", is_active: true },
+            },
+          },
+        },
+        {
+          personnel: {
+            some: {
+              id: userId,
+              role: "Division Personnel",
+              is_active: true,
+            },
+          },
+        },
+      ],
     },
   });
   return count > 0;
+}
+
+function programOwnerProgramFilter(userId: number) {
+  return {
+    OR: [
+      {
+        focal_persons: {
+          some: {
+            user_id: userId,
+            user: { role: "Division Personnel", is_active: true },
+          },
+        },
+      },
+      {
+        personnel: {
+          some: {
+            id: userId,
+            role: "Division Personnel",
+            is_active: true,
+          },
+        },
+      },
+    ],
+  };
 }
 
 async function notifyCESUsers(
@@ -278,12 +319,14 @@ focalRoutes.get(
         const q = Number(rawQuarter);
         const y = Number(rawYear);
         if (q >= 1 && q <= 4 && !isNaN(y)) {
-           const ordinals = ["", "1st", "2nd", "3rd", "4th"];
-           quarterFilter = `${ordinals[q]} Quarter CY ${y}`;
-           yearFilter = y;
+          const ordinals = ["", "1st", "2nd", "3rd", "4th"];
+          quarterFilter = `${ordinals[q]} Quarter CY ${y}`;
+          yearFilter = y;
         }
       } else if (c.req.query("quarter")) {
-        quarterFilter = normalizeQuarterLabel(sanitizeString(c.req.query("quarter") || ""));
+        quarterFilter = normalizeQuarterLabel(
+          sanitizeString(c.req.query("quarter") || ""),
+        );
       }
       if (!yearFilter && c.req.query("year")) {
         yearFilter = Number(c.req.query("year"));
@@ -292,12 +335,16 @@ focalRoutes.get(
       const where = {
         status: "For Recommendation",
         focal_person_id: null,
-        program: {
-          focal_persons: { some: { user_id: tokenUser.id } },
-        },
+        program: programOwnerProgramFilter(tokenUser.id),
       };
       const [aips, pirs] = await Promise.all([
-        prisma.aIP.count({ where: { ...where, school_id: { not: null }, ...(yearFilter ? { year: yearFilter } : {}) } }),
+        prisma.aIP.count({
+          where: {
+            ...where,
+            school_id: { not: null },
+            ...(yearFilter ? { year: yearFilter } : {}),
+          },
+        }),
         prisma.pIR.count({
           where: {
             status: "For Recommendation",
@@ -307,7 +354,7 @@ focalRoutes.get(
               school_id: { not: null },
               ...(yearFilter ? { year: yearFilter } : {}),
               program: {
-                focal_persons: { some: { user_id: tokenUser.id } },
+                ...programOwnerProgramFilter(tokenUser.id),
               },
             },
           },
@@ -327,13 +374,15 @@ focalRoutes.get(
       const tokenUser = await requireDivisionPersonnel(c);
       if (!tokenUser) return c.json({ error: "Forbidden" }, 403);
 
-      const year = c.req.query("year") ? Number(c.req.query("year")) : undefined;
+      const year = c.req.query("year")
+        ? Number(c.req.query("year"))
+        : undefined;
       const aips = await prisma.aIP.findMany({
         where: {
           status: "For Recommendation",
           focal_person_id: null,
           school_id: { not: null },
-          program: { focal_persons: { some: { user_id: tokenUser.id } } },
+          program: programOwnerProgramFilter(tokenUser.id),
           ...(year && Number.isInteger(year) ? { year } : {}),
         },
         include: {
@@ -374,12 +423,14 @@ focalRoutes.get(
         const q = Number(rawQuarter);
         const y = Number(rawYear);
         if (q >= 1 && q <= 4 && !isNaN(y)) {
-           const ordinals = ["", "1st", "2nd", "3rd", "4th"];
-           quarterFilter = `${ordinals[q]} Quarter CY ${y}`;
-           yearFilter = y;
+          const ordinals = ["", "1st", "2nd", "3rd", "4th"];
+          quarterFilter = `${ordinals[q]} Quarter CY ${y}`;
+          yearFilter = y;
         }
       } else if (c.req.query("quarter")) {
-        quarterFilter = normalizeQuarterLabel(sanitizeString(c.req.query("quarter") || ""));
+        quarterFilter = normalizeQuarterLabel(
+          sanitizeString(c.req.query("quarter") || ""),
+        );
       }
 
       if (!yearFilter && c.req.query("year")) {
@@ -394,7 +445,7 @@ focalRoutes.get(
           aip: {
             school_id: { not: null },
             ...(yearFilter ? { year: yearFilter } : {}),
-            program: { focal_persons: { some: { user_id: tokenUser.id } } },
+            program: programOwnerProgramFilter(tokenUser.id),
           },
         },
         include: {
@@ -640,7 +691,7 @@ async function handlePirFocalAction(
             focal_remarks: remarks || null,
           }
           : {
-            status: "Returned",
+            status: "Needs Revision",
             focal_person_id: tokenUser.id,
             focal_recommended_at: null,
             focal_remarks: remarks,
@@ -658,10 +709,10 @@ async function handlePirFocalAction(
     });
   } else {
     await notifySubmitter(pir.created_by_user_id, {
-      title: "PIR Returned by Focal Person",
+      title: "PIR Needs Revision",
       message:
-        `Your PIR for ${pir.aip.program.title} (${pir.quarter}) was returned for correction. Feedback: ${remarks}`,
-      type: "returned",
+        `Your PIR for ${pir.aip.program.title} (${pir.quarter}) needs revision. Feedback: ${remarks}`,
+      type: "needs_revision",
       entityId: pir.id,
       entityType: "pir",
     });

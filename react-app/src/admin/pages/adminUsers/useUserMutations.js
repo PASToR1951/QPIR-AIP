@@ -45,7 +45,7 @@ export function useUserMutations({ fetchAll, showToast }) {
       const payload = normalizeUserPayload({
         salutation: form.salutation, name: form.name, first_name: form.first_name,
         middle_initial: form.middle_initial, last_name: form.last_name, position: form.position,
-        email: form.email, role: form.role, school_id: form.school_id, program_ids: form.program_ids,
+        email: form.email, role: form.role, school_id: form.school_id, cluster_id: form.cluster_id, program_ids: form.program_ids,
       });
       await api.patch(`/api/admin/users/${editUser.id}`, {
         ...payload,
@@ -58,6 +58,7 @@ export function useUserMutations({ fetchAll, showToast }) {
             email: payload.email, role: payload.role,
             salutation: payload.salutation, name: payload.name, first_name: payload.first_name,
             middle_initial: payload.middle_initial, last_name: payload.last_name, position: payload.position,
+            cluster_id: payload.cluster_id,
           }, auth.getExpiry());
         }
       } catch { /* non-critical */ }

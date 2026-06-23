@@ -21,7 +21,7 @@ const ROLE_OPTIONS = [
   'CES-ASDS',
   'CES-CID',
   'Admin',
-  'Observer',
+  'Cluster Consultant',
 ];
 const PAGE_SIZE = 25;
 

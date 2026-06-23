@@ -3,7 +3,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import api from '../../../lib/api.js';
 
-export function useSubmissionModal({ isObserver, fetchSubmissions, setActionError, showToast }) {
+export function useSubmissionModal({ isReadOnly, fetchSubmissions, setActionError, showToast }) {
   const [viewItem, setViewItem]               = useState(null);
   const [viewData, setViewData]               = useState(null);
   const [viewLoading, setViewLoading]         = useState(false);
@@ -59,10 +59,11 @@ export function useSubmissionModal({ isObserver, fetchSubmissions, setActionErro
   };
 
   const handleEditAction = async (action) => {
-    if (!viewItem || isObserver) return;
+    if (!viewItem || isReadOnly) return;
     setEditActionLoading(action);
     try {
-      await api.patch(`/api/admin/aips/${viewItem.id}/${action}-edit`);
+      const collection = viewItem.type === 'PIR' ? 'pirs' : 'aips';
+      await api.patch(`/api/admin/${collection}/${viewItem.id}/${action}-edit`);
       closeView();
       fetchSubmissions();
     } catch (e) {

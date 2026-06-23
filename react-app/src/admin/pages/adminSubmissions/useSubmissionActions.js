@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import api from '../../../lib/api.js';
 
-export function useSubmissionActions({ fetchSubmissions, showToast, isObserver, isSuperintendent }) {
+export function useSubmissionActions({ fetchSubmissions, showToast, isReadOnly, isSuperintendent }) {
   const [approveItem, setApproveItem]               = useState(null);
   const [returnItem, setReturnItem]                 = useState(null);
   const [returnFeedback, setReturnFeedback]         = useState('');
@@ -10,7 +10,7 @@ export function useSubmissionActions({ fetchSubmissions, showToast, isObserver, 
   const [actionError, setActionError]               = useState(null);
 
   const canChangeSubmissionStatus = (item) => {
-    if (isObserver) return false;
+    if (isReadOnly) return false;
     if (item?.type === 'PIR') return false;
     if (['For Recommendation', 'For CES Review'].includes(item?.status)) return false;
     if (item?.status === 'For Superintendent Review' && !isSuperintendent) return false;
@@ -44,7 +44,7 @@ export function useSubmissionActions({ fetchSubmissions, showToast, isObserver, 
   };
 
   const handleBulkApprove = async (submissions, selectedIds, setSelectedIds) => {
-    if (isObserver || !selectedIds.length) return;
+    if (isReadOnly || !selectedIds.length) return;
     setActionLoading(true);
     try {
       const toApprove = submissions.filter(

@@ -11,7 +11,7 @@ export const ANNOUNCEMENT_TARGET_ROLES = [
   "CES-SGOD",
   "CES-ASDS",
   "CES-CID",
-  "Observer",
+  "Cluster Consultant",
 ] as const;
 
 const SEVERITY_RANK: Record<string, number> = {

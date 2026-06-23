@@ -41,7 +41,7 @@ const toAipDocumentData = (viewData) => {
 
 export function SubmissionDetailModal({
   viewItem, viewData, viewLoading,
-  isObserver, onClose,
+  isReadOnly, onClose,
   editActionLoading, onEditAction,
   canDownloadSubmission,
 }) {
@@ -147,7 +147,7 @@ export function SubmissionDetailModal({
         {/* Footer */}
         <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-center sm:px-6 lg:px-8 border-t border-slate-200 dark:border-dark-border shrink-0 bg-white dark:bg-dark-surface">
           <div className="flex w-full items-center justify-center gap-2 flex-wrap">
-            {!isObserver && viewData?.edit_requested && viewItem.type === 'AIP' && (
+            {!isReadOnly && viewData?.edit_requested && ['AIP', 'PIR'].includes(viewItem.type) && (
               <>
                 <button
                   disabled={!!editActionLoading}

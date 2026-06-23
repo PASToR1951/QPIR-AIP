@@ -5,6 +5,7 @@ import { pushNotification } from "../../../lib/notifStream.ts";
 
 export const STATUS_LABELS: Record<string, string> = {
   "Approved": "approved",
+  "Needs Revision": "needs_revision",
   "Returned": "returned",
   "Under Review": "under_review",
   "For Recommendation": "for_recommendation",
@@ -26,10 +27,15 @@ const PIR_STATUS_MESSAGES: Record<
     message:
       `Your PIR for ${programTitle} (${quarter}) from ${school} has been approved.${feedback ? ` Feedback: ${feedback}` : ""}`,
   }),
-  "Returned": (programTitle, quarter, _school, feedback) => ({
-    title: "PIR Returned",
+  "Needs Revision": (programTitle, quarter, _school, feedback) => ({
+    title: "PIR Needs Revision",
     message:
-      `Your PIR for ${programTitle} (${quarter}) has been returned for correction.${feedback ? ` Feedback: ${feedback}` : ""}`,
+      `Your PIR for ${programTitle} (${quarter}) needs revision.${feedback ? ` Feedback: ${feedback}` : ""}`,
+  }),
+  "Returned": (programTitle, quarter) => ({
+    title: "PIR Edit Request Approved",
+    message:
+      `Your request to edit the PIR for ${programTitle} (${quarter}) has been approved. You may now edit and resubmit.`,
   }),
   "Under Review": (programTitle, quarter) => ({
     title: "PIR Under Review",
@@ -166,6 +172,48 @@ export async function pushAIPEditDeniedNotification(aip: {
       type: "aip_edit_denied",
       entity_id: aip.id,
       entity_type: "aip",
+    },
+  });
+  pushNotification(created);
+}
+
+export async function pushPIREditApprovedNotification(pir: {
+  id: number;
+  quarter: string;
+  created_by_user_id: number | null;
+  aip: { program: { title: string } };
+}) {
+  if (!pir.created_by_user_id) return;
+  const created = await prisma.notification.create({
+    data: {
+      user_id: pir.created_by_user_id,
+      title: "Edit Request Approved",
+      message:
+        `Your request to edit the PIR for ${pir.aip.program.title} (${pir.quarter}) has been approved. You may now edit and resubmit.`,
+      type: "pir_edit_approved",
+      entity_id: pir.id,
+      entity_type: "pir",
+    },
+  });
+  pushNotification(created);
+}
+
+export async function pushPIREditDeniedNotification(pir: {
+  id: number;
+  quarter: string;
+  created_by_user_id: number | null;
+  aip: { program: { title: string } };
+}) {
+  if (!pir.created_by_user_id) return;
+  const created = await prisma.notification.create({
+    data: {
+      user_id: pir.created_by_user_id,
+      title: "Edit Request Denied",
+      message:
+        `Your request to edit the PIR for ${pir.aip.program.title} (${pir.quarter}) has been denied.`,
+      type: "pir_edit_denied",
+      entity_id: pir.id,
+      entity_type: "pir",
     },
   });
   pushNotification(created);

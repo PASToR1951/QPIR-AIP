@@ -160,7 +160,7 @@ export const CHANGELOG = [
     date: '2026-04-13',
     title: 'AIP-PIR Beta 2',
     description:
-      'Beta 2 adds SMTP email and division broadcasts, magic link tokens, the Observer role, onboarding tour, practice mode, program templates, and a major refactor of the admin and AIP form modules.',
+      'Beta 2 adds SMTP email and division broadcasts, magic link tokens, monitoring roles, onboarding tour, practice mode, program templates, and a major refactor of the admin and AIP form modules.',
     changes: [
       {
         type: 'feature',
@@ -192,7 +192,7 @@ export const CHANGELOG = [
       },
       {
         type: 'feature',
-        text: 'Observer role — eighth active workflow role with read-only access to submitted AIPs and PIRs across the division.',
+        text: 'Cluster Consultant role - cluster-scoped monitoring access for submitted AIPs and PIRs.',
       },
       {
         type: 'feature',
@@ -228,7 +228,7 @@ export const CHANGELOG = [
       },
       {
         type: 'feature',
-        text: 'AIP fields: edit_requested_at, edit_request_count, target_description, observer_notes.',
+        text: 'AIP fields: edit_requested_at, edit_request_count, and target_description.',
       },
       {
         type: 'feature',
@@ -240,7 +240,7 @@ export const CHANGELOG = [
       },
       {
         type: 'improvement',
-        text: 'Admin submissions split into granular sub-modules: aipEdit, detail, list, normalizers, notifications, observerNotes, pirActions, status, validation.',
+        text: 'Admin submissions split into granular sub-modules: aipEdit, detail, list, normalizers, notifications, pirActions, status, validation.',
       },
       {
         type: 'improvement',
