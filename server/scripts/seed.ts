@@ -11,21 +11,52 @@ const pool = new pg.Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+const SERIAL_SEQUENCE_TARGETS = [
+  {
+    label: "clusters",
+    table: "public.clusters",
+    sequence: "public.clusters_id_seq",
+  },
+  {
+    label: "programs",
+    table: "public.programs",
+    sequence: "public.programs_id_seq",
+  },
+  {
+    label: "schools",
+    table: "public.schools",
+    sequence: "public.schools_id_seq",
+  },
+];
+
 async function parseCSV(filePath: string) {
   const text = await Deno.readTextFile(filePath);
   return parse(text, { skipFirstRow: true });
 }
 
+async function syncSeededSerialSequences() {
+  for (const target of SERIAL_SEQUENCE_TARGETS) {
+    await prisma.$executeRawUnsafe(`
+      SELECT setval(
+        '${target.sequence}'::regclass,
+        COALESCE((SELECT MAX(id) FROM ${target.table}), 1),
+        (SELECT MAX(id) IS NOT NULL FROM ${target.table})
+      );
+    `);
+    console.log(`🔢 Synced ${target.label} ID sequence.`);
+  }
+}
+
 async function main() {
-  console.log('🌱 Starting database seed...');
-  
+  console.log("🌱 Starting database seed...");
+
   // Use current working directory to resolve relative paths properly
   const cwd = Deno.cwd();
-  const dataDir = path.resolve(cwd, '..', 'data');
+  const dataDir = path.resolve(cwd, "..", "data");
 
   // 1. Seed Clusters
   try {
-    const clustersFile = path.join(dataDir, 'clusters.csv');
+    const clustersFile = path.join(dataDir, "clusters.csv");
     console.log(`Loading ${clustersFile}...`);
     const clusters = await parseCSV(clustersFile);
     for (const cluster of clusters) {
@@ -39,23 +70,23 @@ async function main() {
         },
       });
     }
-    console.log('✅ Clusters seeded.');
+    console.log("✅ Clusters seeded.");
   } catch (e) {
     console.log(`⚠️ clusters.csv not found or error parsing: ${e}`);
   }
 
   // 2. Seed Programs
   try {
-    const programsFile = path.join(dataDir, 'programs.csv');
+    const programsFile = path.join(dataDir, "programs.csv");
     console.log(`Loading ${programsFile}...`);
     const programs = await parseCSV(programsFile);
     for (const program of programs) {
       const title = program.title as string;
       const schoolLevelRequirement = program.school_level_requirement as string;
       const abbreviation = (program.abbreviation as string) || null;
-      const divisionRaw = (program.division as string) || '';
-      const division = ['SGOD', 'OSDS', 'CID'].includes(divisionRaw)
-        ? (divisionRaw as 'SGOD' | 'OSDS' | 'CID')
+      const divisionRaw = (program.division as string) || "";
+      const division = ["SGOD", "OSDS", "CID"].includes(divisionRaw)
+        ? (divisionRaw as "SGOD" | "OSDS" | "CID")
         : null;
 
       await prisma.program.upsert({
@@ -75,14 +106,14 @@ async function main() {
         },
       });
     }
-    console.log('✅ Programs seeded.');
+    console.log("✅ Programs seeded.");
   } catch (e) {
     console.log(`⚠️ programs.csv not found or error parsing: ${e}`);
   }
 
   // 3. Seed Schools
   try {
-    const schoolsFile = path.join(dataDir, 'schools.csv');
+    const schoolsFile = path.join(dataDir, "schools.csv");
     console.log(`Loading ${schoolsFile}...`);
     const schools = await parseCSV(schoolsFile);
     for (const school of schools) {
@@ -103,48 +134,62 @@ async function main() {
         },
       });
     }
-    console.log('✅ Schools seeded.');
+    console.log("✅ Schools seeded.");
   } catch (e) {
     console.log(`⚠️ schools.csv not found or error parsing: ${e}`);
   }
 
   // 4. Seed bootstrap Admin user
   try {
-    const configuredAdminEmail = (Deno.env.get("SEED_ADMIN_EMAIL") || "").trim();
+    const configuredAdminEmail = (Deno.env.get("SEED_ADMIN_EMAIL") || "")
+      .trim();
     const adminEmail = configuredAdminEmail || "admin@qpir.local";
-    const configuredAdminPassword = (Deno.env.get("SEED_ADMIN_PASSWORD") || "").trim();
+    const configuredAdminPassword = (Deno.env.get("SEED_ADMIN_PASSWORD") || "")
+      .trim();
     const isProduction = Deno.env.get("NODE_ENV") === "production";
-    const adminPassword = configuredAdminPassword || (isProduction ? "" : "admin123");
-    const mustChangePassword = (Deno.env.get("SEED_ADMIN_MUST_CHANGE_PASSWORD") || (isProduction ? "true" : "false")).toLowerCase() !== "false";
+    const adminPassword = configuredAdminPassword ||
+      (isProduction ? "" : "admin123");
+    const mustChangePassword =
+      (Deno.env.get("SEED_ADMIN_MUST_CHANGE_PASSWORD") ||
+        (isProduction ? "true" : "false")).toLowerCase() !== "false";
 
     if (!adminPassword) {
-      console.log("⚠️ Skipping bootstrap admin creation. Set SEED_ADMIN_PASSWORD to create an admin in production.");
+      console.log(
+        "⚠️ Skipping bootstrap admin creation. Set SEED_ADMIN_PASSWORD to create an admin in production.",
+      );
       console.log("✅ Data seed completed without creating a default admin.");
-      return;
-    }
-
-    const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
-    if (!existing) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(adminPassword, salt);
-      await prisma.user.create({
-        data: {
-          email: adminEmail,
-          password: hashedPassword,
-          role: 'Admin',
-          name: 'System Administrator',
-          must_change_password: mustChangePassword,
-        },
-      });
-      console.log(`✅ Bootstrap admin user created (${adminEmail}).`);
     } else {
-      console.log('ℹ️ Admin user already exists, skipping.');
+      const existing = await prisma.user.findUnique({
+        where: { email: adminEmail },
+      });
+      if (!existing) {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(adminPassword, salt);
+        await prisma.user.create({
+          data: {
+            email: adminEmail,
+            password: hashedPassword,
+            role: "Admin",
+            name: "System Administrator",
+            must_change_password: mustChangePassword,
+          },
+        });
+        console.log(`✅ Bootstrap admin user created (${adminEmail}).`);
+      } else {
+        console.log("ℹ️ Admin user already exists, skipping.");
+      }
     }
   } catch (e) {
     console.log(`⚠️ Error seeding admin user: ${e}`);
   }
 
-  console.log('🥳 Seeding finished.');
+  try {
+    await syncSeededSerialSequences();
+  } catch (e) {
+    console.log(`⚠️ Error syncing seeded ID sequences: ${e}`);
+  }
+
+  console.log("🥳 Seeding finished.");
 }
 
 main()
