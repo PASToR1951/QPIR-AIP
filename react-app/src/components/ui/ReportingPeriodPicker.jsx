@@ -1,11 +1,37 @@
 import React from 'react';
 import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
-import { Calendar, CheckCircle } from '@phosphor-icons/react';
+import { ArrowClockwise, CalendarBlank, CaretDown, CheckCircle } from '@phosphor-icons/react';
+
+function PeriodSelect({ ariaLabel, value, onChange, options, disabled, renderOption }) {
+  return (
+    <div className="relative h-8 shrink-0">
+      <select
+        aria-label={ariaLabel}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className="h-full cursor-pointer appearance-none rounded-md border border-transparent bg-transparent py-1 pl-2 pr-7 text-sm font-black leading-none text-slate-800 outline-none transition-colors hover:bg-slate-100 focus:border-indigo-300 focus:bg-white focus:ring-2 focus:ring-indigo-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-100 dark:hover:bg-white/10 dark:focus:border-indigo-400/40 dark:focus:bg-white/10"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value} className="bg-white text-slate-900">
+            {renderOption(option)}
+          </option>
+        ))}
+      </select>
+      <CaretDown
+        size={12}
+        weight="bold"
+        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+      />
+    </div>
+  );
+}
 
 export function ReportingPeriodPicker() {
   const {
     selectedYear,
     selectedQuarter,
+    selectedQuarterLabel,
     isLivePeriod,
     availableYears,
     periodOptionsLoading,
@@ -29,53 +55,61 @@ export function ReportingPeriodPicker() {
       quarter: quarters.includes(selectedQuarter) ? selectedQuarter : (quarters[0] ?? selectedQuarter),
     });
   };
+  const yearSelectOptions = yearOptions.map((year) => ({ value: year, year }));
+  const quarterSelectOptions = visibleQuarterOptions.map((quarter) => ({ value: quarter, quarter }));
+  const statusLabel = isLivePeriod ? 'Live' : 'Demo Period';
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-2 py-1.5 text-sm text-slate-700 shadow-sm backdrop-blur-sm dark:border-white/10 dark:bg-white/10 dark:text-slate-100">
-      <Calendar className="hidden h-4 w-4 text-slate-500 dark:text-slate-300 sm:block" />
-      
-      <select
-        aria-label="Fiscal year"
-        value={selectedYear}
-        onChange={handleYearChange}
-        className="cursor-pointer rounded border-none bg-transparent px-1 font-semibold text-slate-700 outline-none hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
+    <div
+      className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/80 px-1.5 text-slate-700 shadow-sm shadow-slate-950/5 backdrop-blur-md dark:border-white/10 dark:bg-white/10 dark:text-slate-100 dark:shadow-black/20"
+      title={`Viewing ${selectedQuarterLabel}`}
+    >
+      <div className={`hidden h-7 w-7 items-center justify-center rounded-md bg-slate-100 text-slate-500 sm:flex dark:bg-white/10 dark:text-slate-300 ${periodOptionsLoading ? 'animate-pulse' : ''}`}>
+        <CalendarBlank size={16} weight="bold" />
+      </div>
+
+      <div className="flex items-center gap-1 rounded-md bg-slate-50/80 p-0.5 dark:bg-black/10">
+        <PeriodSelect
+          ariaLabel="Fiscal year"
+          value={selectedYear}
+          onChange={handleYearChange}
+          options={yearSelectOptions}
+          renderOption={(option) => `FY ${option.year}`}
+        />
+        <div className="h-5 w-px bg-slate-200 dark:bg-white/10" />
+        <PeriodSelect
+          ariaLabel="Quarter"
+          value={selectedQuarter}
+          onChange={(e) => setReportingPeriod({ year: selectedYear, quarter: parseInt(e.target.value, 10) })}
+          disabled={periodOptionsLoading && visibleQuarterOptions.length === 0}
+          options={quarterSelectOptions}
+          renderOption={(option) => `Q${option.quarter}`}
+        />
+      </div>
+
+      <div className="hidden h-6 w-px bg-slate-200 dark:bg-white/10 sm:block" />
+
+      <span
+        className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs font-black ${
+          isLivePeriod
+            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200'
+            : 'bg-amber-50 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200'
+        }`}
       >
-        {yearOptions.map(y => (
-          <option key={y} value={y} className="text-gray-900 bg-white">FY {y}</option>
-        ))}
-      </select>
+        {isLivePeriod && <CheckCircle size={13} weight="fill" />}
+        <span className="hidden sm:inline">{statusLabel}</span>
+        <span className="sm:hidden">{isLivePeriod ? 'Live' : 'Demo'}</span>
+      </span>
 
-      <span className="font-light text-slate-300 dark:text-white/30">|</span>
-
-      <select
-        aria-label="Quarter"
-        value={selectedQuarter}
-        onChange={(e) => setReportingPeriod({ year: selectedYear, quarter: parseInt(e.target.value, 10) })}
-        disabled={periodOptionsLoading && visibleQuarterOptions.length === 0}
-        className="cursor-pointer rounded border-none bg-transparent px-1 font-semibold text-slate-700 outline-none hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-white/10"
-      >
-        {visibleQuarterOptions.map((quarter) => (
-          <option key={quarter} value={quarter} className="text-gray-900 bg-white">Q{quarter}</option>
-        ))}
-      </select>
-
-      <span className="hidden font-light text-slate-300 dark:text-white/30 sm:inline">|</span>
-
-      {!isLivePeriod ? (
-        <div className="flex items-center gap-2">
-          <span className="hidden rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-400/20 dark:text-amber-200 sm:inline">Demo Period</span>
-          <button
-            onClick={resetToLivePeriod}
-            className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 dark:border-white/10 dark:bg-white/10 dark:text-slate-100 dark:hover:bg-white/20"
-          >
-            Live
-          </button>
-        </div>
-      ) : (
-        <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-          <CheckCircle weight="fill" className="w-3.5 h-3.5" />
+      {!isLivePeriod && (
+        <button
+          type="button"
+          onClick={resetToLivePeriod}
+          className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-black text-slate-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/10 dark:text-slate-100 dark:hover:border-indigo-400/30 dark:hover:bg-indigo-400/15 dark:hover:text-indigo-100"
+        >
+          <ArrowClockwise size={12} weight="bold" />
           <span className="hidden sm:inline">Live</span>
-        </span>
+        </button>
       )}
     </div>
   );
