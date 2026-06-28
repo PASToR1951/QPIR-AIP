@@ -482,7 +482,7 @@ export default function PIRFormContainer() {
                 hideCancelButton: true,
             });
         }
-    }, [dispatch, draft, handleStart, isDivisionPersonnel, navigate, periodMode, profile.program, quarterString, shell, state, submission.isEditing, submission.pirId]);
+    }, [dispatch, draft, handleStart, isDivisionPersonnel, navigate, profile.program, quarterString, shell, state, submission.isEditing, submission.pirId]);
 
     // Period handlers removed, using ReportingPeriodContext instead
 
