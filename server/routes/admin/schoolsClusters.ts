@@ -18,6 +18,7 @@ import {
   removeExistingSchoolLogos,
 } from "./shared/logos.ts";
 import { parsePositiveInt } from "./shared/params.ts";
+import { normalizeOptionalSchoolAbbreviation } from "./shared/schoolFields.ts";
 
 const SCHOOL_LEVELS = new Set(["Elementary", "Secondary"]);
 
@@ -225,16 +226,16 @@ readRoutes.get("/schools", async (c) => {
 adminRoutes.post("/schools", async (c) => {
   const admin = await requireAdmin(c);
   if (!admin) return c.json({ error: "Unauthorized" }, 401);
-  
+
   try {
     const { name, abbreviation, level, cluster_id } = sanitizeObject(
       await c.req.json(),
     );
-    
+
     if (!name || typeof name !== "string" || !name.trim()) {
       return c.json({ error: "School name is required" }, 400);
     }
-    
+
     if (!SCHOOL_LEVELS.has(level)) {
       return c.json({
         error: "School level must be Elementary or Secondary",
@@ -252,7 +253,7 @@ adminRoutes.post("/schools", async (c) => {
     const school = await prisma.school.create({
       data: {
         name: name.trim(),
-        abbreviation: abbreviation ? String(abbreviation).trim() : null,
+        abbreviation: normalizeOptionalSchoolAbbreviation(abbreviation),
         level,
         cluster: { connect: { id: clusterId } },
       },
@@ -277,7 +278,7 @@ adminRoutes.post("/schools", async (c) => {
 adminRoutes.patch("/schools/:id", async (c) => {
   const admin = (await getUserFromToken(c))!;
   const id = safeParseInt(c.req.param("id"), 0);
-  
+
   try {
     const body = sanitizeObject(await c.req.json());
     const { name, abbreviation, level, cluster_id } = body;
@@ -306,11 +307,15 @@ adminRoutes.patch("/schools/:id", async (c) => {
       clusterId = parsedClusterId;
     }
 
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+
     const school = await prisma.school.update({
       where: { id },
       data: {
-        ...(name && { name: name.trim() }),
-        ...("abbreviation" in body && { abbreviation: abbreviation ? String(abbreviation).trim() : null }),
+        ...("name" in body && { name: normalizedName }),
+        ...("abbreviation" in body && {
+          abbreviation: normalizeOptionalSchoolAbbreviation(abbreviation),
+        }),
         ...(level && { level }),
         ...(clusterId !== undefined &&
           { cluster: { connect: { id: clusterId } } }),
