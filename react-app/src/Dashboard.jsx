@@ -94,6 +94,12 @@ export default function Dashboard() {
   const [dashboardError, setDashboardError] = useState('');
 
   useEffect(() => {
+    // Guard against out-of-order responses: when the year/quarter change in
+    // quick succession (or the component remounts), multiple fetches overlap.
+    // Without this flag a stale response can clobber state from a newer one,
+    // leaving dashboardData and aipStatus sourced from different fetches (e.g.
+    // 37/48 submitted but a "Start planning" CTA).
+    let cancelled = false;
     const fetchDashboard = async () => {
       if (!user?.id) {
         setDashboardLoading(false);
@@ -105,6 +111,7 @@ export default function Dashboard() {
       try {
         // Fetch aggregated dashboard stats
         const dashRes = await api.get(`/api/dashboard?year=${selectedYear}&quarter=${selectedQuarter}`);
+        if (cancelled) return;
         setDashboardData(dashRes.data);
 
         // Derive AIP card status from dashboard data + draft check
@@ -114,19 +121,23 @@ export default function Dashboard() {
         } else {
           try {
             const draftRes = await api.get('/api/aips/draft');
+            if (cancelled) return;
             setAipStatus(draftRes.data.hasDraft ? 'draft' : 'none');
           } catch {
+            if (cancelled) return;
             setAipStatus('none');
           }
         }
       } catch (error) {
+        if (cancelled) return;
         console.error('Failed to fetch dashboard data:', error);
         setDashboardError(error.friendlyMessage ?? 'Dashboard data could not be loaded. Please refresh and try again.');
       } finally {
-        setDashboardLoading(false);
+        if (!cancelled) setDashboardLoading(false);
       }
     };
     fetchDashboard();
+    return () => { cancelled = true; };
   }, [selectedYear, selectedQuarter, navigate, user?.id]);
 
   const hasAIP = dashboardData ? dashboardData.aipCompletion.completed > 0 : false;
