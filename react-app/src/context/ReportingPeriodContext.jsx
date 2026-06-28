@@ -121,9 +121,10 @@ export function ReportingPeriodProvider({ children }) {
         period.quarters.forEach((quarter) => addQuarter(periodMap, period.year, quarter));
       });
     }
+    addQuarter(periodMap, livePeriod.year, livePeriod.quarter);
 
     return mapToPeriods(periodMap);
-  }, [availablePeriods, selectedYear]);
+  }, [availablePeriods, livePeriod, selectedYear]);
   const selectablePeriodMap = useMemo(() => {
     return new Map(selectablePeriods.map((period) => [period.year, period.quarters]));
   }, [selectablePeriods]);
