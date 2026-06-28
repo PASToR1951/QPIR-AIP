@@ -1,6 +1,14 @@
 import type { Context } from "hono";
 import { safeParseInt } from "../../../lib/safeParseInt.ts";
+import { parseQuarterLabel } from "../../../lib/quarters.ts";
 import { isValidQuarter } from "./dates.ts";
+
+const QUARTER_PREFIXES: Record<number, string> = {
+  1: "1st",
+  2: "2nd",
+  3: "3rd",
+  4: "4th",
+};
 
 export function parsePositiveInt(value: unknown): number | null {
   const parsed = Number(value);
@@ -11,6 +19,33 @@ export function parseOptionalPositiveInt(value: string | undefined) {
   if (!value) return undefined;
   const parsed = safeParseInt(value, 0);
   return !Number.isNaN(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+export function parseSubmissionQuarter(value: string | undefined) {
+  if (!value) return undefined;
+
+  const compact = value.trim().replace(/\s+/g, " ");
+  const parsedLabel = parseQuarterLabel(compact);
+  if (parsedLabel && isValidQuarter(parsedLabel.quarter)) {
+    return parsedLabel.quarter;
+  }
+
+  const shortMatch = compact.match(/^q\s*([1-4])$/i);
+  const parsed = shortMatch ? Number(shortMatch[1]) : safeParseInt(compact, 0);
+
+  return isValidQuarter(parsed) ? parsed : undefined;
+}
+
+export function buildPirQuarterFilter(
+  quarterValue: string | undefined,
+  year?: number,
+) {
+  const quarter = parseSubmissionQuarter(quarterValue);
+  if (!quarter) return undefined;
+
+  const prefix = QUARTER_PREFIXES[quarter];
+  if (year) return { equals: `${prefix} Quarter CY ${year}` };
+  return { startsWith: `${prefix} Quarter` };
 }
 
 export function parseYear(
@@ -55,6 +90,7 @@ export function buildSubmissionFilters(c: Context) {
   const limit = Math.min(100, safeParseInt(query("limit"), 25));
   const skip = (page - 1) * limit;
   const schoolFilter = buildSchoolScopeFilter(clusterId, schoolId);
+  const pirQuarterFilter = buildPirQuarterFilter(quarter, year);
 
   return {
     type,
@@ -77,7 +113,7 @@ export function buildSubmissionFilters(c: Context) {
     },
     pirWhere: {
       status: { not: "Draft" as const },
-      ...(quarter && { quarter: { contains: `${quarter}` } }),
+      ...(pirQuarterFilter && { quarter: pirQuarterFilter }),
       ...(status && { status }),
       aip: {
         ...(year && { year }),
@@ -87,7 +123,6 @@ export function buildSubmissionFilters(c: Context) {
     },
   };
 }
-
 
 export function parseReportQuery(
   c: Context,

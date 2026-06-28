@@ -33,6 +33,14 @@ const toPositiveInt = (value) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+const toQuarterNumber = (value) => {
+  if (value == null || value === '') return null;
+  const compact = String(value).trim();
+  const shortMatch = compact.match(/^q\s*([1-4])$/i);
+  const parsed = shortMatch ? Number(shortMatch[1]) : Number.parseInt(compact, 10);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 4 ? parsed : null;
+};
+
 const normalizeTab = (value) => {
   const normalized = String(value || 'all').toLowerCase();
   return VALID_TABS.has(normalized) ? normalized : 'all';
@@ -43,7 +51,7 @@ const normalizeFilterPatch = (patch = {}) => {
   if ('cluster' in patch) next.cluster = toPositiveInt(patch.cluster);
   if ('school' in patch) next.school = toPositiveInt(patch.school);
   if ('program' in patch) next.program = toPositiveInt(patch.program);
-  if ('quarter' in patch) next.quarter = patch.quarter || null;
+  if ('quarter' in patch) next.quarter = toQuarterNumber(patch.quarter);
   if ('year' in patch) next.year = patch.year == null ? null : toPositiveInt(patch.year);
   if ('status' in patch) next.status = patch.status || null;
   return next;
@@ -63,6 +71,12 @@ const hasFilterParams = (searchParams) =>
 const normalizeFilters = (filters) => ({
   ...defaultFilters(),
   ...normalizeFilterPatch(filters),
+});
+
+const periodDefaultFilters = (year, quarter) => ({
+  ...defaultFilters(),
+  year,
+  quarter: toQuarterNumber(quarter),
 });
 
 const filtersEqual = (left, right) =>
@@ -98,9 +112,7 @@ export default function AdminSubmissions() {
 
   const [page, setPage]                     = useState(1);
   const [filters, setFilters]               = useState(() => ({
-    ...defaultFilters(),
-    year: selectedYear,
-    quarter: selectedQuarter,
+    ...periodDefaultFilters(selectedYear, selectedQuarter),
     ...normalizeFilterPatch(location.state?.filters ?? {}),
     ...readFilterParams(searchParams),
   }));
@@ -122,8 +134,11 @@ export default function AdminSubmissions() {
     const nextFilters = hasFilterParams(searchParams)
       ? normalizeFilters(readFilterParams(searchParams))
       : location.state?.filters
-        ? normalizeFilters(location.state.filters)
-        : defaultFilters();
+        ? normalizeFilters({
+          ...periodDefaultFilters(selectedYear, selectedQuarter),
+          ...location.state.filters,
+        })
+        : periodDefaultFilters(selectedYear, selectedQuarter);
     if (!filtersEqual(filters, nextFilters)) {
       setFilters(nextFilters);
       setSelectedIds([]);

@@ -3,10 +3,10 @@ export const STATUS_OPTIONS = [
 ];
 
 export const QUARTER_OPTIONS = [
-  { label: '1st Quarter', value: '1st' },
-  { label: '2nd Quarter', value: '2nd' },
-  { label: '3rd Quarter', value: '3rd' },
-  { label: '4th Quarter', value: '4th' },
+  { label: '1st Quarter', value: 1 },
+  { label: '2nd Quarter', value: 2 },
+  { label: '3rd Quarter', value: 3 },
+  { label: '4th Quarter', value: 4 },
 ];
 
 const currentYear = new Date().getFullYear();
