@@ -1,4 +1,5 @@
-import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
+import lazyWithRetry from '../../lib/lazyWithRetry.js';
 import api from '../../lib/api.js';
 import {
   CheckCircle, Database, Gear, Users, Buildings, BookOpen,
@@ -18,9 +19,9 @@ import { useAnnouncementEditor } from './adminSettings/useAnnouncementEditor.js'
 import { useEmailSettings } from './adminSettings/useEmailSettings.js';
 import { useEmailTemplates } from './adminSettings/useEmailTemplates.js';
 
-const AdminSessions = lazy(() => import('./AdminSessions.jsx'));
-const AdminLogs     = lazy(() => import('./AdminLogs.jsx'));
-const AdminBackups  = lazy(() => import('./AdminBackups.jsx'));
+const AdminSessions = lazyWithRetry(() => import('./AdminSessions.jsx'));
+const AdminLogs     = lazyWithRetry(() => import('./AdminLogs.jsx'));
+const AdminBackups  = lazyWithRetry(() => import('./AdminBackups.jsx'));
 
 const ACCENT = {
   pink:    { bg: 'bg-pink-50 dark:bg-pink-950/30',       text: 'text-pink-700 dark:text-pink-400'       },

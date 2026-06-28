@@ -1,18 +1,19 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { staggerContainer } from './adminOverview/chartTheme.js';
 import { AdminOverviewHero } from './adminOverview/AdminOverviewHero.jsx';
 import { AdminOverviewSkeleton } from './adminOverview/AdminOverviewSkeleton.jsx';
 import { useAdminOverviewData } from './adminOverview/useAdminOverviewData.js';
+import lazyWithRetry from '../../lib/lazyWithRetry.js';
 
-const LazyAdminOverviewCharts = lazy(() => (
+const LazyAdminOverviewCharts = lazyWithRetry(() => (
   import('./adminOverview/AdminOverviewCharts.jsx').then((module) => ({
     default: module.AdminOverviewCharts,
   }))
 ));
 
-const LazyAdminOverviewPanels = lazy(() => (
+const LazyAdminOverviewPanels = lazyWithRetry(() => (
   import('./adminOverview/AdminOverviewPanels.jsx').then((module) => ({
     default: module.AdminOverviewPanels,
   }))

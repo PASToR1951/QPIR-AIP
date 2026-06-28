@@ -1,13 +1,14 @@
-import { Component, lazy, Suspense } from 'react';
+import { Component, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ArrowClockwise as RefreshCcw, ArrowLeft, Warning } from '@phosphor-icons/react';
 import Login from './Login';
 import { BrandingContext } from './context/BrandingContext.jsx';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import lazyWithRetry from './lib/lazyWithRetry.js';
 
 // Framer-motion + all authenticated routes live in this lazy module.
 // This keeps framer-motion (124KB) off the Login critical path.
-const AnimatedContent = lazy(() => import('./AnimatedContent'));
+const AnimatedContent = lazyWithRetry(() => import('./AnimatedContent'));
 
 const Spinner = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-slate-50 dark:bg-dark-base">

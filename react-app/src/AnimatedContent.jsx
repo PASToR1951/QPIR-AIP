@@ -1,4 +1,5 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import lazyWithRetry from './lib/lazyWithRetry.js';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { useAccessibility } from './context/AccessibilityContext';
@@ -15,43 +16,43 @@ import { ReportingPeriodProvider } from './context/ReportingPeriodContext.jsx';
 import { Outlet } from 'react-router-dom';
 
 // Route-level lazy imports — each becomes its own chunk
-const Dashboard = lazy(() => import('./Dashboard'));
-const AIPForm = lazy(() => import('./AIPForm'));
-const PIRForm = lazy(() => import('./PIRForm'));
-const NotFound = lazy(() => import('./NotFound'));
-const ErrorPage = lazy(() => import('./ErrorPage'));
-const Changelog = lazy(() => import('./components/Changelog'));
-const SystemDocs = lazy(() => import('./components/SystemDocs'));
-const GettingStarted = lazy(() => import('./components/GettingStarted.jsx'));
-const FAQ = lazy(() => import('./components/FAQ'));
-const AnnouncementDetail = lazy(() => import('./components/AnnouncementDetail.jsx'));
-const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
-const OAuthCallback = lazy(() => import('./OAuthCallback'));
-const MagicLinkCallback = lazy(() => import('./MagicLinkCallback.jsx'));
-const OnboardingWizard = lazy(() => import('./OnboardingWizard.jsx'));
+const Dashboard = lazyWithRetry(() => import('./Dashboard'));
+const AIPForm = lazyWithRetry(() => import('./AIPForm'));
+const PIRForm = lazyWithRetry(() => import('./PIRForm'));
+const NotFound = lazyWithRetry(() => import('./NotFound'));
+const ErrorPage = lazyWithRetry(() => import('./ErrorPage'));
+const Changelog = lazyWithRetry(() => import('./components/Changelog'));
+const SystemDocs = lazyWithRetry(() => import('./components/SystemDocs'));
+const GettingStarted = lazyWithRetry(() => import('./components/GettingStarted.jsx'));
+const FAQ = lazyWithRetry(() => import('./components/FAQ'));
+const AnnouncementDetail = lazyWithRetry(() => import('./components/AnnouncementDetail.jsx'));
+const PrivacyPolicy = lazyWithRetry(() => import('./components/PrivacyPolicy'));
+const OAuthCallback = lazyWithRetry(() => import('./OAuthCallback'));
+const MagicLinkCallback = lazyWithRetry(() => import('./MagicLinkCallback.jsx'));
+const OnboardingWizard = lazyWithRetry(() => import('./OnboardingWizard.jsx'));
 
 // CES pages
-const CESLayout = lazy(() => import('./ces/CESLayout.jsx'));
-const DivisionLayout = lazy(() => import('./division/DivisionLayout.jsx'));
-const ClusterConsultantLayout = lazy(() => import('./cluster-consultant/ClusterConsultantLayout.jsx'));
+const CESLayout = lazyWithRetry(() => import('./ces/CESLayout.jsx'));
+const DivisionLayout = lazyWithRetry(() => import('./division/DivisionLayout.jsx'));
+const ClusterConsultantLayout = lazyWithRetry(() => import('./cluster-consultant/ClusterConsultantLayout.jsx'));
 
 // Admin layout + pages
-const AdminLayout = lazy(() => import('./admin/AdminLayout.jsx'));
-const AdminOverview = lazy(() => import('./admin/pages/AdminOverview.jsx'));
-const AdminSubmissions = lazy(() => import('./admin/pages/AdminSubmissions.jsx'));
-const AdminUsers = lazy(() => import('./admin/pages/AdminUsers.jsx'));
-const AdminSchools = lazy(() => import('./admin/pages/AdminSchools.jsx'));
-const AdminPrograms = lazy(() => import('./admin/pages/AdminPrograms.jsx'));
-const AdminDeadlines = lazy(() => import('./admin/pages/AdminDeadlines.jsx'));
-const AdminReports = lazy(() => import('./admin/pages/AdminReports.jsx'));
-const AdminSettings = lazy(() => import('./admin/pages/AdminSettings.jsx'));
-const AdminBackups = lazy(() => import('./admin/pages/AdminBackups.jsx'));
-const AdminSessions = lazy(() => import('./admin/pages/AdminSessions.jsx'));
-const AdminLogs = lazy(() => import('./admin/pages/AdminLogs.jsx'));
-const AdminPIRReview = lazy(() => import('./admin/pages/AdminPIRReview.jsx'));
-const AdminConsolidationTemplate = lazy(() => import('./admin/pages/AdminConsolidationTemplate.jsx'));
-const AdminFAQ = lazy(() => import('./admin/pages/AdminFAQ.jsx'));
-const UserLogs = lazy(() => import('./UserLogs.jsx'));
+const AdminLayout = lazyWithRetry(() => import('./admin/AdminLayout.jsx'));
+const AdminOverview = lazyWithRetry(() => import('./admin/pages/AdminOverview.jsx'));
+const AdminSubmissions = lazyWithRetry(() => import('./admin/pages/AdminSubmissions.jsx'));
+const AdminUsers = lazyWithRetry(() => import('./admin/pages/AdminUsers.jsx'));
+const AdminSchools = lazyWithRetry(() => import('./admin/pages/AdminSchools.jsx'));
+const AdminPrograms = lazyWithRetry(() => import('./admin/pages/AdminPrograms.jsx'));
+const AdminDeadlines = lazyWithRetry(() => import('./admin/pages/AdminDeadlines.jsx'));
+const AdminReports = lazyWithRetry(() => import('./admin/pages/AdminReports.jsx'));
+const AdminSettings = lazyWithRetry(() => import('./admin/pages/AdminSettings.jsx'));
+const AdminBackups = lazyWithRetry(() => import('./admin/pages/AdminBackups.jsx'));
+const AdminSessions = lazyWithRetry(() => import('./admin/pages/AdminSessions.jsx'));
+const AdminLogs = lazyWithRetry(() => import('./admin/pages/AdminLogs.jsx'));
+const AdminPIRReview = lazyWithRetry(() => import('./admin/pages/AdminPIRReview.jsx'));
+const AdminConsolidationTemplate = lazyWithRetry(() => import('./admin/pages/AdminConsolidationTemplate.jsx'));
+const AdminFAQ = lazyWithRetry(() => import('./admin/pages/AdminFAQ.jsx'));
+const UserLogs = lazyWithRetry(() => import('./UserLogs.jsx'));
 
 const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent'];
 

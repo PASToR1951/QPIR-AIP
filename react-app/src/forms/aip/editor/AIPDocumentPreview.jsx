@@ -1,6 +1,7 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
+import lazyWithRetry from '../../../lib/lazyWithRetry.js';
 
-const LazyAipDocument = lazy(() => (
+const LazyAipDocument = lazyWithRetry(() => (
     import('../../../components/docs/AIPDocument.jsx').then((module) => ({ default: module.AIPDocument }))
 ));
 

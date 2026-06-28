@@ -22,6 +22,10 @@ import { BrandingProvider } from './context/BrandingContext.jsx'
 import NoConnectionScreen from './components/ui/NoConnectionScreen.jsx'
 import { OnboardingProvider } from './hooks/useOnboarding.jsx'
 import { PracticeModeProvider } from './context/PracticeModeContext.jsx'
+import { registerChunkErrorReload } from './lib/lazyWithRetry.js'
+
+// Recover from stale-deploy chunk 404s (preload hints + on-demand imports).
+registerChunkErrorReload()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

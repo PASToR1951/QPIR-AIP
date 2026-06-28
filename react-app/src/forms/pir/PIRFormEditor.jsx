@@ -1,6 +1,7 @@
-import React, { Suspense, lazy, useCallback } from 'react';
+import React, { Suspense, useCallback } from 'react';
 import { AnimatePresence, motion as Motion } from 'framer-motion';
 import { generatePIRPdf } from '../../lib/formPdfExport.js';
+import lazyWithRetry from '../../lib/lazyWithRetry.js';
 
 import { FormHeader } from '../../components/ui/FormHeader';
 import { FormBoxHeader } from '../../components/ui/FormBoxHeader';
@@ -29,10 +30,10 @@ import {
     usePirSelector,
 } from './pirContext.jsx';
 
-const LazyPIRDocument = lazy(() => (
+const LazyPIRDocument = lazyWithRetry(() => (
     import('../../components/docs/PIRDocument.jsx').then((module) => ({ default: module.PIRDocument }))
 ));
-const LazyAIPDocument = lazy(() => (
+const LazyAIPDocument = lazyWithRetry(() => (
     import('../../components/docs/AIPDocument.jsx').then((module) => ({ default: module.AIPDocument }))
 ));
 
