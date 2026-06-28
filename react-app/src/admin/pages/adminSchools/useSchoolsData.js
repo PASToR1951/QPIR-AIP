@@ -77,10 +77,19 @@ export function useSchoolsData() {
   };
 
   // School actions
+  const schoolPayload = (schoolForm, clusterId) => ({
+    name: schoolForm.name,
+    abbreviation: typeof schoolForm.abbreviation === 'string' && schoolForm.abbreviation.trim()
+      ? schoolForm.abbreviation.trim()
+      : null,
+    level: schoolForm.level,
+    cluster_id: clusterId,
+  });
+
   const addSchool = async (schoolForm, clusterId) => {
     setActionLoading(true); setFormError('');
     try {
-      const res = await api.post('/api/admin/schools', { ...schoolForm, cluster_id: clusterId });
+      const res = await api.post('/api/admin/schools', schoolPayload(schoolForm, clusterId));
       await fetchAll();
       return { ok: true, id: res.data.id };
     } catch (e) { setFormError(e.friendlyMessage ?? 'Operation failed'); return { ok: false }; }
@@ -90,7 +99,7 @@ export function useSchoolsData() {
   const editSchool = async (schoolId, schoolForm, clusterId, existingUser, schoolHeadForm) => {
     setActionLoading(true); setFormError('');
     try {
-      const patchSchool = api.patch(`/api/admin/schools/${schoolId}`, { name: schoolForm.name, abbreviation: schoolForm.abbreviation, level: schoolForm.level, cluster_id: clusterId });
+      const patchSchool = api.patch(`/api/admin/schools/${schoolId}`, schoolPayload(schoolForm, clusterId));
       const patchUser = existingUser
         ? api.patch(`/api/admin/users/${existingUser.id}`, { salutation: schoolHeadForm.salutation || null, first_name: schoolHeadForm.first_name || null, middle_initial: schoolHeadForm.middle_initial || null, last_name: schoolHeadForm.last_name || null, position: schoolHeadForm.position || null })
         : Promise.resolve();
