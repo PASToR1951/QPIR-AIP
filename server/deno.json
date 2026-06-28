@@ -11,7 +11,9 @@
     "import:pir-demo": "deno run -A --env scripts/import_pir_demo_from_csv.ts"
   },
   "compilerOptions": {
-    "types": ["./types/npm-shims.d.ts"]
+    "types": [
+      "./types/npm-shims.d.ts"
+    ]
   },
   "imports": {
     "@prisma/config": "npm:@prisma/config@^7.4.2",
@@ -26,6 +28,9 @@
   },
   "allowScripts": {
     "allow": [],
-    "deny": ["npm:@prisma/engines@7.4.2", "npm:prisma@7.4.2"]
+    "deny": [
+      "npm:@prisma/engines@7.4.2",
+      "npm:prisma@7.4.2"
+    ]
   }
 }

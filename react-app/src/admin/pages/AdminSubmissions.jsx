@@ -17,7 +17,12 @@ import { buildSubmissionColumns } from './adminSubmissions/submissionColumns.jsx
 import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
 
 const VALID_TABS = new Set(['all', 'aip', 'pir']);
-const FILTER_PARAM_KEYS = ['cluster', 'school', 'program', 'quarter', 'year', 'status'];
+// The global ReportingPeriod picker (top bar) is the single source of truth for
+// year/quarter. The Submissions page must NOT read/write those two URL params,
+// otherwise it fights the picker over `?year`/`?quarter` and reverts every change.
+// It only owns the non-period filters in the URL.
+const URL_FILTER_KEYS = ['cluster', 'school', 'program', 'status'];
+const ALL_FILTER_KEYS = ['cluster', 'school', 'program', 'quarter', 'year', 'status'];
 
 const defaultFilters = () => ({
   cluster: null,
@@ -59,14 +64,14 @@ const normalizeFilterPatch = (patch = {}) => {
 
 const readFilterParams = (searchParams) => {
   const patch = {};
-  FILTER_PARAM_KEYS.forEach((key) => {
+  URL_FILTER_KEYS.forEach((key) => {
     if (searchParams.has(key)) patch[key] = searchParams.get(key);
   });
   return normalizeFilterPatch(patch);
 };
 
 const hasFilterParams = (searchParams) =>
-  FILTER_PARAM_KEYS.some((key) => searchParams.has(key));
+  URL_FILTER_KEYS.some((key) => searchParams.has(key));
 
 const normalizeFilters = (filters) => ({
   ...defaultFilters(),
@@ -80,16 +85,12 @@ const periodDefaultFilters = (year, quarter) => ({
 });
 
 const filtersEqual = (left, right) =>
-  FILTER_PARAM_KEYS.every((key) => left[key] === right[key]);
+  ALL_FILTER_KEYS.every((key) => left[key] === right[key]);
 
 const writeFilterParams = (searchParams, filters) => {
   const next = new URLSearchParams(searchParams);
-  FILTER_PARAM_KEYS.forEach((key) => next.delete(key));
-  FILTER_PARAM_KEYS.forEach((key) => {
-    if (key === 'year' && filters.year == null) {
-      next.set(key, 'all');
-      return;
-    }
+  URL_FILTER_KEYS.forEach((key) => next.delete(key));
+  URL_FILTER_KEYS.forEach((key) => {
     if (filters[key] != null && filters[key] !== '') next.set(key, String(filters[key]));
   });
   return next;
@@ -132,7 +133,10 @@ export default function AdminSubmissions() {
 
   useEffect(() => {
     const nextFilters = hasFilterParams(searchParams)
-      ? normalizeFilters(readFilterParams(searchParams))
+      ? normalizeFilters({
+        ...periodDefaultFilters(selectedYear, selectedQuarter),
+        ...readFilterParams(searchParams),
+      })
       : location.state?.filters
         ? normalizeFilters({
           ...periodDefaultFilters(selectedYear, selectedQuarter),
@@ -148,23 +152,30 @@ export default function AdminSubmissions() {
   }, [searchParams, location.state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateFilters = (updater) => {
-    const nextFilters = normalizeFilters(typeof updater === 'function' ? updater(filters) : updater);
+    const base = typeof updater === 'function' ? updater(filters) : updater;
+    // year/quarter are owned by the global period picker — never let a filter-bar
+    // update change them, or it would write `?year`/`?quarter` and fight the picker.
+    const nextFilters = {
+      ...normalizeFilters(base),
+      year: selectedYear,
+      quarter: selectedQuarter,
+    };
     setFilters(nextFilters);
     setSelectedIds([]);
     setPage(1);
     setSearchParams(prev => writeFilterParams(prev, nextFilters), { replace: true });
   };
 
+  // Mirror the global period picker into the local filters (one-way). We do NOT
+  // write year/quarter to the URL here — the picker owns those params.
   useEffect(() => {
     setFilters(prev => {
       if (prev.year !== selectedYear || prev.quarter !== selectedQuarter) {
-        const nextFilters = { ...prev, year: selectedYear, quarter: selectedQuarter };
-        setSearchParams(p => writeFilterParams(p, nextFilters), { replace: true });
-        return nextFilters;
+        return { ...prev, year: selectedYear, quarter: selectedQuarter };
       }
       return prev;
     });
-  }, [selectedYear, selectedQuarter, setSearchParams]);
+  }, [selectedYear, selectedQuarter]);
 
   const { submissions, totals, loading, fetchError, fetchSubmissions, clusters, schools, programs } =
     useSubmissionsData({ tab, filters, page });
