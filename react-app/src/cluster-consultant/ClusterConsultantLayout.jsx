@@ -42,7 +42,7 @@ const STATUS_OPTIONS = [
   'Returned',
 ];
 
-const PIR_PAGE_SIZE = 15;
+const PIR_PAGE_SIZE = 10;
 const REMARK_BODY_LIMIT = 5000;
 
 const REMARK_CATEGORY_OPTIONS = [
@@ -218,11 +218,10 @@ function PaginationControls({ currentPage, pageCount, totalCount, pageStart, pag
               key={page}
               type="button"
               onClick={() => onPageChange(page)}
-              className={`h-9 min-w-9 rounded-md border px-3 text-xs font-black transition-colors ${
-                currentPage === page
+              className={`h-9 min-w-9 rounded-md border px-3 text-xs font-black transition-colors ${currentPage === page
                   ? 'border-blue-600 bg-blue-600 text-white'
                   : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-dark-border dark:bg-dark-surface dark:text-slate-300 dark:hover:bg-blue-950/30'
-              }`}
+                }`}
             >
               {page}
             </button>
@@ -296,11 +295,10 @@ function PirTable({
                 <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
                   <Link
                     to={`/cluster-consultant/pirs/${pir.id}`}
-                    className={`inline-flex min-w-[118px] items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-black transition-colors ${
-                      pir.commentCount
+                    className={`inline-flex min-w-[118px] items-center justify-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-black transition-colors ${pir.commentCount
                         ? 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300'
                         : 'border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-dark-border dark:text-slate-300 dark:hover:bg-blue-950/30 dark:hover:text-blue-300'
-                    }`}
+                      }`}
                   >
                     <ChatCircleText size={15} weight="duotone" />
                     {pir.commentCount ? pluralize(pir.commentCount, 'remark') : 'Add remark'}
@@ -439,8 +437,8 @@ function ClusterDashboard() {
               {needsAttention > 0
                 ? `${pluralize(needsAttention, 'PIR')} need revision across your assigned schools.`
                 : overview?.pirCount
-                ? 'No PIRs are awaiting revision right now.'
-                : 'Waiting for schools to submit PIRs for this reporting period.'}
+                  ? 'No PIRs are awaiting revision right now.'
+                  : 'Waiting for schools to submit PIRs for this reporting period.'}
             </p>
           </div>
           <div className="grid min-w-[260px] grid-cols-3 gap-2 rounded-lg bg-slate-50 p-2 dark:bg-dark-base">
@@ -474,11 +472,10 @@ function ClusterDashboard() {
               key={option.value || 'all'}
               type="button"
               onClick={() => setFiltersAndResetPage((prev) => ({ ...prev, status: option.value }))}
-              className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-black transition-colors ${
-                filters.status === option.value
+              className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-black transition-colors ${filters.status === option.value
                   ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-300'
                   : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-700 dark:border-dark-border dark:bg-dark-surface dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
+                }`}
             >
               {option.label}
               {option.count !== undefined && <span className="rounded-full bg-white/80 px-1.5 py-0.5 text-[10px] dark:bg-dark-surface">{option.count}</span>}
@@ -785,11 +782,10 @@ function PirDetail() {
                   key={option.value}
                   type="button"
                   onClick={() => setForm((prev) => ({ ...prev, category: option.value }))}
-                  className={`rounded-md border p-3 text-left transition-colors ${
-                    form.category === option.value
+                  className={`rounded-md border p-3 text-left transition-colors ${form.category === option.value
                       ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200'
                       : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-dark-border dark:text-slate-300 dark:hover:bg-white/5'
-                  }`}
+                    }`}
                 >
                   <span className="block text-xs font-black">{option.label}</span>
                   <span className="mt-0.5 block text-[11px] font-bold opacity-70">{option.helper}</span>
@@ -803,11 +799,10 @@ function PirDetail() {
                   key={option.value}
                   type="button"
                   onClick={() => setForm((prev) => ({ ...prev, scope: option.value }))}
-                  className={`rounded-md px-3 py-2 text-left transition-colors ${
-                    form.scope === option.value
+                  className={`rounded-md px-3 py-2 text-left transition-colors ${form.scope === option.value
                       ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
                       : 'text-slate-500 hover:bg-white dark:text-slate-400 dark:hover:bg-dark-surface'
-                  }`}
+                    }`}
                 >
                   <span className="block text-xs font-black">{option.label}</span>
                   <span className="mt-0.5 block text-[10px] font-bold opacity-70">{option.helper}</span>
