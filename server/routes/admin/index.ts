@@ -43,8 +43,12 @@ adminRoutes.route("/", schoolsAdminRoutes);
 adminRoutes.route("/", programAdminRoutes);
 adminRoutes.route("/", sessionsRoutes);
 adminRoutes.route("/", deadlinesRoutes);
-adminRoutes.route("/", reportsRoutes);
+// consolidationNotesRoutes owns GET /reports/consolidation and allows CES roles
+// (see READ_ROLES in consolidationNotes.ts). It MUST be mounted before reportsRoutes,
+// whose blanket `/reports/*` admin-only guard would otherwise shadow that handler and
+// 403 CES users before their own per-route check runs.
 adminRoutes.route("/", consolidationNotesRoutes);
+adminRoutes.route("/", reportsRoutes);
 adminRoutes.route("/", announcementsRoutes);
 adminRoutes.route("/", settingsRoutes);
 adminRoutes.route("/", emailRoutes);
