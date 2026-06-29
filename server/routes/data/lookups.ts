@@ -3,9 +3,8 @@ import { prisma } from "../../db/client.ts";
 import { normalizeQuarterLabel } from "../../lib/quarters.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { sanitizeString } from "../../lib/sanitize.ts";
-import {
-  getDefaultReportingYear,
-} from "../../lib/trimesters.ts";
+import { getDefaultReportingYear } from "../../lib/trimesters.ts";
+import { CES_ROLES, getDivisionForCESRole } from "../../lib/routing.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
 import {
@@ -69,11 +68,7 @@ lookupsRoutes.get(
     async (c) => {
       const tokenUser = getAuthedUser(c);
 
-      const CES_ROLES = ["CES-SGOD", "CES-ASDS", "CES-CID"];
-      if (
-        tokenUser.role === "Division Personnel" ||
-        CES_ROLES.includes(tokenUser.role)
-      ) {
+      if (tokenUser.role === "Division Personnel") {
         const user = await prisma.user.findUnique({
           where: { id: tokenUser.id },
           include: {
@@ -84,6 +79,43 @@ lookupsRoutes.get(
           },
         });
         return c.json(user?.programs ?? []);
+      }
+
+      if (CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])) {
+        const user = await prisma.user.findUnique({
+          where: { id: tokenUser.id },
+          include: {
+            programs: {
+              where: { school_level_requirement: "Division" },
+              orderBy: { title: "asc" },
+            },
+          },
+        });
+        const programs = (user?.programs ?? []) as Array<{ id: number }>;
+        const division = getDivisionForCESRole(tokenUser.role);
+
+        if (division && programs.length > 0) {
+          const defaultPrograms = await prisma.program.findMany({
+            where: { school_level_requirement: "Division", division },
+            select: { id: true },
+          }) as Array<{ id: number }>;
+          const defaultIds = new Set(
+            defaultPrograms.map((program) => program.id),
+          );
+          const assignedDefaultCount = programs.filter((program) =>
+            defaultIds.has(program.id)
+          ).length;
+          const hasLegacyDefaultSet = defaultIds.size > 0 &&
+            assignedDefaultCount === defaultIds.size;
+
+          if (hasLegacyDefaultSet) {
+            return c.json(
+              programs.filter((program) => !defaultIds.has(program.id)),
+            );
+          }
+        }
+
+        return c.json(programs);
       }
 
       if (tokenUser.school_id) {

@@ -17,6 +17,7 @@ import {
   LOCK_NAMESPACE,
   pirResourceKey,
   pirResourceKeyFromRecord,
+  type TxClient,
   withAdvisoryLock,
 } from "../../lib/advisoryLock.ts";
 import { ConflictError, HttpError } from "../../lib/errors.ts";
@@ -202,6 +203,25 @@ async function getActiveFocalPersonIds(programId: number): Promise<number[]> {
       ...program.personnel.map((person) => person.id),
     ]),
   ];
+}
+
+async function getDirectCESReviewerIds(
+  programId: number,
+  db: typeof prisma | TxClient = prisma,
+): Promise<number[]> {
+  const program = await db.program.findUnique({
+    where: { id: programId },
+    select: {
+      personnel: {
+        where: {
+          role: { in: [...CES_ROLES] },
+          is_active: true,
+        },
+        select: { id: true },
+      },
+    },
+  });
+  return program?.personnel.map((user: { id: number }) => user.id) ?? [];
 }
 
 pirRoutes.use("/pirs", requireAuth());
@@ -428,14 +448,21 @@ pirRoutes.post(
           "PIR submission is available only after the related AIP is approved.",
         );
       }
-      const focalPersonIds = isSchoolSubmission
+      const directCESReviewerIds = isSchoolSubmission
+        ? await getDirectCESReviewerIds(program.id)
+        : [];
+      const focalPersonIds = isSchoolSubmission &&
+          directCESReviewerIds.length === 0
         ? await getActiveFocalPersonIds(program.id)
         : [];
-      if (isSchoolSubmission && focalPersonIds.length === 0) {
+      if (
+        isSchoolSubmission && directCESReviewerIds.length === 0 &&
+        focalPersonIds.length === 0
+      ) {
         return c.json(
           {
             error:
-              "No focal persons assigned to this program. Contact your administrator.",
+              "No focal person or CES reviewer is assigned to this program. Contact your administrator.",
           },
           400,
         );
@@ -476,7 +503,9 @@ pirRoutes.post(
       const factorData = transformFactors(factors);
       const reviewData = transformActivityReviews(activity_reviews);
       const nextStatus = isSchoolSubmission
-        ? "For Recommendation"
+        ? directCESReviewerIds.length > 0
+          ? "For CES Review"
+          : "For Recommendation"
         : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
         ? "For Superintendent Review"
         : "For CES Review";
@@ -580,7 +609,9 @@ pirRoutes.post(
 
       let reviewerIds: number[] = [];
       if (isSchoolSubmission) {
-        reviewerIds = focalPersonIds;
+        reviewerIds = directCESReviewerIds.length > 0
+          ? directCESReviewerIds
+          : focalPersonIds;
       } else if (
         CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
       ) {
@@ -602,16 +633,26 @@ pirRoutes.post(
         ]),
       ];
       if (notifyIds.length > 0) {
+        const directCESSubmission = isSchoolSubmission &&
+          directCESReviewerIds.length > 0;
         const pirNotifs = await prisma.notification.createManyAndReturn({
           data: notifyIds.map((userId) => ({
             user_id: userId,
-            title: isSchoolSubmission
+            title: directCESSubmission
+              ? "PIR Ready for CES Review"
+              : isSchoolSubmission
               ? "PIR Pending Recommendation"
               : "New PIR Submitted",
-            message: isSchoolSubmission
+            message: directCESSubmission
+              ? `${submitterLabel} submitted a PIR for ${cleanProgramTitle} (${cleanQuarter}) for direct CES review.`
+              : isSchoolSubmission
               ? `${submitterLabel} submitted a PIR for ${cleanProgramTitle} (${cleanQuarter}) for your recommendation.`
               : `${submitterLabel} submitted a PIR for ${cleanProgramTitle} (${cleanQuarter}).`,
-            type: isSchoolSubmission ? "for_recommendation" : "pir_submitted",
+            type: directCESSubmission
+              ? "for_ces_review"
+              : isSchoolSubmission
+              ? "for_recommendation"
+              : "pir_submitted",
             entity_id: pir.id,
             entity_type: "pir",
           })),
@@ -702,6 +743,19 @@ pirRoutes.put(
       const factorData = transformFactors(factors);
       const reviewData = transformActivityReviews(activity_reviews);
       const resource = pirResourceKeyFromRecord(pir);
+      const pirAipForRouting = await prisma.aIP.findUnique({
+        where: { id: pir.aip_id },
+        select: { school_id: true, program_id: true },
+      });
+      const isSchoolResubmission = tokenUser.role === "School" &&
+        pirAipForRouting?.school_id != null;
+      const directCESReviewerIds = isSchoolResubmission
+        ? await getDirectCESReviewerIds(pirAipForRouting?.program_id ?? -1)
+        : [];
+      const focalPersonIds = isSchoolResubmission &&
+          directCESReviewerIds.length === 0
+        ? await getActiveFocalPersonIds(pirAipForRouting?.program_id ?? -1)
+        : [];
 
       const updated = await withAdvisoryLock(
         LOCK_NAMESPACE.PIR,
@@ -718,12 +772,6 @@ pirRoutes.put(
           ) {
             throw new HttpError(403, "Forbidden", "FORBIDDEN");
           }
-          const pirAip = await tx.aIP.findUnique({
-            where: { id: lockedPir.aip_id },
-            select: { school_id: true, program_id: true },
-          });
-          const isSchoolResubmission = tokenUser.role === "School" &&
-            pirAip?.school_id != null;
           if (
             isSchoolResubmission
               ? !["Needs Revision", "Returned"].includes(lockedPir.status)
@@ -750,23 +798,21 @@ pirRoutes.put(
               throw new HttpError(status, submissionWindowError, "FORBIDDEN");
             }
 
-            const focalCount = await tx.programFocalPerson.count({
-              where: {
-                program_id: pirAip?.program_id ?? -1,
-                user: { role: "Division Personnel", is_active: true },
-              },
-            });
-            if (focalCount === 0) {
+            if (
+              directCESReviewerIds.length === 0 && focalPersonIds.length === 0
+            ) {
               throw new HttpError(
                 400,
-                "No focal persons assigned to this program. Contact your administrator.",
+                "No focal person or CES reviewer is assigned to this program. Contact your administrator.",
                 "NO_FOCAL_PERSONS",
               );
             }
           }
 
           const resubmitStatus = isSchoolResubmission
-            ? "For Recommendation"
+            ? directCESReviewerIds.length > 0
+              ? "For CES Review"
+              : "For Recommendation"
             : CES_ROLES.includes(tokenUser.role as typeof CES_ROLES[number])
             ? "For Superintendent Review"
             : "For CES Review";
@@ -809,13 +855,25 @@ pirRoutes.put(
           include: { aip: { include: { program: true, school: true } } },
         });
         if (resubmittedPir?.aip.school_id != null) {
-          const focalIds = await getActiveFocalPersonIds(
-            resubmittedPir.aip.program_id,
-          );
-          if (focalIds.length > 0) {
+          if (directCESReviewerIds.length > 0) {
             const reviewerNotifs = await prisma.notification
               .createManyAndReturn({
-                data: focalIds.map((userId) => ({
+                data: directCESReviewerIds.map((userId) => ({
+                  user_id: userId,
+                  title: "PIR Resubmitted for CES Review",
+                  message: `${
+                    resubmittedPir.aip.school?.name ?? "A school"
+                  } resubmitted a PIR for ${resubmittedPir.aip.program.title} (${resubmittedPir.quarter}) for direct CES review.`,
+                  type: "for_ces_review",
+                  entity_id: pirId,
+                  entity_type: "pir",
+                })),
+              });
+            pushNotifications(reviewerNotifs);
+          } else if (focalPersonIds.length > 0) {
+            const reviewerNotifs = await prisma.notification
+              .createManyAndReturn({
+                data: focalPersonIds.map((userId) => ({
                   user_id: userId,
                   title: "PIR Resubmitted for Recommendation",
                   message: `${

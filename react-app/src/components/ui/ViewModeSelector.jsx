@@ -164,6 +164,9 @@ export const ViewModeSelector = ({
     quarterOptions = [],
     onPeriodModeChange = null,
     onQuarterChange = null,
+    programSelectionDescription = null,
+    emptyProgramTitle = null,
+    emptyProgramDescription = null,
 }) => {
     const programs          = rawPrograms;
     const draftPrograms     = rawDraftPrograms;
@@ -285,9 +288,9 @@ export const ViewModeSelector = ({
                             Select a Program
                         </h1>
                         <p className="text-slate-600 dark:text-slate-200 text-sm leading-relaxed drop-shadow-sm">
-                            {theme === 'blue'
+                            {programSelectionDescription ?? (theme === 'blue'
                                 ? 'Only programs with a submitted AIP are available for quarterly reporting.'
-                                : 'Choose the DepEd program this annual plan belongs to.'}
+                                : 'Choose the DepEd program this annual plan belongs to.')}
                         </p>
                     </div>
 
@@ -396,12 +399,12 @@ export const ViewModeSelector = ({
                                 </svg>
                             </div>
                             <h3 className="font-bold text-slate-700 dark:text-slate-200 mb-1.5 text-sm">
-                                {theme === 'blue' ? 'No AIPs submitted yet' : 'No programs available'}
+                                {emptyProgramTitle ?? (theme === 'blue' ? 'No AIPs submitted yet' : 'No programs available')}
                             </h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                {theme === 'blue'
+                                {emptyProgramDescription ?? (theme === 'blue'
                                     ? 'Submit an Annual Implementation Plan first to unlock this form.'
-                                    : 'No programs have been assigned to your account.'}
+                                    : 'No programs have been assigned to your account.')}
                             </p>
                         </div>
                     ) : (

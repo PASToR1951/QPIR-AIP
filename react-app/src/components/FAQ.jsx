@@ -120,7 +120,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "Why can't I submit my school AIP?",
-        a: "School AIPs require complete required fields, valid budget and metric entries, signatures, and focal-person assignments on the selected program before they can enter the recommendation workflow. If the program has no assigned focal persons, ask your administrator to set them up first."
+        a: "School AIPs require complete required fields, valid budget and metric entries, and signatures. Programs configured for direct CES review also need an assigned CES reviewer before they can be submitted to the CES queue."
       },
       {
         q: "Why can't I see certain programs?",
@@ -128,7 +128,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "What happens after I submit an AIP?",
-        a: "A school AIP enters For Recommendation and appears in the queue of the assigned focal person. After focal recommendation it moves to For CES Review for the appropriate functional division. Division Personnel AIPs are accepted for their own workflow, while CES-owned AIPs route to For Superintendent Review."
+        a: "A school AIP follows the configured workflow for the selected program. If the program is assigned directly to a CES reviewer, it skips recommendation and goes straight to For CES Review. Division Personnel AIPs are accepted for their own workflow, while CES-owned AIPs route to For Superintendent Review."
       },
       {
         q: "What does it mean when my AIP is Returned?",
@@ -196,11 +196,11 @@ const FAQ_FALLBACK = [
       },
       {
         q: "What does For Recommendation mean?",
-        a: "A school-owned AIP or PIR is in the focal-person queue for the program. The assigned focal person can recommend it (sending it to CES Review) or return it for correction."
+        a: "A school-owned AIP or PIR is in the focal-person queue for the program. The assigned focal person can recommend it to CES Review or return it for correction. CES-owned programs skip this status and go directly to CES Review."
       },
       {
         q: "What does For CES Review mean?",
-        a: "An AIP or PIR with this status is in the CES queue for the program's functional division. CES-SGOD reviews SGOD programs, CES-ASDS reviews OSDS programs, and CES-CID reviews CID programs and programs without a declared division."
+        a: "An AIP or PIR with this status is in the CES queue. CES-owned programs go directly to their assigned CES reviewer; other programs route by functional division after focal recommendation."
       },
       {
         q: "What does Under Review mean?",
@@ -236,7 +236,7 @@ const FAQ_FALLBACK = [
       },
       {
         q: "Which CES role reviews which programs?",
-        a: "CES-SGOD reviews SGOD programs, CES-ASDS reviews OSDS programs, and CES-CID reviews CID programs and any programs that do not yet have a declared functional division."
+        a: "CES-owned programs are reviewed by the CES account assigned to that program. Other programs route by functional division: CES-SGOD reviews SGOD, CES-ASDS reviews OSDS, and CES-CID reviews CID or unassigned programs."
       },
       {
         q: "What can the Superintendent do?",

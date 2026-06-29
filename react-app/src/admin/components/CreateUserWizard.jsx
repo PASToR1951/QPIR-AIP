@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   XCircle, CaretLeft, Buildings, IdentificationBadge, ShieldStar,
   UserPlus, CaretRight, Eye, EyeSlash,
@@ -10,10 +10,7 @@ import {
   getAvailableSchoolRoleSchools,
 } from '../pages/adminUsers/schoolAssignmentOptions.js';
 import {
-  getCesProgramIds,
-  getDefaultProgramIdsForRole,
   getDivisionProgramOptions,
-  haveSameProgramIds,
   isCesRole,
 } from '../pages/adminUsers/cesProgramAssignments.js';
 
@@ -170,19 +167,9 @@ function DetailsForm({ form, setForm, schools, clusters = [], users = [], progra
     users,
   });
   const divisionProgramOptions = useMemo(() => getDivisionProgramOptions(programs), [programs]);
-  const cesAutoProgramIds = useMemo(() => getCesProgramIds(form.role, programs), [form.role, programs]);
+  const isCesUser = isCesRole(form.role);
 
   const emailLocal = isDepedEmail ? form.email.replace(/@deped\.gov\.ph$/, '') : form.email;
-
-  useEffect(() => {
-    if (!isCesRole(form.role) || cesAutoProgramIds.length === 0) return;
-    setForm((current) => {
-      if (current.role !== form.role || haveSameProgramIds(current.program_ids, cesAutoProgramIds)) {
-        return current;
-      }
-      return { ...current, program_ids: cesAutoProgramIds };
-    });
-  }, [cesAutoProgramIds, form.role, setForm]);
 
   const handleEmailChange = (e) => {
     const val = e.target.value.replace(/@.*$/, '');
@@ -432,7 +419,7 @@ function DetailsForm({ form, setForm, schools, clusters = [], users = [], progra
       {(['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(form.role)) && (
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
-            Assigned Programs
+            {isCesUser ? 'CES-Owned Programs' : 'Assigned Programs'}
           </label>
           <MultiSelect
             options={divisionProgramOptions}
@@ -440,6 +427,11 @@ function DetailsForm({ form, setForm, schools, clusters = [], users = [], progra
             onChange={v => setForm(f => ({ ...f, program_ids: v }))}
             placeholder="Select programs"
           />
+          {isCesUser && (
+            <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+              Select only the programs this CES account will author for AIP/PIR.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -544,7 +536,7 @@ export function CreateUserWizard({ open, onClose, onSave, schools, clusters = []
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {step === 1 && (
-            <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, cluster_id: null, program_ids: getDefaultProgramIdsForRole(v, programs) }))} />
+            <RolePicker selected={form.role} onSelect={v => setForm(f => ({ ...f, role: v, school_id: null, cluster_id: null, program_ids: [] }))} />
           )}
           {step === 2 && (
             <DetailsForm form={form} setForm={setForm} schools={schools} clusters={clusters} users={users} programs={programs} />

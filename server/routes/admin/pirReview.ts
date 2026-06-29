@@ -11,7 +11,7 @@ import { getUserFromToken } from "../../lib/auth.ts";
 import { ConflictError, HttpError } from "../../lib/errors.ts";
 import { pushNotification } from "../../lib/notifStream.ts";
 import { normalizeQuarterLabel } from "../../lib/quarters.ts";
-import { getCESRoleForDivisionPIR } from "../../lib/routing.ts";
+import { getCESRoleForDivisionPIR, isCESRole } from "../../lib/routing.ts";
 import { sanitizeObject, sanitizeString } from "../../lib/sanitize.ts";
 import { writeAuditLog } from "./shared/audit.ts";
 import { buildSubmittedBy } from "./shared/display.ts";
@@ -48,37 +48,73 @@ function canCESReviewDivision(role: string, division: string | null): boolean {
 }
 
 function canCESReviewAipRecord(
-  role: string,
+  user: { id: number; role: string },
   aip: {
     school_id?: number | null;
     focal_person_id?: number | null;
-    program?: { division?: string | null } | null;
+    program?: {
+      division?: string | null;
+      personnel?: Array<
+        { id: number; role?: string | null; is_active?: boolean }
+      >;
+    } | null;
   },
 ): boolean {
+  const role = user.role;
   if (aip.school_id == null) {
     return role === "Superintendent";
   }
-  return aip.school_id != null &&
+  if (
+    aip.school_id != null &&
     aip.focal_person_id != null &&
-    canCESReviewDivision(role, aip.program?.division ?? null);
+    canCESReviewDivision(role, aip.program?.division ?? null)
+  ) {
+    return true;
+  }
+  return isCESRole(role) &&
+    Boolean(
+      aip.program?.personnel?.some((person) =>
+        person.id === user.id &&
+        person.role === role &&
+        person.is_active !== false
+      ),
+    );
 }
 
 function canCESReviewPirRecord(
-  role: string,
+  user: { id: number; role: string },
   pir: {
     focal_person_id?: number | null;
     aip?: {
       school_id?: number | null;
-      program?: { division?: string | null } | null;
+      program?: {
+        division?: string | null;
+        personnel?: Array<
+          { id: number; role?: string | null; is_active?: boolean }
+        >;
+      } | null;
       created_by?: { role?: string | null } | null;
     } | null;
   },
 ): boolean {
+  const role = user.role;
   const aip = pir.aip;
   if (!aip) return false;
   if (aip.school_id != null) {
-    return pir.focal_person_id != null &&
-      canCESReviewDivision(role, aip.program?.division ?? null);
+    if (
+      pir.focal_person_id != null &&
+      canCESReviewDivision(role, aip.program?.division ?? null)
+    ) {
+      return true;
+    }
+    return isCESRole(role) &&
+      Boolean(
+        aip.program?.personnel?.some((person) =>
+          person.id === user.id &&
+          person.role === role &&
+          person.is_active !== false
+        ),
+      );
   }
   return role === "Superintendent";
 }
@@ -90,12 +126,36 @@ function cesSchoolProgramWhere(role: string): Record<string, any> {
   return { OR: [{ division: "CID" }, { division: null }] };
 }
 
-function cesPirWhereForRole(role: string): Record<string, any> {
+function directCESProgramWhere(
+  user: { id: number; role: string },
+): Record<string, any> {
+  if (!isCESRole(user.role)) return { id: -1 };
+  return {
+    personnel: {
+      some: {
+        id: user.id,
+        role: user.role,
+        is_active: true,
+      },
+    },
+  };
+}
+
+function cesPirWhereForRole(
+  user: { id: number; role: string },
+): Record<string, any> {
+  const role = user.role;
   const schoolRecommended = {
     focal_person_id: { not: null },
     aip: {
       school_id: { not: null },
       program: cesSchoolProgramWhere(role),
+    },
+  };
+  const schoolDirectCES = {
+    aip: {
+      school_id: { not: null },
+      program: directCESProgramWhere(user),
     },
   };
 
@@ -104,6 +164,7 @@ function cesPirWhereForRole(role: string): Record<string, any> {
       OR: [
         { aip: { school_id: null, program: { division: "SGOD" } } },
         schoolRecommended,
+        schoolDirectCES,
       ],
     };
   }
@@ -112,6 +173,7 @@ function cesPirWhereForRole(role: string): Record<string, any> {
       OR: [
         { aip: { school_id: null, program: { division: "OSDS" } } },
         schoolRecommended,
+        schoolDirectCES,
       ],
     };
   }
@@ -120,7 +182,7 @@ function cesPirWhereForRole(role: string): Record<string, any> {
       OR: [
         { aip: { school_id: null } },
         schoolRecommended,
-      ]
+      ],
     };
   }
   return {
@@ -132,15 +194,29 @@ function cesPirWhereForRole(role: string): Record<string, any> {
         },
       },
       schoolRecommended,
+      schoolDirectCES,
     ],
   };
 }
 
-function cesAipWhereForRole(role: string): Record<string, any> {
-  return {
+function cesAipWhereForRole(
+  user: { id: number; role: string },
+): Record<string, any> {
+  const role = user.role;
+  const schoolRecommended = {
     school_id: { not: null },
     focal_person_id: { not: null },
     program: cesSchoolProgramWhere(role),
+  };
+  if (role === "Superintendent") return schoolRecommended;
+  return {
+    OR: [
+      schoolRecommended,
+      {
+        school_id: { not: null },
+        program: directCESProgramWhere(user),
+      },
+    ],
   };
 }
 
@@ -299,7 +375,7 @@ pirReviewRoutes.get("/ces/pirs", async (c) => {
 
   const rawQuarter = c.req.query("quarter");
   const rawYear = c.req.query("year");
-  
+
   let quarterFilter: string | undefined;
   let yearFilter: number | undefined;
 
@@ -307,18 +383,22 @@ pirReviewRoutes.get("/ces/pirs", async (c) => {
     const q = Number(rawQuarter);
     const y = Number(rawYear);
     if (q >= 1 && q <= 4 && !isNaN(y)) {
-       const ordinals = ["", "1st", "2nd", "3rd", "4th"];
-       quarterFilter = `${ordinals[q]} Quarter CY ${y}`;
-       yearFilter = y;
+      const ordinals = ["", "1st", "2nd", "3rd", "4th"];
+      quarterFilter = `${ordinals[q]} Quarter CY ${y}`;
+      yearFilter = y;
     }
   } else if (c.req.query("quarter")) {
-    quarterFilter = normalizeQuarterLabel(sanitizeString(c.req.query("quarter") || ""));
+    quarterFilter = normalizeQuarterLabel(
+      sanitizeString(c.req.query("quarter") || ""),
+    );
   }
 
   const pirs = await prisma.pIR.findMany({
     where: {
-      status: { in: ["For CES Review", "Under Review", "For Superintendent Review"] },
-      ...cesPirWhereForRole(tokenUser.role),
+      status: {
+        in: ["For CES Review", "Under Review", "For Superintendent Review"],
+      },
+      ...cesPirWhereForRole(tokenUser),
       ...(quarterFilter ? { quarter: quarterFilter } : {}),
       ...(yearFilter ? { aip: { is: { year: yearFilter } } } : {}),
     },
@@ -402,11 +482,18 @@ pirReviewRoutes.get("/ces/aips", async (c) => {
   const aips = await prisma.aIP.findMany({
     where: {
       status: { in: ["For CES Review", "For Superintendent Review"] },
-      ...cesAipWhereForRole(tokenUser.role),
+      ...cesAipWhereForRole(tokenUser),
       ...(year && Number.isInteger(year) ? { year } : {}),
     },
     include: {
-      program: true,
+      program: {
+        include: {
+          personnel: {
+            where: { role: { in: ["CES-SGOD", "CES-ASDS", "CES-CID"] } },
+            select: { id: true, role: true, is_active: true },
+          },
+        },
+      },
       school: true,
       created_by: {
         select: { name: true, first_name: true, last_name: true, email: true },
@@ -428,7 +515,14 @@ pirReviewRoutes.get("/ces/aips/:id", async (c) => {
   const aip = await prisma.aIP.findUnique({
     where: documentWhereFromRef(c.req.param("id")),
     include: {
-      program: true,
+      program: {
+        include: {
+          personnel: {
+            where: { role: { in: ["CES-SGOD", "CES-ASDS", "CES-CID"] } },
+            select: { id: true, role: true, is_active: true },
+          },
+        },
+      },
       school: true,
       created_by: {
         select: { name: true, first_name: true, last_name: true, email: true },
@@ -441,7 +535,7 @@ pirReviewRoutes.get("/ces/aips/:id", async (c) => {
     },
   });
   if (!aip) return c.json({ error: "AIP not found" }, 404);
-  if (!canCESReviewAipRecord(tokenUser.role, aip as any)) {
+  if (!canCESReviewAipRecord(tokenUser, aip as any)) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -472,18 +566,37 @@ pirReviewRoutes.post(
           aipId = lockedAipId;
           const lockedAip = await tx.aIP.findUnique({
             where: { id: aipId },
-            include: { program: true, school: true },
+            include: {
+              program: {
+                include: {
+                  personnel: {
+                    where: {
+                      role: { in: ["CES-SGOD", "CES-ASDS", "CES-CID"] },
+                    },
+                    select: { id: true, role: true, is_active: true },
+                  },
+                },
+              },
+              school: true,
+            },
           });
           if (!lockedAip) {
             throw new HttpError(404, "AIP not found", "NOT_FOUND");
           }
-          if (!["For CES Review", "For Superintendent Review"].includes(lockedAip.status)) {
+          if (
+            !["For CES Review", "For Superintendent Review"].includes(
+              lockedAip.status,
+            )
+          ) {
             throw new ConflictError("AIP is not pending CES review");
           }
-          if (lockedAip.status === "For Superintendent Review" && tokenUser.role !== "Superintendent") {
+          if (
+            lockedAip.status === "For Superintendent Review" &&
+            tokenUser.role !== "Superintendent"
+          ) {
             throw new HttpError(403, "Forbidden", "FORBIDDEN");
           }
-          if (!canCESReviewAipRecord(tokenUser.role, lockedAip as any)) {
+          if (!canCESReviewAipRecord(tokenUser, lockedAip as any)) {
             throw new HttpError(403, "Forbidden", "FORBIDDEN");
           }
 
@@ -553,18 +666,37 @@ pirReviewRoutes.post(
           aipId = lockedAipId;
           const lockedAip = await tx.aIP.findUnique({
             where: { id: aipId },
-            include: { program: true, school: true },
+            include: {
+              program: {
+                include: {
+                  personnel: {
+                    where: {
+                      role: { in: ["CES-SGOD", "CES-ASDS", "CES-CID"] },
+                    },
+                    select: { id: true, role: true, is_active: true },
+                  },
+                },
+              },
+              school: true,
+            },
           });
           if (!lockedAip) {
             throw new HttpError(404, "AIP not found", "NOT_FOUND");
           }
-          if (!["For CES Review", "For Superintendent Review"].includes(lockedAip.status)) {
+          if (
+            !["For CES Review", "For Superintendent Review"].includes(
+              lockedAip.status,
+            )
+          ) {
             throw new ConflictError("AIP is not pending CES review");
           }
-          if (lockedAip.status === "For Superintendent Review" && tokenUser.role !== "Superintendent") {
+          if (
+            lockedAip.status === "For Superintendent Review" &&
+            tokenUser.role !== "Superintendent"
+          ) {
             throw new HttpError(403, "Forbidden", "FORBIDDEN");
           }
-          if (!canCESReviewAipRecord(tokenUser.role, lockedAip as any)) {
+          if (!canCESReviewAipRecord(tokenUser, lockedAip as any)) {
             throw new HttpError(403, "Forbidden", "FORBIDDEN");
           }
 
@@ -620,25 +752,45 @@ pirReviewRoutes.post(
         pirId = lockedPirId;
         const lockedPir = await tx.pIR.findUnique({
           where: { id: pirId },
-          include: { aip: { include: { program: true, created_by: true } } },
+          include: {
+            aip: {
+              include: {
+                program: {
+                  include: {
+                    personnel: {
+                      where: {
+                        role: { in: ["CES-SGOD", "CES-ASDS", "CES-CID"] },
+                      },
+                      select: { id: true, role: true, is_active: true },
+                    },
+                  },
+                },
+                created_by: true,
+              },
+            },
+          },
         });
         if (!lockedPir) {
           throw new HttpError(404, "PIR not found", "NOT_FOUND");
         }
         if (
-          !["For CES Review", "Under Review", "For Superintendent Review"].includes(
-            (lockedPir as any).status,
-          )
+          !["For CES Review", "Under Review", "For Superintendent Review"]
+            .includes(
+              (lockedPir as any).status,
+            )
         ) {
           throw new ConflictError("PIR is not in a reviewable state");
         }
-        if ((lockedPir as any).status === "For Superintendent Review" && tokenUser.role !== "Superintendent") {
+        if (
+          (lockedPir as any).status === "For Superintendent Review" &&
+          tokenUser.role !== "Superintendent"
+        ) {
           throw new HttpError(403, "Forbidden", "FORBIDDEN");
         }
         if ((lockedPir as any).active_reviewer_id !== null) {
           throw new ConflictError("PIR is already under review");
         }
-        if (!canCESReviewPirRecord(tokenUser.role, lockedPir as any)) {
+        if (!canCESReviewPirRecord(tokenUser, lockedPir as any)) {
           throw new HttpError(403, "Forbidden", "FORBIDDEN");
         }
 
@@ -703,23 +855,42 @@ pirReviewRoutes.post(
         const lockedPir = await tx.pIR.findUnique({
           where: { id: pirId },
           include: {
-            aip: { include: { program: true, school: true, created_by: true } },
+            aip: {
+              include: {
+                program: {
+                  include: {
+                    personnel: {
+                      where: {
+                        role: { in: ["CES-SGOD", "CES-ASDS", "CES-CID"] },
+                      },
+                      select: { id: true, role: true, is_active: true },
+                    },
+                  },
+                },
+                school: true,
+                created_by: true,
+              },
+            },
           },
         });
         if (!lockedPir) {
           throw new HttpError(404, "PIR not found", "NOT_FOUND");
         }
         if (
-          !["For CES Review", "Under Review", "For Superintendent Review"].includes(
-            (lockedPir as any).status,
-          )
+          !["For CES Review", "Under Review", "For Superintendent Review"]
+            .includes(
+              (lockedPir as any).status,
+            )
         ) {
           throw new ConflictError("PIR is not pending CES review");
         }
-        if ((lockedPir as any).status === "For Superintendent Review" && tokenUser.role !== "Superintendent") {
+        if (
+          (lockedPir as any).status === "For Superintendent Review" &&
+          tokenUser.role !== "Superintendent"
+        ) {
           throw new HttpError(403, "Forbidden", "FORBIDDEN");
         }
-        if (!canCESReviewPirRecord(tokenUser.role, lockedPir as any)) {
+        if (!canCESReviewPirRecord(tokenUser, lockedPir as any)) {
           throw new HttpError(403, "Forbidden", "FORBIDDEN");
         }
 
@@ -782,23 +953,42 @@ pirReviewRoutes.post(
         const lockedPir = await tx.pIR.findUnique({
           where: { id: pirId },
           include: {
-            aip: { include: { program: true, school: true, created_by: true } },
+            aip: {
+              include: {
+                program: {
+                  include: {
+                    personnel: {
+                      where: {
+                        role: { in: ["CES-SGOD", "CES-ASDS", "CES-CID"] },
+                      },
+                      select: { id: true, role: true, is_active: true },
+                    },
+                  },
+                },
+                school: true,
+                created_by: true,
+              },
+            },
           },
         });
         if (!lockedPir) {
           throw new HttpError(404, "PIR not found", "NOT_FOUND");
         }
         if (
-          !["For CES Review", "Under Review", "For Superintendent Review"].includes(
-            (lockedPir as any).status,
-          )
+          !["For CES Review", "Under Review", "For Superintendent Review"]
+            .includes(
+              (lockedPir as any).status,
+            )
         ) {
           throw new ConflictError("PIR is not pending CES review");
         }
-        if ((lockedPir as any).status === "For Superintendent Review" && tokenUser.role !== "Superintendent") {
+        if (
+          (lockedPir as any).status === "For Superintendent Review" &&
+          tokenUser.role !== "Superintendent"
+        ) {
           throw new HttpError(403, "Forbidden", "FORBIDDEN");
         }
-        if (!canCESReviewPirRecord(tokenUser.role, lockedPir as any)) {
+        if (!canCESReviewPirRecord(tokenUser, lockedPir as any)) {
           throw new HttpError(403, "Forbidden", "FORBIDDEN");
         }
 

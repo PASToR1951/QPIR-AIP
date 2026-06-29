@@ -39,6 +39,7 @@ export default function AIPFormContainer() {
     let user = null;
     try { user = userStr ? JSON.parse(userStr) : null; } catch { sessionStorage.removeItem('user'); }
 
+    const isCesUser           = ['CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role);
     const isDivisionPersonnel = ['Division Personnel', 'CES-SGOD', 'CES-ASDS', 'CES-CID'].includes(user?.role);
     const isSchoolUser        = user?.role === 'School';
     const projectTerminology  = getProjectTerminology(isSchoolUser);
@@ -207,6 +208,9 @@ export default function AIPFormContainer() {
                                 theme="pink" isMobile={shell.isMobile}
                                 selectedProgram={shell.splashSelectedProgram}
                                 formKind="aip"
+                                programSelectionDescription={isCesUser ? 'Choose the CES-owned program this annual plan belongs to.' : null}
+                                emptyProgramTitle={isCesUser ? 'No CES-owned programs assigned' : null}
+                                emptyProgramDescription={isCesUser ? 'Ask an administrator to create or assign the CES-owned program first.' : null}
                                 onSelectProgram={(program) => {
                                     shell.setSplashSelectedProgram(program);
                                     setSearchParams(program ? { ...periodSearchParams, program } : periodSearchParams, { replace: true });

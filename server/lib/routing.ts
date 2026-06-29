@@ -18,3 +18,16 @@ export function getCESRoleForDivisionPIR(
 }
 
 export const CES_ROLES = ["CES-SGOD", "CES-ASDS", "CES-CID"] as const;
+
+export function isCESRole(role: string): boolean {
+  return (CES_ROLES as readonly string[]).includes(role);
+}
+
+export function getDivisionForCESRole(
+  role: string,
+): "SGOD" | "OSDS" | "CID" | null {
+  if (role === "CES-SGOD") return "SGOD";
+  if (role === "CES-ASDS") return "OSDS";
+  if (role === "CES-CID") return "CID";
+  return null;
+}

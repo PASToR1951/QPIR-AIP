@@ -84,6 +84,22 @@ async function mapTargetlessUniqueConflict<T>(
   }
 }
 
+async function getDirectCESReviewerIds(programId: number): Promise<number[]> {
+  const program = await prisma.program.findUnique({
+    where: { id: programId },
+    select: {
+      personnel: {
+        where: {
+          role: { in: [...CES_ROLES] },
+          is_active: true,
+        },
+        select: { id: true },
+      },
+    },
+  });
+  return program?.personnel.map((user) => user.id) ?? [];
+}
+
 aipRoutes.use("/aips", requireAuth());
 aipRoutes.use("/aips/*", requireAuth());
 
@@ -301,6 +317,13 @@ aipRoutes.post(
       }
 
       const schoolId = tokenUser.role === "School" ? tokenUser.school_id : null;
+      const isSchoolSubmission = schoolId !== null;
+      const directCESReviewerIds = isSchoolSubmission
+        ? await getDirectCESReviewerIds(program.id)
+        : [];
+      const nextStatus = isSchoolSubmission && directCESReviewerIds.length > 0
+        ? "For CES Review"
+        : "Approved";
       const parsedYear = safeParseInt(
         year,
         getDefaultReportingYear(tokenUser.role),
@@ -335,7 +358,7 @@ aipRoutes.post(
         prepared_by_title: prepared_by_title || "",
         approved_by_name: approved_by_name || "",
         approved_by_title: approved_by_title || "",
-        status: "Approved",
+        status: nextStatus,
       };
 
       if (hasInvalidActivityBudget(activities)) {
@@ -440,15 +463,25 @@ aipRoutes.post(
         select: { id: true },
       });
 
-      const notifyIds = [...new Set(aipAdmins.map((admin) => admin.id))];
+      const notifyIds = [
+        ...new Set([
+          ...directCESReviewerIds,
+          ...aipAdmins.map((admin) => admin.id),
+        ]),
+      ];
       if (notifyIds.length > 0) {
         const reviewerNotifs = await prisma.notification.createManyAndReturn({
           data: notifyIds.map((userId) => ({
             user_id: userId,
-            title: "New AIP Submitted",
-            message:
-              `${schoolLabel} submitted an AIP for ${program.title} (FY ${parsedYear}).`,
-            type: "aip_submitted",
+            title: directCESReviewerIds.length > 0
+              ? "AIP Ready for CES Review"
+              : "New AIP Submitted",
+            message: directCESReviewerIds.length > 0
+              ? `${schoolLabel} submitted an AIP for ${program.title} (FY ${parsedYear}) for direct CES review.`
+              : `${schoolLabel} submitted an AIP for ${program.title} (FY ${parsedYear}).`,
+            type: directCESReviewerIds.length > 0
+              ? "for_ces_review"
+              : "aip_submitted",
             entity_id: aip.id,
             entity_type: "aip",
           })),
@@ -459,9 +492,12 @@ aipRoutes.post(
       const submitterNotif = await prisma.notification.create({
         data: {
           user_id: tokenUser.id,
-          title: "AIP Submitted",
-          message:
-            `Your AIP for ${program.title} (FY ${parsedYear}) has been submitted and approved.`,
+          title: directCESReviewerIds.length > 0
+            ? "AIP Submitted for CES Review"
+            : "AIP Submitted",
+          message: directCESReviewerIds.length > 0
+            ? `Your AIP for ${program.title} (FY ${parsedYear}) has been submitted for CES review.`
+            : `Your AIP for ${program.title} (FY ${parsedYear}) has been submitted and approved.`,
           type: "aip_submitted",
           entity_id: aip.id,
           entity_type: "aip",
@@ -610,6 +646,13 @@ aipRoutes.put(
 
       const activityFields = transformAIPActivities(activities);
       const resource = aipResourceKeyFromRecord(aip);
+      const directCESReviewerIds = aip.school_id !== null
+        ? await getDirectCESReviewerIds(aip.program_id)
+        : [];
+      const nextStatus =
+        aip.school_id !== null && directCESReviewerIds.length > 0
+          ? "For CES Review"
+          : "Approved";
 
       const updated = await withAdvisoryLock(
         LOCK_NAMESPACE.AIP,
@@ -651,7 +694,15 @@ aipRoutes.put(
               prepared_by_title: prepared_by_title || "",
               approved_by_name: approved_by_name || "",
               approved_by_title: approved_by_title || "",
-              status: "Approved",
+              status: nextStatus,
+              ...(lockedAip.school_id !== null && {
+                focal_person_id: null,
+                focal_recommended_at: null,
+                focal_remarks: null,
+                ces_reviewer_id: null,
+                ces_noted_at: null,
+                ces_remarks: null,
+              }),
               activities: { create: activityFields },
             },
             include: { activities: true },
@@ -667,6 +718,22 @@ aipRoutes.put(
         details: { programTitle: aip.program.title, year: aip.year },
         ipAddress: getClientIp(c),
       });
+
+      if (nextStatus === "For CES Review" && directCESReviewerIds.length > 0) {
+        const reviewerNotifs = await prisma.notification.createManyAndReturn({
+          data: directCESReviewerIds.map((userId) => ({
+            user_id: userId,
+            title: "AIP Resubmitted for CES Review",
+            message:
+              `An AIP for ${aip.program.title} (FY ${aip.year}) was resubmitted for direct CES review.`,
+            type: "for_ces_review",
+            entity_id: aipId,
+            entity_type: "aip",
+          })),
+        });
+        pushNotifications(reviewerNotifs);
+      }
+
       return c.json({ message: "AIP updated successfully", aip: updated });
     },
   ),
