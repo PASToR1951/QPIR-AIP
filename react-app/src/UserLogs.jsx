@@ -176,7 +176,7 @@ export default function UserLogs() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col font-sans lg:pl-60">
       <DashboardHeader user={user} onLogout={handleLogout} />
 
       <main className="flex-1 w-full max-w-3xl mx-auto mt-6 px-4 pb-12">

@@ -2,7 +2,7 @@
 
 import { createElement, useState, useRef, useEffect } from 'react';
 import { useAppLogo } from '../../context/BrandingContext.jsx';
-import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageCircle, TagIcon, IdentificationCardIcon, ListBulletsIcon, BookOpenUserIcon, BooksIcon, ClockCounterClockwise, ClipboardText, House, ChartBar, FileText } from '@phosphor-icons/react';
+import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageCircle, TagIcon, IdentificationCardIcon, ListBulletsIcon, BookOpenUserIcon, BooksIcon, ClockCounterClockwise, ClipboardText, House, ChartBar, FileText, List as MenuIcon, X as CloseIcon } from '@phosphor-icons/react';
 import { Link, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NotificationBell } from './NotificationBell.jsx';
@@ -14,11 +14,65 @@ import { ReportingPeriodPicker } from './ReportingPeriodPicker.jsx';
 import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
 
 const MotionDiv = motion.div;
+const MotionAside = motion.aside;
+
+// Width of the fixed sidebar. Consuming pages add `lg:pl-60` so their content
+// sits to the right of it; keep these in sync if the width ever changes.
+const SIDEBAR_WIDTH = 'w-60';
+
+function SidebarNav({ appLogo, navItems, roleTheme, onNavigate }) {
+    return (
+        <>
+            <div className={`flex h-14 shrink-0 items-center gap-2.5 border-b px-4 ${roleTheme.border}`}>
+                <img src={appLogo} alt="AIP-PIR Logo" className="h-8 w-auto shrink-0 drop-shadow-sm" />
+                <div className="min-w-0">
+                    <div className="truncate text-sm font-black leading-none tracking-tight text-slate-900 dark:text-slate-100">
+                        AIP-PIR
+                    </div>
+                    <div className={`mt-1 truncate text-[10px] font-black uppercase tracking-[0.16em] ${roleTheme.subtleText}`}>
+                        DepEd Guihulngan City
+                    </div>
+                </div>
+            </div>
+            <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+                {navItems.map(({ to, label, icon, end, badge, preload }) => (
+                    <NavLink
+                        key={to}
+                        to={to}
+                        end={end}
+                        onMouseEnter={preload}
+                        onClick={onNavigate}
+                        className={({ isActive }) =>
+                            `relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-black transition-colors ${
+                                isActive
+                                    ? roleTheme.activeNav
+                                    : `text-slate-500 dark:text-slate-400 ${roleTheme.hoverNav}`
+                            }`
+                        }
+                    >
+                        {({ isActive }) => (
+                            <>
+                                {createElement(icon, { size: 18, weight: isActive ? 'fill' : 'regular' })}
+                                <span className="truncate">{label}</span>
+                                {badge > 0 && (
+                                    <span className="ml-auto min-w-5 rounded-full bg-blue-600 px-1.5 text-center text-[10px] font-black leading-5 text-white shadow-sm">
+                                        {badge > 99 ? '99+' : badge}
+                                    </span>
+                                )}
+                            </>
+                        )}
+                    </NavLink>
+                ))}
+            </nav>
+        </>
+    );
+}
 
 export const DashboardHeader = ({ user, onLogout }) => {
     const appLogo = useAppLogo();
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isDevicesOpen, setIsDevicesOpen] = useState(false);
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
     const dropdownRef = useRef(null);
     const { selectedYear, selectedQuarter } = useReportingPeriod();
@@ -37,7 +91,7 @@ export const DashboardHeader = ({ user, onLogout }) => {
     useEffect(() => {
         if (user?.role !== 'Division Personnel') return;
         let cancelled = false;
-        
+
         const params = new URLSearchParams();
         if (selectedYear) params.set('year', selectedYear);
         if (selectedQuarter) params.set('quarter', selectedQuarter);
@@ -62,188 +116,201 @@ export const DashboardHeader = ({ user, onLogout }) => {
           : /* Admin */
             (user?.name || user?.email?.split('@')[0] || 'User');
     const roleTheme = getRoleVisualTheme(user);
-    const divisionNavItems = user?.role === 'Division Personnel'
-        ? [
-            { to: '/', label: 'Dashboard', icon: House, end: true },
-            { to: '/division', label: 'Queue', icon: ClipboardText, end: true, badge: pendingCount, preload: () => import('../../division/DivisionLayout.jsx') },
-            { to: '/division/programs', label: 'Programs', icon: FileText, preload: () => import('../../division/DivisionLayout.jsx') },
-            { to: '/division/consolidation', label: 'Consolidation', icon: ChartBar, preload: () => import('../../division/DivisionLayout.jsx') },
-            { to: '/aip', label: 'My AIP', icon: FileText, preload: () => import('../../AIPForm.jsx') },
-            { to: '/pir', label: 'My PIR', icon: ChartBar, preload: () => import('../../PIRForm.jsx') },
-        ]
-        : [];
+
+    const navItems = [
+        { to: '/', label: 'Dashboard', icon: House, end: true },
+        ...(user?.role === 'Division Personnel'
+            ? [
+                { to: '/division', label: 'Queue', icon: ClipboardText, end: true, badge: pendingCount, preload: () => import('../../division/DivisionLayout.jsx') },
+                { to: '/division/programs', label: 'Programs', icon: FileText, preload: () => import('../../division/DivisionLayout.jsx') },
+                { to: '/division/consolidation', label: 'Consolidation', icon: ChartBar, preload: () => import('../../division/DivisionLayout.jsx') },
+                { to: '/aip', label: 'My AIP', icon: FileText, preload: () => import('../../AIPForm.jsx') },
+                { to: '/pir', label: 'My PIR', icon: ChartBar, preload: () => import('../../PIRForm.jsx') },
+            ]
+            : []),
+    ];
 
     return (
-        <nav className={`sticky top-0 z-50 border-b shadow-sm backdrop-blur-md print:hidden ${roleTheme.header}`}>
-            <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
-            <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-3 sm:px-5">
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <img src={appLogo} alt="AIP-PIR Logo" className="h-8 w-auto shrink-0 drop-shadow-sm" />
-                    <div className="hidden h-6 w-px bg-slate-200 dark:bg-dark-border/70 sm:block"></div>
-                    <div className="min-w-0">
-                        <div className="truncate text-sm font-black leading-none tracking-tight text-slate-900 dark:text-slate-100">
-                            AIP-PIR
-                        </div>
-                        <div className={`mt-1 hidden truncate text-[10px] font-black uppercase tracking-[0.18em] sm:block ${roleTheme.subtleText}`}>
-                            DepEd Division of Guihulngan City
-                        </div>
-                    </div>
-                </div>
+        <>
+            {/* Desktop sidebar */}
+            <aside className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r shadow-sm backdrop-blur-md print:hidden lg:flex ${SIDEBAR_WIDTH} ${roleTheme.header}`}>
+                <div className={`absolute inset-y-0 right-0 w-0.5 ${roleTheme.topAccent}`} />
+                <SidebarNav appLogo={appLogo} navItems={navItems} roleTheme={roleTheme} />
+            </aside>
 
-                <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-                <ReportingPeriodPicker />
-                {divisionNavItems.length > 0 && (
-                    <div className="hidden max-w-[48vw] items-center gap-1 overflow-x-auto rounded-lg border border-slate-200/70 bg-white/35 p-1 dark:border-white/10 dark:bg-white/5 lg:flex">
-                        {divisionNavItems.map(({ to, label, icon, end, badge, preload }) => (
-                            <NavLink
-                                key={to}
-                                to={to}
-                                end={end}
-                                onMouseEnter={preload}
-                                className={({ isActive }) =>
-                                    `relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-black transition-colors ${
-                                        isActive
-                                            ? roleTheme.activeNav
-                                            : `text-slate-500 dark:text-slate-400 ${roleTheme.hoverNav}`
-                                    }`
-                                }
+            {/* Mobile slide-in sidebar */}
+            <AnimatePresence>
+                {isMobileNavOpen && (
+                    <div className="fixed inset-0 z-50 lg:hidden print:hidden">
+                        <MotionDiv
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={() => setIsMobileNavOpen(false)}
+                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                        />
+                        <MotionAside
+                            initial={{ x: '-100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '-100%' }}
+                            transition={{ duration: 0.25, ease: 'easeOut' }}
+                            className={`absolute inset-y-0 left-0 flex flex-col border-r shadow-xl ${SIDEBAR_WIDTH} ${roleTheme.header}`}
+                        >
+                            <button
+                                aria-label="Close navigation"
+                                onClick={() => setIsMobileNavOpen(false)}
+                                className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-black/5 dark:text-slate-400 dark:hover:bg-white/5"
                             >
-                                {({ isActive }) => (
-                                    <>
-                                        {createElement(icon, { size: 15, weight: isActive ? 'fill' : 'regular' })}
-                                        <span className="hidden xl:inline">{label}</span>
-                                        {badge > 0 && (
-                                            <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-blue-600 px-1 text-center text-[9px] font-black leading-4 text-white shadow-sm">
-                                                {badge > 99 ? '99+' : badge}
-                                            </span>
-                                        )}
-                                    </>
-                                )}
-                            </NavLink>
-                        ))}
+                                <CloseIcon size={18} weight="bold" />
+                            </button>
+                            <SidebarNav appLogo={appLogo} navItems={navItems} roleTheme={roleTheme} onNavigate={() => setIsMobileNavOpen(false)} />
+                        </MotionAside>
                     </div>
                 )}
+            </AnimatePresence>
 
-                {/* Profile Dropdown */}
-                <div className="flex items-center relative" ref={dropdownRef}>
+            {/* Top bar */}
+            <header className={`sticky top-0 z-30 border-b shadow-sm backdrop-blur-md print:hidden ${roleTheme.header}`}>
+                <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
+                <div className="flex h-14 items-center gap-3 px-3 sm:px-5">
+                    {/* Mobile: menu toggle + compact brand */}
                     <button
-                        data-tour="dashboard-profile-menu"
-                        aria-label="Open profile menu"
-                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className={`flex h-9 min-w-0 max-w-[52vw] items-center gap-2 rounded-lg px-1.5 transition-colors active:scale-95 sm:max-w-none sm:px-2 ${isDropdownOpen ? `${roleTheme.softButton} border` : `${roleTheme.hoverNav} border border-transparent`}`}
+                        aria-label="Open navigation"
+                        onClick={() => setIsMobileNavOpen(true)}
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-transparent text-slate-600 transition-colors active:scale-95 dark:text-slate-300 lg:hidden ${roleTheme.hoverNav}`}
                     >
-                        <div className="hidden min-w-0 flex-col items-end text-right sm:flex">
-                            <span className="max-w-36 truncate text-xs font-black leading-tight text-slate-900 dark:text-slate-100 md:max-w-44">
-                                {displayName}
-                            </span>
-                            <span className="mt-0.5 max-w-36 truncate text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 md:max-w-44">
-                                {displayRole}
-                            </span>
-                        </div>
-                        {user?.role === 'School' && user?.cluster_number ? (
-                            <SchoolAvatar
-                                clusterNumber={user.cluster_number}
-                                schoolLogo={user?.school_logo ?? null}
-                                clusterLogo={user?.cluster_logo ?? null}
-                                name={displayName}
-                                size={32}
-                                rounded="rounded-full"
-                                className={`ring-2 ${roleTheme.ring}`}
-                            />
-                        ) : user?.role === 'Division Personnel' ? (
-                            <div className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-white ring-2 dark:bg-dark-surface ${roleTheme.border} ${roleTheme.ring}`}>
-                                <img src="/Division_Logo.webp" alt="Division Logo" className="w-full h-full object-contain" />
-                            </div>
-                        ) : (
-                            <div className={`flex h-8 w-8 items-center justify-center rounded-lg border font-black uppercase ring-2 ${roleTheme.avatar} ${roleTheme.ring}`}>
-                                {displayName[0] || 'U'}
-                            </div>
-                        )}
-                        <ChevronDown size={16} className={`text-slate-400 transition-transform dark:text-slate-500 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                        <MenuIcon size={20} weight="bold" />
                     </button>
+                    <div className="flex min-w-0 items-center gap-2 lg:hidden">
+                        <img src={appLogo} alt="AIP-PIR Logo" className="h-8 w-auto shrink-0 drop-shadow-sm" />
+                        <span className="truncate text-sm font-black tracking-tight text-slate-900 dark:text-slate-100">AIP-PIR</span>
+                    </div>
 
-                    {/* Dropdown Menu */}
-                    <AnimatePresence>
-                        {isDropdownOpen && (
-                            <MotionDiv
-                                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                                transition={{ duration: 0.2, ease: "easeOut" }}
-                                className="absolute right-0 top-11 z-50 w-64 origin-top-right rounded-lg border border-slate-200 bg-white py-2 shadow-xl dark:border-dark-border dark:bg-dark-surface"
+                    <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+                        <ReportingPeriodPicker />
+
+                        {/* Profile Dropdown */}
+                        <div className="flex items-center relative" ref={dropdownRef}>
+                            <button
+                                data-tour="dashboard-profile-menu"
+                                aria-label="Open profile menu"
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className={`flex h-9 min-w-0 max-w-[52vw] items-center gap-2 rounded-lg px-1.5 transition-colors active:scale-95 sm:max-w-none sm:px-2 ${isDropdownOpen ? `${roleTheme.softButton} border` : `${roleTheme.hoverNav} border border-transparent`}`}
                             >
-                                <div className="px-4 py-3 border-b border-slate-100 dark:border-dark-border md:hidden">
-                                    <p className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight break-words">{displayName}</p>
-                                    <p className="text-xs text-slate-400 dark:text-slate-500 font-bold break-all">{user?.email}</p>
+                                <div className="hidden min-w-0 flex-col items-end text-right sm:flex">
+                                    <span className="max-w-36 truncate text-xs font-black leading-tight text-slate-900 dark:text-slate-100 md:max-w-44">
+                                        {displayName}
+                                    </span>
+                                    <span className="mt-0.5 max-w-36 truncate text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 md:max-w-44">
+                                        {displayRole}
+                                    </span>
                                 </div>
-                                
-                                <div className="px-2 py-1">
-                                    <div className="flex cursor-not-allowed select-none items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-300 dark:text-slate-600">
-                                        <IdentificationCardIcon size={18} />
-                                        Profile
-                                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Beta</span>
+                                {user?.role === 'School' && user?.cluster_number ? (
+                                    <SchoolAvatar
+                                        clusterNumber={user.cluster_number}
+                                        schoolLogo={user?.school_logo ?? null}
+                                        clusterLogo={user?.cluster_logo ?? null}
+                                        name={displayName}
+                                        size={32}
+                                        rounded="rounded-full"
+                                        className={`ring-2 ${roleTheme.ring}`}
+                                    />
+                                ) : user?.role === 'Division Personnel' ? (
+                                    <div className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border bg-white ring-2 dark:bg-dark-surface ${roleTheme.border} ${roleTheme.ring}`}>
+                                        <img src="/Division_Logo.webp" alt="Division Logo" className="w-full h-full object-contain" />
                                     </div>
-                                    <button
-                                        onClick={() => { setIsDropdownOpen(false); setIsDevicesOpen(true); }}
-                                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30"
+                                ) : (
+                                    <div className={`flex h-8 w-8 items-center justify-center rounded-lg border font-black uppercase ring-2 ${roleTheme.avatar} ${roleTheme.ring}`}>
+                                        {displayName[0] || 'U'}
+                                    </div>
+                                )}
+                                <ChevronDown size={16} className={`text-slate-400 transition-transform dark:text-slate-500 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            <AnimatePresence>
+                                {isDropdownOpen && (
+                                    <MotionDiv
+                                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                                        transition={{ duration: 0.2, ease: "easeOut" }}
+                                        className="absolute right-0 top-11 z-50 w-64 origin-top-right rounded-lg border border-slate-200 bg-white py-2 shadow-xl dark:border-dark-border dark:bg-dark-surface"
                                     >
-                                        <ClockCounterClockwise size={18} />
-                                        My Devices
-                                    </button>
-                                    <Link to="/user-logs" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../UserLogs.jsx')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30">
-                                        <ListBulletsIcon size={18} />
-                                        User Logs
-                                    </Link>
-                                    {user?.role === 'Division Personnel' && (
-                                        <Link to="/division" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../division/DivisionLayout.jsx')} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors dark:text-slate-300 ${roleTheme.hoverNav}`}>
-                                            <ClipboardText size={18} />
-                                            Review Queue
-                                            {pendingCount > 0 && (
-                                                <span className="ml-auto rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">
-                                                    {pendingCount > 99 ? '99+' : pendingCount}
-                                                </span>
+                                        <div className="px-4 py-3 border-b border-slate-100 dark:border-dark-border md:hidden">
+                                            <p className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight break-words">{displayName}</p>
+                                            <p className="text-xs text-slate-400 dark:text-slate-500 font-bold break-all">{user?.email}</p>
+                                        </div>
+
+                                        <div className="px-2 py-1">
+                                            <div className="flex cursor-not-allowed select-none items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-300 dark:text-slate-600">
+                                                <IdentificationCardIcon size={18} />
+                                                Profile
+                                                <span className="ml-auto text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Beta</span>
+                                            </div>
+                                            <button
+                                                onClick={() => { setIsDropdownOpen(false); setIsDevicesOpen(true); }}
+                                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30"
+                                            >
+                                                <ClockCounterClockwise size={18} />
+                                                My Devices
+                                            </button>
+                                            <Link to="/user-logs" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../UserLogs.jsx')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30">
+                                                <ListBulletsIcon size={18} />
+                                                User Logs
+                                            </Link>
+                                            {user?.role === 'Division Personnel' && (
+                                                <Link to="/division" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../division/DivisionLayout.jsx')} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors dark:text-slate-300 ${roleTheme.hoverNav}`}>
+                                                    <ClipboardText size={18} />
+                                                    Review Queue
+                                                    {pendingCount > 0 && (
+                                                        <span className="ml-auto rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-black text-white">
+                                                            {pendingCount > 99 ? '99+' : pendingCount}
+                                                        </span>
+                                                    )}
+                                                </Link>
                                             )}
-                                        </Link>
-                                    )}
-                                </div>
+                                        </div>
 
-                                <div className="px-2 py-1 border-t border-slate-100 dark:border-dark-border">
-                                    <Link to="/getting-started" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/GettingStarted.jsx')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30">
-                                        <BookOpenUserIcon size={18} />
-                                        Getting Started
-                                    </Link>
-                                    <Link to="/faq" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/FAQ')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30">
-                                        <MessageCircle size={18} />
-                                        FAQ
-                                    </Link>
-                                    <Link to="/docs" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/SystemDocs')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30">
-                                        <BooksIcon size={18} />
-                                        Documentation
-                                    </Link>
-                                    <Link to="/changelog" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/Changelog')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30">
-                                        <TagIcon size={18} />
-                                        Change Logs
-                                    </Link>
-                                </div>
+                                        <div className="px-2 py-1 border-t border-slate-100 dark:border-dark-border">
+                                            <Link to="/getting-started" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/GettingStarted.jsx')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30">
+                                                <BookOpenUserIcon size={18} />
+                                                Getting Started
+                                            </Link>
+                                            <Link to="/faq" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/FAQ')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30">
+                                                <MessageCircle size={18} />
+                                                FAQ
+                                            </Link>
+                                            <Link to="/docs" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/SystemDocs')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30">
+                                                <BooksIcon size={18} />
+                                                Documentation
+                                            </Link>
+                                            <Link to="/changelog" onClick={() => setIsDropdownOpen(false)} onMouseEnter={() => import('../../components/Changelog')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-slate-600 transition-colors hover:bg-indigo-50 hover:text-indigo-600 dark:text-slate-300 dark:hover:bg-indigo-950/30">
+                                                <TagIcon size={18} />
+                                                Change Logs
+                                            </Link>
+                                        </div>
 
-                                <div className="px-2 pt-1 border-t border-slate-100 dark:border-dark-border">
-                                    <button
-                                        onClick={() => { setIsDropdownOpen(false); onLogout(); }}
-                                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
-                                    >
-                                        <LogOut size={18} />
-                                        Logout
-                                    </button>
-                                </div>
-                            </MotionDiv>
-                        )}
-                    </AnimatePresence>
+                                        <div className="px-2 pt-1 border-t border-slate-100 dark:border-dark-border">
+                                            <button
+                                                onClick={() => { setIsDropdownOpen(false); onLogout(); }}
+                                                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-950/30"
+                                            >
+                                                <LogOut size={18} />
+                                                Logout
+                                            </button>
+                                        </div>
+                                    </MotionDiv>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                        <NotificationBell />
+                    </div>{/* end Right Side Actions */}
                 </div>
-                <NotificationBell />
-                </div>{/* end Right Side Actions */}
-            </div>
+            </header>
 
             <MyDevicesModal open={isDevicesOpen} onClose={() => setIsDevicesOpen(false)} />
-        </nav>
+        </>
     );
 };
