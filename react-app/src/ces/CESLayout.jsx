@@ -37,6 +37,41 @@ export default function CESLayout() {
     }
   };
 
+  const navItems = [
+    {
+      key: 'review',
+      label: 'Review Queue',
+      icon: ClipboardText,
+      onClick: () => navigate('/ces'),
+      active: location.pathname === '/ces',
+      show: true,
+    },
+    {
+      key: 'consolidation',
+      label: 'Consolidation',
+      icon: Table,
+      onClick: () => navigate('/ces/consolidation'),
+      active: isConsolidationRoute,
+      show: isCesReviewer,
+    },
+    {
+      key: 'aip',
+      label: 'My AIP',
+      icon: FileText,
+      onClick: () => navigate('/aip'),
+      active: false,
+      show: user?.role !== 'Superintendent',
+    },
+    {
+      key: 'pir',
+      label: 'My PIR',
+      icon: ChartBar,
+      onClick: () => navigate('/pir'),
+      active: false,
+      show: user?.role !== 'Superintendent',
+    },
+  ].filter((item) => item.show);
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col font-sans">
       <header className={`border-b sticky top-0 z-40 ${roleTheme.header}`}>
@@ -60,61 +95,14 @@ export default function CESLayout() {
             </div>
           </div>
 
-          <nav className="flex items-center gap-1">
-            <div className="mr-4">
-              <ReportingPeriodPicker />
-            </div>
-            <button
-              onClick={() => navigate('/ces')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
-            >
-              <ClipboardText size={15} />
-              Review Queue
-            </button>
-
-            {isCesReviewer && (
-              <button
-                onClick={() => navigate('/ces/consolidation')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
-              >
-                <Table size={15} />
-                Consolidation
-              </button>
-            )}
-
-            {user?.role !== 'Superintendent' && (
-              <>
-                <button
-                  onClick={() => navigate('/aip')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
-                >
-                  <FileText size={15} />
-                  My AIP
-                </button>
-
-                <button
-                  onClick={() => navigate('/pir')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 transition-colors ${roleTheme.hoverNav}`}
-                >
-                  <ChartBar size={15} />
-                  My PIR
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors ml-2"
-            >
-              <SignOut size={15} />
-              Sign Out
-            </button>
-          </nav>
+          <div className="flex items-center">
+            <ReportingPeriodPicker />
+          </div>
         </div>
       </header>
       <AnnouncementBanner />
 
-      <main className={`flex-1 w-full mx-auto px-4 py-8 ${isConsolidationRoute ? 'max-w-7xl' : 'max-w-6xl'}`}>
+      <main className={`flex-1 w-full mx-auto px-4 py-8 pb-28 ${isConsolidationRoute ? 'max-w-7xl' : 'max-w-6xl'}`}>
         <Routes>
           <Route index element={<CESDashboard />} />
           <Route path="pirs/:id" element={<CESPIRReview />} />
@@ -123,6 +111,39 @@ export default function CESLayout() {
         </Routes>
       </main>
       <Footer />
+
+      <nav className="fixed inset-x-0 bottom-5 z-50 flex justify-center px-4 print:hidden">
+        <div className={`pointer-events-auto flex items-center gap-1 rounded-full border bg-white/90 p-1.5 shadow-lg shadow-slate-900/10 backdrop-blur-md dark:bg-dark-surface/90 ${roleTheme.border}`}>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                onClick={item.onClick}
+                aria-current={item.active ? 'page' : undefined}
+                className={`flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-bold transition-colors ${
+                  item.active
+                    ? roleTheme.activeNav
+                    : `text-slate-500 dark:text-slate-400 ${roleTheme.hoverNav}`
+                }`}
+              >
+                <Icon size={17} weight={item.active ? 'fill' : 'regular'} />
+                <span className="hidden sm:inline">{item.label}</span>
+              </button>
+            );
+          })}
+
+          <div className="mx-1 h-6 w-px bg-slate-200 dark:bg-dark-border/60" />
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-bold text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+          >
+            <SignOut size={17} />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
