@@ -166,6 +166,15 @@ function ClusterDashboard() {
 
   const approvalRate = overview?.pirCount ? Math.round((overview.approvedCount / overview.pirCount) * 100) : 0;
   const needsAttention = overview?.needsRevisionCount ?? 0;
+  const clusterTitle = (() => {
+    const cluster = overview?.cluster;
+    if (!cluster) return 'Cluster Dashboard';
+    const base = `Cluster ${cluster.cluster_number}`;
+    const name = String(cluster.name ?? '').trim();
+    // Avoid "Cluster 1: Cluster 1" / "Cluster 11: 11" when the name just echoes the number.
+    if (!name || name === base || name === String(cluster.cluster_number)) return base;
+    return `${base}: ${name}`;
+  })();
 
   return (
     <div className="space-y-5">
@@ -177,7 +186,7 @@ function ClusterDashboard() {
               {greeting}, {firstName}
             </p>
             <h1 className="mt-1 truncate text-2xl font-black text-slate-900 dark:text-slate-100">
-              {overview?.cluster ? `Cluster ${overview.cluster.cluster_number}: ${overview.cluster.name}` : 'Cluster Dashboard'}
+              {clusterTitle}
             </h1>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {needsAttention > 0
