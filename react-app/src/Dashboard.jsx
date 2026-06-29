@@ -176,7 +176,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="relative flex min-h-screen select-none flex-col bg-slate-50 font-sans dark:bg-dark-base lg:pl-60">
+    <div className={`relative flex min-h-screen select-none flex-col bg-slate-50 font-sans dark:bg-dark-base ${user?.role === 'Division Personnel' ? 'lg:pl-60' : ''}`}>
       <DashboardHeader user={user} onLogout={handleLogout} />
       <AnnouncementBanner />
 

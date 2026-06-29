@@ -118,9 +118,9 @@ export const DashboardHeader = ({ user, onLogout }) => {
     const roleTheme = getRoleVisualTheme(user);
 
     const navItems = [
-        { to: '/', label: 'Dashboard', icon: House, end: true },
         ...(user?.role === 'Division Personnel'
             ? [
+                { to: '/', label: 'Dashboard', icon: House, end: true },
                 { to: '/division', label: 'Queue', icon: ClipboardText, end: true, badge: pendingCount, preload: () => import('../../division/DivisionLayout.jsx') },
                 { to: '/division/programs', label: 'Programs', icon: FileText, preload: () => import('../../division/DivisionLayout.jsx') },
                 { to: '/division/consolidation', label: 'Consolidation', icon: ChartBar, preload: () => import('../../division/DivisionLayout.jsx') },
@@ -130,17 +130,25 @@ export const DashboardHeader = ({ user, onLogout }) => {
             : []),
     ];
 
+    // Only roles with real navigation items get the sidebar. Normal users
+    // (e.g. School) would see a lone "Dashboard" link, so we skip it for them
+    // and surface the brand in the top bar instead. Keep in sync with the
+    // `lg:pl-60` padding applied by consuming pages.
+    const hasSidebar = navItems.length > 0;
+
     return (
         <>
             {/* Desktop sidebar */}
-            <aside className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r shadow-sm backdrop-blur-md print:hidden lg:flex ${SIDEBAR_WIDTH} ${roleTheme.header}`}>
-                <div className={`absolute inset-y-0 right-0 w-0.5 ${roleTheme.topAccent}`} />
-                <SidebarNav appLogo={appLogo} navItems={navItems} roleTheme={roleTheme} />
-            </aside>
+            {hasSidebar && (
+                <aside className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r shadow-sm backdrop-blur-md print:hidden lg:flex ${SIDEBAR_WIDTH} ${roleTheme.header}`}>
+                    <div className={`absolute inset-y-0 right-0 w-0.5 ${roleTheme.topAccent}`} />
+                    <SidebarNav appLogo={appLogo} navItems={navItems} roleTheme={roleTheme} />
+                </aside>
+            )}
 
             {/* Mobile slide-in sidebar */}
             <AnimatePresence>
-                {isMobileNavOpen && (
+                {hasSidebar && isMobileNavOpen && (
                     <div className="fixed inset-0 z-50 lg:hidden print:hidden">
                         <MotionDiv
                             initial={{ opacity: 0 }}
@@ -174,15 +182,18 @@ export const DashboardHeader = ({ user, onLogout }) => {
             <header className={`sticky top-0 z-30 border-b shadow-sm backdrop-blur-md print:hidden ${roleTheme.header}`}>
                 <div className={`h-0.5 w-full ${roleTheme.topAccent}`} />
                 <div className="flex h-14 items-center gap-3 px-3 sm:px-5">
-                    {/* Mobile: menu toggle + compact brand */}
-                    <button
-                        aria-label="Open navigation"
-                        onClick={() => setIsMobileNavOpen(true)}
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-transparent text-slate-600 transition-colors active:scale-95 dark:text-slate-300 lg:hidden ${roleTheme.hoverNav}`}
-                    >
-                        <MenuIcon size={20} weight="bold" />
-                    </button>
-                    <div className="flex min-w-0 items-center gap-2 lg:hidden">
+                    {/* Mobile: menu toggle (only when a sidebar exists) + brand */}
+                    {hasSidebar && (
+                        <button
+                            aria-label="Open navigation"
+                            onClick={() => setIsMobileNavOpen(true)}
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-transparent text-slate-600 transition-colors active:scale-95 dark:text-slate-300 lg:hidden ${roleTheme.hoverNav}`}
+                        >
+                            <MenuIcon size={20} weight="bold" />
+                        </button>
+                    )}
+                    {/* Brand: always shown on mobile; also on desktop when there's no sidebar to host it */}
+                    <div className={`flex min-w-0 items-center gap-2 ${hasSidebar ? 'lg:hidden' : ''}`}>
                         <img src={appLogo} alt="AIP-PIR Logo" className="h-8 w-auto shrink-0 drop-shadow-sm" />
                         <span className="truncate text-sm font-black tracking-tight text-slate-900 dark:text-slate-100">AIP-PIR</span>
                     </div>

@@ -75,7 +75,7 @@ export default function AnnouncementDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col font-sans lg:pl-60">
+    <div className={`min-h-screen bg-slate-50 dark:bg-dark-base flex flex-col font-sans ${user?.role === 'Division Personnel' ? 'lg:pl-60' : ''}`}>
       <DashboardHeader user={user} onLogout={handleLogout} />
       <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-8">
         <Link
