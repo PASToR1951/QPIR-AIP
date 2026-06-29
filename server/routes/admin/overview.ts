@@ -9,6 +9,7 @@ import {
 } from "./shared/dates.ts";
 import { adminAnalyticsOnly } from "./shared/guards.ts";
 import { parseQuarterLabel } from "../../lib/quarters.ts";
+import { buildPirQuarterFilter } from "./shared/params.ts";
 
 const overviewRoutes = new Hono();
 
@@ -31,6 +32,13 @@ overviewRoutes.get("/overview", async (c) => {
     actualQuarter,
     1,
     4,
+  );
+
+  // Scope the "Recent Submissions" feed to the selected period so it matches
+  // the Submissions page (AIPs by year, PIRs by year + quarter).
+  const recentPirQuarterFilter = buildPirQuarterFilter(
+    String(currentQuarter),
+    year,
   );
 
   // All DB queries run in parallel — no sequential awaits
@@ -94,7 +102,7 @@ overviewRoutes.get("/overview", async (c) => {
       where: { year_quarter: { year, quarter: currentQuarter } },
     }),
     prisma.aIP.findMany({
-      where: { status: { not: "Draft" } },
+      where: { year, status: { not: "Draft" } },
       take: 10,
       orderBy: { created_at: "desc" },
       select: {
@@ -118,7 +126,11 @@ overviewRoutes.get("/overview", async (c) => {
       },
     }),
     prisma.pIR.findMany({
-      where: { status: { not: "Draft" } },
+      where: {
+        status: { not: "Draft" },
+        aip: { year },
+        ...(recentPirQuarterFilter && { quarter: recentPirQuarterFilter }),
+      },
       take: 15,
       orderBy: { created_at: "desc" },
       select: {

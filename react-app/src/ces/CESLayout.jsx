@@ -132,7 +132,7 @@ export default function CESLayout() {
         </header>
         <AnnouncementBanner />
 
-        <main className={`flex-1 w-full mx-auto px-4 py-8 ${isConsolidationRoute ? 'max-w-7xl' : 'max-w-6xl'}`}>
+        <main className={`flex-1 w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 ${isConsolidationRoute ? 'max-w-7xl' : 'max-w-[92rem]'}`}>
           <Routes>
             <Route index element={<CESDashboard />} />
             <Route path="pirs/:id" element={<CESPIRReview />} />
