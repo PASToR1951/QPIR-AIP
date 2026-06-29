@@ -104,6 +104,13 @@ export function ReportingPeriodProvider({ children }) {
   const [initialPeriod] = useState(() => resolveInitialPeriod(location.search));
   const initialPeriodSourceRef = useRef(initialPeriod.source);
   const periodWasExplicitlyChangedRef = useRef(initialPeriod.source !== 'live');
+  // Latest selected period, so the URL->state effect can detect external URL
+  // changes without depending on the state it sets (which would make it revert
+  // the user's own picks). Updated below whenever the selection commits.
+  const selectedPeriodRef = useRef(initialPeriod.period);
+  // Last URL search string this provider observed, so the state->URL effect can
+  // tell a genuine URL navigation apart from a state-driven re-run.
+  const prevSearchRef = useRef(location.search);
 
   const [selectedYear, setSelectedYear] = useState(initialPeriod.period.year);
   const [selectedQuarter, setSelectedQuarter] = useState(initialPeriod.period.quarter);
@@ -165,10 +172,19 @@ export function ReportingPeriodProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    selectedPeriodRef.current = { year: selectedYear, quarter: selectedQuarter };
+  }, [selectedYear, selectedQuarter]);
+
+  // Adopt the period from the URL only on a genuine URL navigation (back/forward,
+  // shared link, manual edit). This effect must NOT depend on the selected state,
+  // otherwise it re-runs on every pick and reverts the user's selection back to
+  // the (not-yet-updated) URL.
+  useEffect(() => {
     let cancelled = false;
     const urlPeriod = getPeriodFromSearch(location.search);
     if (!urlPeriod) return undefined;
-    if (urlPeriod.year === selectedYear && urlPeriod.quarter === selectedQuarter) return undefined;
+    const current = selectedPeriodRef.current;
+    if (urlPeriod.year === current.year && urlPeriod.quarter === current.quarter) return undefined;
 
     periodWasExplicitlyChangedRef.current = true;
     queueMicrotask(() => {
@@ -180,7 +196,7 @@ export function ReportingPeriodProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [location.search, selectedQuarter, selectedYear]);
+  }, [location.search]);
 
   const getAvailableQuartersForYear = useCallback((year) => {
     return selectablePeriodMap.get(Number(year)) ?? [];
@@ -215,6 +231,9 @@ export function ReportingPeriodProvider({ children }) {
 
   // URL & Storage Sync Effect when state changes
   useEffect(() => {
+    const searchChanged = location.search !== prevSearchRef.current;
+    prevSearchRef.current = location.search;
+
     // Update local storage
     if (isLivePeriod) {
       localStorage.removeItem(STORAGE_KEY);
@@ -230,7 +249,11 @@ export function ReportingPeriodProvider({ children }) {
     const urlQuarter = parseInt(params.get('quarter'), 10);
     const urlPeriod = getPeriodFromSearch(location.search);
 
-    if (urlPeriod && (urlPeriod.year !== selectedYear || urlPeriod.quarter !== selectedQuarter)) {
+    // The URL itself just changed to a different valid period (back/forward,
+    // shared link, manual edit): the URL->state effect will adopt it, so don't
+    // write the stale state back and clobber that navigation. When the *state*
+    // is what changed (searchChanged === false), fall through and mirror it.
+    if (searchChanged && urlPeriod && (urlPeriod.year !== selectedYear || urlPeriod.quarter !== selectedQuarter)) {
       return;
     }
 
