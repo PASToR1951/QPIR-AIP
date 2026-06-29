@@ -5,6 +5,7 @@ import {
 } from '@phosphor-icons/react';
 import { SearchableSelect } from './SearchableSelect.jsx';
 import { MultiSelect } from './MultiSelect.jsx';
+import { formatClusterLabel } from '../../lib/clusterLogo.js';
 import {
   getAvailableSchoolRoleSchools,
 } from '../pages/adminUsers/schoolAssignmentOptions.js';
@@ -272,7 +273,7 @@ function DetailsForm({ form, setForm, schools, clusters = [], users = [], progra
             Assigned Cluster <span className="text-rose-500">*</span>
           </label>
           <SearchableSelect
-            options={clusters.map(cluster => ({ value: cluster.id, label: `Cluster ${cluster.cluster_number} - ${cluster.name}` }))}
+            options={clusters.map(cluster => ({ value: cluster.id, label: formatClusterLabel(cluster) }))}
             value={form.cluster_id}
             onChange={v => setForm(f => ({ ...f, cluster_id: v, school_id: null, program_ids: [] }))}
             placeholder="Select one cluster"

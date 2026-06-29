@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { SearchableSelect } from '../../components/SearchableSelect.jsx';
 import { MultiSelect } from '../../components/MultiSelect.jsx';
+import { formatClusterLabel } from '../../../lib/clusterLogo.js';
 import {
   getAvailableSchoolRoleSchools,
 } from './schoolAssignmentOptions.js';
@@ -169,7 +170,7 @@ export function UserForm({ form, setForm, schools, clusters = [], users = [], pr
         <div>
           <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Assigned Cluster</label>
           <SearchableSelect
-            options={clusters.map(cluster => ({ value: cluster.id, label: `Cluster ${cluster.cluster_number} - ${cluster.name}` }))}
+            options={clusters.map(cluster => ({ value: cluster.id, label: formatClusterLabel(cluster) }))}
             value={form.cluster_id}
             onChange={v => setForm(f => ({ ...f, cluster_id: v, school_id: null, program_ids: [] }))}
             placeholder="Select one cluster"
