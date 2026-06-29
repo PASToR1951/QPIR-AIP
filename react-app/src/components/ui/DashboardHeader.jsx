@@ -74,8 +74,17 @@ export const DashboardHeader = ({ user, onLogout }) => {
     const [isDevicesOpen, setIsDevicesOpen] = useState(false);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
+    const [isFooterVisible, setIsFooterVisible] = useState(false);
     const dropdownRef = useRef(null);
     const { selectedYear, selectedQuarter } = useReportingPeriod();
+
+    // Fade the sidebar out while the page footer is in view (mirrors the
+    // accessibility/onboarding launcher behaviour via the same global event).
+    useEffect(() => {
+        const handleFooterVisibility = (e) => setIsFooterVisible(e.detail);
+        window.addEventListener('footer-visibility-change', handleFooterVisibility);
+        return () => window.removeEventListener('footer-visibility-change', handleFooterVisibility);
+    }, []);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -138,12 +147,17 @@ export const DashboardHeader = ({ user, onLogout }) => {
 
     return (
         <>
-            {/* Desktop sidebar */}
+            {/* Desktop sidebar — fades out when the footer scrolls into view */}
             {hasSidebar && (
-                <aside className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r shadow-sm backdrop-blur-md print:hidden lg:flex ${SIDEBAR_WIDTH} ${roleTheme.header}`}>
+                <MotionAside
+                    initial={false}
+                    animate={{ opacity: isFooterVisible ? 0 : 1 }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                    className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r shadow-sm backdrop-blur-md print:hidden lg:flex ${SIDEBAR_WIDTH} ${roleTheme.header} ${isFooterVisible ? 'pointer-events-none' : ''}`}
+                >
                     <div className={`absolute inset-y-0 right-0 w-0.5 ${roleTheme.topAccent}`} />
                     <SidebarNav appLogo={appLogo} navItems={navItems} roleTheme={roleTheme} />
-                </aside>
+                </MotionAside>
             )}
 
             {/* Mobile slide-in sidebar */}
