@@ -139,6 +139,18 @@ export function ReportingPeriodProvider({ children }) {
   const isLivePeriod = selectedYear === livePeriod.year && selectedQuarter === livePeriod.quarter;
   const selectedQuarterLabel = getQuarterLabel(selectedQuarter, selectedYear);
 
+  // Whether the picker currently offers a given period. Derived from the server's
+  // available periods plus the live period — deliberately NOT from the selected
+  // year, so the URL-sync effects below can depend on it without re-running on
+  // every user pick. Used to decide whether a URL period should be adopted, or
+  // normalised away when it points at a period with no data.
+  const isSelectablePeriod = useCallback((year, quarter) => {
+    if (year === livePeriod.year && quarter === livePeriod.quarter) return true;
+    if (availablePeriods === null) return false;
+    const match = availablePeriods.find((period) => period.year === year);
+    return Boolean(match && match.quarters.includes(quarter));
+  }, [availablePeriods, livePeriod]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -186,6 +198,16 @@ export function ReportingPeriodProvider({ children }) {
     const current = selectedPeriodRef.current;
     if (urlPeriod.year === current.year && urlPeriod.quarter === current.quarter) return undefined;
 
+    // Once the period options have loaded, ignore a URL that points at a period
+    // the picker no longer offers (a stale bookmark/shared link, or a period with
+    // no data). The fallback effect below normalises the selection to a valid
+    // period and the state->URL effect rewrites the stale query string; adopting
+    // the invalid URL here would fight them and leave the dashboard stuck loading
+    // a period that never resolves.
+    if (!periodOptionsLoading && !isSelectablePeriod(urlPeriod.year, urlPeriod.quarter)) {
+      return undefined;
+    }
+
     periodWasExplicitlyChangedRef.current = true;
     queueMicrotask(() => {
       if (cancelled) return;
@@ -196,7 +218,7 @@ export function ReportingPeriodProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [location.search]);
+  }, [location.search, periodOptionsLoading, isSelectablePeriod]);
 
   const getAvailableQuartersForYear = useCallback((year) => {
     return selectablePeriodMap.get(Number(year)) ?? [];
@@ -253,7 +275,17 @@ export function ReportingPeriodProvider({ children }) {
     // shared link, manual edit): the URL->state effect will adopt it, so don't
     // write the stale state back and clobber that navigation. When the *state*
     // is what changed (searchChanged === false), fall through and mirror it.
-    if (searchChanged && urlPeriod && (urlPeriod.year !== selectedYear || urlPeriod.quarter !== selectedQuarter)) {
+    // Only defer to the URL->state effect when it will actually adopt the URL
+    // period (i.e. the picker still offers it). If the URL holds a period that is
+    // no longer selectable, that effect ignores it, so fall through and rewrite
+    // the stale query string here instead of leaving it dangling — otherwise the
+    // selector shows the live period while the URL stays pinned to a dead one and
+    // the dashboard never finishes loading.
+    if (
+      searchChanged && urlPeriod &&
+      isSelectablePeriod(urlPeriod.year, urlPeriod.quarter) &&
+      (urlPeriod.year !== selectedYear || urlPeriod.quarter !== selectedQuarter)
+    ) {
       return;
     }
 
@@ -280,7 +312,7 @@ export function ReportingPeriodProvider({ children }) {
       const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ''}${location.hash}`;
       navigate(newUrl, { replace: true });
     }
-  }, [selectedYear, selectedQuarter, isLivePeriod, location.search, location.pathname, location.hash, navigate]);
+  }, [selectedYear, selectedQuarter, isLivePeriod, location.search, location.pathname, location.hash, navigate, isSelectablePeriod]);
 
   const setReportingPeriod = useCallback(({ year, quarter }) => {
     const nextYear = Number(year);
