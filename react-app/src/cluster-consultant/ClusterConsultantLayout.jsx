@@ -63,20 +63,21 @@ function getUser() {
   }
 }
 
-function KpiCard({ children, label, value, tone = 'slate' }) {
+function KpiCard({ icon, label, value, hint, tone = 'slate' }) {
   const tones = {
-    slate: 'border-slate-200 bg-white text-slate-700 dark:border-dark-border dark:bg-dark-surface dark:text-slate-200',
-    amber: 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200',
-    green: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-200',
-    blue: 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200',
+    slate: 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/50',
+    amber: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30',
+    green: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30',
+    blue: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30',
   };
   return (
-    <div className={`rounded-lg border p-4 shadow-sm ${tones[tone]}`}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-black uppercase tracking-widest opacity-70">{label}</p>
-        {children}
+    <div className="flex items-center gap-3.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-dark-border dark:bg-dark-surface">
+      <div className={`shrink-0 rounded-xl p-2.5 ${tones[tone]}`}>{icon}</div>
+      <div className="min-w-0">
+        <p className="text-2xl font-black leading-none text-slate-800 dark:text-slate-100">{value ?? 0}</p>
+        <p className="mt-1 text-xs font-bold text-slate-600 dark:text-slate-300">{label}</p>
+        {hint && <p className="truncate text-[11px] text-slate-400 dark:text-slate-500">{hint}</p>}
       </div>
-      <p className="mt-3 text-2xl font-black">{value ?? 0}</p>
     </div>
   );
 }
@@ -133,6 +134,14 @@ function ClusterDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const query = usePeriodQuery(filters);
+  const firstName = useMemo(() => {
+    const user = getUser();
+    return user?.first_name || user?.name?.split(' ')[0] || 'Consultant';
+  }, []);
+  const greeting = (() => {
+    const h = new Date().getHours();
+    return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  })();
 
   useEffect(() => {
     let cancelled = false;
@@ -155,26 +164,33 @@ function ClusterDashboard() {
     return () => { cancelled = true; };
   }, [query]);
 
+  const approvalRate = overview?.pirCount ? Math.round((overview.approvedCount / overview.pirCount) * 100) : 0;
+  const needsAttention = overview?.needsRevisionCount ?? 0;
+
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Assigned Cluster</p>
-          <h1 className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">
-            {overview?.cluster ? `Cluster ${overview.cluster.cluster_number}: ${overview.cluster.name}` : 'Cluster Dashboard'}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 dark:border-dark-border dark:bg-dark-surface">
-          <Funnel size={17} className="text-slate-400" />
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
-            className="h-9 rounded-md border border-slate-200 bg-white px-2 text-xs font-bold text-slate-600 outline-none dark:border-dark-border dark:bg-dark-base dark:text-slate-200"
-          >
-            {STATUS_OPTIONS.map((status) => (
-              <option key={status || 'all'} value={status}>{status || 'All Statuses'}</option>
-            ))}
-          </select>
+      {/* Greeting hero */}
+      <div className="overflow-hidden rounded-2xl border border-blue-200/70 bg-gradient-to-br from-blue-50 via-sky-50 to-white p-6 shadow-sm dark:border-blue-900/50 dark:from-blue-950/40 dark:via-dark-surface dark:to-dark-surface">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
+              {greeting}, {firstName}
+            </p>
+            <h1 className="mt-1 truncate text-2xl font-black text-slate-900 dark:text-slate-100">
+              {overview?.cluster ? `Cluster ${overview.cluster.cluster_number}: ${overview.cluster.name}` : 'Cluster Dashboard'}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {needsAttention > 0
+                ? `${needsAttention} PIR${needsAttention !== 1 ? 's' : ''} need revision across your assigned schools.`
+                : 'No PIRs are awaiting revision right now.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-white/70 px-3 py-1.5 text-xs font-black text-blue-700 dark:border-blue-800/60 dark:bg-dark-surface/70 dark:text-blue-300">
+              <CheckCircle size={13} weight="bold" />
+              {approvalRate}% approved
+            </span>
+          </div>
         </div>
       </div>
 
@@ -184,19 +200,50 @@ function ClusterDashboard() {
         </div>
       )}
 
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Cluster Overview</p>
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 dark:border-dark-border dark:bg-dark-surface">
+          <Funnel size={16} className="text-slate-400" />
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+            className="h-8 rounded-md border-none bg-transparent px-1 text-xs font-bold text-slate-600 outline-none dark:text-slate-200"
+          >
+            {STATUS_OPTIONS.map((status) => (
+              <option key={status || 'all'} value={status}>{status || 'All Statuses'}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label="Schools" value={overview?.schoolCount}>
-          <House size={20} weight="duotone" />
-        </KpiCard>
-        <KpiCard label="PIRs Submitted" value={overview?.pirCount} tone="blue">
-          <ClipboardText size={20} weight="duotone" />
-        </KpiCard>
-        <KpiCard label="Needs Revision" value={overview?.needsRevisionCount} tone="amber">
-          <WarningCircle size={20} weight="duotone" />
-        </KpiCard>
-        <KpiCard label="Approved" value={overview?.approvedCount} tone="green">
-          <CheckCircle size={20} weight="duotone" />
-        </KpiCard>
+        <KpiCard
+          label="Schools"
+          value={overview?.schoolCount}
+          hint="In your cluster"
+          icon={<House size={20} weight="duotone" />}
+        />
+        <KpiCard
+          label="PIRs Submitted"
+          value={overview?.pirCount}
+          hint="This reporting period"
+          tone="blue"
+          icon={<ClipboardText size={20} weight="duotone" />}
+        />
+        <KpiCard
+          label="Needs Revision"
+          value={overview?.needsRevisionCount}
+          hint="Awaiting corrections"
+          tone="amber"
+          icon={<WarningCircle size={20} weight="duotone" />}
+        />
+        <KpiCard
+          label="Approved"
+          value={overview?.approvedCount}
+          hint={`${approvalRate}% of submitted`}
+          tone="green"
+          icon={<CheckCircle size={20} weight="duotone" />}
+        />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">

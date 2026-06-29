@@ -1,11 +1,57 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../lib/api.js';
-import { ArrowRight, MagnifyingGlass, Stamp, ArrowUUpLeft } from '@phosphor-icons/react';
+import {
+  ArrowRight,
+  MagnifyingGlass,
+  Stamp,
+  ArrowUUpLeft,
+  Stack,
+  Hourglass,
+  FileText,
+  Clock,
+  CheckCircle,
+} from '@phosphor-icons/react';
 import { EndOfListCue } from '../components/ui/EndOfListCue.jsx';
 import { shouldShowEndOfListCue } from '../components/ui/endOfListCue';
 import { emitOnboardingSignal } from '../lib/onboardingSignals.js';
 import { useReportingPeriod } from '../context/ReportingPeriodContext.jsx';
+
+function getFirstName() {
+  try {
+    const user = JSON.parse(sessionStorage.getItem('user') || 'null');
+    if (user?.first_name) return user.first_name;
+    if (user?.name) return user.name.split(' ')[0];
+  } catch { /* ignore */ }
+  return 'Reviewer';
+}
+
+function StatCard({ label, value, hint, icon, color, active, onClick }) {
+  const colorMap = {
+    teal:   'text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/30',
+    violet: 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30',
+    emerald:'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30',
+    amber:  'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30',
+  };
+  const ring = active
+    ? 'border-teal-300 dark:border-teal-700 ring-2 ring-teal-200/70 dark:ring-teal-800/50'
+    : 'border-slate-200 dark:border-dark-border';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      className={`group flex items-center gap-3.5 rounded-2xl border bg-white dark:bg-dark-surface p-4 text-left shadow-sm transition-all ${ring} ${onClick ? 'hover:-translate-y-0.5 hover:shadow-md cursor-pointer' : 'cursor-default'}`}
+    >
+      <div className={`shrink-0 rounded-xl p-2.5 ${colorMap[color] ?? colorMap.teal}`}>{icon}</div>
+      <div className="min-w-0">
+        <p className="text-2xl font-black leading-none text-slate-800 dark:text-slate-100">{value}</p>
+        <p className="mt-1 text-xs font-bold text-slate-600 dark:text-slate-300 truncate">{label}</p>
+        {hint && <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{hint}</p>}
+      </div>
+    </button>
+  );
+}
 
 export default function CESDashboard() {
   const navigate = useNavigate();
@@ -15,6 +61,11 @@ export default function CESDashboard() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('pirs');
+  const firstName = useMemo(getFirstName, []);
+  const greeting = (() => {
+    const h = new Date().getHours();
+    return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  })();
 
   // Modal state
   const [modal, setModal] = useState(null); // { type: 'note' | 'return', pirId, program, quarter }
@@ -45,6 +96,19 @@ export default function CESDashboard() {
   }, [selectedYear, selectedQuarter]);
 
   useEffect(() => { fetchPIRs(); }, [fetchPIRs]);
+
+  const stats = useMemo(() => {
+    const awaiting = pirs.filter(p => p.status === 'For CES Review').length;
+    const inProgress = pirs.filter(p => p.status === 'Under Review').length;
+    const dates = [...pirs, ...aips]
+      .map(p => p.submittedAt)
+      .filter(Boolean)
+      .map(d => new Date(d).getTime());
+    const oldestDays = dates.length
+      ? Math.max(0, Math.floor((Date.now() - Math.min(...dates)) / 86400000))
+      : 0;
+    return { awaiting, inProgress, aips: aips.length, oldestDays, hasItems: dates.length > 0 };
+  }, [pirs, aips]);
 
   const visibleItems = activeTab === 'pirs' ? pirs : aips;
   const filtered = visibleItems.filter(p => {
@@ -83,15 +147,66 @@ export default function CESDashboard() {
     }
   };
 
+  const periodLabel = selectedQuarter ? `Q${selectedQuarter} · FY ${selectedYear}` : selectedYear ? `FY ${selectedYear}` : 'All periods';
+  const totalPending = stats.awaiting + stats.inProgress + stats.aips;
+
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100 mb-1">
-          CES Review Queue
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Recommended school submissions and division PIRs awaiting your review.
-        </p>
+      {/* Greeting hero */}
+      <div className="mb-6 overflow-hidden rounded-2xl border border-teal-200/70 dark:border-teal-900/50 bg-gradient-to-br from-teal-50 via-emerald-50 to-white dark:from-teal-950/40 dark:via-dark-surface dark:to-dark-surface p-6 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-teal-600 dark:text-teal-400">CES Review Portal</p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-800 dark:text-slate-100">
+              {greeting}, {firstName}.
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {totalPending > 0
+                ? `You have ${totalPending} item${totalPending !== 1 ? 's' : ''} awaiting your review.`
+                : 'Your review queue is all caught up.'}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 dark:border-teal-800/60 bg-white/70 dark:bg-dark-surface/70 px-3 py-1.5 text-xs font-black text-teal-700 dark:text-teal-300">
+            <Clock size={13} weight="bold" />
+            {periodLabel}
+          </span>
+        </div>
+      </div>
+
+      {/* Stats overview */}
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard
+          label="PIRs Awaiting"
+          value={stats.awaiting}
+          hint="Ready for CES review"
+          icon={<Stack size={20} weight="bold" />}
+          color="teal"
+          active={activeTab === 'pirs'}
+          onClick={() => setActiveTab('pirs')}
+        />
+        <StatCard
+          label="In Progress"
+          value={stats.inProgress}
+          hint="Currently under review"
+          icon={<Hourglass size={20} weight="bold" />}
+          color="violet"
+        />
+        <StatCard
+          label="AIPs to Review"
+          value={stats.aips}
+          hint="Focal-recommended plans"
+          icon={<FileText size={20} weight="bold" />}
+          color="emerald"
+          active={activeTab === 'aips'}
+          onClick={() => setActiveTab('aips')}
+        />
+        <StatCard
+          label={stats.hasItems ? 'Oldest Waiting' : 'All Clear'}
+          value={stats.hasItems ? `${stats.oldestDays}d` : '—'}
+          hint={stats.hasItems ? 'Longest pending item' : 'Nothing overdue'}
+          icon={stats.hasItems ? <Clock size={20} weight="bold" /> : <CheckCircle size={20} weight="bold" />}
+          color={stats.hasItems && stats.oldestDays >= 7 ? 'amber' : 'emerald'}
+        />
       </div>
 
       {/* Filters */}
