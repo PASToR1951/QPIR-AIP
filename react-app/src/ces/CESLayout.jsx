@@ -4,7 +4,6 @@ import CESDashboard from './CESDashboard.jsx';
 import CESPIRReview from './CESPIRReview.jsx';
 import CESAIPReview from './CESAIPReview.jsx';
 import AdminConsolidationTemplate from '../admin/pages/AdminConsolidationTemplate.jsx';
-import Footer from '../components/ui/Footer.jsx';
 import { AnnouncementBanner } from '../components/ui/AnnouncementBanner.jsx';
 import { useAppLogo } from '../context/BrandingContext.jsx';
 import { auth } from '../lib/auth.js';
@@ -140,7 +139,6 @@ export default function CESLayout() {
             <Route path="consolidation" element={isCesReviewer ? <AdminConsolidationTemplate /> : <Navigate to="/ces" replace />} />
           </Routes>
         </main>
-        <Footer />
       </div>
     </div>
   );
