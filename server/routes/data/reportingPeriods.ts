@@ -7,6 +7,7 @@ import {
 } from "../../lib/periodRanges.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
+import { aipVisibilityWhere } from "./shared/visibility.ts";
 import type { DataRouteEnv } from "./shared/types.ts";
 
 const reportingPeriodRoutes = new Hono<{ Variables: DataRouteEnv }>();
@@ -75,7 +76,9 @@ function pirVisibilityWhereFor(user: DataRouteEnv["user"]) {
   if (user.role === "Division Personnel") {
     return {
       OR: [
-        { aip: { school_id: null, created_by_user_id: user.id } },
+        // Division-level records the user may view: their own, plus any for a
+        // program they are currently assigned to (program-retained history).
+        { aip: aipVisibilityWhere(user) },
         {
           aip: {
             school_id: { not: null },

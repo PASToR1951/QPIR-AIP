@@ -3,6 +3,7 @@ import { prisma } from "../../db/client.ts";
 import { safeParseInt } from "../../lib/safeParseInt.ts";
 import { asyncHandler } from "./shared/asyncHandler.ts";
 import { getAuthedUser, requireAuth } from "./shared/guards.ts";
+import { aipVisibilityWhere } from "./shared/visibility.ts";
 import { writeUserLog } from "../../lib/userActivityLog.ts";
 import { getClientIp } from "../../lib/clientIp.ts";
 import {
@@ -75,15 +76,19 @@ dashboardRoutes.get(
     "Failed to fetch history",
     async (c) => {
       const tokenUser = getAuthedUser(c);
-      const baseWhere = tokenUser.role === "School" && tokenUser.school_id
-        ? { school_id: tokenUser.school_id }
-        : { created_by_user_id: tokenUser.id, school_id: null };
 
+      // Records are scoped by entity (school / program), so a transferred-in
+      // owner sees the history. The visibility fragment may itself contain an
+      // OR, so combine with the deleted/status OR via AND rather than spreading.
       const aipWhere = {
-        ...baseWhere,
-        OR: [
-          { deleted_at: null, status: { not: "Draft" } },
-          { deleted_at: { not: null } },
+        AND: [
+          aipVisibilityWhere(tokenUser),
+          {
+            OR: [
+              { deleted_at: null, status: { not: "Draft" } },
+              { deleted_at: { not: null } },
+            ],
+          },
         ],
       };
 
@@ -228,14 +233,21 @@ dashboardRoutes.get(
 
       let aipCompleted = 0;
       if (tokenUser.role === "Division Personnel") {
-        aipCompleted = await prisma.aIP.count({
+        // Per-program coverage: count assigned programs that have a submitted
+        // AIP (by anyone), so the numerator lines up with `activePrograms`.
+        // Distinct on program_id avoids double-counting when an outgoing and
+        // incoming owner both hold a record for the same program/year.
+        const completedPrograms = await prisma.aIP.findMany({
           where: {
-            created_by_user_id: tokenUser.id,
             school_id: null,
             year,
             status: { in: submittedAipStatuses },
+            program: { personnel: { some: { id: tokenUser.id } } },
           },
+          select: { program_id: true },
+          distinct: ["program_id"],
         });
+        aipCompleted = completedPrograms.length;
       } else if (tokenUser.school_id) {
         aipCompleted = await prisma.aIP.count({
           where: {
