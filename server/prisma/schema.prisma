@@ -110,6 +110,7 @@ model User {
   middle_initial  String?
   last_name       String?
   position        String?   // Job title / position e.g. "Education Program Supervisor I"
+  profile_photo   String?   // Auth-gated profile photo path, e.g. "/profile-photos/{id}.webp?v=…"
   is_active             Boolean   @default(true)
   must_change_password  Boolean   @default(false) // Set to true when admin resets password — forces change on next login
   deleted_at      DateTime? // Soft-delete timestamp — RA 10173 §19 retention support
@@ -163,9 +164,33 @@ model User {
   magic_link_tokens     MagicLinkToken[]
   email_blast_logs      EmailBlastLog[]
 
+  // Self-service school/cluster reassignment requests (admin-approved)
+  profile_change_requests ProfileChangeRequest[] @relation("ProfileChangeRequestUser")
+
   created_at DateTime @default(now())
 
   @@unique([oauth_provider, oauth_subject])
+}
+
+// A user-initiated request to change their own school/cluster assignment.
+// Because school/cluster controls data-access scope, the change only takes
+// effect when an admin approves it — the user cannot self-escalate access.
+model ProfileChangeRequest {
+  id                   Int       @id @default(autoincrement())
+  user_id              Int
+  requested_school_id  Int?
+  requested_cluster_id Int?
+  reason               String?
+  status               String    @default("Pending") // "Pending" | "Approved" | "Rejected"
+  reviewed_by          Int?      // Admin user id who decided
+  reviewed_at          DateTime?
+  created_at           DateTime  @default(now())
+
+  user                 User      @relation("ProfileChangeRequestUser", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([user_id, created_at(sort: Desc)])
+  @@map("profile_change_requests")
 }
 
 model UserSession {

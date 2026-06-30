@@ -2,6 +2,7 @@ import React from 'react';
 import { PencilSimple } from '@phosphor-icons/react';
 import SectionHeader from '../../../components/ui/SectionHeader';
 import SignatureBlock from '../../../components/ui/SignatureBlock';
+import SignatoryHint from '../../../components/ui/SignatoryHint.jsx';
 import { AIP_SIGNATURE_FIELDS } from './aipEditorConfig.js';
 
 export default React.memo(function AIPSignaturesSection({
@@ -45,6 +46,7 @@ export default React.memo(function AIPSignaturesSection({
                             namePlaceholder={signatureField.namePlaceholder}
                             titlePlaceholder={signatureField.titlePlaceholder}
                             theme="pink"
+                            hint={signatureField.key === 'prepared' ? <SignatoryHint /> : null}
                         />
                     ))}
                 </div>

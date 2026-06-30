@@ -53,6 +53,7 @@ const AdminPIRReview = lazyWithRetry(() => import('./admin/pages/AdminPIRReview.
 const AdminConsolidationTemplate = lazyWithRetry(() => import('./admin/pages/AdminConsolidationTemplate.jsx'));
 const AdminFAQ = lazyWithRetry(() => import('./admin/pages/AdminFAQ.jsx'));
 const UserLogs = lazyWithRetry(() => import('./UserLogs.jsx'));
+const Profile = lazyWithRetry(() => import('./Profile.jsx'));
 
 const CES_ROLES = ['CES-SGOD', 'CES-ASDS', 'CES-CID', 'Superintendent'];
 
@@ -375,6 +376,7 @@ export default function AnimatedContent() {
             <Route path="/onboarding" element={<PageTransition><OnboardingWizard /></PageTransition>} />
             <Route path="/changelog" element={<PageTransition><Changelog /></PageTransition>} />
             <Route path="/user-logs" element={<AuthenticatedRoute><PageTransition><UserLogs /></PageTransition></AuthenticatedRoute>} />
+            <Route path="/profile" element={<AuthenticatedRoute><PageTransition><Profile /></PageTransition></AuthenticatedRoute>} />
             <Route path="/announcements/:id" element={<AuthenticatedRoute><PageTransition><AnnouncementDetail /></PageTransition></AuthenticatedRoute>} />
             <Route path="/docs" element={<PageTransition><SystemDocs /></PageTransition>} />
             <Route path="/getting-started" element={<PageTransition><GettingStarted /></PageTransition>} />
@@ -420,6 +422,7 @@ export default function AnimatedContent() {
               <Route path="/cluster-consultant/*" element={<ClusterConsultantRouteGuard><ClusterConsultantLayout /></ClusterConsultantRouteGuard>} />
               
               <Route path="/user-logs" element={<AuthenticatedRoute><PageTransition><UserLogs /></PageTransition></AuthenticatedRoute>} />
+              <Route path="/profile" element={<AuthenticatedRoute><PageTransition><Profile /></PageTransition></AuthenticatedRoute>} />
               <Route path="/announcements/:id" element={<AuthenticatedRoute><PageTransition><AnnouncementDetail /></PageTransition></AuthenticatedRoute>} />
             </Route>
 

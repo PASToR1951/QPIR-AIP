@@ -6,16 +6,20 @@ export default function SignatureBlock({
     title, 
     onNameChange, 
     onTitleChange, 
-    namePlaceholder = "NAME", 
+    namePlaceholder = "NAME",
     titlePlaceholder = "Job Title",
     readOnly = false,
-    theme = 'pink'
+    theme = 'pink',
+    hint = null
 }) {
     const focusColor = theme === 'blue' ? 'focus:border-blue-500' : 'focus:border-pink-500';
 
     return (
         <div className="flex flex-col">
-            <p className="text-xs text-left mb-8 select-none text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">{label}</p>
+            <p className="text-xs text-left mb-8 flex items-center gap-1.5 select-none text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">
+                {label}
+                {hint}
+            </p>
             {readOnly ? (
                 <input 
                     type="text" 

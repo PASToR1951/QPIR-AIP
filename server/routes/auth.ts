@@ -380,6 +380,7 @@ authRoutes.get("/me", async (c) => {
       middle_initial: user.middle_initial,
       last_name: user.last_name,
       position: user.position,
+      profile_photo: user.profile_photo,
       school_id: user.school_id,
       school_name: user.school?.name ?? null,
       cluster_id: user.school?.cluster_id ?? user.cluster_id ?? null,

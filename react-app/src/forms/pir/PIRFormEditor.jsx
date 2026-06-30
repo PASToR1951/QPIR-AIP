@@ -9,6 +9,7 @@ import { DocumentPreviewModal } from '../../components/ui/DocumentPreviewModal';
 import WizardStepper from '../../components/ui/WizardStepper';
 import SectionHeader from '../../components/ui/SectionHeader';
 import SignatureBlock from '../../components/ui/SignatureBlock';
+import SignatoryHint from '../../components/ui/SignatoryHint.jsx';
 import FinalizeCard from '../../components/ui/FinalizeCard';
 import WizardStickyNav from '../../components/ui/WizardStickyNav';
 import PIRProfileSection from '../../components/forms/pir/PIRProfileSection';
@@ -516,6 +517,7 @@ export default function PIRFormEditor({
                                                     onNameChange={(value) => dispatch({ type: 'SET_PROFILE_FIELD', payload: { field: 'owner', value } })}
                                                     namePlaceholder="NAME OF PROGRAM OWNER"
                                                     theme="blue"
+                                                    hint={<SignatoryHint />}
                                                 />
                                                 <SignatureBlock
                                                     label="Noted"

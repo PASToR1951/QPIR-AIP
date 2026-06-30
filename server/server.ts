@@ -6,6 +6,7 @@ import { bodyLimit } from "hono/body-limit";
 import authRoutes from "./routes/auth.ts";
 import oauthRoutes from "./routes/oauth.ts";
 import onboardingRoutes from "./routes/onboarding.ts";
+import profileRoutes from "./routes/profile.ts";
 import dataRoutes from "./routes/data.ts";
 import adminRoutes from "./routes/admin.ts";
 import clusterConsultantRoutes from "./routes/clusterConsultant.ts";
@@ -191,6 +192,7 @@ app.get("/api/config", async (c) => {
 app.route("/api/auth/oauth", oauthRoutes);
 app.route("/api/auth/onboarding", onboardingRoutes);
 app.route("/api/auth", authRoutes);
+app.route("/api/profile", profileRoutes);
 app.route("/api", faqsRoutes);
 app.route("/api", announcementsRoutes);
 app.route("/api", dataRoutes);

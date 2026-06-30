@@ -24,7 +24,11 @@
     "exceljs": "npm:exceljs@^4.4.0",
     "jsonwebtoken": "npm:jsonwebtoken@^9.0.3",
     "nodemailer": "npm:nodemailer@^8.0.5",
-    "pg": "npm:pg@^8.20.0"
+    "pg": "npm:pg@^8.20.0",
+    "@jsquash/png": "npm:@jsquash/png@^3.1.1",
+    "@jsquash/jpeg": "npm:@jsquash/jpeg@^1.5.0",
+    "@jsquash/webp": "npm:@jsquash/webp@^1.5.0",
+    "@jsquash/resize": "npm:@jsquash/resize@^2.1.0"
   },
   "allowScripts": {
     "allow": [],
