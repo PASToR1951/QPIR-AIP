@@ -1,72 +1,20 @@
 
 
-import { createElement, useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAppLogo } from '../../context/BrandingContext.jsx';
-import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageCircle, TagIcon, IdentificationCardIcon, ListBulletsIcon, BookOpenUserIcon, BooksIcon, ClockCounterClockwise, ClipboardText, House, ChartBar, FileText, List as MenuIcon, X as CloseIcon } from '@phosphor-icons/react';
-import { Link, NavLink } from 'react-router-dom';
+import { SignOut as LogOut, CaretDown as ChevronDown, ChatCircleIcon as MessageCircle, TagIcon, IdentificationCardIcon, ListBulletsIcon, BookOpenUserIcon, BooksIcon, ClockCounterClockwise, ClipboardText, List as MenuIcon } from '@phosphor-icons/react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NotificationBell } from './NotificationBell.jsx';
 import { SchoolAvatar } from './SchoolAvatar.jsx';
 import MyDevicesModal from './MyDevicesModal.jsx';
+import { DivisionSidebar } from './DivisionSidebar.jsx';
 import api from '../../lib/api.js';
 import { getRoleVisualTheme } from '../../lib/roleVisualTheme.js';
 import { ReportingPeriodPicker } from './ReportingPeriodPicker.jsx';
 import { useReportingPeriod } from '../../context/ReportingPeriodContext.jsx';
 
 const MotionDiv = motion.div;
-const MotionAside = motion.aside;
-
-// Width of the fixed sidebar. Consuming pages add `lg:pl-60` so their content
-// sits to the right of it; keep these in sync if the width ever changes.
-const SIDEBAR_WIDTH = 'w-60';
-
-function SidebarNav({ appLogo, navItems, roleTheme, onNavigate }) {
-    return (
-        <>
-            <div className={`flex h-14 shrink-0 items-center gap-2.5 border-b px-4 ${roleTheme.border}`}>
-                <img src={appLogo} alt="AIP-PIR Logo" className="h-8 w-auto shrink-0 drop-shadow-sm" />
-                <div className="min-w-0">
-                    <div className="truncate text-sm font-black leading-none tracking-tight text-slate-900 dark:text-slate-100">
-                        AIP-PIR
-                    </div>
-                    <div className={`mt-1 truncate text-[10px] font-black uppercase tracking-[0.16em] ${roleTheme.subtleText}`}>
-                        DepEd Guihulngan City
-                    </div>
-                </div>
-            </div>
-            <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-                {navItems.map(({ to, label, icon, end, badge, preload }) => (
-                    <NavLink
-                        key={to}
-                        to={to}
-                        end={end}
-                        onMouseEnter={preload}
-                        onClick={onNavigate}
-                        className={({ isActive }) =>
-                            `relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-black transition-colors ${
-                                isActive
-                                    ? roleTheme.activeNav
-                                    : `text-slate-500 dark:text-slate-400 ${roleTheme.hoverNav}`
-                            }`
-                        }
-                    >
-                        {({ isActive }) => (
-                            <>
-                                {createElement(icon, { size: 18, weight: isActive ? 'fill' : 'regular' })}
-                                <span className="truncate">{label}</span>
-                                {badge > 0 && (
-                                    <span className="ml-auto min-w-5 rounded-full bg-blue-600 px-1.5 text-center text-[10px] font-black leading-5 text-white shadow-sm">
-                                        {badge > 99 ? '99+' : badge}
-                                    </span>
-                                )}
-                            </>
-                        )}
-                    </NavLink>
-                ))}
-            </nav>
-        </>
-    );
-}
 
 export const DashboardHeader = ({ user, onLogout }) => {
     const appLogo = useAppLogo();
@@ -74,17 +22,8 @@ export const DashboardHeader = ({ user, onLogout }) => {
     const [isDevicesOpen, setIsDevicesOpen] = useState(false);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
-    const [isFooterVisible, setIsFooterVisible] = useState(false);
     const dropdownRef = useRef(null);
     const { selectedYear, selectedQuarter } = useReportingPeriod();
-
-    // Fade the sidebar out while the page footer is in view (mirrors the
-    // accessibility/onboarding launcher behaviour via the same global event).
-    useEffect(() => {
-        const handleFooterVisibility = (e) => setIsFooterVisible(e.detail);
-        window.addEventListener('footer-visibility-change', handleFooterVisibility);
-        return () => window.removeEventListener('footer-visibility-change', handleFooterVisibility);
-    }, []);
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -126,71 +65,22 @@ export const DashboardHeader = ({ user, onLogout }) => {
             (user?.name || user?.email?.split('@')[0] || 'User');
     const roleTheme = getRoleVisualTheme(user);
 
-    const navItems = [
-        ...(user?.role === 'Division Personnel'
-            ? [
-                { to: '/', label: 'Dashboard', icon: House, end: true },
-                { to: '/division', label: 'Queue', icon: ClipboardText, end: true, badge: pendingCount, preload: () => import('../../division/DivisionLayout.jsx') },
-                { to: '/division/programs', label: 'Programs', icon: FileText, preload: () => import('../../division/DivisionLayout.jsx') },
-                { to: '/division/consolidation', label: 'Consolidation', icon: ChartBar, preload: () => import('../../division/DivisionLayout.jsx') },
-                { to: '/aip', label: 'My AIP', icon: FileText, preload: () => import('../../AIPForm.jsx') },
-                { to: '/pir', label: 'My PIR', icon: ChartBar, preload: () => import('../../PIRForm.jsx') },
-            ]
-            : []),
-    ];
-
-    // Only roles with real navigation items get the sidebar. Normal users
-    // (e.g. School) would see a lone "Dashboard" link, so we skip it for them
-    // and surface the brand in the top bar instead. Keep in sync with the
-    // `lg:pl-60` padding applied by consuming pages.
-    const hasSidebar = navItems.length > 0;
+    // Only Division Personnel get the navigation sidebar; other roles (e.g.
+    // School) have no extra destinations, so the dashboard runs full width.
+    // Keep in sync with the `lg:pl-60` padding applied by consuming pages.
+    const hasSidebar = user?.role === 'Division Personnel';
 
     return (
         <>
-            {/* Desktop sidebar — fades out when the footer scrolls into view */}
+            {/* Shared Division navigation sidebar (desktop + mobile drawer) */}
             {hasSidebar && (
-                <MotionAside
-                    initial={false}
-                    animate={{ opacity: isFooterVisible ? 0 : 1 }}
-                    transition={{ duration: 0.3, ease: 'easeOut' }}
-                    className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r shadow-sm backdrop-blur-md print:hidden lg:flex ${SIDEBAR_WIDTH} ${roleTheme.header} ${isFooterVisible ? 'pointer-events-none' : ''}`}
-                >
-                    <div className={`absolute inset-y-0 right-0 w-0.5 ${roleTheme.topAccent}`} />
-                    <SidebarNav appLogo={appLogo} navItems={navItems} roleTheme={roleTheme} />
-                </MotionAside>
+                <DivisionSidebar
+                    user={user}
+                    onLogout={onLogout}
+                    mobileOpen={isMobileNavOpen}
+                    onCloseMobile={() => setIsMobileNavOpen(false)}
+                />
             )}
-
-            {/* Mobile slide-in sidebar */}
-            <AnimatePresence>
-                {hasSidebar && isMobileNavOpen && (
-                    <div className="fixed inset-0 z-50 lg:hidden print:hidden">
-                        <MotionDiv
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            onClick={() => setIsMobileNavOpen(false)}
-                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-                        />
-                        <MotionAside
-                            initial={{ x: '-100%' }}
-                            animate={{ x: 0 }}
-                            exit={{ x: '-100%' }}
-                            transition={{ duration: 0.25, ease: 'easeOut' }}
-                            className={`absolute inset-y-0 left-0 flex flex-col border-r shadow-xl ${SIDEBAR_WIDTH} ${roleTheme.header}`}
-                        >
-                            <button
-                                aria-label="Close navigation"
-                                onClick={() => setIsMobileNavOpen(false)}
-                                className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-black/5 dark:text-slate-400 dark:hover:bg-white/5"
-                            >
-                                <CloseIcon size={18} weight="bold" />
-                            </button>
-                            <SidebarNav appLogo={appLogo} navItems={navItems} roleTheme={roleTheme} onNavigate={() => setIsMobileNavOpen(false)} />
-                        </MotionAside>
-                    </div>
-                )}
-            </AnimatePresence>
 
             {/* Top bar */}
             <header className={`sticky top-0 z-30 border-b shadow-sm backdrop-blur-md print:hidden ${roleTheme.header}`}>

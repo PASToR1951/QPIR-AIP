@@ -208,7 +208,7 @@ export default React.memo(function AIPFormEditor({
                     <AIPDocumentPreview aipData={aipDocumentData} />
                 </DocumentPreviewModal>
 
-                <div className={`container relative z-10 mx-auto mb-10 mt-4 max-w-5xl px-3 print:hidden sm:mt-6 sm:px-4 md:mt-8 md:px-0 ${showWizardStickyNav ? 'pb-32' : ''}`}>
+                <div className={`container relative z-10 mx-auto mb-10 mt-4 px-3 print:hidden sm:mt-6 sm:px-4 md:mt-8 md:px-0 ${appMode === 'wizard' ? 'max-w-5xl' : 'max-w-[1500px]'} ${showWizardStickyNav ? 'pb-32' : ''}`}>
                     {appMode === 'wizard' && (
                         <div className="mb-5 rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-md dark:border-dark-border dark:bg-dark-surface sm:mb-6 sm:rounded-[2rem] sm:p-6">
                             <FormBoxHeader
